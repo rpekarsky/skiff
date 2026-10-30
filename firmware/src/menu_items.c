@@ -349,7 +349,7 @@ static void menu_put(uint32_t row, uint32_t v)
     case MI_TUNE: song.g[G_TUNE] = (int16_t)((int32_t)v - 50); break;
 #if BOARD_SMK37
     case MI_KVEL: SMK_KV_BYTE = (uint8_t)(v % SMK_KV_N); smk_kv_mode = SMK_KV_BYTE; break;
-    case MI_PADL: shared_put((SMK_PADL_N - 1u) << SMK_PADL_SHIFT, (SMK_PADL_N - 1u - v % SMK_PADL_N) << SMK_PADL_SHIFT); break;
+    case MI_PADL: shared_put(SMK_PADL_MASK, (SMK_PADL_N - 1u - v % SMK_PADL_N) << SMK_PADL_SHIFT); break;
     case MI_PADF: smk_pf_put(v); break;
 #endif
     case MI_MSTART: CPU2_BYTE = (uint8_t)(v & 1u ? CPU2_BYTE | 16u : CPU2_BYTE & ~16u); break;   /* (the next power-on) */

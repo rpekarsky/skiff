@@ -190,6 +190,7 @@ static const char *const CLK_WHY[11] = {"", "ALREADY 320", "SYS MODE", "PLL2 NOT
 #define SMK_MASTER_BYTE (favorites.factory[15][13])
 #define SMK_PADL_N 4u
 #define SMK_PADL_SHIFT 1u
+#define SMK_PADL_MASK ((SMK_PADL_N - 1u) << SMK_PADL_SHIFT)
 #define smk_padl() ((SHARED_BYTE >> SMK_PADL_SHIFT) % SMK_PADL_N)
 /* (wishlist #42) MENU > PAD FOLLOW (smk_ui.c smk_pf_rows): bits 4..5 of the retired STYLE's byte ([15][29], STYLE's
  * 0..2 kept as saved below them), stored as the distance from PAGE, the default: 0 PAGE in every older setting,
@@ -324,7 +325,7 @@ static struct {
     uint8_t home_scope;          /* Skiff: HOME's panel the scope (HOME tapped on HOME) instead of the tracks (ui_home.c) */
     uint8_t take_t;              /* Skiff: the TAKE box's frames left (ui_take.c; a message ends it) */
     uint8_t undo_w;              /* Skiff: the undo window's frames left (ui.c undo_step; a message ends it) */
-    uint8_t popup_on_input;      /* MENU > POPUP CLOSE ON INPUT (popup_time) */
+    uint8_t popup_on_input;      /* MENU > POPUP CLOSE ON INPUT: RAM only, an evaluation setting (popup_time) */
     uint8_t page;                /* index into PAGES */
     uint8_t fam_last[FAM_COUNT]; /* last page used per family */
     uint8_t bank;                /* SEQ: 16-step bank (follows the cursor) */
