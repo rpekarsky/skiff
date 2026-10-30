@@ -1573,21 +1573,22 @@ static int test_menu_tabs(void)
     bad += check("MENU tabs: DISPLAY CONTROL AUDIO SYSTEM MIDI ((1.3) MIDI appended), rows in a run, 6 shown fit the page; "
                  "tab gaps constant (S, LARGE)",
                  ok && MTAB_COUNT == 5u && str_eq(MTAB_NAME[0], "DISPLAY") && str_eq(MTAB_NAME[MTAB_MIDI], "MIDI") &&
-                 mtab_rows(MTAB_DISPLAY) == 8u && mtab_rows(MTAB_CONTROL) == 6u && mtab_rows(MTAB_AUDIO) == 6u &&   /* (#27, POPUP TIME; (2.0) RETURN) */
+                 mtab_rows(MTAB_DISPLAY) == 9u && mtab_rows(MTAB_CONTROL) == 6u && mtab_rows(MTAB_AUDIO) == 6u &&   /* (#27, POPUP TIME, CLOSE; (2.0) RETURN) */
                  mtab_rows(MTAB_SYSTEM) == 6u + FELUCCA_CDC && mtab_rows(MTAB_MIDI) == 10u);   /* ((Skiff) SYSTEM: CPU
                                                          * CLOCK; (Skiff 2.0) USB SERIAL with the console only) */
 
     ui_power_on();
     hold(B_HOME);
     ok = ui.menu == 1 && ui.menu_sel == MI_COLOR && menu_tab() == MTAB_DISPLAY;
-    for (i = 0; i < 7u; i++) turn(EN_PRESET, 1);       /* ((Skiff #27) PLAYHEAD after COLOR, POPUP TIME after HINTS:
-                                                         * DISPLAY's eight scroll) */
-    ok &= ui.menu_sel == MI_POPUP;
+    for (i = 0; i < 8u; i++) turn(EN_PRESET, 1);       /* ((Skiff #27) PLAYHEAD after COLOR, POPUP TIME and CLOSE after
+                                                         * HINTS: DISPLAY's nine scroll) */
+    ok &= ui.menu_sel == MI_PCLOSE;
     turn(EN_PRESET, 1); ok &= ui.menu_sel == MI_COLOR;  /* (wraps within the tab) */
+    turn(EN_PRESET, -1); ok &= ui.menu_sel == MI_PCLOSE;
     turn(EN_PRESET, -1); ok &= ui.menu_sel == MI_POPUP;
     turn(EN_PRESET, -1); ok &= ui.menu_sel == MI_HINTS;
     turn(EN_PRESET, -1); ok &= ui.menu_sel == MI_SCROFF;
-    bad += check("MENU: PRESETS moves within the tab and wraps there (COLOR .. POPUP TIME)", ok);
+    bad += check("MENU: PRESETS moves within the tab and wraps there (COLOR .. POPUP CLOSE)", ok);
     turn(EN_ALGO, 1); ok = ui.menu_sel == MI_HOLD && menu_tab() == MTAB_CONTROL;
     turn(EN_PRESET, 1); turn(EN_PRESET, 1); ok &= ui.menu_sel == MI_BPMLOCK;
     turn(EN_ALGO, 1); ok &= ui.menu_sel == MI_LOWCUT && menu_tab() == MTAB_AUDIO;
@@ -8757,7 +8758,7 @@ static int test_style(void)
     ui_power_on();
     for (i = 0; i < MI_COUNT; i++)
         ok &= !str_eq(MI_NAME[i], "STYLE");
-    ok &= mtab_rows(MTAB_DISPLAY) == 8u && MI_LARGE == MI_PHEAD + 1u;   /* ((U4) HINTS, (#27) PLAYHEAD, POPUP TIME) */
+    ok &= mtab_rows(MTAB_DISPLAY) == 9u && MI_LARGE == MI_PHEAD + 1u;   /* ((U4) HINTS, (#27) PLAYHEAD, POPUP TIME, CLOSE) */
     p.magic = SKS_MAGIC; p.panel = panel;
     settings_export(&p);
     for (i = 0; i < 4u; i++) {
@@ -9589,8 +9590,8 @@ static int test_playhead_line(void)
     return bad;
 }
 
-/* MENU > DISPLAY > POPUP TIME: SHORT, NORMAL (the default, stored 0), LONG; the TAKE box, the undo box
- * and its window last half, as before, twice as long */
+/* MENU > DISPLAY > POPUP TIME: DEFAULT (each box its own, stored 0), 0.1 .. 2.7 s for the TAKE box and the undo box;
+ * the undo window stays UNDO_WIN. POPUP CLOSE: TIMER (stored 0), ON INPUT */
 static uint32_t popup_take_t(void)
 {
     take_clear();
@@ -9602,35 +9603,78 @@ static uint32_t popup_take_t(void)
 }
 static int test_popup_time(void)
 {
-    static const uint32_t HALVES[3] = {1u, 2u, 4u};
     int bad = 0, ok;
     uint32_t v;
     ui_power_on();
     ok = str_eq(MI_NAME[MI_POPUP], "POPUP TIME") && MI_POPUP == MI_HINTS + 1u && MI_TAB[MI_POPUP] == MTAB_DISPLAY &&
-         menu_n(MI_POPUP) == 3u && str_eq(menu_vname(MI_POPUP, 0), "SHORT") && str_eq(menu_vname(MI_POPUP, 1), "NORMAL") &&
-         str_eq(menu_vname(MI_POPUP, 2), "LONG") && menu_get(MI_POPUP) == POPUP_NORMAL && !POPUP_BYTE &&
-         menu_step(MI_POPUP, 1) == POPUP_LONG && menu_step(MI_POPUP, -1) == POPUP_SHORT;
-    POPUP_BYTE = 0x7Fu;
-    ok &= menu_get(MI_POPUP) == POPUP_NORMAL;
-    bad += check("POPUP TIME: a MENU > DISPLAY row after HINTS, NORMAL the default (stored 0, an unknown byte too)", ok);
+         menu_n(MI_POPUP) == 28u && str_eq(menu_vname(MI_POPUP, 0), "DEFAULT") &&
+         str_eq(menu_vname(MI_POPUP, 1), "0.1 s") && str_eq(menu_vname(MI_POPUP, 27), "2.7 s") &&
+         menu_get(MI_POPUP) == 0u && !POPUP_BYTE && menu_step(MI_POPUP, 1) == 1u && menu_step(MI_POPUP, -1) == 0u;
+    ok &= str_eq(MI_NAME[MI_PCLOSE], "POPUP CLOSE") && MI_PCLOSE == MI_POPUP + 1u && MI_TAB[MI_PCLOSE] == MTAB_DISPLAY &&
+          menu_n(MI_PCLOSE) == 2u && str_eq(menu_vname(MI_PCLOSE, 0), "TIMER") &&
+          str_eq(menu_vname(MI_PCLOSE, 1), "ON INPUT") && menu_get(MI_PCLOSE) == 0u;
+    POPUP_BYTE = 31u << 3 | 3u;                         /* (unknown; bits 0..1: an older test build's SHORT / LONG) */
+    ok &= menu_get(MI_POPUP) == 0u && menu_get(MI_PCLOSE) == 0u;
+    menu_put(MI_POPUP, 27);
+    menu_put(MI_PCLOSE, 1);
+    ok &= menu_get(MI_POPUP) == 27u && menu_get(MI_PCLOSE) == 1u && (POPUP_BYTE & 3u) == 3u;
+    bad += check("POPUP TIME, CLOSE: MENU > DISPLAY rows after HINTS, DEFAULT and TIMER the defaults (stored 0, an "
+                 "unknown time too); bits 0..1 left alone", ok);
+
+    POPUP_BYTE = 0;
     press(B_HOME);
     song.rec = 0;
-    ok = 1;
-    for (v = POPUP_SHORT; v <= POPUP_LONG; v++) {
-        menu_put(MI_POPUP, v);
-        ok &= menu_get(MI_POPUP) == v && popup_take_t() * 2u == TB_FRAMES * HALVES[v];
-        undo_step(0);
-        ok &= take_box.kind == 1u && ui.take_t * 2u == UNDO_WIN * HALVES[v] && ui.undo_w == ui.take_t;
-        ui.take_t = ui.undo_w = 0;
-    }
+    ok = popup_take_t() == TB_FRAMES;
+    undo_step(0);
+    ok &= take_box.kind == 1u && ui.take_t == UNDO_WIN && ui.undo_w == UNDO_WIN;
+    ui.take_t = ui.undo_w = 0;
+    menu_put(MI_POPUP, 1);
+    ok &= popup_take_t() == 6u;
+    undo_step(0);
+    ok &= ui.take_t == 6u && ui.undo_w == UNDO_WIN;
+    ui.take_t = ui.undo_w = 0;
+    menu_put(MI_POPUP, 27);
+    ok &= popup_take_t() == 180u;
     ui.layer = LAYER_PERF;
-    undo_step(1);
+    undo_step(0);
     ok &= !ui.take_t && ui.undo_w == UNDO_WIN && str_eq(ui.msg2, "[OCT-] BACK  OCT+ REDO");
     ui.layer = 0;
-    menu_put(MI_POPUP, POPUP_NORMAL);
-    ok &= !POPUP_BYTE;
-    bad += check("POPUP TIME: the TAKE box, the undo box and its window x0.5 SHORT, x1 NORMAL, x2 LONG; the header's "
-                 "undo (no box) as before", ok);
+    bad += check("POPUP TIME: DEFAULT the boxes' own (TAKE 130, undo 180 frames), 0.1 s 6, 2.7 s 180 frames; the undo "
+                 "window UNDO_WIN whatever the box", ok);
+
+    menu_put(MI_POPUP, 0);
+    ui.take_t = ui.undo_w = 0;
+    (void)popup_take_t();
+    take_box_input(1u << panel.btn[B_PLAY], 0);
+    ok = ui.take_t == TB_FRAMES;                        /* (TIMER: input leaves it) */
+    menu_put(MI_PCLOSE, 1);
+    take_box_input(0, 0);
+    ok &= ui.take_t == TB_FRAMES;
+    take_box_input(0, 1u);
+    ok &= !ui.take_t;
+    (void)popup_take_t();
+    take_box_input(1u << panel.btn[B_OCTDN], 0);
+    ok &= !ui.take_t;                                   /* (the TAKE box: OCT- is a key as any) */
+    undo_step(0);
+    take_box_input(1u << panel.btn[B_OCTDN] | 1u << panel.btn[B_OCTUP], 0);
+    ok &= ui.take_t == UNDO_WIN;                        /* (the undo box: its BACK, REDO) */
+    panel_moved = 1;
+    take_box_input(0, 0);
+    ok &= !ui.take_t && ui.undo_w == UNDO_WIN;
+    panel_moved = 0;
+    undo_step(0);
+    take_box_input(1u << panel.btn[B_PLAY], 0);
+    ok &= !ui.take_t && ui.undo_w == UNDO_WIN;
+    (void)popup_take_t();
+    undo_step(0);
+    v = undo_back;
+    press(B_OCTUP);
+    ok &= ui.take_t && take_box.kind == 1u && undo_back + 1u == v;
+    turn(EN_K1, 1);
+    frame();
+    ok &= !ui.take_t && ui.undo_w;
+    bad += check("POPUP CLOSE ON INPUT: a key, a knob ends the box (OCT- / OCT+ not the undo box); the undo window "
+                 "stays; TIMER: as before", ok);
     ui_power_on();
     return bad;
 }

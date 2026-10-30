@@ -177,6 +177,17 @@ static void take_box_undo(int redo, uint32_t trk, const char *name)
     ui.msg2[0] = 0;
     ui.take_t = popup_frames(UNDO_WIN);
 }
+/* POPUP CLOSE ON INPUT (ui_input.c, before the input acts): a key pressed or a knob turned ends the box, but OCT- /
+ * OCT+ on the undo box, its BACK and REDO. panel_moved: the turns since the last look (ui.c scr_input clears it) */
+static void take_box_input(uint32_t pressed, uint32_t notes)
+{
+    if (!(POPUP_BYTE & POPUP_ON_INPUT) || !ui.take_t)
+        return;
+    if (take_box.kind)
+        pressed &= ~(1u << panel.btn[B_OCTDN] | 1u << panel.btn[B_OCTUP]);
+    if (pressed | notes | panel_moved)
+        ui.take_t = 0;
+}
 
 /* SHIFT + SAVE (ui_input.c) on track k */
 static void take_commit(uint32_t k)

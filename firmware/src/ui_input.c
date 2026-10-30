@@ -2111,6 +2111,7 @@ static void ui_input(void)
                                                          * its map has gone) */
     midi_pc_poll();                                     /* ((1.3) MIDI Program Change) */
     ml_poll();                                          /* ((1.3) MIDI LEARN: a CC came for the picked parameter) */
+    take_box_input(pressed, notes);
     if (scr_input(pressed, notes)) {                    /* MENU > SCREEN OFF: dark, or the wake gesture: swallowed */
         if (((pressed >> panel.btn[B_PLAY]) & 1u) && (song.playing || seq_counting()))
             transport_req = 2;                          /* (Skiff U1) .. but PLAY still stops the music */

@@ -1558,7 +1558,8 @@ static void setup(int s)
         break;
     case S_REVERB: go_title("REVERB"); song.g[G_RTYPE] = 1; ui.hot_col = 0; ui.hot_t = 30; break;   /* TYPE: SPRING */
     case S_MENU_HOLD: ui.menu = 1; ui.menu_sel = MI_HOLD; settings_hold = 2; break;
-    case S_MENU_POPUP: ui.menu = 1; ui.menu_sel = MI_POPUP; break;   /* (DISPLAY scrolled to its last row) */
+    case S_MENU_POPUP:                              /* (DISPLAY scrolled to its last rows) */
+        ui.menu = 1; ui.menu_sel = MI_PCLOSE; menu_put(MI_POPUP, 5); menu_put(MI_PCLOSE, 1); break;
     case S_MENU_LEDS: ui.menu = 1; ui.menu_sel = MI_LEDS; settings_leds = LEDS_INV; break;
     case S_MENU_END: ui.menu = 1; ui.menu_sel = MI_COUNT - 1u; ui_prefs = 0xFF; ui_rec_prefs = 0x2A; break;   /* the last row,
                                                      * every flag set (CLICK ON, LEVEL HIGH, COUNT-IN 2 BARS) */

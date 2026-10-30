@@ -150,18 +150,19 @@ static uint32_t ret_mode(void)
 }
 static uint32_t ret_beats(void) { return ret_mode() == RET_BAR ? 4u : ret_mode(); }   /* (SNAP 0, a beat, a bar) */
 static const char *const RET_SAY[3] = {"BACK", "BACK OVER 1 BEAT", "BACK OVER 1 BAR"};   /* (the footers: LET GO: ..) */
-/* MENU > DISPLAY > POPUP TIME: how long the TAKE box and the undo box (and its window) stay. A settings
- * byte ([15][17]), the value ^ 1: 0 = NORMAL in every older setting; unknown = NORMAL */
+/* MENU > DISPLAY > POPUP TIME, POPUP CLOSE: the TAKE box and the undo box (not their undo window: UNDO_WIN). A settings
+ * byte ([15][17]): bits 3..7 the time, 0 DEFAULT (each box its own), n: n / 10 s, unknown = DEFAULT; bit 2 ON INPUT
+ * (else TIMER). Bits 0..1 free: zero in every older setting (a test build's SHORT / LONG there read DEFAULT) */
 #define POPUP_BYTE (favorites.factory[15][17])
-enum { POPUP_SHORT, POPUP_NORMAL, POPUP_LONG };
-static uint32_t popup_mode(void)
+#define POPUP_TIMES 28u                                /* DEFAULT, 0.1 .. 2.7 s (2.7: the undo box's DEFAULT) */
+#define POPUP_ON_INPUT 4u
+static uint32_t popup_time(void)
 {
-    return (POPUP_BYTE ^ 1u) <= POPUP_LONG ? POPUP_BYTE ^ 1u : POPUP_NORMAL;
+    return POPUP_BYTE >> 3 < POPUP_TIMES ? POPUP_BYTE >> 3 : 0u;
 }
-static uint16_t popup_frames(uint32_t normal)
+static uint8_t popup_frames(uint32_t dflt)
 {
-    static const uint8_t HALVES[3] = {1u, 2u, 4u};   /* SHORT half NORMAL's, LONG twice */
-    return (uint16_t)(normal * HALVES[popup_mode()] / 2u);
+    return (uint8_t)(popup_time() ? popup_time() * 20u / 3u : dflt);   /* (15 ms frames) */
 }
 /* (Skiff) MENU > SYSTEM > CPU CLOCK 320 MHZ: JieLi's rated clock instead of the boot stage's 360 (hal/fm1_clk.h), switched
  * at boot (main.c), bit 2 of CPU2_BYTE; clear: 360, as 1.3. clk320: what this boot did about it, kept across a soft reset
@@ -284,8 +285,8 @@ static void fmt_kn(char *b, int32_t k, int32_t n)
 static struct {
     uint8_t home;
     uint8_t home_scope;          /* Skiff: HOME's panel the scope (HOME tapped on HOME) instead of the tracks (ui_home.c) */
-    uint16_t take_t;             /* Skiff: the TAKE box's frames left (ui_take.c; a message ends it) */
-    uint16_t undo_w;             /* Skiff: the undo window's frames left (ui.c undo_step; a message ends it) */
+    uint8_t take_t;              /* Skiff: the TAKE box's frames left (ui_take.c; a message ends it) */
+    uint8_t undo_w;              /* Skiff: the undo window's frames left (ui.c undo_step; a message ends it) */
     uint8_t page;                /* index into PAGES */
     uint8_t fam_last[FAM_COUNT]; /* last page used per family */
     uint8_t bank;                /* SEQ: 16-step bank (follows the cursor) */
@@ -1829,14 +1830,13 @@ static void undo_step(int redo)
         undo_back++;
     if (take_box_fits()) {
         take_box_undo(redo, (uint32_t)c->trk - 1u, c->name);
-        ui.undo_w = ui.take_t;                    /* (as long as the box: POPUP TIME) */
     } else {                                      /* "UNDO T1 TAKE", then the keys */
         str_cpy(b, redo ? "REDO T1 " : "UNDO T1 ", sizeof b);
         b[6] = (char)('1' + (c->trk - 1u) % NTRK);
         ui_say(b, c->name);
         str_cpy(ui.msg2, "[OCT-] BACK  OCT+ REDO", sizeof ui.msg2);
-        ui.undo_w = UNDO_WIN;                     /* (as long as the two words: MSG_T each) */
     }
+    ui.undo_w = UNDO_WIN;
 }
 
 static void track_defaults_steps(track_t *t)

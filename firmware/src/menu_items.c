@@ -22,15 +22,15 @@
 #if BOARD_SMK37
 /* (SMK-37 Pro, SMK37_UX.md) KEY VELOCITY in CONTROL (question 8); no LEDS row (button LEDs A: on or off only): MI_LEDS
  * past MI_COUNT, so its setting stays and no tab shows it */
-enum { MI_COLOR, MI_PHEAD, MI_LARGE, MI_ANIM, MI_SCROFF, MI_HINTS, MI_POPUP, MI_HOLD, MI_ACCEL, MI_BPMLOCK, MI_SCLLED,
-       MI_PREVIEW, MI_RETURN, MI_KVEL, MI_LOWCUT, MI_USB, MI_CLICK, MI_CLKLVL, MI_COUNTIN, MI_TUNE, MI_CLOCK, MI_ROUTE,
-       MI_LEARN, MI_LCLEAR, MI_TCH1, MI_TCH2, MI_TCH3, MI_TCH4, MI_TCH5, MI_TCH6, MI_SERIAL_IN MI_RESTORE, MI_CPU, MI_CLK,
+enum { MI_COLOR, MI_PHEAD, MI_LARGE, MI_ANIM, MI_SCROFF, MI_HINTS, MI_POPUP, MI_PCLOSE, MI_HOLD, MI_ACCEL, MI_BPMLOCK,
+       MI_SCLLED, MI_PREVIEW, MI_RETURN, MI_KVEL, MI_LOWCUT, MI_USB, MI_CLICK, MI_CLKLVL, MI_COUNTIN, MI_TUNE, MI_CLOCK,
+       MI_ROUTE, MI_LEARN, MI_LCLEAR, MI_TCH1, MI_TCH2, MI_TCH3, MI_TCH4, MI_TCH5, MI_TCH6, MI_SERIAL_IN MI_RESTORE, MI_CPU, MI_CLK,
        MI_PANEL, MI_RESET, MI_ABOUT, MI_COUNT, MI_LEDS MI_SERIAL_OUT };
 static const char *const KVEL_N[SMK_KV_N] = {"DYNAMIC", "SOFT", "HARD", "FIXED 64", "FIXED 100", "FIXED 127"};
 #else
-enum { MI_COLOR, MI_PHEAD, MI_LARGE, MI_ANIM, MI_LEDS, MI_SCROFF, MI_HINTS, MI_POPUP, MI_HOLD, MI_ACCEL, MI_BPMLOCK,
-       MI_SCLLED, MI_PREVIEW, MI_RETURN, MI_LOWCUT, MI_USB, MI_CLICK, MI_CLKLVL, MI_COUNTIN, MI_TUNE, MI_CLOCK, MI_ROUTE,
-       MI_LEARN, MI_LCLEAR, MI_TCH1, MI_TCH2, MI_TCH3, MI_TCH4, MI_TCH5, MI_TCH6, MI_SERIAL_IN MI_RESTORE, MI_CPU, MI_CLK,
+enum { MI_COLOR, MI_PHEAD, MI_LARGE, MI_ANIM, MI_LEDS, MI_SCROFF, MI_HINTS, MI_POPUP, MI_PCLOSE, MI_HOLD, MI_ACCEL,
+       MI_BPMLOCK, MI_SCLLED, MI_PREVIEW, MI_RETURN, MI_LOWCUT, MI_USB, MI_CLICK, MI_CLKLVL, MI_COUNTIN, MI_TUNE, MI_CLOCK,
+       MI_ROUTE, MI_LEARN, MI_LCLEAR, MI_TCH1, MI_TCH2, MI_TCH3, MI_TCH4, MI_TCH5, MI_TCH6, MI_SERIAL_IN MI_RESTORE, MI_CPU, MI_CLK,
        MI_PANEL, MI_RESET, MI_ABOUT, MI_COUNT MI_SERIAL_OUT };
 #endif   /* ((Skiff U4, A3) HINTS; RESET SETTINGS, a row with no value: its dialog) */   /* ((Skiff U3, R8, R2) CLOCK, MIDI IN, TUNE: the unit's, GLOBAL's and SYSTEM's before; CPU: read) */   /* (1.1: the metronome's rows in
                                                                                              * AUDIO; 1.2: RESTORE LAST in SYSTEM, SCALE LEDS
@@ -40,8 +40,8 @@ static const char *const MI_NAME[MI_COUNT] = {"THEME", "PLAYHEAD", "LARGE", "ANI
 #if !BOARD_SMK37
                                               "LEDS",
 #endif
-                                              "SCREEN OFF", "HINTS", "POPUP TIME", "HOLD", "KNOB ACCEL", "BPM LOCK",
-                                              "SCALE LEDS", "STEP PREVIEW", "RETURN",
+                                              "SCREEN OFF", "HINTS", "POPUP TIME", "POPUP CLOSE", "HOLD", "KNOB ACCEL",
+                                              "BPM LOCK", "SCALE LEDS", "STEP PREVIEW", "RETURN",
 #if BOARD_SMK37
                                               "KEY VELOCITY",
 #endif
@@ -66,7 +66,7 @@ static const uint8_t MI_TAB[MI_COUNT] = {
 #endif
     MTAB_DISPLAY,                                                           /* SCREEN OFF (1.1.5) */
     MTAB_DISPLAY,                                                           /* (Skiff U4) HINTS */
-    MTAB_DISPLAY,                                                           /* POPUP TIME */
+    MTAB_DISPLAY, MTAB_DISPLAY,                                             /* POPUP TIME, POPUP CLOSE */
     MTAB_CONTROL, MTAB_CONTROL, MTAB_CONTROL,                               /* HOLD KNOB ACCEL BPM LOCK ((Skiff U2) FX
                                                                              * LATCH gone: a locked FX layer latches) */
     MTAB_CONTROL,                                                           /* SCALE LEDS (1.2) */
@@ -135,7 +135,6 @@ static const char *const SCROFF_N[5] = {"NEVER", "5 MIN", "15 MIN", "30 MIN", "6
 /* (2.0, D 2A) RETURN (ui.c ret_mode): MOMENTARY's values, FX's macros and PERFORM's throws come back at once or over
  * this long; 1 BAR the default */
 static const char *const RET_N[3] = {"SNAP", "1 BEAT", "1 BAR"};
-static const char *const POPUP_N[3] = {"SHORT", "NORMAL", "LONG"};   /* (ui.c popup_frames) */
 
 /* MENU > USB SERIAL (#67). The serial console is a developer tool (README: FELUCCA_CDC). ON (the default) presents it,
  * the descriptors byte for byte as before; OFF re-enumerates as audio + MIDI only, device class 0 (the bytes of a
@@ -168,8 +167,9 @@ static const menu_flag_t *menu_flag(uint32_t row)
 static uint32_t menu_n(uint32_t row)
 {
     return row == MI_COLOR ? NPALETTES + (uint32_t)cpal_stored() :   /* ((Skiff #27) CUSTOM, while stored) */
-           row == MI_LOWCUT || row == MI_RETURN || row == MI_POPUP || (row >= MI_CLICK && row <= MI_COUNTIN) ? 3u :
-           row == MI_HOLD ? 4u : row == MI_LEDS ? LEDS_COUNT : row == MI_SCROFF ? NELEM(SCROFF_N) :
+           row == MI_LOWCUT || row == MI_RETURN || (row >= MI_CLICK && row <= MI_COUNTIN) ? 3u :
+           row == MI_HOLD ? 4u : row == MI_POPUP ? POPUP_TIMES : row == MI_LEDS ? LEDS_COUNT :
+           row == MI_SCROFF ? NELEM(SCROFF_N) :
            row == MI_CLOCK ? NELEM(N_CLOCK) : row == MI_TUNE ? 101u : row == MI_CPU ? 1u + FELUCCA_CPU2 :
            MI_TCH(row) ? 16u : row == MI_LEARN || row == MI_LCLEAR ? 1u :
 #if BOARD_SMK37
@@ -196,7 +196,8 @@ static uint32_t menu_get(uint32_t row)
     case MI_HINTS: return ui_hints_off != 0;
     case MI_PREVIEW: return PREVIEW_SET ? 1u : 0u;
     case MI_RETURN: return ret_mode();
-    case MI_POPUP: return popup_mode();
+    case MI_POPUP: return popup_time();
+    case MI_PCLOSE: return (POPUP_BYTE & POPUP_ON_INPUT) != 0;
     case MI_TUNE: return (uint32_t)clamp(song.g[G_TUNE] + 50, 0, 100);
 #if FELUCCA_CPU2
     case MI_CPU: return CPU2_SET ? 1u : 0u;            /* ((Skiff 1.3) 1 CORE, 2 CORES (BETA): from the next power-on) */
@@ -248,7 +249,16 @@ static const char *menu_vname(uint32_t row, uint32_t v)
     case MI_HINTS: return v & 1u ? "OFF" : "ON";
     case MI_PREVIEW: return v & 1u ? "ON" : "OFF";
     case MI_RETURN: return RET_N[v % 3u];
-    case MI_POPUP: return POPUP_N[v % 3u];
+    case MI_POPUP: {                                   /* "DEFAULT", "0.1 s" .. "2.7 s" (the menu draws its own unit) */
+        static char t[8] __attribute__((section(".pool")));
+        if (!v)
+            return "DEFAULT";
+        str_cpy(t, "0.0 s", sizeof t);
+        t[0] = (char)('0' + v / 10u);
+        t[2] = (char)('0' + v % 10u);
+        return t;
+    }
+    case MI_PCLOSE: return v & 1u ? "ON INPUT" : "TIMER";
     case MI_TUNE: case MI_CPU: {                       /* "+12 CT"; the audio's share of each half-buffer ("14 %") */
         static char b[20] __attribute__((section(".pool")));
         int32_t c = row == MI_TUNE ? (int32_t)v - 50 : (int32_t)(song.cpu_q8 * 100u / 256u);
@@ -325,7 +335,8 @@ static void menu_put(uint32_t row, uint32_t v)
         CPU2_BYTE = (uint8_t)(v & 1u ? CPU2_BYTE | 2u : CPU2_BYTE & ~2u);
         break;
     case MI_RETURN: RET_BYTE = (uint8_t)(RET_BAR - v % 3u); break;   /* ((2.0) ui.c ret_mode) */
-    case MI_POPUP: POPUP_BYTE = (uint8_t)((v % 3u) ^ 1u); break;
+    case MI_POPUP: POPUP_BYTE = (uint8_t)((POPUP_BYTE & 7u) | (v % POPUP_TIMES) << 3); break;
+    case MI_PCLOSE: POPUP_BYTE = (uint8_t)(v & 1u ? POPUP_BYTE | POPUP_ON_INPUT : POPUP_BYTE & ~POPUP_ON_INPUT); break;
 #if FELUCCA_CPU2
     case MI_CPU:                                       /* ((Skiff 1.3) the second core: started at power-on only, main.c) */
         CPU2_BYTE = (uint8_t)(v ? CPU2_BYTE | 1u : CPU2_BYTE & ~1u);
@@ -370,7 +381,8 @@ static void settings_reset(void)
     menu_put(MI_PHEAD, 0);
     menu_put(MI_PREVIEW, 0);
     menu_put(MI_RETURN, RET_BAR);
-    menu_put(MI_POPUP, POPUP_NORMAL);
+    menu_put(MI_POPUP, 0);
+    menu_put(MI_PCLOSE, 0);
 #if FELUCCA_CPU2
     menu_put(MI_CPU, 0);                               /* ((Skiff 1.3) 1 CORE) */
 #endif
