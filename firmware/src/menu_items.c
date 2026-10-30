@@ -23,10 +23,11 @@
 /* (SMK-37 Pro, SMK37_UX.md) KEY VELOCITY in CONTROL (question 8); no LEDS row (button LEDs A: on or off only): MI_LEDS
  * past MI_COUNT, so its setting stays and no tab shows it */
 enum { MI_COLOR, MI_PHEAD, MI_LARGE, MI_ANIM, MI_SCROFF, MI_HINTS, MI_HOLD, MI_ACCEL, MI_BPMLOCK, MI_SCLLED, MI_PREVIEW,
-       MI_RETURN, MI_KVEL, MI_LOWCUT, MI_USB, MI_CLICK, MI_CLKLVL, MI_COUNTIN, MI_TUNE, MI_CLOCK, MI_ROUTE,
+       MI_RETURN, MI_KVEL, MI_LOWCUT, MI_USB, MI_CLICK, MI_CLKLVL, MI_COUNTIN, MI_TUNE, MI_MSTART, MI_CLOCK, MI_ROUTE,
        MI_LEARN, MI_LCLEAR, MI_TCH1, MI_TCH2, MI_TCH3, MI_TCH4, MI_TCH5, MI_TCH6, MI_SERIAL_IN MI_RESTORE, MI_CPU, MI_CLK,
        MI_PANEL, MI_RESET, MI_ABOUT, MI_COUNT, MI_LEDS MI_SERIAL_OUT };
 static const char *const KVEL_N[SMK_KV_N] = {"DYNAMIC", "SOFT", "HARD", "FIXED 64", "FIXED 100", "FIXED 127"};
+static const char *const MSTART_N[2] = {"LAST", "SAFE"};   /* (MASTER START: ui.c MASTER_SAFE_SET) */
 #else
 enum { MI_COLOR, MI_PHEAD, MI_LARGE, MI_ANIM, MI_LEDS, MI_SCROFF, MI_HINTS, MI_HOLD, MI_ACCEL, MI_BPMLOCK, MI_SCLLED,
        MI_PREVIEW, MI_RETURN, MI_LOWCUT, MI_USB, MI_CLICK, MI_CLKLVL, MI_COUNTIN, MI_TUNE, MI_CLOCK, MI_ROUTE,
@@ -46,6 +47,9 @@ static const char *const MI_NAME[MI_COUNT] = {"THEME", "PLAYHEAD", "LARGE", "ANI
                                               "KEY VELOCITY",
 #endif
                                               "SPEAKER EQ", "USB LEVEL", "CLICK", "CLICK LEVEL", "COUNT-IN", "TUNE",
+#if BOARD_SMK37
+                                              "MASTER START",
+#endif
                                               "CLOCK", "MIDI IN", "MIDI LEARN", "LEARN CLEAR",
                                               "T1 CHANNEL", "T2 CHANNEL", "T3 CHANNEL", "T4 CHANNEL", "T5 CHANNEL", "T6 CHANNEL",
                                               MI_SERIAL_NAME "RESTORE LAST", "CPU", "CPU CLOCK", "CALIBRATION", "RESET SETTINGS",
@@ -77,6 +81,9 @@ static const uint8_t MI_TAB[MI_COUNT] = {
     MTAB_AUDIO, MTAB_AUDIO, MTAB_AUDIO, MTAB_AUDIO, MTAB_AUDIO,             /* SPEAKER EQ, USB LEVEL, CLICK, CLICK LEVEL,
                                                                              * COUNT-IN */
     MTAB_AUDIO,                                                             /* (Skiff U3) TUNE */
+#if BOARD_SMK37
+    MTAB_AUDIO,                                                             /* (SMK-37) MASTER START */
+#endif
     MTAB_MIDI, MTAB_MIDI,                                                   /* (Skiff U3) CLOCK, MIDI IN ((1.3) from
                                                                              * CONTROL) */
     MTAB_MIDI, MTAB_MIDI,                                                   /* (1.3) MIDI LEARN, LEARN CLEAR */
@@ -201,6 +208,7 @@ static uint32_t menu_get(uint32_t row)
     case MI_CLK: return CLK320_SET ? 1u : 0u;          /* ((Skiff) 360 MHZ, 320 MHZ: from the next power-on) */
 #if BOARD_SMK37
     case MI_KVEL: return SMK_KV_BYTE % SMK_KV_N;
+    case MI_MSTART: return MASTER_SAFE_SET;
 #endif
     case MI_LEDS:
         while (i + 1u < LEDS_COUNT && LEDS_MENU[i] != settings_leds)
@@ -241,6 +249,7 @@ static const char *menu_vname(uint32_t row, uint32_t v)
     case MI_LEARN: return ui.ml.on ? "ON" : "";
 #if BOARD_SMK37
     case MI_KVEL: return KVEL_N[v % SMK_KV_N];
+    case MI_MSTART: return MSTART_N[v & 1u];
 #endif
     case MI_HINTS: return v & 1u ? "OFF" : "ON";
     case MI_PREVIEW: return v & 1u ? "ON" : "OFF";
@@ -315,6 +324,7 @@ static void menu_put(uint32_t row, uint32_t v)
     case MI_TUNE: song.g[G_TUNE] = (int16_t)((int32_t)v - 50); break;
 #if BOARD_SMK37
     case MI_KVEL: SMK_KV_BYTE = (uint8_t)(v % SMK_KV_N); smk_kv_mode = SMK_KV_BYTE; break;
+    case MI_MSTART: CPU2_BYTE = (uint8_t)(v & 1u ? CPU2_BYTE | 8u : CPU2_BYTE & ~8u); break;   /* (the next power-on) */
 #endif
     case MI_HINTS: ui_hints_off = (uint8_t)(v & 1u); ui.force = 1; break;
     case MI_PREVIEW:                                   /* ((Skiff 1.3) a bit of CPU2_BYTE) */
@@ -350,6 +360,7 @@ static void settings_reset(void)
     menu_put(MI_LEDS, 2);                              /* (LEDS_MENU: DIM HI) */
 #if BOARD_SMK37
     menu_put(MI_KVEL, SMK_KV_DYN);
+    menu_put(MI_MSTART, 0);
 #endif
     menu_put(MI_HOLD, HOLD_DEF);
     menu_put(MI_LOWCUT, 0);

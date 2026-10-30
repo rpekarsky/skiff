@@ -268,11 +268,33 @@ static void boot_keys(void)
           ref > 100.0 && fabs(quiet - ref) < 1e-9 && silent == 0.0);
 }
 
+/* (SMK-37) MENU > AUDIO > MASTER START SAFE: master_rise after master_boot, the level from silence to the knob's in
+ * MASTER_RISE_MS, linear, then the knob's as before */
+static void boot_rise(void)
+{
+    uint32_t full, start, half, end;
+    host_pot = 1023;
+    fm1_ms = 5000;
+    master_boot();
+    full = song.master_q12;
+    master_rise();
+    start = song.master_q12;
+    fm1_ms += MASTER_RISE_MS / 2u;
+    master_poll();
+    half = song.master_q12;
+    fm1_ms += MASTER_RISE_MS / 2u;
+    master_poll();
+    end = song.master_q12;
+    check("MASTER START SAFE: silent at power-on, half way at 0.5 s, the knob's level from 1 s",
+          full > 4000u && start == 0u && half == full / 2u && end == full && !master_rising);
+}
+
 int main(void)
 {
     setvbuf(stdout, NULL, _IONBF, 0);
     usb_level();
     boot_keys();
+    boot_rise();
     overload(); dma();
     printf(bad ? "audio: %d FAILED\n" : "audio: all passed\n", bad);
     return bad != 0;

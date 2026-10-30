@@ -203,6 +203,10 @@ static void fm1_main(void)
     smk_ui_boot();                            /* (MASTER where it was left, KEY VELOCITY: smk_ui.c) */
 #endif
     master_boot();
+#if BOARD_SMK37
+    if (MASTER_SAFE_SET)
+        master_rise();                        /* (MENU > AUDIO > MASTER START SAFE: master.c) */
+#endif
     kb_boot_hold = 1;                         /* #137: no notes from the keys before the UI (seq.c keyboard_block) */
 #if FELUCCA_CPU2
     if (!bootguard.failed && CPU2_SET) {

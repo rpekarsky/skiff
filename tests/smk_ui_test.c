@@ -720,6 +720,16 @@ static int test_master(void)
     smk_master = 724;
     smk_ui_boot();
     bad += check("SMK power-on: MASTER where it was left", smk_master == 512);
+    menu_put(MI_MSTART, 1);
+    bad += check("SMK MENU > MASTER START SAFE: in AUDIO, bit 3 of CPU2_BYTE", MI_TAB[MI_MSTART] == MTAB_AUDIO &&
+                 MASTER_SAFE_SET && str_eq(menu_vname(MI_MSTART, menu_get(MI_MSTART)), "SAFE"));
+    smk_ui_boot();
+    bad += check("SMK power-on, SAFE: MASTER at most 30 %", smk_master == SMK_MASTER_SAFE);
+    SMK_MASTER_BYTE = 200u / 4u + 1u;
+    smk_ui_boot();
+    bad += check("SMK power-on, SAFE: a lower MASTER as left", smk_master == 200);
+    settings_reset();
+    bad += check("SMK RESET SETTINGS: MASTER START LAST", !MASTER_SAFE_SET && menu_get(MI_MSTART) == 0u);
     return bad;
 }
 

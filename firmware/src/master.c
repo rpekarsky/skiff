@@ -5,12 +5,25 @@
  * the keys, live from the audio ISR at once, sounded loud under the splash with the knob turned down).
  * master_knob: the pot x16, smoothed per UI frame (master_poll) */
 static int32_t master_knob = 512 * 16;
+/* (SMK-37, MENU > AUDIO > MASTER START SAFE) after power-on the level rises from silence to the knob's over
+ * MASTER_RISE_MS (master_rise), the power-on click softer too */
+#define MASTER_RISE_MS 1000u
+static uint8_t master_rising;
+static uint32_t master_rise_t0;
+static uint32_t master_risen(uint32_t q12)
+{
+    uint32_t t = fm1_ms - master_rise_t0;
+    if (master_rising && t < MASTER_RISE_MS)
+        return q12 * t / MASTER_RISE_MS;
+    master_rising = 0;
+    return q12;
+}
 static void master_poll(void)
 {
     int32_t a = fm1_adc_read(FM1_ADC_MASTER);
     if (a >= 0) {
         master_knob += (a * 16 - master_knob) / 8;
-        song.master_q12 = master_of_pot((uint32_t)(master_knob / 16));
+        song.master_q12 = master_risen(master_of_pot((uint32_t)(master_knob / 16)));
     }
 }
 /* power-on (main.c), before audio_init: the knob as it stands, no glide */
@@ -26,4 +39,11 @@ static void master_boot(void)
             return;
         }
     }                                                   /* (no reading: felucca_init's level, the loop glides on) */
+}
+/* power-on (main.c), after master_boot: silent, master_poll brings the level up */
+static void master_rise(void)
+{
+    master_rising = 1;
+    master_rise_t0 = fm1_ms;
+    song.master_q12 = 0;
 }
