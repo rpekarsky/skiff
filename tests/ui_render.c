@@ -808,6 +808,7 @@ enum { S_HOME, S_HOME_IDLE, S_MESSAGE, S_MESSAGE_KEY, S_MESSAGE_NOFILE, S_PRESET
        S_LANE_MIX, S_LANE_MIX_DX, S_SONG_SOUND, S_SONG_SOUNDS,                               /* (2.0, #36, #30) */
        S_SONG_CHAINS, S_SONG_CHAIN_COPY,                                                      /* (2.0, #44's box) */
        S_DRUM_KIT_USR, S_LANES_USR,                                                           /* (2.0, #35) */
+       S_HOME_LISTS,                                                                          /* (#34) */
        S_MOCK_HOME, S_MOCK_PRESETS, S_MOCK_SEQ, S_MOCK_DRUM, S_MOCK_MIXER, S_MOCK_DIALOG, S_MOCK_MENU, S_COUNT };
 static const char *const S_NAME[S_COUNT] = {"home", "home_idle", "message", "message_key", "message_nofile", "presets", "presets_nofav", "user",
     "project", "lanes", "step", "pattern", "chance", "motion", "drum",
@@ -840,7 +841,7 @@ static const char *const S_NAME[S_COUNT] = {"home", "home_idle", "message", "mes
     "chorus_flanger", "chorus_phaser", "presets_bass", "song_rest", "song_rest_pick",
     "notes_range", "notes_pick", "feel_range", "notes_overlap", "momentary", "pool_empty", "pool_unused", "confirm_empty",
     "song_once", "song_new", "song_copyplus", "song_chain", "song_chain3", "notes_chain", "lane_mix", "lane_mix_dx",
-    "song_sound", "song_sounds", "song_chains", "song_chain_copy", "drum_kit_usr", "lanes_usr", "mock_home", "mock_presets", "mock_seq", "mock_drum", "mock_mixer", "mock_dialog", "mock_menu"};
+    "song_sound", "song_sounds", "song_chains", "song_chain_copy", "drum_kit_usr", "lanes_usr", "home_lists", "mock_home", "mock_presets", "mock_seq", "mock_drum", "mock_mixer", "mock_dialog", "mock_menu"};
 
 /* the scenes of the UI design screens: the state the UI-redesign
  * prototype drew them from (its setup(): two pattern tracks, the drum pattern on track 4, a synthetic scope),
@@ -1390,6 +1391,14 @@ static void setup(int s)
         go_page(GR_FEEL); cursor_set(4); ui.hot_col = 0; ui.hot_t = 30;
         break;
     }
+    case S_HOME_LISTS:                              /* (#34) the lanes' badges, playing SONG ON: T1 its C staged by the
+                                                     * user, T2 on a chain, T3 on a REST */
+        song_lists(1);
+        launch_q[0].adv = 0;
+        lists.ent[1][2][1] = REPS_CHAIN;
+        lists.ent[2][0][0] = PAT_REST;
+        trk_pid[2] = 0;
+        break;
     /* (Skiff phase 6) the screens of design/mock_p6.py: the last track but one selected (with six T5: the four shown
      * T2..T5, the scroll bar's thumb one down) */
     case S_SIX_HOME: song.octave = 2; song.rec = 1; usb.config = 1; sel_set(NTRK - 2u); break;

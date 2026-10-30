@@ -27,6 +27,31 @@ static uint32_t hl_bar(const track_t *t, uint32_t *n)
     return first;
 }
 
+/* (#34) the lane's badge: the entry track k is on and its pattern ("C 06"), a chain's entries ("A-B"), a REST's "C -",
+ * a pattern on no entry its number; the user's launch staged after it (">D"). b: 8 bytes; "" nothing */
+static void hl_badge(uint32_t k, char *b)
+{
+    uint32_t e = lists.cur[k] % NENT, id = trk_pat(k), kept = bank_cur(k) < NENT, nx = bank_next(k), b0, b1;
+    b[0] = 0;
+    if (ent_rest(k, e)) {
+        b[0] = (char)('A' + e);
+        str_cpy(b + 1, " -", 3);
+    } else if (kept && ent_block(k, e, &b0, &b1)) {
+        str_cpy(b, "A-B", 4);
+        b[0] = (char)('A' + b0);
+        b[2] = (char)('A' + b1);
+    } else if (kept) {
+        b[0] = (char)('A' + e);
+        b[1] = ' ';
+        pat_num(b + 2, id);
+    } else if (id != PAT_NONE)
+        pat_num(b, id);
+    if (user_staged(k) && nx < NENT) {
+        str_cpy(b + str_len(b), ">A", 3);
+        b[str_len(b) - 1u] = (char)('A' + nx);
+    }
+}
+
 /* what the overview shows: a change of it redraws the panel (draw_graph's signature) */
 static uint32_t home_sig(void)
 {
@@ -35,6 +60,9 @@ static uint32_t home_sig(void)
         const track_t *t = &trk[k];
         const step_t *s = t->step;
         uint32_t first = hl_bar(t, &n);
+        char badge[8];
+        hl_badge(k, badge);
+        h = str_hash(h, badge);
         h = (h ^ (first + 977u * n + 7u * (uint32_t)t->p[P_MUTE] + 31u * t->eng_req + 257u * t->preset + 65537u * t->user +
                   (uint32_t)midi_mark(k) * 0x40000000u)) * 16777619u;
         if (song.playing)
@@ -68,7 +96,8 @@ static void graph_tracks(void)
                                                        * its colour faint, the colours as on the others) */
         uint16_t col = muted ? T_DIM : T_TRK(k), lane = sel ? (ux.quark ? ux_mix(col, T_BG, 80) : col) : ux.quark ? T_BG : T_SURF;
         uint16_t ink = ib ? T_INK : T_TEXT, on = ib ? T_INK : col, off = ib ? ux_mix(col, T_INK, 55) : T_LINE;
-        char name[20], d[2] = {(char)('1' + k), 0};
+        char name[20], badge[8], d[2] = {(char)('1' + k), 0};
+        int32_t bw;
         if (ux.crypt && !sel)                         /* (Skiff C3) CRYPT: the lanes stone */
             cr_stone(3, y, 234, h, lane);
         else if (ux.neon && sel) {                    /* (Skiff N3) NEON: the selected lane a neon sign (its colour into
@@ -94,16 +123,20 @@ static void graph_tracks(void)
         if (midi_mark(k))                             /* ((Skiff U4, F4) MIDI IN playing it: a mark after the number) */
             cv_rect(HL_NUM_X + (big ? 14 : 10), y + h / 2 - 2, 4, 4, ib ? T_INK : T_THEME);
         sound_name(t, name);
+        hl_badge(k, badge);
+        bw = badge[0] ? text_w(&AF_S, badge) + 4 : 0;   /* ((#34) the badge at the S line's end, the text before it) */
         if (big) {
             cv_free_text(HL_NAME_X, y + HL_NAME_CY - AF_M_CAP_Y, &AF_M, name[0] ? name : "--", muted && !sel ? T_DIM : ink,
                          lane, HL_STEP_X - 4 - HL_NAME_X);
             cv_free_text(HL_NAME_X, y + HL_ENG_CY - AF_S_CAP_Y, &AF_S, ENGINES[t->eng_req % NENGINES]->name,
-                         ib ? T_INK : T_MID, lane, HL_STEP_X - 4 - HL_NAME_X);
+                         ib ? T_INK : T_MID, lane, HL_STEP_X - 4 - HL_NAME_X - bw);
         } else {
             GFX_HOOK_ALIGN(0, y, 0, y + h, AL_V, "home compact lane name on its middle");
             cv_free_text(HL_NAME_X, y + CAP_IN(S, HL_C_H), &AF_S, name[0] ? name : "--", muted ? T_DIM : T_TEXT, lane,
-                         HL_STEP_X - 4 - HL_NAME_X);
+                         HL_STEP_X - 4 - HL_NAME_X - bw);
         }
+        if (badge[0])
+            cv_text_on(HL_STEP_X - bw, y + (big ? HL_ENG_CY - AF_S_CAP_Y : CAP_IN(S, HL_C_H)), &AF_S, badge, on, lane);
         for (i = 0; i < n; i++) {                     /* (past the track's length: nothing) */
             const step_t *st = &s[first + i];
             int32_t x = hl_cell_x(i), cy = y + (h - ch) / 2;
