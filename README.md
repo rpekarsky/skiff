@@ -268,7 +268,8 @@ the modulators make it bite).
 
 MENU › THEME: **SKIFF** (each track its own colour), **HI-CON**, **PAPER**, **CRYPT** (stone, amber and pixel letters,
 the graphs as ASCII art, torches and skulls), **NEON** (synthwave: chrome numbers, neon, the striped sun and the grid,
-a car on HOME's highway) and **QUARK** (particle physics: beams and collisions, nuclei, calorimeter towers):
+a car on HOME's highway), **QUARK** (particle physics: beams and collisions, nuclei, calorimeter towers), and the plain
+LCD colours of **GAMEBOY**, **AMBER**, **BLUE-STN** and **H1N**:
 
 ![HOME in the six themes: SKIFF, HI-CON, PAPER, CRYPT, NEON, QUARK](docs/img/themes.png)
 
@@ -584,7 +585,8 @@ every setting back as a new unit has it. The web editor's Settings tab reads and
 - **THEME:** SKIFF (each track its own colour), HI-CON (high contrast), PAPER (light), CRYPT (a dungeon synth's:
   stone, amber, pixel letters, the graphs as ASCII art, torches and skulls), NEON (synthwave: chrome numbers, neon,
   the striped sun and the grid, a car on HOME's highway) or QUARK (particle physics: beams and collisions, nuclei,
-  calorimeter towers, the tracks the colour charges); the web editor follows it; and CUSTOM, last, once the web
+  calorimeter towers, the tracks the colour charges), GAMEBOY, AMBER, BLUE-STN or H1N (an old LCD's colours, light
+  but BLUE-STN); the web editor follows it; and CUSTOM, last, once the web
   editor has stored colours of your own (1.4). A unit on a palette of before that is gone (GREY, GREEN, AMBER, ICE,
   VIOLET, ROSE, NIGHT, MONO) starts on SKIFF
 - **PLAYHEAD** (1.4): THEME (default) or LINE: HOME's playhead a plain line, without the theme's torch, car or

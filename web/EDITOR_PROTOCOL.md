@@ -884,7 +884,7 @@ weight and no longer sets it), bit 2 reserved for a MIDI monitor, bit 3 favorite
 
 UI_SET ids: 0 palette (0..count-1, the order of UI_PALETTES: GREY GREEN AMBER ICE VIOLET ROSE PAPER
 HI-CON NIGHT MONO; 1.0.2: GREY is the MONO of 1.0.1, MONO a new black and white palette; Skiff: SKIFF HI-CON PAPER
-CRYPT NEON QUARK, and (#27) CUSTOM last while a set is stored), 1 font (retired: rc 2), 2 reserved, 3 preset filter (0 all, 1 favorites). Unsupported state
+CRYPT NEON QUARK, (wishlist #47) GAMEBOY AMBER BLUE-STN H1N, and (#27) CUSTOM last while a set is stored), 1 font (retired: rc 2), 2 reserved, 3 preset filter (0 all, 1 favorites). Unsupported state
 fields are 127.
 Both u28 signatures are four least-significant-first 7-bit bytes; compare them
 to refresh changed favorites and user slots. Factory references use stable
@@ -988,9 +988,9 @@ MENU › DISPLAY › THEME has the user's colours as its last value, CUSTOM, onc
 Felucca 1.6's CUSTOM palette and its PALETTE_GET / PALETTE_SET by Leo Kuroshita; Skiff's 80 is PERFORM, so here one
 command does both). A set is eleven colours: BG SURF TEXT THEME ACCENT, then the six tracks' (T1..T6), each RGB565,
 22 bytes low byte first as the device stores them and sent as pack7 (26 bytes; Felucca sends three 7-bit bytes a
-colour, which costs the FM-1 more code), and a look: the built-in THEME (0..5, the order of
+colour, which costs the FM-1 more code), and a look: the built-in THEME (0..9, the order of
 `UI_PALETTES`) whose faces and widgets it wears (CRYPT's pixel letters and skulls, NEON's chrome and sun, QUARK's
-brackets; SKIFF, HI-CON and PAPER: BLOCKS). The device derives the other tokens from the five as for its own palettes
+brackets; SKIFF, HI-CON, PAPER, GAMEBOY, AMBER, BLUE-STN and H1N: BLOCKS). The device derives the other tokens from the five as for its own palettes
 (`firmware/src/gfx.c` `palette_set`); a look's art keeps its own colours (CRYPT's flame, NEON's sun bands). `uiCaps`
 bit 4 says the device has it; firmware without it answers no COLORS.
 
@@ -1001,19 +1001,19 @@ bit 4 says the device has it; firmware without it answers no COLORS.
 Op 0 shows the colours in that look at once and stores nothing (RAM only; the device's THEME, op 3 or a restart bring
 back the THEME in use). Op 1 stores them, makes CUSTOM the THEME in use and saves like `UI_SET` (rc 0 saved, 3 RAM
 only, 4 saved at STOP). Op 2 removes the set: the look's own colours are in use (THEME stays the look), saved the same
-way. rc 1: arguments (other than none, 1 or 28 bytes; an op past 3; a look past 5; pack7 that is not 22 bytes);
+way. rc 1: arguments (other than none, 1 or 28 bytes; an op past 3; a look past 9; pack7 that is not 22 bytes);
 nothing changes. **The device takes any colours**: the editor warns of those hard to read (`web/editor.html` `colorWarnings`:
 TEXT on BG and on SURF below 4.5:1, THEME and ACCENT on BG below 3:1, a track's colour on BG below 3:1; no
 THEME of the device's falls short). With colours nobody can read, the way back is op 2, or the device's MENU: hold HOME,
 THEME is the first row of the first tab (DISPLAY), a knob turn picks a built-in THEME.
 
-While a set is stored, CUSTOM is the last name of `UI_PALETTES` (cmd 36: count 7), `UI_SET` id 0 and `MENU_SET` id 0
-take 6, `UI_STATE`'s palette byte is 6 while it is in use, and MENU_DESC id 0 has seven values. With none stored: six,
-and `UI_SET` 0 with 6 answers rc 1.
+While a set is stored, CUSTOM is the last name of `UI_PALETTES` (cmd 36: count 11), `UI_SET` id 0 and `MENU_SET` id 0
+take 10, `UI_STATE`'s palette byte is 10 while it is in use, and MENU_DESC id 0 has eleven values. With none stored: ten,
+and `UI_SET` 0 with 10 answers rc 1.
 
 Stored with the settings (object 1: a full backup carries it), in favourites bytes no engine uses: the eleven colours
 low byte first at `factory[14][8..29]` (DRUM-X's row past its presets; `eng_drumx.c` keeps them at 64 at most),
-`factory[15][14]` bit 0 a set stored, bit 1 in use, bits 2..4 the look; read only once the old scenes are freed
+`factory[15][14]` bit 0 a set stored, bit 1 in use, bits 2..5 the look (2..4 before wishlist #47's palettes); read only once the old scenes are freed
 (`factory[15][24]` 0xA5, every unit since phase 5). In use, the settings' palette field is the look: firmware before
 shows that THEME and keeps the bytes, so a round trip through it loses nothing. Settings of before have the bytes 0:
 no set, nothing changes.
@@ -1064,7 +1064,7 @@ rc 1), and the indexes after them are lower than before:
 
 | index | id | name | kind | values (min 0) | default | tab |
 | --- | --- | --- | --- | --- | --- | --- |
-| 0 | 0 | THEME (Felucca's COLOR) | 0 | 0..5: SKIFF HI-CON PAPER CRYPT NEON QUARK (the order of `UI_PALETTES`); (#27) 6 CUSTOM while a set is stored | SKIFF (a new unit) | 0 DISPLAY |
+| 0 | 0 | THEME (Felucca's COLOR) | 0 | 0..9: SKIFF HI-CON PAPER CRYPT NEON QUARK GAMEBOY AMBER BLUE-STN H1N (the order of `UI_PALETTES`); (#27) 10 CUSTOM while a set is stored | SKIFF (a new unit) | 0 DISPLAY |
 | 1 | 2 | LARGE | 0 | 0 OFF, 1 ON | OFF | 0 DISPLAY |
 | 2 | 3 | ANIM | 0 | 0 ON, 1 OFF | ON | 0 DISPLAY |
 | 3 | 4 | LEDS | 0 | 0 OFF, 1 DIM LO, 2 DIM HI, 3 INV (darkest first, as the menu steps them) | DIM HI | 0 DISPLAY |

@@ -21,7 +21,8 @@ blends at palette_set() time (src/gfx.c, the same integer maths as mix() here):
 Outside the palette: REC, a fixed red; the QR code's fixed black and white; the crash screen's fixed red.
 (Skiff, the review's R1) The palettes are the MENU's THEME: SKIFF (the default), HI-CON and PAPER (for reading in
 bright or dim light), CRYPT and NEON (their own font and widgets besides: src/gfx.c ux.crypt, ux.neon), QUARK (its own
-widgets: ux.quark). Saved settings name them by a
+widgets: ux.quark), then the plain GAMEBOY, AMBER, BLUE-STN and H1N (wishlist #47: old handhelds' and synths' LCDs).
+Saved settings name them by a
 tagged id (THEME_TAG + index). Earlier ids are migrated: PAL_TAG + an index into the eleven palettes before THEME
 (UI_PALETTE_MIGRATE11), and below 20 Felucca's oldest twenty (UI_PALETTE_MIGRATE20); a palette that is gone is SKIFF.
 --report prints the WCAG contrast of every pairing. The tool fails (exit 1) on any miss.
@@ -46,6 +47,13 @@ PALETTES = [
     # (Skiff) QUARK, design/mock_quark.py's A COLLIDER: a detector's dark, cyan readouts, gold for the one active thing;
     # the tracks the colour charges red, green, blue and their anticolours cyan, magenta, yellow
     ("QUARK",  (3, 7, 12),      (10, 21, 32),    (216, 243, 255), (79, 209, 255),  (255, 224, 102)),
+    # (wishlist #47) the LCD mockups (bg, off-segment ghost, mid, ink), lightened or darkened until they pass the
+    # CHECKS: the fixed REC needs a light BG near PAPER's luminance, a dark one near black. A monochrome LCD has no
+    # second hue, so its ACCENT is its ink, as SKIFF's is its white; the tracks are THEME, as PAPER's
+    ("GAMEBOY", (196, 232, 72), (178, 216, 64),  (9, 32, 9),       (36, 74, 36),    (9, 32, 9)),
+    ("AMBER",  (255, 212, 100), (240, 194, 84),  (40, 20, 4),      (92, 54, 8),     (40, 20, 4)),
+    ("BLUE-STN", (22, 32, 92),  (31, 45, 115),   (232, 238, 255), (150, 170, 240), (255, 255, 255)),
+    ("H1N",    (218, 222, 212), (201, 206, 194), (28, 32, 26),     (62, 68, 57),    (28, 32, 26)),
 ]
 SKIFF, CRYPT, NEON, QUARK = "SKIFF", "CRYPT", "NEON", "QUARK"
 # the six tracks' colours (src/gfx.c T_TRK; (Skiff phase 6) T5, T6 too): a palette not named here gives every track

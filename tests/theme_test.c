@@ -43,8 +43,13 @@ int main(int argc, char **argv)
     static const uint8_t pd[] = {0x08, 0xf0};
     const aafont_t probe = {1, 1, 'A', 'A', 0, 0, pg, pd, 0, 0, 0};
     double worst = 100;
-    /* (Skiff, R1) THEME: SKIFF the default, HI-CON and PAPER, CRYPT, NEON and QUARK (their own widgets too) */
-    assert(NPALETTES == 6u && !strcmp(UI_PALETTES[5].name, "QUARK") && UI_QUARK_INDEX == 5u && !strcmp(UI_PALETTES[0].name, "SKIFF") && UI_SKIFF_INDEX == 0u &&
+    /* (Skiff, R1) THEME: SKIFF the default, HI-CON and PAPER, CRYPT, NEON and QUARK (their own widgets too); (wishlist #47)
+     * the plain GAMEBOY, AMBER, BLUE-STN and H1N */
+    static const uint8_t LIGHT[] = {0, 0, 1, 0, 0, 0, 1, 1, 0, 1};
+    assert(NPALETTES == 10u && sizeof LIGHT == NPALETTES && !strcmp(UI_PALETTES[6].name, "GAMEBOY") &&
+           !strcmp(UI_PALETTES[7].name, "AMBER") && !strcmp(UI_PALETTES[8].name, "BLUE-STN") &&
+           !strcmp(UI_PALETTES[9].name, "H1N") && !strcmp(UI_PALETTES[5].name, "QUARK") && UI_QUARK_INDEX == 5u &&
+           !strcmp(UI_PALETTES[0].name, "SKIFF") && UI_SKIFF_INDEX == 0u &&
            !strcmp(UI_PALETTES[1].name, "HI-CON") && !strcmp(UI_PALETTES[2].name, "PAPER") &&
            !strcmp(UI_PALETTES[3].name, "CRYPT") && UI_CRYPT_INDEX == 3u &&
            !strcmp(UI_PALETTES[4].name, "NEON") && UI_NEON_INDEX == 4u);
@@ -69,7 +74,7 @@ int main(int argc, char **argv)
         if (min < worst) worst = min;
         printf("%-7s text %.1f:1, labels %.1f:1, values %.1f:1, selection %.1f:1\n", UI_PALETTES[p].name,
                contrast(T_TEXT, T_BG), contrast(T_MID, T_BG), contrast(T_THEME, T_BG), contrast(T_INK, T_SEL));
-        assert((p == 2u) == ux.light);                         /* PAPER is the light one */
+        assert(LIGHT[p] == ux.light);
         assert(T_REC == (ux.light ? UI_REC_LIGHT : UI_REC_DARK));
         /* the blend: transparent, solid and an edge between the two, on two backgrounds */
         for (unsigned b = 0; b < 2; b++) {

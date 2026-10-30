@@ -1498,14 +1498,17 @@ static int test_display_preferences(void)
     bad += check("THEME OCT+ previews the next palette (PAPER, light) without closing the menu",
                  settings.palette == 2 && T_BG == UI_PALETTES[2].bg && ux.light && ui.menu == 1 && !song.octave &&
                  memcmp(before, host_screen, sizeof before) && !memcmp(sounds, trk, sizeof sounds));
-    bad += check("THEME KNOB 1 steps on to CRYPT, NEON (both the pixel faces), QUARK (Barlow), then wraps to SKIFF (R1: "
-                 "SKIFF HI-CON PAPER CRYPT NEON QUARK)",
+    bad += check("THEME KNOB 1 steps on to CRYPT, NEON (both the pixel faces), QUARK (Barlow), the plain GAMEBOY, AMBER, "
+                 "BLUE-STN and H1N, then wraps to SKIFF (R1: SKIFF HI-CON PAPER CRYPT NEON QUARK; wishlist #47)",
                  str_eq(MI_NAME[MI_COLOR], "THEME") && (turn(EN_K1, 1), settings.palette == UI_CRYPT_INDEX) && ux.crypt &&
                  str_eq(UI_PALETTES[UI_CRYPT_INDEX].name, "CRYPT") && &AF_S == &AF_S_PX &&
                  (turn(EN_K1, 1), settings.palette == UI_NEON_INDEX) && ux.neon && !ux.crypt && &AF_S == &AF_S_PX &&
                  str_eq(UI_PALETTES[UI_NEON_INDEX].name, "NEON") &&
                  (turn(EN_K1, 1), settings.palette == UI_QUARK_INDEX) && ux.quark && !ux.neon && &AF_S != &AF_S_PX &&
                  str_eq(UI_PALETTES[UI_QUARK_INDEX].name, "QUARK") &&
+                 (turn(EN_K1, 1), turn(EN_K1, 1), turn(EN_K1, 1), turn(EN_K1, 1), settings.palette == NPALETTES - 1u) &&
+                 !ux.quark && &AF_S != &AF_S_PX &&
+                 str_eq(UI_PALETTES[NPALETTES - 1u].name, "H1N") &&
                  (turn(EN_K1, 1), settings.palette == UI_SKIFF_INDEX) && !ux.quark && !ux.crypt && !ux.neon && &AF_S != &AF_S_PX &&
                  str_eq(UI_PALETTES[UI_SKIFF_INDEX].name, "SKIFF"));
     settings.lowcut = 2;
