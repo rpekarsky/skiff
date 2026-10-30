@@ -46,6 +46,31 @@ static uint32_t smk_breath(uint32_t c)               /* a breathing pad: dark ..
         o |= ((((c >> i) & 255u) * q) >> 8) << i;
     return o;
 }
+/* (wishlist #5, after Snoop37's PAD LIGHT by genkigenki) MENU > PAD LIGHT: a colour's brightest component v times
+ * s + (1 - s) K / (v + K), s the setting, K SMK_PAD_KNEE. A lit pad follows the setting, a dim one keeps most of its
+ * light (25 %: lit 119 -> 43, empty 10 -> 8), so empty and lit stay apart; the hue kept, a lit component never 0 */
+#define SMK_PAD_KNEE 20u
+static uint32_t smk_pad_light(uint32_t c)
+{
+    uint32_t s = 256u - 64u * (SMK_PADL_BYTE % SMK_PADL_N), v = 0, num, den, i, o = 0;
+    for (i = 0; i < 24u; i += 8u)
+        if (((c >> i) & 255u) > v)
+            v = (c >> i) & 255u;
+    if (s == 256u || !v)
+        return c;
+    num = s * (v + SMK_PAD_KNEE) + (256u - s) * SMK_PAD_KNEE;
+    den = 256u * (v + SMK_PAD_KNEE);
+    for (i = 0; i < 24u; i += 8u) {
+        uint32_t x = (c >> i) & 255u, y = (x * num + den / 2u) / den;
+        o |= (x && !y ? 1u : y) << i;
+    }
+    return o;
+}
+static void smk_pad_put(uint32_t p, uint32_t c)
+{
+    c = smk_pad_light(c);
+    padled_set(p, (uint8_t)(c >> 16), (uint8_t)(c >> 8), (uint8_t)c);
+}
 
 /* the selected track's steps of the page shown as pads (colours A): the DRUM grid's selected lane, or the notes */
 static void smk_pads_steps(void)
@@ -58,7 +83,7 @@ static void smk_pads_steps(void)
         uint32_t i = ui.bank * 16u + p, c;
         const step_t *st = &t->step[i % NSTEP];
         if (i >= len) {
-            padled_set(p, 0, 0, 0);
+            smk_pad_put(p, 0);
             continue;
         }
         if (drum)
@@ -69,7 +94,7 @@ static void smk_pads_steps(void)
             c = SMK_PAD_WHITE << 16 | SMK_PAD_WHITE << 8 | SMK_PAD_WHITE;
         if (p == ph)
             c = smk_mixw(c, 128u);
-        padled_set(p, (uint8_t)(c >> 16), (uint8_t)(c >> 8), (uint8_t)c);
+        smk_pad_put(p, c);
     }
 }
 
@@ -89,7 +114,7 @@ static void smk_pads_out(const uint8_t *nl, const uint8_t *nd, const uint8_t *nb
             continue;
         c = (nl[q >> 3] & b) ? col : (nb[q >> 3] & b) ? smk_breath(col) :
             (nm[q >> 3] & b) ? smk_rgb(T_TRK(song.sel), SMK_PAD_FULL / 3u) : (nd[q >> 3] & b) ? SMK_PAD_FAINT : 0u;
-        padled_set(w++, (uint8_t)(c >> 16), (uint8_t)(c >> 8), (uint8_t)c);
+        smk_pad_put(w++, c);
     }
 }
 

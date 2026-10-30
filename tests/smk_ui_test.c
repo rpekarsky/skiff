@@ -2,7 +2,7 @@
 /* Host test of Skiff's SMK-37 Pro controls (BOARD_SMK37, design/SMK37_UX.md as picked): the UI of tests/ui_test.c built
  * for the SMK (its prelude, the input stood in by the SMK's, hal/smk_pads.h as it is), and smk_ui.c:
  *   PADS     on HOME the step taps, in a layer and the DRUM grid the white keys; a tap sets a step to the last note
- *            (its velocity), again clears it, one undo a run; DRUM: the lane; past LEN nothing; the colours (A).
+ *            (its velocity), again clears it, one undo a run; DRUM: the lane; past LEN nothing; the colours (A), PAD LIGHT.
  *   FADERS   the four tracks shown, taking over once they reach the value, FADER BANK (its LED), the window.
  *   ENTRIES  > and < the selected track's entry after and before, the first's end said.
  *   KEYS     the outer keys' notes and velocity (KEY VELOCITY), out of the TRS jack too; the curves.
@@ -387,6 +387,65 @@ static int test_pad_colours(void)
     return bad;
 }
 
+static uint32_t rgb_max(uint32_t c)
+{
+    uint32_t r = c >> 16 & 255u, g = c >> 8 & 255u, b = c & 255u, m = r > g ? r : g;
+    return m > b ? m : b;
+}
+/* (wishlist #5) MENU > DISPLAY > PAD LIGHT: 100 % the pads as they were; dimmer, lit dims most, an empty step stays
+ * visible, lit / tie / empty apart, the hue kept; right brighter; an unknown stored value 100 %; RESET SETTINGS 100 % */
+static int test_pad_light(void)
+{
+    int bad = 0, ok = 1;
+    track_t *t;
+    uint32_t i, full[3], lit = 0xFFFu, tie = 0, faint = 0, col = rgb_of(T_TRK(0), SMK_PAD_FULL);
+    smk_power_on();
+    sel_set(0);
+    t = TSEL;
+    track_defaults_steps(t);
+    t->p[P_SLEN] = 16;
+    t->step[3].n = 1;
+    t->step[3].note[0] = 60;
+    t->step[3].time = ST_NOTE;
+    t->step[4].time = ST_TIE;
+    bad += check("SMK PAD LIGHT: a DISPLAY row, 100 % by default (stored 0), four steps",
+                 MI_TAB[MI_PADL] == MTAB_DISPLAY && SMK_PADL_BYTE == 0u && menu_n(MI_PADL) == SMK_PADL_N &&
+                 str_eq(menu_vname(MI_PADL, menu_get(MI_PADL)), "100 %"));
+    frame();
+    full[0] = host_pad[3], full[1] = host_pad[4], full[2] = host_pad[0];
+    bad += check("SMK PAD LIGHT 100 %: the pads as they were", full[0] == col && full[2] == SMK_PAD_FAINT);
+    for (i = 1; i < SMK_PADL_N; i++) {
+        menu_put(MI_PADL, menu_step(MI_PADL, -1));
+        frame();
+        ok &= SMK_PADL_BYTE == i && rgb_max(host_pad[3]) < lit && rgb_max(host_pad[4]) < rgb_max(full[1]);
+        lit = rgb_max(host_pad[3]), tie = rgb_max(host_pad[4]), faint = rgb_max(host_pad[0]);
+        ok &= faint >= 8u && tie * 2u >= faint * 3u && lit * 2u >= tie * 3u;
+        ok &= ((col >> 16 & 255u) >= (col >> 8 & 255u)) == ((host_pad[3] >> 16 & 255u) >= (host_pad[3] >> 8 & 255u)) &&
+              ((col >> 8 & 255u) >= (col & 255u)) == ((host_pad[3] >> 8 & 255u) >= (host_pad[3] & 255u));
+    }
+    printf("  25 %%: lit %u -> %u, tie %u -> %u, empty %u -> %u\n", (unsigned)rgb_max(full[0]), (unsigned)lit,
+           (unsigned)rgb_max(full[1]), (unsigned)tie, (unsigned)rgb_max(full[2]), (unsigned)faint);
+    bad += check("SMK PAD LIGHT left to 25 %: lit dims, an empty step stays lit, the levels apart, the hue kept",
+                 ok && str_eq(menu_vname(MI_PADL, menu_get(MI_PADL)), "25 %") && lit * 2u <= rgb_max(full[0]));
+    menu_put(MI_PADL, menu_step(MI_PADL, -1));
+    bad += check("SMK PAD LIGHT: stops at 25 %", SMK_PADL_BYTE == 3u);
+    menu_put(MI_PADL, menu_step(MI_PADL, 1));
+    bad += check("SMK PAD LIGHT: right brighter", SMK_PADL_BYTE == 2u && str_eq(menu_vname(MI_PADL, menu_get(MI_PADL)), "50 %"));
+    {
+        sks_t p;
+        settings_export(&p);
+        bad += check("SMK PAD LIGHT: saved in the settings' spare byte", p.s.smk_padl == 2u);
+        p.s.smk_padl = 9;
+        settings_import(&p, (int)sizeof p);
+        bad += check("SMK settings: an unknown PAD LIGHT reads as 100 %", SMK_PADL_BYTE == 0u);
+    }
+    SMK_PADL_BYTE = 3;
+    settings_reset();
+    frame();
+    bad += check("SMK RESET SETTINGS: PAD LIGHT 100 %", SMK_PADL_BYTE == 0u && host_pad[3] == col);
+    return bad;
+}
+
 static int test_faders(void)
 {
     int bad = 0;
@@ -760,6 +819,7 @@ int main(void)
     bad += test_pad_modes();
     bad += test_pad_taps();
     bad += test_pad_colours();
+    bad += test_pad_light();
     bad += test_faders();
     bad += test_entries();
     bad += test_outer_keys();

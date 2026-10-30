@@ -173,10 +173,13 @@ static const char *const CLK_WHY[11] = {"", "ALREADY 320", "SYS MODE", "PLL2 NOT
  * (seq.c trk_midi_ch), settings bytes ([15][6..11]: 0 = channels 1..6) */
 #define ui_mch(i) (favorites.factory[15][6 + (i)])
 #if BOARD_SMK37
-/* (SMK-37 Pro) settings bytes ([15][12..13]: 0 the defaults): MENU > KEY VELOCITY (SMK_KV_*,
- * 0 DYNAMIC) and MASTER's level / 4 + 1 (K1, smk_ui.c; 0: none kept, the power-on level) */
+/* (SMK-37 Pro) settings bytes ([15][12..13], [15][17]: 0 the defaults): MENU > KEY VELOCITY (SMK_KV_*,
+ * 0 DYNAMIC), MASTER's level / 4 + 1 (K1, smk_ui.c; 0: none kept, the power-on level) and (wishlist #5) MENU > PAD LIGHT
+ * (0 100 %, 1 75 %, 2 50 %, 3 25 %; smk_ui.c smk_pad_light) */
 #define SMK_KV_BYTE (favorites.factory[15][12])
 #define SMK_MASTER_BYTE (favorites.factory[15][13])
+#define SMK_PADL_BYTE (favorites.factory[15][17])
+#define SMK_PADL_N 4u
 #endif
 static const uint8_t *const mch_io = &ui_mch(0);
 static const uint8_t UNIT_G[3] = {G_CLOCK, G_ROUTE, G_TUNE};
