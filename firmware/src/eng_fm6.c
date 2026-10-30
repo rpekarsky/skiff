@@ -41,7 +41,8 @@ static uint8_t fm6_patch[NTRK][FP_SIZE + 1u];   /* the tracks' patches (main loo
 static volatile uint8_t fm6_pgen[NTRK];          /* +1 after each write of fm6_patch[t] */
 static uint8_t fm6_slot[NTRK];                   /* the SLOT value last loaded (main loop); 0xFF = none */
 static uint8_t fm6_own[NTRK][FM6_PACKED];        /* the own patch while SLOT shows a factory one (fm6_poll) */
-static uint8_t fm6_own_ok;                       /* bit tr: fm6_own[tr] holds it */
+static volatile uint8_t fm6_own_ok[NTRK];        /* 1: fm6_own[tr] holds it. A byte a track: the audio ISR clears
+                                                  * one (launch.c esnd_put) amid the main loop's writes */
 static struct {                                  /* the patch through the macros: the audio ISR's copy */
     uint8_t p[FP_SIZE + 1u];
     uint8_t gen, alg, fb, ok;
@@ -183,7 +184,7 @@ static void fm6_adopt(uint32_t tr)
     track_t *t = &trk[tr % NTRK];
     int32_t s = t->p[P_E7];
     tr %= NTRK;
-    fm6_own_ok &= (uint8_t)~(1u << tr);
+    fm6_own_ok[tr] = 0;
     if (t->eng_req == ENGI_FM6)
         t->p[P_E7] = (int16_t)(s = fm6_match(fm6_patch[tr], s));
     fm6_slot[tr] = (uint8_t)s;
@@ -194,7 +195,7 @@ static void fm6_track_loaded(const track_t *t)
 {
     uint32_t tr = (uint32_t)(t - trk);
     if (tr < NTRK && t->eng_req == ENGI_FM6) {
-        fm6_own_ok &= (uint8_t)~(1u << tr);
+        fm6_own_ok[tr] = 0;
         if (t->p[P_E7] >= 0 && t->p[P_E7] < (int32_t)FM6_NFACTORY)
             fm6_load_slot(tr, (uint32_t)t->p[P_E7]);
         else
@@ -218,27 +219,26 @@ static void fm6_init(void)
  * aside (fm6_own), and turning back to OWN brings it back */
 static void fm6_poll(void)
 {
-    uint32_t tr, bit;
+    uint32_t tr;
     for (tr = 0; tr < NTRK; tr++) {
         int32_t s = trk[tr].p[P_E7];
         if (trk[tr].eng_req != ENGI_FM6 || s == fm6_slot[tr])
             continue;
-        bit = 1u << tr;
         if (s < 0 || s >= (int32_t)FM6_NFACTORY) {           /* OWN */
-            if (fm6_own_ok & bit) {
+            if (fm6_own_ok[tr]) {
                 uint8_t v[FP_SIZE + 1u];
                 fm6_unpack(fm6_own[tr], v);
                 fm6_set_patch(tr, v);
             }
-            fm6_own_ok &= (uint8_t)~bit;
+            fm6_own_ok[tr] = 0;
             fm6_slot[tr] = FM6_OWN;
             if (s != FM6_OWN)
                 trk[tr].p[P_E7] = FM6_OWN;
             continue;
         }
-        if (fm6_slot[tr] == FM6_OWN && !(fm6_own_ok & bit)) {
+        if (fm6_slot[tr] == FM6_OWN && !fm6_own_ok[tr]) {
             fm6_pack(fm6_patch[tr], fm6_own[tr]);
-            fm6_own_ok |= (uint8_t)bit;
+            fm6_own_ok[tr] = 1;
         }
         fm6_load_slot(tr, (uint32_t)s);
     }
