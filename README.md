@@ -638,8 +638,9 @@ every setting back as a new unit has it. The web editor's Settings tab reads and
   first HOLD [X]: SHORTCUTS) and SHIFT's map; what OCT+ and OCT- do on an action page stays
 - **POPUP TIME** (DISPLAY): how long the TAKE box and the undo box stay up: DEFAULT (about 2 s for TAKE, 2.7 s for
   undo) or 0.1 to 2.7 s. OCT- / OCT+ step the undo for 2.7 s whatever the box
-- **POPUP CLOSE** (DISPLAY): TIMER (default) or ON INPUT: any button, key or knob closes the TAKE or undo box at once
-  (and still does its own job); OCT- / OCT+ on the undo box keep stepping it
+- **POPUP CLOSE** (DISPLAY): TIMER (default) or ON INPUT: any button, key, knob or (SMK) fader closes the TAKE or undo
+  box at once (and still does its own job), and ends the undo, so OCT- / OCT+ are the octave again; OCT- / OCT+ while
+  they step the undo keep stepping it
 - **RESET SETTINGS** (SYSTEM): OCT+ asks, then puts every MENU setting back as a new unit has it (the channels too, and
   nothing learned); the calibration, the favourite sounds and the music stay
 - **SPEAKER EQ:** FLAT, LOWCUT or BASS+, a tone setting for the built-in speaker (not a switch). It also

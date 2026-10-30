@@ -150,9 +150,10 @@ static uint32_t ret_mode(void)
 }
 static uint32_t ret_beats(void) { return ret_mode() == RET_BAR ? 4u : ret_mode(); }   /* (SNAP 0, a beat, a bar) */
 static const char *const RET_SAY[3] = {"BACK", "BACK OVER 1 BEAT", "BACK OVER 1 BAR"};   /* (the footers: LET GO: ..) */
-/* MENU > DISPLAY > POPUP TIME, POPUP CLOSE: the TAKE box and the undo box (not their undo window: UNDO_WIN). A settings
- * byte ([15][17]): bits 3..7 the time, 0 DEFAULT (each box its own), n: n / 10 s, unknown = DEFAULT; bit 2 ON INPUT
- * (else TIMER). Bits 0..1 free: zero in every older setting (a test build's SHORT / LONG there read DEFAULT) */
+/* MENU > DISPLAY > POPUP TIME, POPUP CLOSE: the TAKE box and the undo box (TIME not their undo window: UNDO_WIN; ON INPUT
+ * ends the window too, ui_take.c popup_input). A settings byte ([15][17]): bits 3..7 the time, 0 DEFAULT (each box its
+ * own), n: n / 10 s, unknown = DEFAULT; bit 2 ON INPUT (else TIMER). Bits 0..1 free: zero in every older setting (a test
+ * build's SHORT / LONG there read DEFAULT) */
 #define POPUP_BYTE (favorites.factory[15][17])
 #define POPUP_TIMES 28u                                /* DEFAULT, 0.1 .. 2.7 s (2.7: the undo box's DEFAULT) */
 #define POPUP_ON_INPUT 4u
@@ -1374,6 +1375,7 @@ typedef struct {
  * are used. `undo` is the newest: loads in a row share it as before */
 #define UNDO_N 8u
 #define UNDO_WIN 180u                    /* the undo window, frames (~2.7 s): OCT- back, OCT+ redo (undo_step) */
+#define UNDO_KEYS "[OCT-] BACK  OCT+ REDO"     /* (the header's word for the window, without the box) */
 static undo_t undo_ring[UNDO_N] __attribute__((section(".ramx")));
 static uint8_t undo_n, undo_top, undo_back;
 static const char *undo_label;   /* the next copy's name, set just before its load_begin (tl_undo_take,
@@ -1834,7 +1836,7 @@ static void undo_step(int redo)
         str_cpy(b, redo ? "REDO T1 " : "UNDO T1 ", sizeof b);
         b[6] = (char)('1' + (c->trk - 1u) % NTRK);
         ui_say(b, c->name);
-        str_cpy(ui.msg2, "[OCT-] BACK  OCT+ REDO", sizeof ui.msg2);
+        str_cpy(ui.msg2, UNDO_KEYS, sizeof ui.msg2);
     }
     ui.undo_w = UNDO_WIN;
 }

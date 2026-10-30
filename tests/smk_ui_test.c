@@ -389,7 +389,7 @@ static int test_pad_colours(void)
 
 static int test_faders(void)
 {
-    int bad = 0;
+    int bad = 0, ok;
     smk_power_on();
     trk[1].p[P_LEVEL] = 100;
     fm1_in.fader[1] = 20;
@@ -428,6 +428,19 @@ static int test_faders(void)
     fm1_in.fader[0] = 60;
     frame();
     bad += check("SMK faders follow the window: T6 selected, F1 is T3", trk[2].p[P_LEVEL] == 60);
+    trk[2].p[P_LEVEL] = 100;
+    ui.take_t = ui.undo_w = 50;
+    fm1_in.fader[0] = 62;
+    frame();
+    ok = ui.take_t && ui.undo_w;                  /* (POPUP CLOSE TIMER: a move leaves them) */
+    menu_put(MI_PCLOSE, 1);
+    frame();
+    ok &= ui.take_t && ui.undo_w;
+    fm1_in.fader[0] = 64;
+    frame();
+    ok &= !ui.take_t && !ui.undo_w && trk[2].p[P_LEVEL] == 100;
+    menu_put(MI_PCLOSE, 0);
+    bad += check("SMK fader, POPUP CLOSE ON INPUT: a move, short of the value too, ends the box and the undo window", ok);
     return bad;
 }
 

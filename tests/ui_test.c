@@ -9591,7 +9591,7 @@ static int test_playhead_line(void)
 }
 
 /* MENU > DISPLAY > POPUP TIME: DEFAULT (each box its own, stored 0), 0.1 .. 2.7 s for the TAKE box and the undo box;
- * the undo window stays UNDO_WIN. POPUP CLOSE: TIMER (stored 0), ON INPUT */
+ * the undo window stays UNDO_WIN. POPUP CLOSE: TIMER (stored 0), ON INPUT (the window ends too) */
 static uint32_t popup_take_t(void)
 {
     take_clear();
@@ -9605,6 +9605,7 @@ static int test_popup_time(void)
 {
     int bad = 0, ok;
     uint32_t v;
+    int32_t octave;
     ui_power_on();
     ok = str_eq(MI_NAME[MI_POPUP], "POPUP TIME") && MI_POPUP == MI_HINTS + 1u && MI_TAB[MI_POPUP] == MTAB_DISPLAY &&
          menu_n(MI_POPUP) == 28u && str_eq(menu_vname(MI_POPUP, 0), "DEFAULT") &&
@@ -9637,7 +9638,7 @@ static int test_popup_time(void)
     ok &= popup_take_t() == 180u;
     ui.layer = LAYER_PERF;
     undo_step(0);
-    ok &= !ui.take_t && ui.undo_w == UNDO_WIN && str_eq(ui.msg2, "[OCT-] BACK  OCT+ REDO");
+    ok &= !ui.take_t && ui.undo_w == UNDO_WIN && str_eq(ui.msg2, UNDO_KEYS);
     ui.layer = 0;
     bad += check("POPUP TIME: DEFAULT the boxes' own (TAKE 130, undo 180 frames), 0.1 s 6, 2.7 s 180 frames; the undo "
                  "window UNDO_WIN whatever the box", ok);
@@ -9645,36 +9646,64 @@ static int test_popup_time(void)
     menu_put(MI_POPUP, 0);
     ui.take_t = ui.undo_w = 0;
     (void)popup_take_t();
-    take_box_input(1u << panel.btn[B_PLAY], 0);
+    popup_input(1u << panel.btn[B_PLAY], 0, 0);
     ok = ui.take_t == TB_FRAMES;                        /* (TIMER: input leaves it) */
     menu_put(MI_PCLOSE, 1);
-    take_box_input(0, 0);
+    popup_input(0, 0, 0);
     ok &= ui.take_t == TB_FRAMES;
-    take_box_input(0, 1u);
+    popup_input(0, 1u, 0);
     ok &= !ui.take_t;
     (void)popup_take_t();
-    take_box_input(1u << panel.btn[B_OCTDN], 0);
+    popup_input(1u << panel.btn[B_OCTDN], 0, 0);
     ok &= !ui.take_t;                                   /* (the TAKE box: OCT- is a key as any) */
     undo_step(0);
-    take_box_input(1u << panel.btn[B_OCTDN] | 1u << panel.btn[B_OCTUP], 0);
-    ok &= ui.take_t == UNDO_WIN;                        /* (the undo box: its BACK, REDO) */
-    panel_moved = 1;
-    take_box_input(0, 0);
-    ok &= !ui.take_t && ui.undo_w == UNDO_WIN;
-    panel_moved = 0;
+    popup_input(1u << panel.btn[B_OCTDN] | 1u << panel.btn[B_OCTUP], 0, 0);
+    ok &= ui.take_t == UNDO_WIN && ui.undo_w == UNDO_WIN;   /* (the undo box: its BACK, REDO) */
+    popup_input(0, 0, 1);
+    ok &= !ui.take_t && !ui.undo_w;
     undo_step(0);
-    take_box_input(1u << panel.btn[B_PLAY], 0);
-    ok &= !ui.take_t && ui.undo_w == UNDO_WIN;
+    popup_input(1u << panel.btn[B_PLAY], 0, 0);
+    ok &= !ui.take_t && !ui.undo_w;
+    undo_step(0);
+    ui.take_t = 0;                                      /* (a short box gone, the window still open) */
+    popup_input(0, 1u, 0);
+    ok &= !ui.undo_w;
+    ui.layer = LAYER_PERF;
+    undo_step(0);
+    popup_input(0, 1u, 0);
+    ok &= !ui.undo_w && !ui.msg2[0];                    /* (the header's keys for it go too) */
+    ui.layer = 0;
+    bad += check("POPUP CLOSE ON INPUT: a key, a knob ends the box and the undo window, the box gone or none (the "
+                 "header's keys go); OCT- / OCT+ stepping it do not; TIMER: as before", ok);
+
     (void)popup_take_t();
     undo_step(0);
     v = undo_back;
     press(B_OCTUP);
-    ok &= ui.take_t && take_box.kind == 1u && undo_back + 1u == v;
+    ok = ui.take_t && take_box.kind == 1u && undo_back + 1u == v;
     turn(EN_K1, 1);
     frame();
-    ok &= !ui.take_t && ui.undo_w;
-    bad += check("POPUP CLOSE ON INPUT: a key, a knob ends the box (OCT- / OCT+ not the undo box); the undo window "
-                 "stays; TIMER: as before", ok);
+    ok &= !ui.take_t && !ui.undo_w;
+    v = undo_back;
+    octave = song.octave;
+    press(B_OCTDN);
+    ok &= undo_back == v && song.octave == octave - 1;
+    bad += check("POPUP CLOSE ON INPUT: OCT+ redoes in the box, a knob turn ends it, then OCT- is the octave again", ok);
+
+    go_page(GR_ROLL);
+    frame();
+    (void)popup_take_t();
+    undo_step(0);
+    ok = oct_undoes() && !oct_copies();
+    btn_down(B_HOME);
+    frame();
+    undo_step(0);                                       /* (again: HOME's press ended it) */
+    ok &= ui.undo_w && oct_copies() && !oct_undoes();
+    popup_input(1u << panel.btn[B_OCTDN], 0, 0);
+    ok &= !ui.take_t && !ui.undo_w;
+    btn_up(B_HOME);
+    frame();
+    bad += check("POPUP CLOSE ON INPUT: SHIFT + OCT- on NOTES (COPY, not an undo step) ends the undo box", ok);
     ui_power_on();
     return bad;
 }

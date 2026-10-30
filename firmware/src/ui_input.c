@@ -2079,6 +2079,17 @@ static void shift_mark(void)
     if (ui.home_t0)
         ui.home_t0 |= 2u;
 }
+static int oct_copies(void)                             /* ((2.0) SHIFT + OCT- / OCT+ on NOTES, FEEL: COPY, PASTE) */
+{
+    return shift_held() && song.seq_mode && !ui.home && (step_page(cur_page()->graph) || cur_page()->graph == GR_FEEL);
+}
+/* (Skiff) OCT- / OCT+ would step the undo window (ui_input below), not a SET layer, MIDI LEARN or SHIFT's COPY / PASTE */
+static int oct_undoes(void)
+{
+    if (!ui.undo_w)
+        return 0;
+    return act_cols() || !(layer_set_open() || ui.ml.on || oct_copies());
+}
 static void ui_input(void)
 {
     uint32_t pressed = fm1_input_edges(0), notes = fm1_input_note_edges(), now = fm1_ticks(), id, b, k;
@@ -2111,7 +2122,7 @@ static void ui_input(void)
                                                          * its map has gone) */
     midi_pc_poll();                                     /* ((1.3) MIDI Program Change) */
     ml_poll();                                          /* ((1.3) MIDI LEARN: a CC came for the picked parameter) */
-    take_box_input(pressed, notes);
+    popup_input(pressed, notes, panel_moved);
     if (scr_input(pressed, notes)) {                    /* MENU > SCREEN OFF: dark, or the wake gesture: swallowed */
         if (((pressed >> panel.btn[B_PLAY]) & 1u) && (song.playing || seq_counting()))
             transport_req = 2;                          /* (Skiff U1) .. but PLAY still stops the music */
@@ -2402,8 +2413,7 @@ static void ui_input(void)
             if (act_cols() || layer_set_open() || ui.ml.on)   /* action pages: enter / back (below); SET layers: OCT-;
                                                          * ((1.3) MIDI LEARN: below) */
                 break;
-            if (shift_held() && song.seq_mode && !ui.home &&   /* ((2.0) SHIFT + OCT- / OCT+ on NOTES, FEEL: COPY, */
-                (step_page(cur_page()->graph) || cur_page()->graph == GR_FEEL)) {   /* PASTE (a SHIFT combo) */
+            if (oct_copies()) {
                 shift_mark();
                 home_long = 0;
                 if (b == B_OCTDN)

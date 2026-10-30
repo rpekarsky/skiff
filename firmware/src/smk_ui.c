@@ -156,6 +156,7 @@ static void smk_faders(void)
         }
         if (v == smk_fd[j].last)
             continue;
+        popup_input(0, 0, 1);                        /* (POPUP CLOSE ON INPUT: a move, even short of the value, as a turn) */
         if (smk_fd[j].picked && t->p[id] != smk_fd[j].wrote)
             smk_fd[j].picked = 0;                    /* (set elsewhere since: reach it again) */
         if (!smk_fd[j].picked && !((smk_fd[j].last <= cur && (int32_t)v >= cur) ||

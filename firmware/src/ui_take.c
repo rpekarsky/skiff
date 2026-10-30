@@ -177,16 +177,24 @@ static void take_box_undo(int redo, uint32_t trk, const char *name)
     ui.msg2[0] = 0;
     ui.take_t = popup_frames(UNDO_WIN);
 }
-/* POPUP CLOSE ON INPUT (ui_input.c, before the input acts): a key pressed or a knob turned ends the box, but OCT- /
- * OCT+ on the undo box, its BACK and REDO. panel_moved: the turns since the last look (ui.c scr_input clears it) */
-static void take_box_input(uint32_t pressed, uint32_t notes)
+static int oct_undoes(void);                          /* (ui_input.c) */
+/* POPUP CLOSE ON INPUT, before the input acts: a key pressed, a knob turned (ui_input.c; panel_moved, the turns since
+ * ui.c scr_input last looked) or a fader moved (smk_ui.c) ends the box and the undo window (OCT- / OCT+ the octave
+ * again; the header's keys for it go too), but OCT- / OCT+ stepping the window, its BACK and REDO */
+static void popup_input(uint32_t pressed, uint32_t notes, uint32_t moved)
 {
-    if (!(POPUP_BYTE & POPUP_ON_INPUT) || !ui.take_t)
+    if (!(POPUP_BYTE & POPUP_ON_INPUT) || !(ui.take_t | ui.undo_w))
         return;
-    if (take_box.kind)
+    if (oct_undoes())
         pressed &= ~(1u << panel.btn[B_OCTDN] | 1u << panel.btn[B_OCTUP]);
-    if (pressed | notes | panel_moved)
-        ui.take_t = 0;
+    if (!(pressed | notes | moved))
+        return;
+    ui.take_t = 0;
+    ui.undo_w = 0;
+    if (str_eq(ui.msg2, UNDO_KEYS))
+        ui.msg2[0] = 0;
+    else if (str_eq(ui.msg, UNDO_KEYS))
+        ui.msg_t = 0;
 }
 
 /* SHIFT + SAVE (ui_input.c) on track k */
