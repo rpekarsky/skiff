@@ -2958,6 +2958,32 @@ static int test_fm6_lab(void)
         ok &= !memcmp(fm6_patch[tr], tine, FP_SIZE) && TSEL->p[P_E2] == 20 && str_eq(nm, "TINE EP");
         bad += check("INIT on FM6: the bare sine (OP1, ALG 1), SLOT OWN, macros 0, named INIT VOICE; SAVE held: TINE EP back", ok);
     }
+    {   /* (#30) OWN -> F3, F3 edited on OPERATOR: SLOT stays F3 and OWN brings the own patch back; with nothing kept
+         * aside an edited F3 becomes OWN as before */
+        uint8_t own[FP_SIZE + 1u], f3[FP_SIZE + 1u];
+        set_engine_of(TSEL, ENGI_FM6);
+        memcpy(own, fm6_patch[tr], sizeof own);
+        own[FP_ALG] ^= 1;
+        fm6_set_patch(tr, own);
+        fm6_adopt(tr);
+        frame();
+        TSEL->p[P_E7] = 2;
+        frame();
+        memcpy(f3, fm6_patch[tr], sizeof f3);
+        go_page(GR_FMOP);
+        fm_ui[1] = FMW_TONE;
+        turn(EN_K1, -3);
+        ok = TSEL->p[P_E7] == 2 && fm6_slot[tr] == 2u && memcmp(fm6_patch[tr], f3, FP_SIZE);
+        TSEL->p[P_E7] = FM6_OWN;
+        frame();
+        ok &= fm6_slot[tr] == FM6_OWN && !memcmp(fm6_patch[tr], own, FP_SIZE);
+        bad += check("(#30) F3 edited with OWN kept aside: SLOT stays F3, back to OWN the own patch", ok);
+        apply_preset_to(TSEL, 2);
+        frame();
+        turn(EN_K1, -3);
+        bad += check("  .. nothing kept aside (a preset's F3): edited, it is OWN", TSEL->p[P_E7] == FM6_OWN &&
+                     fm6_slot[tr] == FM6_OWN);
+    }
     ui_prefs = 0;                                       /* BPM LOCK OFF: on the sheet SELECT is still its rows */
     set_engine_of(TSEL, ENGI_FM6);
     go_page(GR_FMOP);

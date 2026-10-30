@@ -18,7 +18,8 @@
  *   DTUN  spreads the carriers apart in pitch (up to about +-36 cents between the outer ones)
  *   SLOT  F1..F8 load a factory patch; OWN (8) is the track's own patch: what a project, a user preset or the
  *         editor put there. A load shows F n when the patch is that factory one unchanged, else OWN (fm6_adopt).
- *         Turning SLOT from OWN to F n keeps the own patch aside; back to OWN brings it back (fm6_poll).
+ *         Turning SLOT from OWN to F n keeps the own patch aside; back to OWN brings it back (fm6_poll). Editing
+ *         F n on the device meanwhile keeps it aside too (fm6_edited).
  *         Before 1.0.3 the values 8..34 were F1..F8 then B1..B27, a flash bank (retired: its patches moved into
  *         the user presets, up_fm6.c); a stored 8..34 is clamped to 8, OWN, and its patch comes with the record
  * The operator envelopes are the voice's amplitude and end it (engine_t.ownenv / done): the track's ADSR,
@@ -187,6 +188,14 @@ static void fm6_adopt(uint32_t tr)
     if (t->eng_req == ENGI_FM6)
         t->p[P_E7] = (int16_t)(s = fm6_match(fm6_patch[tr], s));
     fm6_slot[tr] = (uint8_t)s;
+}
+
+/* (#30) track tr's patch edited on the device: while an own patch is kept aside (SLOT F n, turned from OWN) SLOT stays
+ * F n, so turning back to OWN still brings the own one back (the F n edits go then); else as fm6_adopt */
+static void fm6_edited(uint32_t tr)
+{
+    if (!(fm6_own_ok & (1u << (tr % NTRK))))
+        fm6_adopt(tr);
 }
 
 /* a factory sound load put a SLOT value in (a preset, an engine change): its patch (OWN: the patch stays) */

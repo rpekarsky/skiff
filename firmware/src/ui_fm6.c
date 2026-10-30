@@ -7,9 +7,10 @@
  *             ENV 2  RATE 3 LEVEL 3 RATE 4 LEVEL 4              PITCH 2  RATE 3 PITCH 3 RATE 4 PITCH 4
  *             KEYS   L CURVE L DEPTH R DEPTH R CURVE            LFO      WAVE RATE FADE KEY SYNC
  *             MORE   BREAK KEY RATE VELOCITY LFO AMP            DEPTH    VIBRATO VIB SENS TREMOLO
- *   A knob edits a copy of the patch: fm6_set_patch (the audio ISR's copy follows), fm6_adopt (SLOT: OWN, or the
- *   factory patch it now is). ALGO and FEEDBACK show what plays (EDIT 1's ALGO and FEEDBACK on the patch) and turning
- *   them puts that in the patch, the macro back to neutral. OKS is not here: the engine never reads it.
+ *   A knob edits a copy of the patch: fm6_set_patch (the audio ISR's copy follows), fm6_edited (SLOT: OWN, or the
+ *   factory patch it now is; F n still while an own patch is kept aside). ALGO and FEEDBACK show what plays (EDIT 1's
+ *   ALGO and FEEDBACK on the patch) and turning them puts that in the patch, the macro back to neutral. OKS is not
+ *   here: the engine never reads it.
  * The panel (design/mock_fm6.py, direction D, the user's pick; after an idea in a video by Floyd Steinberg, drawn our
  * own way): the operators' envelopes as the engine runs them (fm6_op_env_init, the macros through fm6_macro), each as
  * straight segments between its breakpoints on a log time axis (the held note, then its release); the modulators
@@ -205,7 +206,7 @@ static void fm_knob(uint32_t pg, uint32_t k, int32_t s)
         break;
     }
     fm6_set_patch(tr, v);
-    fm6_adopt(tr);
+    fm6_edited(tr);
 }
 static void fm_op_knob(uint32_t k, int32_t s) { fm_knob(0, k, s); }
 static void fm_all_knob(uint32_t k, int32_t s) { fm_knob(1, k, s); }
