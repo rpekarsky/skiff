@@ -960,9 +960,8 @@ static void draw_columns(void)
             draw_column(1, "LENGTH", "--", "", VR_DIM, -1, ICON_AUTO);
             draw_column(2, "USED", "--", "", VR_DIM, -1, ICON_AUTO);
         }
-        draw_column(3, "ACTION", bank_new_here() ? "NEW" : BA_NAME[ui.bact % BA_N], "", act_ready() ? VR_THEME : VR_DIM,
-                    -1, ICON_AUTO);                      /* ((2.0, #46) KNOB 4 the action, OCT+ does it: the footer;
-                                                         * (#14) CLEAR on a free number: NEW) */
+        draw_column(3, "ACTION", BA_NAME[ui.bact % BA_N], "", act_ready() ? VR_THEME : VR_DIM, -1, ICON_AUTO);   /* ((2.0,
+                                                         * #46) KNOB 4 the action, OCT+ does it: the footer) */
         return;
     }
     if (cur_page()->graph == GR_USER) {                  /* SLOT, then three GO buttons */

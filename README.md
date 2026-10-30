@@ -409,7 +409,7 @@ The notes live in **patterns**, and a project says which ones each track plays:
 - **SAVE › PATTERNS** shows the pool, what each pattern's LENGTH is and how many entries use it; KNOB 4, ACTION, is
   what OCT+ does (stopped, after asking): **CLEAR** a pattern nothing uses, **EMPTY** one (2.0: its notes and
   automation go, its number, its settings and the entries naming it stay) or **UNUSED** (2.0: every pattern nothing
-  uses cleared at once); on an empty number CLEAR is **NEW**: an empty pattern exactly there, for SONG to put in.
+  uses cleared at once) or **NEW** (an empty pattern exactly on an empty number, for SONG to put in; playing too).
 - **Each track has a list** of 16 entries, A–P. An entry names a pattern (or none) and its REPS, the passes it plays
   (1–16). A track is always on one entry, and HOME, the SEQ pages and the keys edit that entry's pattern.
 - **Nothing to save:** what a track has is kept as the pattern it is on, written to flash at the quiet autosave (and

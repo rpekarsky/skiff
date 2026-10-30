@@ -927,16 +927,16 @@ static int test_actions(void)
     bad += check("HOME: OCT+ shifts the octave (lit)", song.octave == 1 && oct_leds() == 2u);
     my_steps(t);
     go_page(GR_BANK);                             /* (Skiff phase 5) SAVE > PATTERNS, the pool view: CLEAR always picked */
-    bad += check("PATTERNS: CLEAR picked, ((#14) NEW on an empty pattern) OCT+ breathes, OCT- lit", act_col() == 4u &&
-                 oct_leds_seen(1) == (1u | OCT_BREATH));
+    bad += check("PATTERNS: CLEAR picked, OCT+ dark on an empty pattern, OCT- lit", act_col() == 4u &&
+                 oct_leds_seen(0) == 1u && oct_leds_seen(1) == 1u);
     {
         char a[16], b[16];
         foot_hint(a, b);
-        bad += check("..the footer: OCT+ NEW 01 / (U2) OCT- HOME", str_eq(a, "OCT+ NEW 01") && str_eq(b, "OCT- HOME"));
+        bad += check("..the footer: OCT+ CLEAR / (U2) OCT- HOME", str_eq(a, "OCT+ CLEAR") && str_eq(b, "OCT- HOME"));
     }
     press(B_OCTUP);
-    bad += check("..OCT+ on it: NEW 01 there (nothing uses it), the octave stays", msg_is("NEW 01") && pool_used(0) &&
-                 !pool_refs(0) && song.octave == 1 && !ui.home);
+    bad += check("..OCT+ on it: NOTHING TO CLEAR, the octave stays", msg_is("NOTHING TO CLEAR") && song.octave == 1 &&
+                 !ui.home);
     {
         static uint8_t r[BK_REC];
         bk_pack(r, t);
@@ -8896,8 +8896,10 @@ static int test_pool(void)
     press(B_OCTUP);
     ok = ui.confirm == CF_ERASE_BANK && ui.confirm_trk == c;
     press(B_OCTUP);
-    ok &= !pool_used(c) && msg_is("CLEARED 02") && pool_used(a) && str_eq(act_name(3), "NEW 02");
-    bad += check("  OCT+ on 02: its dialog, then cleared (CLEARED 02); ((#14) its CLEAR now NEW)", ok);
+    ok &= !pool_used(c) && msg_is("CLEARED 02") && pool_used(a);
+    press(B_OCTUP);
+    ok &= msg_is("NOTHING TO CLEAR");
+    bad += check("  OCT+ on 02: its dialog, then cleared (CLEARED 02); again: NOTHING TO CLEAR", ok);
     fresh_pattern(song.sel, 61);                     /* ((2.0, #46) 02 and 03 kept, then nothing names them */
     bank_put(song.sel, 2, 0);
     c = ent_pat(song.sel, 2);
@@ -8945,16 +8947,21 @@ static int test_pool(void)
     lists.ent[(song.sel + 1u) % NTRK][2][0] = 0;
     go_page(GR_BANK);
     ui.bslot = 1;
-    ui.bact = BA_CLEAR;
+    ui.bact = BA_UNUSED;
+    turn(EN_K4, 1);
     TSEL->p[P_SLEN] = 12;
     song.playing = 1;
     frame();
-    ok = bank_new_here() && act_ready() && str_eq(act_name(3), "NEW 02");
+    ok = ui.bact == BA_NEW && act_ready() && str_eq(act_name(3), "NEW 02");
     press(B_OCTUP);
-    ok &= !ui.confirm && msg_is("NEW 02") && pool_used(1u) && pool_len(1u) == 12u && !pool_refs(1u) && !bank_new_here();
+    ok &= !ui.confirm && msg_is("NEW 02") && pool_used(1u) && pool_len(1u) == 12u && !pool_refs(1u) && !act_ready();
+    press(B_OCTUP);
+    ok &= msg_is("02 IS TAKEN") && pool_len(1u) == 12u;
     song.playing = 0;
-    bad += check("  (#14) PATTERNS: CLEAR on an empty number is NEW (02), playing too: an empty pattern there, the track's "
-                 "LEN, nothing naming it; CLEAR again on it", ok && str_eq(act_name(3), "CLEAR"));
+    ui.bact = BA_CLEAR;
+    ok &= act_ready() && str_eq(act_name(3), "CLEAR");
+    bad += check("  (#14) PATTERNS: KNOB 4 past UNUSED, NEW: on an empty number (02), playing too, an empty pattern there "
+                 "(the track's LEN, nothing naming it); again: 02 IS TAKEN; CLEAR can clear it", ok);
     press(B_OCTDN);
     bad += check("  OCT- back HOME", ui.home != 0u);
     return bad;

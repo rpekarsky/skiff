@@ -350,9 +350,10 @@ enum { CF_NONE, CF_CLEAR_SEQ, CF_OVR_PROJ, CF_OVR_USER,
                                    * CLEAR the entry; (Skiff U1) PROJECT LOAD over the session; ((2.0, #46) SAVE >
                                    * PATTERNS: EMPTY a pattern, CLEAR every unused one) */
 /* (2.0, #46) SAVE > PATTERNS' KNOB 4, ACTION: CLEAR (an unused pattern, as before), EMPTY (its steps and automation, the
- * pattern and its entries kept), CLEAR UNUSED (every pattern nothing uses) */
-enum { BA_CLEAR, BA_EMPTY, BA_UNUSED, BA_N };
-static const char *const BA_NAME[BA_N] = {"CLEAR", "EMPTY", "UNUSED"};
+ * pattern and its entries kept), CLEAR UNUSED (every pattern nothing uses), ((#14) NEW: an empty pattern on a free
+ * number) */
+enum { BA_CLEAR, BA_EMPTY, BA_UNUSED, BA_NEW, BA_N };
+static const char *const BA_NAME[BA_N] = {"CLEAR", "EMPTY", "UNUSED", "NEW"};
 /* ((Skiff U2) here: bank.c opens one too) the OCT- / OCT+ dialog (ui_draw.c draws it); trk: the track or the slot it is about */
 static void confirm_open(uint32_t kind, uint32_t trk)
 {
@@ -2396,13 +2397,11 @@ static uint32_t act_col(void)
     return ui.act;
 }
 
-/* (#14) SAVE > PATTERNS' CLEAR on a free number: NEW there instead */
-static int bank_new_here(void) { return ui.bact == BA_CLEAR && pool_free(ui.bslot % NPAT); }
 /* (2.0, #46) SAVE > PATTERNS' ACTION as the footer says it: CLEAR, EMPTY 21, CLEAR 3 UNUSED, ((#14) NEW 40) */
 static const char *bank_act_name(void)
 {
     static char b[16] __attribute__((section(".pool")));
-    if (ui.bact == BA_CLEAR && !bank_new_here())
+    if (ui.bact == BA_CLEAR)
         return "CLEAR";
     str_cpy(b, ui.bact == BA_UNUSED ? "CLEAR " : ui.bact == BA_EMPTY ? "EMPTY " : "NEW ", sizeof b);
     if (ui.bact != BA_UNUSED) {
@@ -2450,9 +2449,11 @@ static int act_ready(void)
         return c == 3u ? !song.playing : up_used(ui.uslot) && (c == 1u || !song.playing);
     if (cur_page()->graph == GR_SLOTS && c == 1u)       /* ((Skiff U2) NAME; (1.2.1) DELETE) */
         return project_used((uint32_t)song.g[G_SLOT] - 1u) && !transport_busy();
-    if (cur_page()->graph == GR_BANK)                   /* (Skiff phase 5) a pattern nothing uses, stopped; ((#14) NEW) */
-        return bank_new_here() || (!transport_busy() && (ui.bact == BA_UNUSED ? pool_unused() != 0u :
-                                   pool_used(ui.bslot % NPAT) && (ui.bact == BA_EMPTY || !pool_refs(ui.bslot % NPAT))));
+    if (cur_page()->graph == GR_BANK && ui.bact == BA_NEW)   /* ((#14) a free number, playing too) */
+        return pool_free(ui.bslot % NPAT);
+    if (cur_page()->graph == GR_BANK)                   /* (Skiff phase 5) a pattern nothing uses, stopped */
+        return !transport_busy() && (ui.bact == BA_UNUSED ? pool_unused() != 0u : pool_used(ui.bslot % NPAT) &&
+                                     (ui.bact == BA_EMPTY || !pool_refs(ui.bslot % NPAT)));   /* ((2.0) ACTION) */
 #if FELUCCA_SLICE
     if (cur_page()->graph == GR_SLICES)
         return slice_act_ready(c);

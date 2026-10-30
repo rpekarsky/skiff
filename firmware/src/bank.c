@@ -1696,14 +1696,20 @@ static void pool_empty(uint32_t id)
     pat_num(b + 8, id);
     ui_message(b);
 }
-/* (#14) .. NEW (OCT+ on a free number, playing too): an empty pattern there, the selected track's LEN .. DIR, nothing
- * naming it yet. Said */
+/* (#14) .. NEW (OCT+, playing too): an empty pattern on a free number, the selected track's LEN .. DIR, nothing naming
+ * it yet. Said; a taken number: 40 IS TAKEN */
 static void pool_new(uint32_t id)
 {
     char b[16];
     id %= BK_POOL;
     if (!BK_ON) {
         ui_message("STORAGE ERROR");
+        return;
+    }
+    if (!pool_free(id)) {
+        pat_num(b, id);
+        str_cpy(b + 2, " IS TAKEN", sizeof b - 2);
+        ui_message(b);
         return;
     }
     bank_poll();

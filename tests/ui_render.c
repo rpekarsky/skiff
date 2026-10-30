@@ -1230,12 +1230,12 @@ static void setup(int s)
     case S_CONFIRM_POOL:
     case S_POOL_EMPTY: case S_POOL_UNUSED: case S_CONFIRM_EMPTY:   /* ((2.0, #46) KNOB 4's ACTION: EMPTY on 21 (four
                                                      * entries use it), CLEAR UNUSED (17 23 33); EMPTY's dialog */
-    case S_POOL_NEW:                                /* ((#14) CLEAR on 40, an empty number: NEW) */
+    case S_POOL_NEW:                                /* ((#14) KNOB 4's NEW on 40, an empty number) */
         pool_lists();
         go_page(GR_BANK);
         if (s == S_POOL_EMPTY || s == S_CONFIRM_EMPTY) { ui.bslot = 20; ui.bact = BA_EMPTY; }
         if (s == S_POOL_UNUSED) ui.bact = BA_UNUSED;
-        if (s == S_POOL_NEW) ui.bslot = 39;
+        if (s == S_POOL_NEW) { ui.bslot = 39; ui.bact = BA_NEW; }
         if (s == S_POOL || s == S_POOL_EMPTY || s == S_POOL_UNUSED || s == S_POOL_NEW) { ui.hot_col = 3; ui.hot_t = 30; }
         else if (s == S_CONFIRM_EMPTY) { ui.confirm = CF_EMPTY_BANK; ui.confirm_trk = ui.bslot; }
         else { ui.confirm = CF_ERASE_BANK; ui.confirm_trk = ui.bslot; }
