@@ -175,7 +175,7 @@ static void take_box_undo(int redo, uint32_t trk, const char *name)
     str_cpy(take_box.line + n, " UNDONE", sizeof take_box.line - n);
     ui.msg_t = 0;                                     /* (the box says it: no header word) */
     ui.msg2[0] = 0;
-    ui.take_t = UNDO_WIN;
+    ui.take_t = popup_frames(UNDO_WIN);
 }
 
 /* SHIFT + SAVE (ui_input.c) on track k */
@@ -259,7 +259,7 @@ static void take_commit(uint32_t k)
             say_count(take_box.line, sizeof take_box.line, moves, " KNOB MOVE");
         ui.msg_t = 0;                                 /* (the SHIFT hint is over) */
         ui.msg2[0] = 0;
-        ui.take_t = TB_FRAMES;
+        ui.take_t = popup_frames(TB_FRAMES);
         return;
     }
     str_cpy(b, "TAKE T", sizeof b);

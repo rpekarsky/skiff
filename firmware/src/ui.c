@@ -150,6 +150,19 @@ static uint32_t ret_mode(void)
 }
 static uint32_t ret_beats(void) { return ret_mode() == RET_BAR ? 4u : ret_mode(); }   /* (SNAP 0, a beat, a bar) */
 static const char *const RET_SAY[3] = {"BACK", "BACK OVER 1 BEAT", "BACK OVER 1 BAR"};   /* (the footers: LET GO: ..) */
+/* (Skiff #27) MENU > DISPLAY > POPUP TIME: how long the TAKE box and the undo box (and its window) stay. A settings
+ * byte ([15][17]), the value ^ 1: 0 = NORMAL in every older setting; unknown = NORMAL */
+#define POPUP_BYTE (favorites.factory[15][17])
+enum { POPUP_SHORT, POPUP_NORMAL, POPUP_LONG };
+static uint32_t popup_mode(void)
+{
+    return (POPUP_BYTE ^ 1u) <= POPUP_LONG ? POPUP_BYTE ^ 1u : POPUP_NORMAL;
+}
+static uint16_t popup_frames(uint32_t normal)
+{
+    static const uint8_t HALVES[3] = {1u, 2u, 4u};   /* SHORT half NORMAL's, LONG twice */
+    return (uint16_t)(normal * HALVES[popup_mode()] / 2u);
+}
 /* (Skiff) MENU > SYSTEM > CPU CLOCK 320 MHZ: JieLi's rated clock instead of the boot stage's 360 (hal/fm1_clk.h), switched
  * at boot (main.c), bit 2 of CPU2_BYTE; clear: 360, as 1.3. clk320: what this boot did about it, kept across a soft reset
  * (which keeps the PLL), forgotten at power-on; CLK_WHY: FM1_CLK320_E*'s words (hal/fm1_clk320_probe.h) */
@@ -271,8 +284,8 @@ static void fmt_kn(char *b, int32_t k, int32_t n)
 static struct {
     uint8_t home;
     uint8_t home_scope;          /* Skiff: HOME's panel the scope (HOME tapped on HOME) instead of the tracks (ui_home.c) */
-    uint8_t take_t;              /* Skiff: the TAKE box's frames left (ui_take.c; a message ends it) */
-    uint8_t undo_w;              /* Skiff: the undo window's frames left (ui.c undo_step; a message ends it) */
+    uint16_t take_t;             /* Skiff: the TAKE box's frames left (ui_take.c; a message ends it) */
+    uint16_t undo_w;             /* Skiff: the undo window's frames left (ui.c undo_step; a message ends it) */
     uint8_t page;                /* index into PAGES */
     uint8_t fam_last[FAM_COUNT]; /* last page used per family */
     uint8_t bank;                /* SEQ: 16-step bank (follows the cursor) */
@@ -1801,7 +1814,7 @@ static void undo_step(int redo)
     char b[24];
     if (redo ? !undo_back : undo_back >= undo_n) {
         ui_message(redo ? "NOTHING TO REDO" : "NOTHING TO UNDO");
-        ui.undo_w = undo_n ? UNDO_WIN : 0u;       /* (the other way may still go) */
+        ui.undo_w = undo_n ? popup_frames(UNDO_WIN) : 0u;   /* (the other way may still go) */
         return;
     }
     if (redo)
@@ -1822,7 +1835,7 @@ static void undo_step(int redo)
         ui_say(b, c->name);
         str_cpy(ui.msg2, "[OCT-] BACK  OCT+ REDO", sizeof ui.msg2);
     }
-    ui.undo_w = UNDO_WIN;
+    ui.undo_w = popup_frames(UNDO_WIN);
 }
 
 static void track_defaults_steps(track_t *t)

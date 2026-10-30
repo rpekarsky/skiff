@@ -808,6 +808,7 @@ enum { S_HOME, S_HOME_IDLE, S_MESSAGE, S_MESSAGE_KEY, S_MESSAGE_NOFILE, S_PRESET
        S_LANE_MIX, S_LANE_MIX_DX, S_SONG_SOUND, S_SONG_SOUNDS,                               /* (2.0, #36, #30) */
        S_SONG_CHAINS, S_SONG_CHAIN_COPY,                                                      /* (2.0, #44's box) */
        S_DRUM_KIT_USR, S_LANES_USR,                                                           /* (2.0, #35) */
+       S_MENU_POPUP,                                                                          /* (Skiff #27) */
        S_MOCK_HOME, S_MOCK_PRESETS, S_MOCK_SEQ, S_MOCK_DRUM, S_MOCK_MIXER, S_MOCK_DIALOG, S_MOCK_MENU, S_COUNT };
 static const char *const S_NAME[S_COUNT] = {"home", "home_idle", "message", "message_key", "message_nofile", "presets", "presets_nofav", "user",
     "project", "lanes", "step", "pattern", "chance", "motion", "drum",
@@ -840,7 +841,7 @@ static const char *const S_NAME[S_COUNT] = {"home", "home_idle", "message", "mes
     "chorus_flanger", "chorus_phaser", "presets_bass", "song_rest", "song_rest_pick",
     "notes_range", "notes_pick", "feel_range", "notes_overlap", "momentary", "pool_empty", "pool_unused", "confirm_empty",
     "song_once", "song_new", "song_copyplus", "song_chain", "song_chain3", "notes_chain", "lane_mix", "lane_mix_dx",
-    "song_sound", "song_sounds", "song_chains", "song_chain_copy", "drum_kit_usr", "lanes_usr", "mock_home", "mock_presets", "mock_seq", "mock_drum", "mock_mixer", "mock_dialog", "mock_menu"};
+    "song_sound", "song_sounds", "song_chains", "song_chain_copy", "drum_kit_usr", "lanes_usr", "menu_popup", "mock_home", "mock_presets", "mock_seq", "mock_drum", "mock_mixer", "mock_dialog", "mock_menu"};
 
 /* the scenes of the UI design screens: the state the UI-redesign
  * prototype drew them from (its setup(): two pattern tracks, the drum pattern on track 4, a synthetic scope),
@@ -1557,6 +1558,7 @@ static void setup(int s)
         break;
     case S_REVERB: go_title("REVERB"); song.g[G_RTYPE] = 1; ui.hot_col = 0; ui.hot_t = 30; break;   /* TYPE: SPRING */
     case S_MENU_HOLD: ui.menu = 1; ui.menu_sel = MI_HOLD; settings_hold = 2; break;
+    case S_MENU_POPUP: ui.menu = 1; ui.menu_sel = MI_POPUP; break;   /* (Skiff #27: DISPLAY scrolled to its last row) */
     case S_MENU_LEDS: ui.menu = 1; ui.menu_sel = MI_LEDS; settings_leds = LEDS_INV; break;
     case S_MENU_END: ui.menu = 1; ui.menu_sel = MI_COUNT - 1u; ui_prefs = 0xFF; ui_rec_prefs = 0x2A; break;   /* the last row,
                                                      * every flag set (CLICK ON, LEVEL HIGH, COUNT-IN 2 BARS) */
