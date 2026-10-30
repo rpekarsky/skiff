@@ -130,8 +130,10 @@ static uint32_t perf_avail(void)
     return m;
 }
 
-/* seq.c keyboard_block: a layer key down / up (e: PF_*, PF_N = no effect) */
-static void perf_press(uint32_t e, int down)
+/* seq.c keyboard_block: a layer key down / up (e: PF_*, PF_N = no effect). Cold and never inlined: a key edge is rare
+ * in the audio ISR, so the compiler lays its calls out of the key loop's innermost span; left to it, their placement
+ * flipped with unrelated code size (wishlist #29: tests/target_budget.txt fm1_alnk0_irq 8441 -> 9842) */
+static __attribute__((noinline, cold)) void perf_press(uint32_t e, int down)
 {
     if (e >= PF_N)
         return;
