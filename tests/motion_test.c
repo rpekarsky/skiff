@@ -1289,7 +1289,7 @@ static int feel(void)
 }
 
 /* Skiff #23 KNOBS OFF (the REC layer's C4, seq.c rec_knobs_off): a knob turn sounds and becomes the base, REC records
- * no automation of it, TAKES logs none; ON as before */
+ * no automation of it; TAKE still writes it (#12: a take keeps what was played); ON as before */
 static void knobs_set(uint32_t off)
 {
     ui_rec_knobs = (uint8_t)(off ? REC_KNOBS_OFF : 0u);
@@ -1298,6 +1298,7 @@ static void knobs_set(uint32_t off)
 static int knobs(void)
 {
     int bad = 0, ok;
+    uint32_t e;
     track_t *t = tk_track();
     knobs_set(1);
     song.rec = 1;
@@ -1316,9 +1317,10 @@ static int knobs(void)
     t->p[P_REV] = 77; motion_capture(t, P_REV, 77);
     for (uint32_t i = 0; i < 8u; i++) lock_next(t);
     take_commit(0);
-    ok = tk_has(t, 60) && motion_count(t) == 0u && t->p[P_REV] == 77;
+    for (e = 0; e < motion.count && !(MOTION_ID(&motion.event[e]) == P_REV && motion.event[e].value == 77); e++) ;
+    ok = tk_has(t, 60) && e < motion.count && t->p[P_REV] == 77;
     seq_stop();
-    bad += check("KNOBS OFF:   a take keeps the notes, no automation of the turn", ok);
+    bad += check("KNOBS OFF:   a take keeps the notes and the turn (TAKE ignores KNOBS)", ok);
 
     t = tk_track();
     knobs_set(0);

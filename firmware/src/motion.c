@@ -233,8 +233,8 @@ static int motion_capture(track_t *t, uint32_t id, int16_t value)
         f = motion_guard();
         if ((motion_base_valid >> k) & 1u) motion_base[k][id] = value;
         motion_unguard(f);
-        if (t == TSEL && !rec_knobs_off)
-            take_knob(t, id, value);                /* (Skiff) TAKES: the move, by pass and step (take.c) */
+        if (t == TSEL)                              /* (Skiff) TAKES: the move, by pass and step (take.c); logged with */
+            take_knob(t, id, value);                /* REC KNOBS OFF too, a take keeps what was played (#12) */
         return 0;
     }
     len = (uint32_t)clamp(t->p[P_SLEN], 1, NSTEP);

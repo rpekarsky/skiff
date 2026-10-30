@@ -201,8 +201,9 @@ _Static_assert(PT_N == 8, "settings_persist.c keeps ui_ptag below 8");
 #define PREF_REC 0xFF00u                       /* (menu_items.c MENU_FLAGS: a bit of ui_rec_prefs, << 8) */
 #define PREF_SCALE_LEDS (0x40u << 8)
 #define REC_FEEL 0x80u                         /* (Skiff: a bit of ui_rec_prefs itself) */
-/* (Skiff #23) the REC layer's C4, KNOBS OFF: a knob turn sounds and becomes the base, neither REC nor TAKES keep it
- * (seq.c rec_knobs_off). Bit 0 of a settings byte ([15][17], free since phase 5): 0 in older settings = ON */
+/* (Skiff #23) the REC layer's C4, KNOBS OFF: a knob turn sounds and becomes the base, REC records no automation of it
+ * (seq.c rec_knobs_off); TAKE still writes it (#12). Bit 0 of a settings byte ([15][17], free since phase 5): 0 in older
+ * settings = ON */
 #define ui_rec_knobs (favorites.factory[15][17])
 #define REC_KNOBS_OFF 1u
 enum { RP_CLICK, RP_LEVEL, RP_COUNTIN };

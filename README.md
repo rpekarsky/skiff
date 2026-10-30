@@ -462,7 +462,7 @@ by the keys, with what each key is in Skiff.
 - **REC** arms the selected track the moment it is pressed; on an armed track it disarms every track (its light is on
   while any track is armed). **SHIFT + REC** opens the REC layer:
   F3 held clears the track's sequence, then CLICK, COUNT-IN, CLICK LEVEL, FEEL; C4 KNOBS OFF keeps knob turns out
-  of REC's automation and TAKE (they still change the sound)
+  of REC's automation (they still change the sound, and TAKE still writes them)
 - **EDIT** opens the EDIT pages everywhere; on NOTES with REC armed it clears the cursor step
 - **SELECT** turns the pages of a family; **GLO + SELECT** sets the tempo (MENU › BPM LOCK, on by default)
 - **PRESETS** changes the sound (MENU › PRESETS KNOB PAN: the track's PAN, SHIFT + PRESETS the sound); on NOTES and FEEL
