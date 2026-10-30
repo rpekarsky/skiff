@@ -4,7 +4,8 @@
  *   PADS     on HOME the step taps, in a layer and the DRUM grid the white keys; a tap sets a step to the last note
  *            (its velocity), again clears it, one undo a run; DRUM: the lane; past LEN nothing; the colours (A), PAD LIGHT;
  *            PAD FOLLOW (OFF PAGE ROW: the steps shown while playing, a tap's step, held).
- *   FADERS   the four tracks shown, taking over once they reach the value, FADER BANK (its LED), the window.
+ *   FADERS   the four tracks shown, taking over once they reach the value, SHIFT + FADER BANK (its LED), the window.
+ *   TAPS     (#39) KNOB BANK's tap UNDO, FADER BANK's REDO; a hold, a combo, a pad meanwhile, the MENU: none.
  *   ENTRIES  > and < the selected track's entry after and before, the first's end said; in PERFORM and GLO (held or
  *            locked) the same, a combo (no tap, the lock kept); in another layer nothing.
  *   KEYS     the outer keys' notes and velocity (KEY VELOCITY), out of the TRS jack too; the curves.
@@ -242,6 +243,7 @@ static void smk_power_on(void)
     smk_master = 724;
     host_ut_n = 0;
     smk_sh_t0 = 0;
+    memset(smk_tap_t0, 0, sizeof smk_tap_t0);
     last_note = 60;
 }
 /* one UI frame as main.c runs it on the SMK: the input, the SMK's own controls, the LEDs (and pads), the screen */
@@ -267,6 +269,15 @@ static void press_id(uint32_t id)                 /* a button by its SMK id: dow
     frame();
 }
 static void press(uint32_t label) { press_id(panel.btn[label]); }
+static void press_with(uint32_t held, uint32_t id)   /* (#39) a button by its SMK id, another held through it */
+{
+    fm1_in.buttons |= 1u << held;
+    host_pressed |= 1u << held;
+    frame();
+    press_id(id);
+    fm1_in.buttons &= ~(1u << held);
+    frame();
+}
 static void pad_tap(uint32_t p, uint32_t vel)     /* what the scan queues for a step tap (smk_input.h smk__padq) */
 {
     smk_padq[smk_padq_w] = (uint16_t)(p << 8 | vel);
@@ -653,17 +664,20 @@ static int test_faders(void)
     frame();
     bad += check("SMK fader: a value set elsewhere is reached again first", trk[1].p[P_LEVEL] == 30);
     press_id(SMK_BTN_FADER_BANK);
-    bad += check("SMK FADER BANK: PAN, said, its LED lit", smk_fbank == 1u && msg_is("FADERS PAN") &&
-                 host_led[SMK_BTN_FADER_BANK]);
+    bad += check("SMK FADER BANK alone: no bank step (#39: its tap is REDO)", smk_fbank == 0u);
+    press_with(panel.btn[B_HOME], SMK_BTN_FADER_BANK);
+    bad += check("SMK HOME + FADER BANK: PAN, said, its LED lit; no HOME tap", smk_fbank == 1u && msg_is("FADERS PAN") &&
+                 host_led[SMK_BTN_FADER_BANK] && ui.home && !ui.menu);
     trk[1].p[P_PAN] = 0;
     fm1_in.fader[1] = 60;
     frame();
     fm1_in.fader[1] = 70;
     frame();
     bad += check("SMK fader, PAN: 0..127 over -64..63", trk[1].p[P_PAN] == 6);
-    press_id(SMK_BTN_FADER_BANK);
-    press_id(SMK_BTN_FADER_BANK);
-    press_id(SMK_BTN_FADER_BANK);
+    press_with(SMK_BTN_KNOB_BANK, SMK_BTN_FADER_BANK);
+    bad += check("SMK KNOB BANK (SHIFT) + FADER BANK: the bank too", smk_fbank == 2u);
+    press_with(panel.btn[B_HOME], SMK_BTN_FADER_BANK);
+    press_with(panel.btn[B_HOME], SMK_BTN_FADER_BANK);
     bad += check("SMK FADER BANK: round to LEVEL, its LED off", smk_fbank == 0u && !host_led[SMK_BTN_FADER_BANK]);
     sel_set(5);                                 /* T6: the window T3..T6 */
     fm1_in.fader[0] = 0;
@@ -1020,15 +1034,16 @@ static int test_shift(void)
     return bad;
 }
 
-/* (#20 with #38) KNOB BANK held and let go within a tap's time with a K4 turn between, on OPERATOR: 1 if PHASE toggled,
- * the MENU opened, or (PRESETS KNOB PAN) no sound was loaded */
+/* (#20 with #38, #39) KNOB BANK held and let go within a tap's time with a K4 turn between, on OPERATOR: 1 if it
+ * undid (a tap's UNDO), PHASE toggled, the MENU opened, or (PRESETS KNOB PAN) no sound was loaded */
 static int kb_k4_goes_wrong(uint32_t pan_mode)
 {
     uint32_t kb = 1u << SMK_BTN_KNOB_BANK, phase, preset;
+    int undid;
     menu_put(MI_PKNOB, pan_mode);
     set_engine_of(TSEL, ENGI_FM6);
     go_page(GR_FMOP);
-    frame();
+    frames((UNDO_WIN + 1u) * 16u);                    /* (an undo window still open would read as a tap's) */
     phase = fm_phase;
     preset = TSEL->preset;
     fm1_in.buttons |= kb;
@@ -1036,24 +1051,31 @@ static int kb_k4_goes_wrong(uint32_t pan_mode)
     host_enc[panel.enc[EN_PRESET]] += panel.dir[EN_PRESET];
     frame();
     fm1_in.buttons &= ~kb;
+    frame();
+    undid = ui.undo_w || msg_is("NOTHING TO UNDO");
     frames(100);
     menu_put(MI_PKNOB, 0);
-    return fm_phase != phase || ui.menu || (pan_mode && TSEL->preset == preset);
+    return undid || fm_phase != phase || ui.menu || (pan_mode && TSEL->preset == preset);
 }
 
-/* (#20) KNOB BANK tapped on an FM6 sheet: its panel PHASE <-> the envelopes; held, or with a knob, a key: SHIFT only */
+/* (#20) SHIFT + K2 on an FM6 sheet: its panel PHASE (right), the envelopes (left); (#39) a KNOB BANK tap there is
+ * UNDO, as everywhere, the panel left alone */
 static int test_phase(void)
 {
-    int bad = 0;
+    int bad = 0, ok;
     uint32_t kb = 1u << SMK_BTN_KNOB_BANK;
     smk_power_on();
     set_engine_of(TSEL, ENGI_FM6);
     go_page(GR_FMOP);
     frame();
     press_id(SMK_BTN_KNOB_BANK);
-    bad += check("SMK KNOB BANK tapped on OPERATOR: PHASE", fm_phase == 1u);
-    press_id(SMK_BTN_KNOB_BANK);
-    bad += check("SMK KNOB BANK tapped again: the envelopes", fm_phase == 0u);
+    ok = fm_phase == 0u && TSEL->eng_req % NENGINES != ENGI_FM6;
+    press_id(SMK_BTN_FADER_BANK);
+    go_page(GR_FMOP);
+    frame();
+    bad += check("SMK KNOB BANK tapped on OPERATOR: UNDO (the engine's change), not PHASE; FADER BANK: REDO",
+                 ok && TSEL->eng_req % NENGINES == ENGI_FM6 && fm_phase == 0u);
+    frames((UNDO_WIN + 1u) * 16u);
     fm1_in.buttons |= kb;
     frames(400);
     fm1_in.buttons &= ~kb;
@@ -1065,26 +1087,70 @@ static int test_phase(void)
     frame();
     fm1_in.buttons &= ~kb;
     frame();
-    bad += check("SMK KNOB BANK with KNOB 1 turned: no tap", fm_phase == 0u);
+    bad += check("SMK KNOB BANK with KNOB 1 turned: no tap", fm_phase == 0u && !msg_is("NOTHING TO UNDO"));
     fm1_in.buttons |= kb;
     frame();
     host_enc[panel.enc[EN_SELECT]] += panel.dir[EN_SELECT];
     frame();
     fm1_in.buttons &= ~kb;
     frame();
-    bad += check("SMK KNOB BANK + K2 right: PHASE (the window stays)", fm_phase == 1u && fm_ui[1] == 0u);
+    bad += check("SMK KNOB BANK + K2 right: PHASE (the window stays), no UNDO on let-go", fm_phase == 1u && fm_ui[1] == 0u &&
+                 !ui.undo_w);
     fm1_in.buttons |= kb;
     frame();
     host_enc[panel.enc[EN_SELECT]] -= panel.dir[EN_SELECT];
     frame();
     fm1_in.buttons &= ~kb;
     frame();
-    bad += check("SMK KNOB BANK + K2 left: the envelopes", fm_phase == 0u && cur_page()->graph == GR_FMOP);
-    bad += check("SMK KNOB BANK + K4 at once: no tap (PRESETS KNOB PRESETS: the sheet's K4)", !kb_k4_goes_wrong(0));
-    bad += check("SMK KNOB BANK + K4 at once: no tap (PRESETS KNOB PAN: the sound loaded)", !kb_k4_goes_wrong(1));
-    ui.home = 1;
+    bad += check("SMK KNOB BANK + K2 left: the envelopes, no UNDO", fm_phase == 0u && cur_page()->graph == GR_FMOP &&
+                 !ui.undo_w);
+    bad += check("SMK KNOB BANK + K4 at once: no tap, no UNDO (PRESETS KNOB PRESETS: the sheet's K4)", !kb_k4_goes_wrong(0));
+    bad += check("SMK KNOB BANK + K4 at once: no tap, no UNDO (PRESETS KNOB PAN: the sound loaded, kept)",
+                 !kb_k4_goes_wrong(1));
+    return bad;
+}
+/* (#39) KNOB BANK's clean tap UNDO, FADER BANK's REDO, as BT held and OCT+ in the undo window */
+static int test_bank_taps(void)
+{
+    int bad = 0;
+    track_t *t;
+    smk_power_on();
+    t = TSEL;
+    track_defaults_steps(t);
+    t->p[P_SLEN] = 16;
+    frame();
     press_id(SMK_BTN_KNOB_BANK);
-    bad += check("SMK KNOB BANK tapped on HOME: nothing", fm_phase == 0u && ui.home);
+    bad += check("SMK KNOB BANK tap, nothing done: NOTHING TO UNDO", msg_is("NOTHING TO UNDO"));
+    pad_tap(3, 100);
+    frames(2000);
+    press_id(SMK_BTN_KNOB_BANK);
+    bad += check("SMK KNOB BANK tap: UNDO (the pad's step back), the undo window", !step_on(&t->step[3]) && ui.undo_w);
+    press_id(SMK_BTN_FADER_BANK);
+    bad += check("SMK FADER BANK tap: REDO", step_on(&t->step[3]) && smk_fbank == 0u);
+    press_id(SMK_BTN_FADER_BANK);
+    bad += check("SMK FADER BANK tap, nothing undone: NOTHING TO REDO", msg_is("NOTHING TO REDO"));
+    frames(4000);
+    fm1_in.buttons |= 1u << SMK_BTN_KNOB_BANK;
+    frames(400);
+    fm1_in.buttons &= ~(1u << SMK_BTN_KNOB_BANK);
+    frame();
+    bad += check("SMK KNOB BANK held (SHIFT's map), let go: no UNDO", step_on(&t->step[3]) && !ui.undo_w);
+    fm1_in.buttons |= 1u << SMK_BTN_KNOB_BANK;
+    frame();
+    pad_tap(6, 100);
+    fm1_in.buttons &= ~(1u << SMK_BTN_KNOB_BANK);
+    frame();
+    bad += check("SMK KNOB BANK with a pad tapped meanwhile: no UNDO", step_on(&t->step[6]) && !ui.undo_w);
+    press_with(panel.btn[B_HOME], SMK_BTN_KNOB_BANK);
+    bad += check("SMK HOME + KNOB BANK: no UNDO", step_on(&t->step[6]) && !ui.undo_w);
+    press_with(SMK_BTN_KNOB_BANK, SMK_BTN_FADER_BANK);
+    bad += check("SMK KNOB BANK + FADER BANK: the bank, no UNDO / REDO", smk_fbank == 1u && step_on(&t->step[6]) &&
+                 !ui.undo_w);
+    smk_fbank = 0;
+    ui.menu = 1;
+    press_id(SMK_BTN_KNOB_BANK);
+    bad += check("SMK KNOB BANK tap over the MENU: no UNDO", step_on(&t->step[6]));
+    ui.menu = 0;
     return bad;
 }
 
@@ -1163,6 +1229,7 @@ int main(void)
     bad += test_pedal();
     bad += test_shift();
     bad += test_phase();
+    bad += test_bank_taps();
     bad += test_master();
     bad += test_clock_out();
     printf("%s\n", bad ? "SMK UI TEST FAILED" : "smk ui test passed");

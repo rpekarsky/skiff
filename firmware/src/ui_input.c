@@ -2085,7 +2085,38 @@ static void ui_notices(void)
 #define SHIFT_MAP_MS 250u                               /* SHIFT held this long alone: its map */
 #if BOARD_SMK37
 static uint32_t smk_sh_t0;                              /* KNOB BANK as SHIFT (ui_input) */
-static uint8_t smk_kb_alone;                            /* (#20) KNOB BANK down, nothing else touched: a tap if let go soon */
+static void smk_fader_bank_next(void);                  /* (smk_ui.c) */
+
+/* (#39) KNOB BANK's and FADER BANK's taps (UNDO, REDO): let go before HOLD TIME, nothing else used meanwhile (another
+ * button or key, a knob, a pad's step, a fader: smk_tap_spoil) and, KNOB BANK, SHIFT's map not up yet (from then on
+ * it is SHIFT and let go does nothing, as before). smk_tap_t0[id]: the press time | 1, | 2 spoilt */
+static uint32_t smk_tap_t0[SMK_BTN_FADER_BANK + 1u];
+static void smk_tap_spoil(void)
+{
+    uint32_t id;
+    for (id = SMK_BTN_KNOB_BANK; id <= SMK_BTN_FADER_BANK; id++)
+        if (smk_tap_t0[id])
+            smk_tap_t0[id] |= 2u;
+}
+static uint32_t smk_bank_taps(uint32_t pressed, uint32_t notes, uint32_t knob_moved, uint32_t now)   /* 1 << id each */
+{
+    uint32_t id, taps = 0;
+    for (id = SMK_BTN_KNOB_BANK; id <= SMK_BTN_FADER_BANK; id++) {
+        uint32_t *t0 = &smk_tap_t0[id], held = (fm1_in.buttons >> id) & 1u;
+        uint32_t used = ((pressed | fm1_in.buttons) & ~(1u << id)) || notes || fm1_in.notes || knob_moved ||
+                        (id == SMK_BTN_KNOB_BANK && ui.shift);
+        if (held && !*t0)
+            *t0 = (now | 1u) & ~2u;
+        if (*t0 && used)
+            *t0 |= 2u;
+        if (held)
+            continue;
+        if (*t0 && !(*t0 & 2u) && now - (*t0 & ~3u) <= (uint32_t)HOLD_MS[settings_hold % 4u] * 1000u * FM1_TICKS_PER_US)
+            taps |= 1u << id;
+        *t0 = 0;
+    }
+    return taps;
+}
 #endif
 static int fm_phase_set(int on);                        /* (#20) ui_fm6.c */
 /* (Skiff 2.0) SHIFT held (HOME; the SMK's KNOB BANK too), and a combo of it taken: no HOME tap, no MENU after (the
@@ -2129,7 +2160,7 @@ static void ui_input(void)
     static uint32_t lock_ms;                            /* BPM LOCK: the last locked SELECT turn (fm1_ms | 1; 0 none) */
     static uint8_t home_long;                           /* Skiff: HOME held past 0.7 s, the menu closed: MENU when let go */
 #if BOARD_SMK37
-    uint32_t moved = panel_moved;                       /* (a knob turned in the last pass: scr_input clears it) */
+    uint32_t knob_moved = panel_moved, bank_taps;       /* (a knob turned last frame: scr_input clears it) */
 #endif
     fm6_poll();                                         /* FM6: PTCH turned -> its patch */
     unit_g_poll();                                      /* ((Skiff U3, R8) the unit's CLOCK MIDI IN TUNE) */
@@ -2185,25 +2216,23 @@ static void ui_input(void)
 #if BOARD_SMK37
     /* (SMK-37 Pro, SMK37_UX.md extra buttons A) KNOB BANK is SHIFT: HOME held, as a button of its own. Its combos are
      * HOME's (+ SAVE TAKE, + a layer's button its lock, pressed with a layer's button held: that layer locked) and its
-     * map comes after the same moment; let go it does nothing (HOME still taps home, and held opens the MENU).
-     * smk_sh_t0: its press time | 1, | 2 once a combo used it */
-    if (!((fm1_in.buttons >> SMK_BTN_KNOB_BANK) & 1u)) {
-        if (smk_kb_alone && !moved && !(smk_sh_t0 & 2u) && now - (smk_sh_t0 & ~3u) < SHIFT_MAP_MS * 1000u * FM1_TICKS_PER_US &&
-            !ui.menu && !ui.confirm && !name_on() && !ui.layer)
-            (void)fm_phase_set(-1);                     /* (#20) tapped (let go before SHIFT's map): an FM6 sheet's panel */
+     * map comes after the same moment; let go it does nothing (HOME still taps home, and held opens the MENU), but
+     * (#39) its clean tap is UNDO (smk_bank_taps). smk_sh_t0: its press time | 1, | 2 once a combo used it */
+    if (!((fm1_in.buttons >> SMK_BTN_KNOB_BANK) & 1u))
         smk_sh_t0 = 0;
-        smk_kb_alone = 0;
-    } else if (!smk_sh_t0) {
+    else if (!smk_sh_t0)
         smk_sh_t0 = (now | 1u) & ~2u;
-        smk_kb_alone = !(pressed & ~(1u << SMK_BTN_KNOB_BANK)) && !notes;
-    } else if ((pressed & ~(1u << SMK_BTN_KNOB_BANK)) || notes || moved) {
-        smk_kb_alone = 0;
-    }
     if (smk_sh_t0 && !ui.home_t0 && ((pressed >> panel.btn[B_SAVE]) & 1u) && !ui.menu && !ui.confirm && !name_on()) {
         smk_sh_t0 |= 2u;
         ui.save_t0 |= 2u;
         take_commit(song.sel);
     }
+    if (shift_held() && ((pressed >> SMK_BTN_FADER_BANK) & 1u) && !ui.menu && !ui.confirm && !name_on() && !ui.layer) {
+        shift_mark();                                   /* (#39) SHIFT + FADER BANK: the faders' bank (bare: REDO) */
+        home_long = 0;
+        smk_fader_bank_next();
+    }
+    bank_taps = smk_bank_taps(pressed, notes, knob_moved, now);
 #endif
     rec_own = ui.lock == LAYER_REC;                     /* (its press closes the REC layer: no arming) */
     if (shift_held() && ((pressed >> panel.btn[B_EDIT]) & 1u) && !ui.menu && !ui.confirm && !name_on() &&
@@ -2353,6 +2382,10 @@ static void ui_input(void)
     }
     if (save == BT_HOLD)                                /* SAVE held: undo, one level back (ui.c undo_step) */
         undo_step(0);                                   /* (Skiff: one level back; OCT- / OCT+ then: ui.undo_w) */
+#if BOARD_SMK37
+    else if (bank_taps && !ui.confirm)                  /* (#39) KNOB BANK tapped: UNDO, FADER BANK: REDO */
+        undo_step((int)((bank_taps >> SMK_BTN_FADER_BANK) & 1u));
+#endif
     else if (save == BT_TAP && !ui.confirm)             /* SAVE acts on release (a hold is the undo) */
         open_family(FAM_SAVE);
     if (ui.confirm) {                                   /* OCT- cancels, OCT+ does it; nothing else reacts */

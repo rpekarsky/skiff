@@ -257,15 +257,12 @@ static uint32_t fm_sig(void)
     return (fm6_pgen[fm_tr()] + 1u) * 2246822519u ^ (fm_ui[0] + fm_ui[1] * 7u + fm_ui[2] * 49u) * 40503u ^
            (ui.hot_t ? ui.hot_col + 1u : 0u) * 65537u ^ (fm_phase ? (fm1_ms - fm_ph_t0) / FM_PH_MS * 2654435761u + 1u : 0u);
 }
-/* (#20) SHIFT + SELECT, the SMK's KNOB BANK tapped: on an FM6 sheet, its panel PHASE (on), the envelopes (0) or the
- * other (< 0). 0: not on one */
+/* (#20) SHIFT + SELECT on an FM6 sheet: its panel PHASE (on) or the envelopes (0). 0: not on one */
 static int fm_phase_set(int on)
 {
     uint32_t g = cur_page()->graph;
     if (ui.home || (g != GR_FMOP && g != GR_FMALL) || TSEL->eng_req % NENGINES != ENGI_FM6)
         return 0;
-    if (on < 0)
-        on = !fm_phase;
     if (on && !fm_phase)
         fm_ph_t0 = fm1_ms;
     fm_phase = (uint8_t)(on != 0);

@@ -6,14 +6,15 @@
  *            elsewhere the selected track's 16 steps of the page shown, a tap setting or clearing a step;
  *   colours A as the screen's step tiles: empty faint white, a step in the track's colour (a tie half), the edited step
  *            white, the one playing brighter (half way to white: a pad is one LED, it has no ring);
- *   faders A the LEVEL of the four tracks the screen shows, FADER BANK stepping LEVEL PAN REVERB DELAY, each fader
- *            taking over once it reaches the value;
+ *   faders A the LEVEL of the four tracks the screen shows, SHIFT + FADER BANK stepping LEVEL PAN REVERB DELAY,
+ *            each fader taking over once it reaches the value;
  *   wheels A, the pedal: as MIDI in on the selected track's channel (bend, CC1: the MOD matrix's MODW; CC64 sustain);
  *            the pedal holds the track's keys too (seq.c);
  *   < >      the selected track's entry before and after (as PERFORM's keys: at once stopped, at LAUNCH playing);
  *            the same in PERFORM and GLO, held or locked (#44), nothing in the other layers;
  *   MASTER   K1, kept with the settings; KEY VELOCITY (MENU > CONTROL).
- * KNOB BANK is SHIFT (ui_input.c); the button LEDs on or off (ui_input.c smk_leds_out). Main loop only. */
+ * KNOB BANK is SHIFT, its tap UNDO, FADER BANK's REDO (ui_input.c); the button LEDs on or off (ui_input.c
+ * smk_leds_out). Main loop only. */
 
 /* (SMK_KV_BYTE, SMK_MASTER_BYTE: ui.c, settings bytes) */
 
@@ -197,8 +198,10 @@ static void smk_pads(void)
     int32_t e;
     smk_pad_steps = (uint8_t)!smk_pads_keys();
     while ((e = smk_padq_take()) >= 0)
-        if (e & 0xFF)
+        if (e & 0xFF) {
+            smk_tap_spoil();
             smk_pad_tap(((uint32_t)e >> 8) & 15u, (uint32_t)e & 0xFFu);
+        }
 }
 
 /* ----------------------------------------------------------------------------------------------- faders --- */
@@ -233,11 +236,17 @@ static void smk_faders(void)
         }
         smk_fd[j].picked = 1;
         smk_fd[j].last = (uint8_t)v;
+        smk_tap_spoil();
         t->p[id] = (int16_t)(TP[id].min + (int32_t)v);
         smk_fd[j].wrote = t->p[id];
         say_track_value(k, id, SMK_FB_N[smk_fbank % 4u]);
         ui.force = 1;
     }
+}
+static void smk_fader_bank_next(void)                /* (#39) SHIFT + FADER BANK (ui_input.c) */
+{
+    smk_fbank = (uint8_t)((smk_fbank + 1u) % 4u);
+    ui_say("FADERS ", SMK_FB_N[smk_fbank]);
 }
 
 /* ------------------------------------------------------------------------------------- wheels, pedal --- */
@@ -325,10 +334,6 @@ static void smk_buttons(void)
         return;
     if (ui.layer)
         pr &= layer_keeps_arrows(ui.layer) ? SMK_ARROWS : 0u;
-    if ((pr >> SMK_BTN_FADER_BANK) & 1u) {
-        smk_fbank = (uint8_t)((smk_fbank + 1u) % 4u);
-        ui_say("FADERS ", SMK_FB_N[smk_fbank]);
-    }
     if (pr & (1u << SMK_BTN_LEFT | 1u << SMK_BTN_RIGHT)) {   /* the selected track's entry before / after */
         uint32_t k = song.sel % NTRK, base = launch_q[k].armed && !launch_q[k].adv ? launch_q[k].slot : lists.cur[k];
         int32_t e = (int32_t)base % (int32_t)NENT + ((pr >> SMK_BTN_RIGHT) & 1u ? 1 : -1);
