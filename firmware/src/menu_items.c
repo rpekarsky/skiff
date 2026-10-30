@@ -339,8 +339,8 @@ static void menu_put(uint32_t row, uint32_t v)
     }
 }
 /* (Skiff U4, the review's A3) MENU > SYSTEM > RESET SETTINGS, after its dialog (ui_input.c): every MENU setting as a new
- * unit has it (Skiff's palette, BPM LOCK ON, the rest their defaults: CLOCK INT, MIDI IN CH1-6, TUNE 0 ct, HINTS ON);
- * the calibration, the favourites and the music stay. Saved at once */
+ * unit has it (Skiff's palette, BPM LOCK ON, the rest their defaults: CLOCK INT, MIDI IN CH1-6, TUNE 0 ct, HINTS ON),
+ * and the REC layer's KNOBS ON; the calibration, the favourites and the music stay. Saved at once */
 static void settings_reset(void)
 {
     uint32_t i;
@@ -369,6 +369,7 @@ static void settings_reset(void)
     menu_put(MI_PHEAD, 0);
     menu_put(MI_PREVIEW, 0);
     menu_put(MI_PKNOB, 0);
+    ui_rec_knobs = 0;
     menu_put(MI_RETURN, RET_BAR);
 #if FELUCCA_CPU2
     menu_put(MI_CPU, 0);                               /* ((Skiff 1.3) 1 CORE) */
