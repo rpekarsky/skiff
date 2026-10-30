@@ -806,6 +806,27 @@ static int test_shift(void)
     return bad;
 }
 
+/* (#20 with #38) KNOB BANK held and let go within a tap's time with a K4 turn between, on OPERATOR: 1 if PHASE toggled,
+ * the MENU opened, or (PRESETS KNOB PAN) no sound was loaded */
+static int kb_k4_goes_wrong(uint32_t pan_mode)
+{
+    uint32_t kb = 1u << SMK_BTN_KNOB_BANK, phase, preset;
+    menu_put(MI_PKNOB, pan_mode);
+    set_engine_of(TSEL, ENGI_FM6);
+    go_page(GR_FMOP);
+    frame();
+    phase = fm_phase;
+    preset = TSEL->preset;
+    fm1_in.buttons |= kb;
+    frame();
+    host_enc[panel.enc[EN_PRESET]] += panel.dir[EN_PRESET];
+    frame();
+    fm1_in.buttons &= ~kb;
+    frames(100);
+    menu_put(MI_PKNOB, 0);
+    return fm_phase != phase || ui.menu || (pan_mode && TSEL->preset == preset);
+}
+
 /* (#20) KNOB BANK tapped on an FM6 sheet: its panel PHASE <-> the envelopes; held, or with a knob, a key: SHIFT only */
 static int test_phase(void)
 {
@@ -845,6 +866,8 @@ static int test_phase(void)
     fm1_in.buttons &= ~kb;
     frame();
     bad += check("SMK KNOB BANK + K2 left: the envelopes", fm_phase == 0u && cur_page()->graph == GR_FMOP);
+    bad += check("SMK KNOB BANK + K4 at once: no tap (PRESETS KNOB PRESETS: the sheet's K4)", !kb_k4_goes_wrong(0));
+    bad += check("SMK KNOB BANK + K4 at once: no tap (PRESETS KNOB PAN: the sound loaded)", !kb_k4_goes_wrong(1));
     ui.home = 1;
     press_id(SMK_BTN_KNOB_BANK);
     bad += check("SMK KNOB BANK tapped on HOME: nothing", fm_phase == 0u && ui.home);
