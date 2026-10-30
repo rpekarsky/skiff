@@ -25,6 +25,8 @@ static int smk_pads_keys(void)                     /* 1: the pads are the white 
 #define SMK_PAD_FULL 120u                           /* a lit pad: /256 of the LED's full (they glare) */
 #define SMK_PAD_WHITE 90u                           /* the edited step's white, per channel */
 #define SMK_PAD_FAINT 0x0A0A0Au                     /* an empty step */
+#define SMK_PAD_PERF_OPTION (SMK_PAD_FULL / 2u)     /* (#43) [ARP] PERFORM's other patterns breathe up to half a lit
+                                                     * pad: at full they read as the one playing */
 static uint32_t smk_rgb(uint16_t c565, uint32_t q)  /* a screen colour as a pad's 0xRRGGBB, q /256 of full */
 {
     uint32_t r = (c565 >> 11) * 255u / 31u, g = ((c565 >> 5) & 63u) * 255u / 63u, b = (c565 & 31u) * 255u / 31u;
@@ -79,6 +81,7 @@ static void smk_pads_steps(void)
 static void smk_pads_out(const uint8_t *nl, const uint8_t *nd, const uint8_t *nb, const uint8_t *nm)
 {
     uint32_t w, k, col = smk_rgb(T_TRK(song.sel), SMK_PAD_FULL);
+    uint32_t option_col = ui.layer == LAYER_PERF ? smk_rgb(T_TRK(song.sel), SMK_PAD_PERF_OPTION) : col;
     if (!smk_pads_keys() || grid_on()) {
         smk_pads_steps();
         return;
@@ -87,7 +90,7 @@ static void smk_pads_out(const uint8_t *nl, const uint8_t *nd, const uint8_t *nb
         uint32_t q = LED_KEY0 + k, b = 1u << (q & 7u), c;
         if (key_black(k))
             continue;
-        c = (nl[q >> 3] & b) ? col : (nb[q >> 3] & b) ? smk_breath(col) :
+        c = (nl[q >> 3] & b) ? col : (nb[q >> 3] & b) ? smk_breath(option_col) :
             (nm[q >> 3] & b) ? smk_rgb(T_TRK(song.sel), SMK_PAD_FULL / 3u) : (nd[q >> 3] & b) ? SMK_PAD_FAINT : 0u;
         padled_set(w++, (uint8_t)(c >> 16), (uint8_t)(c >> 8), (uint8_t)c);
     }
