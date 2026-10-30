@@ -202,13 +202,17 @@ static void take_box_undo(int redo, uint32_t trk, const char *name)
 static int oct_undoes(void);                          /* (ui_input.c) */
 /* POPUP CLOSE ON INPUT, before the input acts: a key pressed, a knob turned (ui_input.c; panel_moved, the turns since
  * ui.c scr_input last looked) or a fader moved (smk_ui.c) ends the box and the undo window (OCT- / OCT+ the octave
- * again; the header's keys for it go too), but OCT- / OCT+ stepping the window, its BACK and REDO */
+ * again; the header's keys for it go too), but OCT- / OCT+ stepping the window, its BACK and REDO, and (SMK, #39) the
+ * bank keys, whose taps are UNDO and REDO (a combo of KNOB BANK's ends it by its other input) */
 static void popup_input(uint32_t pressed, uint32_t notes, uint32_t moved)
 {
     if (!ui.popup_on_input || !(ui.take_t | ui.undo_w))
         return;
     if (oct_undoes())
         pressed &= ~(1u << panel.btn[B_OCTDN] | 1u << panel.btn[B_OCTUP]);
+#if BOARD_SMK37
+    pressed &= ~(1u << SMK_BTN_KNOB_BANK | 1u << SMK_BTN_FADER_BANK);
+#endif
     if (!(pressed | notes | moved))
         return;
     ui.take_t = 0;

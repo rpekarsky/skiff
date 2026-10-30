@@ -1109,6 +1109,33 @@ static int test_phase(void)
                  !kb_k4_goes_wrong(1));
     return bad;
 }
+/* (#39 with #27) the taps' undo box is BT held's: POPUP TIME's length; POPUP CLOSE ON INPUT leaves it to the taps
+ * (as OCT- / OCT+ in it), a knob turn ends it */
+static int test_bank_taps_popup(track_t *t)
+{
+    int ok;
+    menu_put(MI_POPUP, 5);
+    menu_put(MI_PCLOSE, 1);
+    pad_tap(9, 100);
+    frames(2000);
+    press_id(SMK_BTN_KNOB_BANK);
+    ok = !step_on(&t->step[9]) && take_box.kind == 1u && ui.take_t && ui.take_t <= popup_frames(UNDO_WIN) &&
+         popup_frames(UNDO_WIN) == 33u && ui.undo_w;
+    fm1_in.buttons |= 1u << SMK_BTN_FADER_BANK;
+    host_pressed |= 1u << SMK_BTN_FADER_BANK;
+    frame();
+    ok &= ui.take_t && ui.undo_w;
+    fm1_in.buttons &= ~(1u << SMK_BTN_FADER_BANK);
+    frame();
+    ok &= step_on(&t->step[9]) && ui.take_t && ui.undo_w;
+    host_enc[panel.enc[EN_K1]] += panel.dir[EN_K1];
+    frame();
+    frame();
+    ok &= !ui.take_t && !ui.undo_w;
+    settings_reset();
+    return check("SMK KNOB BANK / FADER BANK taps, POPUP TIME 0.5 s and CLOSE ON INPUT: the undo box 0.5 s, a tap no "
+                 "input to it, a knob turn ends it", ok && !popup_time() && !ui.popup_on_input);
+}
 /* (#39) KNOB BANK's clean tap UNDO, FADER BANK's REDO, as BT held and OCT+ in the undo window */
 static int test_bank_taps(void)
 {
@@ -1151,7 +1178,7 @@ static int test_bank_taps(void)
     press_id(SMK_BTN_KNOB_BANK);
     bad += check("SMK KNOB BANK tap over the MENU: no UNDO", step_on(&t->step[6]));
     ui.menu = 0;
-    return bad;
+    return bad + test_bank_taps_popup(t);
 }
 
 static int test_master(void)
