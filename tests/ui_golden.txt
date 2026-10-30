@@ -180,6 +180,7 @@ b732118ca9b65a87 CRYPT_play_dir
 25d324a35f7b5853 CRYPT_play_gate
 ff501e0f2a03031c CRYPT_pool
 6a734dfcd7cf67b4 CRYPT_pool_empty
+c530602b734b98d7 CRYPT_pool_new
 efbedadad95e9d94 CRYPT_pool_unused
 1d8a1278b2539a0d CRYPT_presets
 d23ab5379eb81e35 CRYPT_presets_bass
@@ -429,6 +430,7 @@ bc675a6e57622ffb CUSTOM_CRYPT_perform_held
 37a7df1898de7dc7 CUSTOM_CRYPT_play_gate
 f9fde09e504c14fb CUSTOM_CRYPT_pool
 2d28b7d1363e44bc CUSTOM_CRYPT_pool_empty
+2d858cf70a834a4a CUSTOM_CRYPT_pool_new
 2947234925fe1c43 CUSTOM_CRYPT_pool_unused
 ca5a1f52922f1368 CUSTOM_CRYPT_presets
 40dc98cf86b99765 CUSTOM_CRYPT_presets_bass
@@ -927,6 +929,7 @@ af1cb4786a03e6af CUSTOM_NEON_perform_held
 e46c0be6d701940f CUSTOM_NEON_play_gate
 f474bbecf7e2efdc CUSTOM_NEON_pool
 a7eb772da7502e79 CUSTOM_NEON_pool_empty
+ee3ff8797bd9d275 CUSTOM_NEON_pool_new
 cff483c924d17661 CUSTOM_NEON_pool_unused
 7b3e0045d319b7c5 CUSTOM_NEON_presets
 bb9ada0b7e4ec248 CUSTOM_NEON_presets_bass
@@ -1176,6 +1179,7 @@ cccb8c4d42ee447b CUSTOM_QUARK_play_dir
 20ebe566435d2343 CUSTOM_QUARK_play_gate
 6891a91e5b1028e8 CUSTOM_QUARK_pool
 4dddb28cfef48ecc CUSTOM_QUARK_pool_empty
+b46cf162484c1adf CUSTOM_QUARK_pool_new
 82bf7da891d95054 CUSTOM_QUARK_pool_unused
 cc41afe74437917c CUSTOM_QUARK_presets
 8e3345c3f44999dd CUSTOM_QUARK_presets_bass
@@ -1425,6 +1429,7 @@ efc69718425b1af0 CUSTOM_SKIFF_perform_peek
 e8fe09d105e110d0 CUSTOM_SKIFF_play_gate
 f5d8942fccd14b2d CUSTOM_SKIFF_pool
 f62e7fe3215f0043 CUSTOM_SKIFF_pool_empty
+d03d3a14a1831de7 CUSTOM_SKIFF_pool_new
 d65a0757d69b619a CUSTOM_SKIFF_pool_unused
 a1c7965e50ca1c82 CUSTOM_SKIFF_presets
 0b429a0bc1414a8b CUSTOM_SKIFF_presets_bass
@@ -1674,6 +1679,7 @@ e7049a006d272be3 HI-CON_play_dir
 7ad955b92a4a910d HI-CON_play_gate
 aa1c03274eded87b HI-CON_pool
 9d24180c43fc4f05 HI-CON_pool_empty
+a932333d19ce5c84 HI-CON_pool_new
 c7befeb875e9dad7 HI-CON_pool_unused
 ea77d98eca192510 HI-CON_presets
 6103df17de8980ad HI-CON_presets_bass
@@ -1923,6 +1929,7 @@ af269e1ab8754816 LARGE_CRYPT_perform_wait
 c5467555f8498371 LARGE_CRYPT_play_gate
 883eee9a2409a7ab LARGE_CRYPT_pool
 5a6fd72f2e298b83 LARGE_CRYPT_pool_empty
+f30e19ebd3e7a320 LARGE_CRYPT_pool_new
 ee6860238eb19bff LARGE_CRYPT_pool_unused
 7081a5024c911e43 LARGE_CRYPT_presets
 3f22d00b27fe26a3 LARGE_CRYPT_presets_bass
@@ -2670,6 +2677,7 @@ ba1720fa41f98823 LARGE_NEON_play_dir
 d53b329b745916a2 LARGE_NEON_play_gate
 332e02edc1cbbb04 LARGE_NEON_pool
 8c69ecc38f0b60d3 LARGE_NEON_pool_empty
+940099fda404d488 LARGE_NEON_pool_new
 b6081883632ddcbd LARGE_NEON_pool_unused
 05b27a676f0f0538 LARGE_NEON_presets
 80332fc6fc49d1fe LARGE_NEON_presets_bass
@@ -2919,6 +2927,7 @@ d5173c7af0d28ab8 LARGE_QUARK_pattern
 6b9adcdc20d024ab LARGE_QUARK_play_gate
 55f6542dfd8868ef LARGE_QUARK_pool
 b753a7e4d06c9d0b LARGE_QUARK_pool_empty
+402a8edc87bd1b47 LARGE_QUARK_pool_new
 9a86333023f531e0 LARGE_QUARK_pool_unused
 ee5a1b665ad17afd LARGE_QUARK_presets
 c8439aed33b95c40 LARGE_QUARK_presets_bass
@@ -3168,6 +3177,7 @@ c3cbb537e714196e LARGE_SKIFF_notes_overlap
 b72a115075c0a6b6 LARGE_SKIFF_play_gate
 ed015829d9479942 LARGE_SKIFF_pool
 91c8ccc7babe2a89 LARGE_SKIFF_pool_empty
+22b7837fc3ea532b LARGE_SKIFF_pool_new
 c1ce4ea320242f6c LARGE_SKIFF_pool_unused
 2b20754ef447a101 LARGE_SKIFF_presets
 fcbad73d064f7a01 LARGE_SKIFF_presets_bass
@@ -3921,6 +3931,7 @@ d38995c5eaf7e7a5 NEON_perform_wait
 2dde0a629347fcc4 NEON_play_gate
 9da217046e4851f6 NEON_pool
 e1b3e01aa7f46561 NEON_pool_empty
+c9fe5d781c35dbf6 NEON_pool_new
 b48b595b2f4e2bcf NEON_pool_unused
 b3912fdacfc0d362 NEON_presets
 da506b483030d248 NEON_presets_bass
@@ -4170,6 +4181,7 @@ f654af1caf699344 PAPER_play_dir
 3f8e0c3605807c3b PAPER_play_gate
 21b9a43462cde3c7 PAPER_pool
 39fdb4cb2cace026 PAPER_pool_empty
+f152a43d68ef6ef2 PAPER_pool_new
 020cac12dc36bf4b PAPER_pool_unused
 bf788386ba219cf4 PAPER_presets
 43020b35d9357293 PAPER_presets_bass
@@ -4427,6 +4439,7 @@ eaac718cd07ef186 QUARK_play_dir
 6eebcf666f03cd12 QUARK_play_gate
 17fa68b7de237503 QUARK_pool
 ddbd7f3a9933538f QUARK_pool_empty
+f2cf8410065567ab QUARK_pool_new
 a5e3b8d59a505c14 QUARK_pool_unused
 1d18f6a41d5e7e55 QUARK_presets
 12208ca79279eb28 QUARK_presets_bass
@@ -4678,6 +4691,7 @@ f9b83db0d9e4ffd4 SKIFF_perform_wait
 387b262046e78d99 SKIFF_play_gate
 9b786efbb6b74a86 SKIFF_pool
 1c313e348daa019d SKIFF_pool_empty
+090ea9028989c0ef SKIFF_pool_new
 08f1010b5cce2b80 SKIFF_pool_unused
 edbcec05c7e620ea SKIFF_presets
 4061b9910e88015a SKIFF_presets_bass

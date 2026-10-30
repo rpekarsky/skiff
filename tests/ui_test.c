@@ -9100,6 +9100,38 @@ static int test_pool(void)
          pool_alloc_after(3u) == 4u && pool_alloc_after(0u) == 1u && pool_alloc_after(NPAT - 1u) == 1u;
     bad += check("  (2.0, #34) a copy's number: the first free after its original's (04's copy 05, though 02 is free; "
                  "round from 64)", ok);
+    lists.ent[song.sel][5][0] = 4u;                  /* ((#14) T1: A 01, D 04, F 04; T2: C 04; T3 names none */
+    lists.ent[(song.sel + 1u) % NTRK][2][0] = 4u;
+    ok = pool_alloc_beside(song.sel, 6) == 4u && pool_alloc_beside(song.sel, 5) == 4u &&
+         pool_alloc_beside(song.sel, 0) == 1u && pool_alloc_beside((song.sel + 1u) % NTRK, 0) == 4u &&
+         pool_alloc_beside((song.sel + 2u) % NTRK, 0) == 1u;
+    go_page(GR_SONG);
+    sg.entry = 6;
+    sg.pick = SPICK_NEW;
+    sg.pick_at = (uint8_t)(1u + (song.sel % NTRK) * 16u + 6u);
+    ok &= str_eq(song_act_name(), "NEW 05");
+    press(B_OCTUP);
+    ok &= ent_pat(song.sel, 6) == 4u && pool_used(4u) && !pool_used(1u) && msg_is("T1 G NEW 05");
+    bad += check("  (#14) NEW's number beside its neighbour's: the entry's, else the nearest before, else after; none "
+                 "named: the first free (G after F's 04: 05, though 02 is free)", ok);
+    lists.ent[(song.sel + 1u) % NTRK][2][0] = 0;
+    go_page(GR_BANK);
+    ui.bslot = 1;
+    ui.bact = BA_UNUSED;
+    turn(EN_K4, 1);
+    TSEL->p[P_SLEN] = 12;
+    song.playing = 1;
+    frame();
+    ok = ui.bact == BA_NEW && act_ready() && str_eq(act_name(3), "NEW 02");
+    press(B_OCTUP);
+    ok &= !ui.confirm && msg_is("NEW 02") && pool_used(1u) && pool_len(1u) == 12u && !pool_refs(1u) && !act_ready();
+    press(B_OCTUP);
+    ok &= msg_is("02 IS TAKEN") && pool_len(1u) == 12u;
+    song.playing = 0;
+    ui.bact = BA_CLEAR;
+    ok &= act_ready() && str_eq(act_name(3), "CLEAR");
+    bad += check("  (#14) PATTERNS: KNOB 4 past UNUSED, NEW: on an empty number (02), playing too, an empty pattern there "
+                 "(the track's LEN, nothing naming it); again: 02 IS TAKEN; CLEAR can clear it", ok);
     press(B_OCTDN);
     bad += check("  OCT- back HOME", ui.home != 0u);
     return bad;
