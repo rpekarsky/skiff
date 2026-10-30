@@ -19,23 +19,36 @@
 #define MI_SERIAL_NAME
 #define MI_SERIAL_TAB
 #endif
+/* (wishlist #27) POPUP TIME and POPUP CLOSE are for trying the boxes' timing (SKIFF_EVAL_POPUP, core.h): a build without
+ * them has them past MI_COUNT the same way, the boxes at their DEFAULT */
+#if SKIFF_EVAL_POPUP
+#define MI_POPUP_IN MI_POPUP, MI_PCLOSE,
+#define MI_POPUP_OUT
+#define MI_POPUP_NAME "POPUP TIME", "POPUP CLOSE",
+#define MI_POPUP_TAB MTAB_DISPLAY, MTAB_DISPLAY,
+#else
+#define MI_POPUP_IN
+#define MI_POPUP_OUT , MI_POPUP, MI_PCLOSE
+#define MI_POPUP_NAME
+#define MI_POPUP_TAB
+#endif
 #if BOARD_SMK37
 /* (SMK-37 Pro, SMK37_UX.md) KEY VELOCITY in CONTROL (question 8); no LEDS row (button LEDs A: on or off only): MI_LEDS
  * past MI_COUNT, so its setting stays and no tab shows it; (wishlist #5, #42) PAD LIGHT, PAD FOLLOW where FM-1's LEDS is */
-enum { MI_COLOR, MI_PHEAD, MI_LARGE, MI_ANIM, MI_PADL, MI_PADF, MI_SCROFF, MI_HINTS, MI_POPUP, MI_PCLOSE, MI_HOLD,
+enum { MI_COLOR, MI_PHEAD, MI_LARGE, MI_ANIM, MI_PADL, MI_PADF, MI_SCROFF, MI_HINTS, MI_POPUP_IN MI_HOLD,
        MI_ACCEL, MI_BPMLOCK, MI_PKNOB, MI_SCLLED, MI_PREVIEW, MI_RETURN, MI_KVEL, MI_LOWCUT, MI_USB, MI_CLICK, MI_CLKLVL,
        MI_COUNTIN, MI_TUNE, MI_MSTART, MI_CLOCK, MI_ROUTE, MI_LEARN, MI_LCLEAR, MI_TCH1, MI_TCH2, MI_TCH3, MI_TCH4,
        MI_TCH5, MI_TCH6, MI_SERIAL_IN MI_RESTORE, MI_CPU, MI_CLK,
-       MI_PANEL, MI_RESET, MI_ABOUT, MI_COUNT, MI_LEDS MI_SERIAL_OUT };
+       MI_PANEL, MI_RESET, MI_ABOUT, MI_COUNT, MI_LEDS MI_SERIAL_OUT MI_POPUP_OUT };
 static const char *const KVEL_N[SMK_KV_N] = {"DYNAMIC", "SOFT", "HARD", "FIXED 64", "FIXED 100", "FIXED 127"};
 static const char *const PADL_N[SMK_PADL_N] = {"25 %", "50 %", "75 %", "100 %"};   /* (right brighter: stored inverted) */
 static const char *const PADF_N[SMK_PF_N] = {"OFF", "PAGE", "ROW"};   /* (wishlist #42) */
 #else
-enum { MI_COLOR, MI_PHEAD, MI_LARGE, MI_ANIM, MI_LEDS, MI_SCROFF, MI_HINTS, MI_POPUP, MI_PCLOSE, MI_HOLD, MI_ACCEL,
+enum { MI_COLOR, MI_PHEAD, MI_LARGE, MI_ANIM, MI_LEDS, MI_SCROFF, MI_HINTS, MI_POPUP_IN MI_HOLD, MI_ACCEL,
        MI_BPMLOCK, MI_PKNOB, MI_SCLLED, MI_PREVIEW, MI_RETURN, MI_LOWCUT, MI_USB, MI_CLICK, MI_CLKLVL, MI_COUNTIN, MI_TUNE,
        MI_MSTART, MI_CLOCK, MI_ROUTE, MI_LEARN, MI_LCLEAR, MI_TCH1, MI_TCH2, MI_TCH3, MI_TCH4, MI_TCH5, MI_TCH6,
        MI_SERIAL_IN MI_RESTORE, MI_CPU, MI_CLK,
-       MI_PANEL, MI_RESET, MI_ABOUT, MI_COUNT MI_SERIAL_OUT };
+       MI_PANEL, MI_RESET, MI_ABOUT, MI_COUNT MI_SERIAL_OUT MI_POPUP_OUT };
 #endif   /* ((Skiff U4, A3) HINTS; RESET SETTINGS, a row with no value: its dialog) */   /* ((Skiff U3, R8, R2) CLOCK, MIDI IN, TUNE: the unit's, GLOBAL's and SYSTEM's before; CPU: read) */   /* (1.1: the metronome's rows in
                                                                                              * AUDIO; 1.2: RESTORE LAST in SYSTEM, SCALE LEDS
                                                                                              * in CONTROL) */
@@ -48,7 +61,7 @@ static const char *const MI_NAME[MI_COUNT] = {"THEME", "PLAYHEAD", "LARGE", "ANI
 #else
                                               "LEDS",
 #endif
-                                              "SCREEN OFF", "HINTS", "POPUP TIME", "POPUP CLOSE", "HOLD", "KNOB ACCEL",
+                                              "SCREEN OFF", "HINTS", MI_POPUP_NAME "HOLD", "KNOB ACCEL",
                                               "BPM LOCK", "PRESETS KNOB", "SCALE LEDS", "STEP PREVIEW", "RETURN",
 #if BOARD_SMK37
                                               "KEY VELOCITY",
@@ -76,7 +89,7 @@ static const uint8_t MI_TAB[MI_COUNT] = {
 #endif
     MTAB_DISPLAY,                                                           /* SCREEN OFF (1.1.5) */
     MTAB_DISPLAY,                                                           /* (Skiff U4) HINTS */
-    MTAB_DISPLAY, MTAB_DISPLAY,                                             /* POPUP TIME, POPUP CLOSE */
+    MI_POPUP_TAB                                                            /* POPUP TIME, POPUP CLOSE */
     MTAB_CONTROL, MTAB_CONTROL, MTAB_CONTROL,                               /* HOLD KNOB ACCEL BPM LOCK ((Skiff U2) FX
                                                                              * LATCH gone: a locked FX layer latches) */
     MTAB_CONTROL,                                                           /* (wishlist #10, #38) PRESETS KNOB */

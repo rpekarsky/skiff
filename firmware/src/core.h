@@ -16,6 +16,10 @@
 #define FELUCCA_CPU2 1           /* (Skiff 1.3) the second core (src/felucca.c): 1 = built in, MENU > CPU 2 CORES lets it
                                   * render some tracks; 0 = none of it */
 #endif
+#ifndef SKIFF_EVAL_POPUP
+#define SKIFF_EVAL_POPUP 1       /* (wishlist #27) MENU > POPUP TIME, POPUP CLOSE: settings for the PO to try the boxes'
+                                  * timing with, not for a release (build.py --release: 0); 0 = no rows, DEFAULT */
+#endif
 #define C1_NP (FELUCCA_CPU2 ? NPART : 1)   /* the copies of the state a track's render writes that tracks shared before the
                                             * second core (mod.c, eng_formant.c, eng_phys.c): one each with two cores,
                                             * one for all with one, as up to 1.2 */

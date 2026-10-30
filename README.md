@@ -648,7 +648,8 @@ every setting back as a new unit has it. The web editor's Settings tab reads and
   refuses it and says why (NO 320 MHZ: ...). ABOUT shows the clock the FM-1 runs at
 - **HINTS** (DISPLAY): ON or OFF; OFF drops the one line of hint (HOLD HOME: SHIFT, KEYS: STEPS, a layer's
   first HOLD [X]: SHORTCUTS) and SHIFT's map; what OCT+ and OCT- do on an action page stays
-- **POPUP TIME** (DISPLAY): how long the TAKE box and the undo box stay up: DEFAULT (about 2 s for TAKE, 2.7 s for
+- **POPUP TIME** (DISPLAY; with POPUP CLOSE only in evaluation builds, `SKIFF_EVAL_POPUP`: a release has neither, the
+  boxes at DEFAULT): how long the TAKE box and the undo box stay up: DEFAULT (about 2 s for TAKE, 2.7 s for
   undo) or 0.1 to 2.7 s. OCT- / OCT+ step the undo for 2.7 s whatever the box
 - **POPUP CLOSE** (DISPLAY): TIMER (default) or ON INPUT: any button, key, knob or (SMK) fader closes the TAKE or undo
   box at once (and still does its own job), and ends the undo, so OCT- / OCT+ are the octave again; OCT- / OCT+ while

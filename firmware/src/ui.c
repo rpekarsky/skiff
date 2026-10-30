@@ -243,7 +243,7 @@ static void shared_put(uint32_t mask, uint32_t bits) { SHARED_BYTE = (uint8_t)((
 static uint32_t popup_time(void)
 {
     uint32_t t = SHARED_BYTE >> POPUP_SHIFT;
-    return t < POPUP_TIMES ? t : 0u;
+    return SKIFF_EVAL_POPUP && t < POPUP_TIMES ? t : 0u;   /* (a build without the rows: an evaluation's bits ignored) */
 }
 static uint8_t popup_frames(uint32_t dflt)
 {
