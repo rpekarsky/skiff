@@ -1573,7 +1573,7 @@ static int test_menu_tabs(void)
     bad += check("MENU tabs: DISPLAY CONTROL AUDIO SYSTEM MIDI ((1.3) MIDI appended), rows in a run, 6 shown fit the page; "
                  "tab gaps constant (S, LARGE)",
                  ok && MTAB_COUNT == 5u && str_eq(MTAB_NAME[0], "DISPLAY") && str_eq(MTAB_NAME[MTAB_MIDI], "MIDI") &&
-                 mtab_rows(MTAB_DISPLAY) == 7u && mtab_rows(MTAB_CONTROL) == 6u && mtab_rows(MTAB_AUDIO) == 6u &&   /* (#27; (2.0) RETURN) */
+                 mtab_rows(MTAB_DISPLAY) == 7u && mtab_rows(MTAB_CONTROL) == 7u && mtab_rows(MTAB_AUDIO) == 6u &&   /* (#27; (2.0) RETURN; PRESETS KNOB) */
                  mtab_rows(MTAB_SYSTEM) == 6u + FELUCCA_CDC && mtab_rows(MTAB_MIDI) == 10u);   /* ((Skiff) SYSTEM: CPU
                                                          * CLOCK; (Skiff 2.0) USB SERIAL with the console only) */
 
@@ -2121,6 +2121,50 @@ static int test_presets_knob(void)
     i = ui.menu_sel;
     turn(EN_PRESET, 1);
     bad += check("#94 the menu: PRESETS still moves the selection", ui.menu == 1 && ui.menu_sel == i + 1u);
+    return bad;
+}
+
+static int presets_turn_loads(uint32_t page, uint32_t home_only)
+{
+    track_t before;
+    ui_power_on();
+    menu_put(MI_PKNOB, home_only);
+    sel_set(0);
+    my_steps(TSEL);
+    ui.home = 0; ui.page = (uint8_t)page; page_entered();
+    frame();
+    before = *TSEL;
+    turn(EN_PRESET, 1);
+    return TSEL->preset != before.preset || TSEL->eng_req != before.eng_req ||
+           memcmp(TSEL->step, before.step, sizeof before.step);
+}
+/* (wishlist #10) MENU > PRESETS KNOB HOME ONLY: on a page where PRESETS loads a sound, nothing loaded but on PRESETS
+ * itself, and a message saying why; every other page's PRESETS as with EVERYWHERE; HOME still loads */
+static int test_presets_knob_home(void)
+{
+    int bad = 0, kept = 1, browse_ok = 0, home_ok;
+    uint32_t i, n_kept = 0, preset;
+    for (i = 0; i < NPAGES; i++) {
+        uint32_t g = PAGES[i].graph;
+        if (!page_visible(i) || !presets_turn_loads(i, 0))
+            continue;
+        if (g == GR_BROWSE) {
+            browse_ok = presets_turn_loads(i, 1);
+            continue;
+        }
+        kept &= !presets_turn_loads(i, 1) && msg_is("PRESETS: HOME ONLY") && ui.page == i && !ui.home;
+        n_kept++;
+    }
+    ui_power_on();
+    bad += check("(wishlist #10) a new unit: PRESETS KNOB EVERYWHERE", menu_get(MI_PKNOB) == 0u);
+    menu_put(MI_PKNOB, 1);
+    sel_set(0);
+    preset = TSEL->preset;
+    turn(EN_PRESET, 1);
+    home_ok = ui.home && TSEL->preset != preset;
+    bad += check("(wishlist #10) PRESETS KNOB HOME ONLY: EDIT, ENV, FX, MIXER, ...: nothing loaded, a message",
+                 kept && n_kept >= 15u);
+    bad += check("(wishlist #10)   HOME and PRESETS still load", home_ok && browse_ok);
     return bad;
 }
 
@@ -9597,6 +9641,7 @@ int main(void)
     bad += test_step_rec();
     bad += test_step_rec();
     bad += test_presets_knob();
+    bad += test_presets_knob_home();
     bad += test_midi();
     bad += test_save();
     bad += test_actions();

@@ -139,6 +139,8 @@ static void theme_apply(void)                  /* settings.palette, and over it 
 #define CPU2_BYTE (favorites.factory[15][5])
 #define CPU2_SET (CPU2_BYTE & 1u)
 #define PREVIEW_SET ((CPU2_BYTE >> 1) & 1u)            /* ((1.3) MENU > STEP PREVIEW ON) */
+#define PRESETS_HOME_SET ((CPU2_BYTE >> 3) & 1u)       /* (wishlist #10) MENU > PRESETS KNOB HOME ONLY: ui_input.c
+                                                        * presets_turn loads a sound on HOME and PRESETS only */
 /* (2.0, D 2A) MENU > CONTROL > RETURN: how MOMENTARY's values, the FX layer's macros and PERFORM's throws come back once
  * let go (mom_poll; throw.c thr_beats): SNAP, over 1 BEAT, over 1 BAR. A settings byte ([15][16]: zero, the default
  * 1 BAR; RET_BAR - the value) */

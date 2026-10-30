@@ -1856,7 +1856,8 @@ static void cursor_turn(int32_t s)
  *   the list / action pages USER, PATTERNS, PROJECT, SONG: the selection, as their KNOB 1; TOOLS and SLICES: nothing
  *   HOME, PRESETS and every other page (EDIT, ENV, LFO, FX, SCL, ARP, MIXER, GLOBAL, ...): the selected track's
  *     sound, one list over every engine, then the used user presets (preset_step). A sound load keeps the steps
- *     (SAVE held undoes it). Up to 1.0.3 it did that on HOME and PRESETS only */
+ *     (SAVE held undoes it). Up to 1.0.3 it did that on HOME and PRESETS only; (wishlist #10) MENU > PRESETS KNOB
+ *     HOME ONLY does that again (elsewhere: a message, nothing loaded) */
 static void presets_turn(int32_t s)
 {
     const page_t *pg = cur_page();
@@ -1886,6 +1887,8 @@ static void presets_turn(int32_t s)
         if (slice_page_ok())
             slice_knob(0, s);
 #endif
+    } else if (PRESETS_HOME_SET) {
+        ui_way("PRESETS: HOME ONLY", "MENU > CONTROL");
     } else {
         preset_step(s);
     }
