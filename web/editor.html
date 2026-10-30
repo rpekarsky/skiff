@@ -16,8 +16,8 @@
   /* ((Skiff 1.0) the look is the unit's BLOCKS (design/editor_looks.png A, the user's pick): the night, tiles, white
      values, Barlow Condensed (OFL, fonts/) for headings, labels and values, each track its colour, the sliders in the
      selected track's (--trk: renderTrackbar). Once connected the tokens follow the unit's THEME (renderPreferences:
-     SKIFF and HI-CON dark, PAPER light, CRYPT NEON QUARK H1N their own, each with its tracks' colours,
-     tools/gen_ui_palettes.py); before that, the system's. Colours only here, as tokens. ((Skiff W6) DIM 4.5:1 and more
+     SKIFF and HI-CON dark, PAPER light, CRYPT NEON QUARK H1N their own (H1N-NIGHT: H1N's in its colours), each with
+     its tracks' colours, tools/gen_ui_palettes.py); before that, the system's. Colours only here, as tokens. ((Skiff W6) DIM 4.5:1 and more
      on BG and TILE; LINE, an input's edge, 3:1 and more on TILE) */
   @font-face { font-family: "Barlow Condensed"; src: url("fonts/BarlowCondensed-Medium.ttf") format("truetype"); font-weight: 500;
                font-display: swap; }
@@ -530,6 +530,7 @@ const PAL_BUILTIN = [
   ["NEON", 0x0823, 0x1866, 0xf77f, 0xfad7, 0x371f, 0xfa16, 0x371f, 0xfeeb, 0xfc07, 0xab3f, 0x57f5],
   ["QUARK", 0x0021, 0x08a4, 0xdf9f, 0x4e9f, 0xff0c, 0xfaac, 0x46f0, 0x5c7f, 0x3efe, 0xe31c, 0xfeea],
   ["H1N", 0xb5d4, 0xb5d4, 0x1903, 0x1903, 0x1903, 0x1903, 0x1903, 0x1903, 0x1903, 0x1903, 0x1903],
+  ["H1N-NIGHT", 0x10c4, 0x1946, 0xf75b, 0x9cb2, 0xf75b, 0x9cb2, 0x9cb2, 0x9cb2, 0x9cb2, 0x9cb2, 0x9cb2],
 ].map(([name, ...c]) => ({ name, c }));
 const rgb8 = (c) => [(c >> 11) * 255 / 31 | 0, ((c >> 5) & 63) * 255 / 63 | 0, (c & 31) * 255 / 31 | 0];   /* (as the generator's) */
 const hex565 = (c) => "#" + rgb8(c).map((x) => x.toString(16).padStart(2, "0")).join("");
@@ -2424,7 +2425,7 @@ function makeMockDevice(opt = {}) {
     uiCaps: opt.legacy || opt.v3 || opt.v5 ? 0 : opt.uiCaps ?? 25,   /* ((Skiff #27) 16: COLORS) */
     custom: { flags: 0, look: 0, c: new Array(11).fill(0), preview: null },   /* ((Skiff #27) THEME CUSTOM's set) */
     palette: 0, font: 0, monitor: 0, filter: 0, bankSig: 0,
-    palettes: ["SKIFF", "HI-CON", "PAPER", "CRYPT", "NEON", "QUARK", "H1N"],   // (Skiff, R1) THEME: the device's list (tools/gen_ui_palettes.py)
+    palettes: ["SKIFF", "HI-CON", "PAPER", "CRYPT", "NEON", "QUARK", "H1N", "H1N-NIGHT"],   // (Skiff, R1) THEME: the device's list (tools/gen_ui_palettes.py)
     favorites: Array.from({ length: ENG.length + 1 }, () => []),
     watch: false, v4: false, lastReq: 0,
   };
@@ -5943,14 +5944,17 @@ function applyCustom(c) {
 }
 function renderPreferences(force = false) {
   const d = dev, p = d && d.preferences;
-  const LOOK = { SKIFF: "dark", "HI-CON": "dark", PAPER: "light", CRYPT: "crypt", NEON: "neon", QUARK: "quark", H1N: "h1n" };   /* (Skiff 1.0) */
+  const LOOK = { SKIFF: "dark", "HI-CON": "dark", PAPER: "light", CRYPT: "crypt", NEON: "neon", QUARK: "quark", H1N: "h1n",
+    "H1N-NIGHT": "h1n" };   /* (Skiff 1.0) */
   const cu = p && p.palettes[p.state.palette] === "CUSTOM" && p.colors && p.colors.stored ? p.colors : null;
+  /* (#29) H1N-NIGHT wears H1N's look in its own colours, as CUSTOM over H1N does */
+  const night = !cu && p && p.palettes[p.state.palette] === "H1N-NIGHT" ? PAL_BUILTIN.find((b) => b.name === "H1N-NIGHT") : null;
   const lk = cu && LOOK[(PAL_BUILTIN[cu.look] || {}).name];
   const look = !p ? null : cu ? (["crypt", "neon", "quark", "h1n"].includes(lk) ? lk : luma565(cu.c[0]) > 128 ? "light" : "dark") :
     LOOK[p.palettes[p.state.palette]];                                                     /* unit's THEME; none: the system's */
   if (look) document.documentElement.dataset.theme = look;
   else delete document.documentElement.dataset.theme;
-  applyCustom(cu ? cu.c : null);
+  applyCustom(cu ? cu.c : night ? night.c : null);
   $("device-display").hidden = !p || !(p.state.caps & 7);
   $("device-presets").hidden = !p || !(p.state.caps & 8);
   if (!p) { renderPreferences.sig = null; return; }

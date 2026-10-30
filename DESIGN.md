@@ -397,7 +397,7 @@ The colours differ in lightness as well as hue, and always appear with the track
 - **Sentence case** for the lines that explain, as the mockup's dialog and TAKE box: recording starts after 1, list ALL to add sounds, teach each button and knob. Titles, labels, values and key hints stay in capitals.
 - **Track numbers** (`icons.c` `cv_trk`): no cushions. The number stands alone in its track's colour, as on the HOME lanes: V where Felucca's 16 px cushion went (footer, MIXER, the GLO layer's SOLO keys), M where its 12 px one went (the GLO cards, the layers' mute keys). It's INK on a light tile or a held key, and DIM for a silent track. The TAKE box's chip, the number on its colour, is the one square, as in the mockup.
 
-**Defaults:** a new unit gets SKIFF. **THEME** (the review's R1; MENU > THEME, was COLOR; `tools/gen_ui_palettes.py`): SKIFF, HI-CON, PAPER, CRYPT, NEON, QUARK, H1N. A unit on HI-CON or PAPER keeps it; on any other palette of before (GREY, GREEN, AMBER, ICE, VIOLET, ROSE, NIGHT, MONO, Felucca's twenty) it starts on SKIFF. CRYPT (`gfx.c` `ux.crypt`) brings its own font and widgets too (the theming phases C2-C4); NEON (`ux.neon`) CRYPT's
+**Defaults:** a new unit gets SKIFF. **THEME** (the review's R1; MENU > THEME, was COLOR; `tools/gen_ui_palettes.py`): SKIFF, HI-CON, PAPER, CRYPT, NEON, QUARK, H1N, H1N-NIGHT. A unit on HI-CON or PAPER keeps it; on any other palette of before (GREY, GREEN, AMBER, ICE, VIOLET, ROSE, NIGHT, MONO, Felucca's twenty) it starts on SKIFF. CRYPT (`gfx.c` `ux.crypt`) brings its own font and widgets too (the theming phases C2-C4); NEON (`ux.neon`) CRYPT's
 font and its own widgets (N1-N8); QUARK (`ux.quark`) Skiff's Barlow faces and its own widgets (Q1-Q5).
 
 **H1N** (THEME, wishlist #29; the PO's pick H1N GREY of skiff-tasks/lcd-mockups.png; `ui_h1n.c`, `ux.h1n`): a reflective
@@ -411,6 +411,9 @@ scope (HOME tapped on HOME, MENU > LARGE's strip too) is an equalizer: 16 bands 
 segments 3 dB apart, from a 512-point fixed-point FFT of the scope's snapshot in the main loop (Hann window, the
 snapshot scaled to its peak, so MASTER doesn't shrink it); a bar falls a segment a redraw, its peak held 16 redraws.
 THEME CUSTOM over the H1N look: the user's colours in the same four tones (theirs BG, SURF to TEXT 12 %, MID, TEXT).
+**H1N-NIGHT** (the PO's pick of CUSTOM over H1N with tests/ui_render.c's dusk set, pinned as it shows): H1N's look
+(`ux.h1n`) inverted, navy and pale ink. BG 16,24,32, TEXT 242,232,216; SURF 28,40,54 only for its ghost (SURF to TEXT
+12 %); THEME and the tracks the MID tone 156,149,148 (where the dusk's orange and most tracks snapped), ACCENT the ink.
 
 **THEME CUSTOM** (#27, @tradiuz; after Felucca 1.6's CUSTOM palette; design/mock_c27.py, mockups/c27_sheet.png): the
 user's eleven colours from the web editor (BG SURF TEXT THEME ACCENT and the six tracks'), in a look they pick: a

@@ -21,9 +21,10 @@ blends at palette_set() time (src/gfx.c, the same integer maths as mix() here):
 Outside the palette: REC, a fixed red; the QR code's fixed black and white; the crash screen's fixed red.
 (Skiff, the review's R1) The palettes are the MENU's THEME: SKIFF (the default), HI-CON and PAPER (for reading in
 bright or dim light), CRYPT and NEON (their own font and widgets besides: src/gfx.c ux.crypt, ux.neon), QUARK (its own
-widgets: ux.quark), (#29) H1N (four tones, CRYPT's font, its own widgets: ux.h1n). Saved settings name them by a
-tagged id (THEME_TAG + index). Earlier ids are migrated: PAL_TAG + an index into the eleven palettes before THEME
-(UI_PALETTE_MIGRATE11), and below 20 Felucca's oldest twenty (UI_PALETTE_MIGRATE20); a palette that is gone is SKIFF.
+widgets: ux.quark), (#29) H1N and H1N-NIGHT (four tones, CRYPT's font, their own widgets: ux.h1n). Saved settings
+name them by a tagged id (THEME_TAG + index). Earlier ids are migrated: PAL_TAG + an index into the eleven palettes
+before THEME (UI_PALETTE_MIGRATE11), and below 20 Felucca's oldest twenty (UI_PALETTE_MIGRATE20); a palette that is
+gone is SKIFF.
 --report prints the WCAG contrast of every pairing. The tool fails (exit 1) on any miss.
 """
 import argparse
@@ -50,8 +51,13 @@ PALETTES = [
     # segments' ghost (RAISE: 160,170,148), MID, ink. No tiles (SURF is BG, as an LCD has no boxes); src/gfx.c
     # lcd_tones pins the derived tokens to the four; every track ink, told apart by its number
     ("H1N",    (178, 186, 166), (178, 186, 166), (28, 32, 26),    (28, 32, 26),    (28, 32, 26)),
+    # (Skiff #29) H1N-NIGHT, the PO's pick of THEME CUSTOM over H1N (tests/ui_render.c's dusk set), as it shows: an
+    # inverted LCD, navy, pale ink. SURF stays the dusk's, as it makes the ghost (RAISE); THEME is the MID tone, which
+    # the dusk's orange (and five of its six tracks) snapped to; ACCENT the ink
+    ("H1N-NIGHT", (16, 24, 32), (28, 40, 54),   (242, 232, 216), (156, 149, 148), (242, 232, 216)),
 ]
-SKIFF, CRYPT, NEON, QUARK, H1N = "SKIFF", "CRYPT", "NEON", "QUARK", "H1N"
+SKIFF, CRYPT, NEON, QUARK, H1N, H1N_NIGHT = "SKIFF", "CRYPT", "NEON", "QUARK", "H1N", "H1N-NIGHT"
+LCD_LOOKS = (H1N, H1N_NIGHT)       # src/gfx.c ux.h1n: four tones, CRYPT's font, ui_h1n.c's widgets
 # the six tracks' colours (src/gfx.c T_TRK; (Skiff phase 6) T5, T6 too): a palette not named here gives every track
 # its THEME. Told apart by lightness as well as hue, and always drawn with the track's number (never the colour alone)
 TRACKS = {"SKIFF": [(255, 90, 54), (34, 195, 180), (255, 191, 0), (149, 128, 255),    # vermilion teal amber violet
@@ -134,7 +140,7 @@ def derive(p):
     d["ink"] = bg
     d["light"] = luma(bg) > 128
     d["rec"] = to565(REC_LIGHT if d["light"] else REC_DARK)
-    if name == H1N:                                   # src/gfx.c lcd_tones
+    if name in LCD_LOOKS:                             # src/gfx.c lcd_tones
         mid = mix(bg, text, LCD_MID_PCT)
         d.update(mid=mid, dim=mid, line=d["raise_"], tint=d["raise_"], sel=text, key=text, rec=text)
     return name, d
@@ -168,7 +174,7 @@ def main():
     rows = [derive(p) for p in PALETTES]
     for name, d in rows:
         for f, b, lim, why in CHECKS:
-            lim = LCD_MIN.get((f, b), lim) if name == H1N else lim
+            lim = LCD_MIN.get((f, b), lim) if name in LCD_LOOKS else lim
             c = contrast(d[f], d[b])
             if c < lim:
                 fails.append(f"{name}: {f}/{b} {c:.2f} < {lim} ({why})")
@@ -204,6 +210,7 @@ def main():
                 f"#define UI_NEON_INDEX {names.index(NEON)}u          /* NEON: CRYPT's font, its own widgets */",
                 f"#define UI_QUARK_INDEX {names.index(QUARK)}u          /* QUARK: Skiff's font, its own widgets */",
                 f"#define UI_H1N_INDEX {names.index(H1N)}u          /* H1N: four tones, CRYPT's font, its own widgets */",
+                f"#define UI_H1N_NIGHT_INDEX {names.index(H1N_NIGHT)}u          /* H1N-NIGHT: H1N's look, its own colours */",
                 f"#define UI_THEME_TAG {THEME_TAG}u          /* stored id = UI_THEME_TAG + index */",
                 f"#define UI_PAL_TAG {PAL_TAG}u          /* before THEME: UI_PAL_TAG + an index into the eleven; below 20: "
                 "Felucca's oldest */"]

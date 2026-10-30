@@ -128,7 +128,7 @@ static struct {
     uint8_t light, crypt, neon;  /* (Skiff) THEME CRYPT, its own font and widgets (C2, C3); NEON, CRYPT's font and its
                                   * own widgets (design/mock_neon.py) */
     uint8_t quark;               /* (Skiff) THEME QUARK: Skiff's font, its own widgets (design/mock_quark.py) */
-    uint8_t h1n;                 /* (Skiff #29) THEME H1N: a monochrome LCD's four tones, CRYPT's font, its own widgets */
+    uint8_t h1n;                 /* (Skiff #29) THEME H1N, H1N-NIGHT: an LCD's four tones, CRYPT's font, own widgets */
     uint32_t gen;                /* bumped by palette_set (the text ramps follow) */
 } ux;
 /* The look (Skiff, DESIGN.md: BLOCKS; U2: the only one, FLAT and LINE retired): SURF tiles with square corners on the
@@ -207,7 +207,7 @@ static void palette_set(uint32_t i)
     ux.crypt = i == UI_CRYPT_INDEX;
     ux.neon = i == UI_NEON_INDEX;
     ux.quark = i == UI_QUARK_INDEX;
-    ux.h1n = i == UI_H1N_INDEX;
+    ux.h1n = i == UI_H1N_INDEX || i == UI_H1N_NIGHT_INDEX;
     uf.f = UF_FACE[ux.crypt || ux.neon || ux.h1n];   /* (CRYPT, NEON, H1N: the pixel faces) */
     uf.cap = UF_CAP[ux.crypt || ux.neon || ux.h1n];
     ux.bg = p->bg; ux.surf = p->surf; ux.text = p->text; ux.theme = p->theme;

@@ -5,7 +5,7 @@
   (the STEP page's piano roll scenes, roll_* step chance drum: also in build/ui_roll/<PALETTE>_<screen>.png)
   <PALETTE>/<screen>.png   240 x 240, true size
   sheet_<PALETTE>.png      every screen of one palette, 1x, with its name
-  (MENU > LARGE: LARGE_<PALETTE>/ and sheet_LARGE_<PALETTE>.png for SKIFF, CRYPT, NEON, QUARK and H1N)
+  (MENU > LARGE: LARGE_<PALETTE>/ and sheet_LARGE_<PALETTE>.png for SKIFF, CRYPT, NEON, QUARK, H1N and H1N-NIGHT)
 With SLOTDIR (ui_render.py OUTDIR SLOTDIR): its filmstrips of the rolling digits, SLOTDIR/*.ppm -> *.png.
 """
 import sys
