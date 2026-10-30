@@ -382,12 +382,14 @@ static int pat_keep_now(uint32_t id, const uint8_t *r)
 }
 /* the autosave's round may wait for its gap (project.c): 0 nothing waiting, 1 some, 2 no slot free (not to wait) */
 static uint32_t keep_waiting(void) { return pend_free() == PEND_N ? 0u : pend_free() ? 1u : 2u; }
-/* the first empty id, none waiting either; NPAT: the pool full */
+/* an empty id, none waiting either */
+static int pool_free(uint32_t id) { return !pool_used(id) && pend_at(id) == PEND_N; }
+/* the first free id; NPAT: the pool full */
 static uint32_t pool_alloc(void)
 {
     uint32_t id;
     for (id = 0; id < BK_POOL; id++)
-        if (!pool_used(id) && pend_at(id) == PEND_N)
+        if (pool_free(id))
             return id;
     return NPAT;
 }
@@ -398,12 +400,25 @@ static uint32_t pool_free_after(uint32_t orig, uint64_t taken)
     uint32_t i, id;
     for (i = 1; i <= BK_POOL; i++) {
         id = (orig + i) % BK_POOL;
-        if (!pool_used(id) && pend_at(id) == PEND_N && !((taken >> id) & 1u))
+        if (pool_free(id) && !((taken >> id) & 1u))
             return id;
     }
     return NPAT;
 }
 static uint32_t pool_alloc_after(uint32_t orig) { return pool_free_after(orig, 0); }
+/* (#14) NEW's number for track k's entry e, beside its neighbour as a copy's: the first free after the entry's
+ * pattern, else the nearest one's before it, else after it; a list naming none: the first free */
+static uint32_t pool_alloc_beside(uint32_t k, uint32_t e)
+{
+    uint32_t j;
+    for (j = e + 1u; j-- > 0u;)
+        if (ent_pat(k, j) != PAT_NONE)
+            return pool_alloc_after(ent_pat(k, j));
+    for (j = e + 1u; j < NENT; j++)
+        if (ent_pat(k, j) != PAT_NONE)
+            return pool_alloc_after(ent_pat(k, j));
+    return pool_alloc();
+}
 /* a pattern whose record is r (the LENs compared first); NPAT none */
 static uint32_t pool_find(const uint8_t *r)
 {
@@ -1681,6 +1696,27 @@ static void pool_empty(uint32_t id)
     pat_num(b + 8, id);
     ui_message(b);
 }
+/* (#14) .. NEW (OCT+ on a free number, playing too): an empty pattern there, the selected track's LEN .. DIR, nothing
+ * naming it yet. Said */
+static void pool_new(uint32_t id)
+{
+    char b[16];
+    id %= BK_POOL;
+    if (!BK_ON) {
+        ui_message("STORAGE ERROR");
+        return;
+    }
+    bank_poll();
+    rec_empty(bk_rec, TSEL);
+    if (pat_keep_now(id, bk_rec)) {
+        ui_way("PATTERNS FULL", WAY_PATTERNS);
+        return;
+    }
+    bk.gen++;
+    str_cpy(b, "NEW ", sizeof b);
+    pat_num(b + 4, id);
+    ui_message(b);
+}
 /* .. CLEAR UNUSED (its dialog's OCT+, stopped): every pattern nothing uses, cleared. Said: how many */
 static void pool_clear_unused(void)
 {
@@ -1721,9 +1757,9 @@ static void song_tag(char *b, uint32_t k, uint32_t e)
 /* OCT+: KNOB 2's pick into the entry (a pattern; the track on the entry: it comes in, at once stopped, at LAUNCH
  * playing), COPY: a new pattern, a copy of the entry's (the track's edits in it first), the entry's then (the track on
  * it: on the copy); no pick: the entry played (entry_ui). What happened, said. (2.0, #32, the user's pick 1A) NEW: a
- * new empty pattern (the first free number, the track's LEN .. DIR), then as a pattern put in; (#33) COPY+: the copy
- * into the first empty entry after the entry (its REPS too), the entry as it was; ((#44) on a chain: every part's,
- * into as many empty entries in a row after it, a chain again) */
+ * new empty pattern ((#14) its number beside its neighbour's, the track's LEN .. DIR), then as a pattern put in;
+ * (#33) COPY+: the copy into the first empty entry after the entry (its REPS too), the entry as it was; ((#44) on a
+ * chain: every part's, into as many empty entries in a row after it, a chain again) */
 /* (Skiff W3) .. into track k's entry e (the editor's LIST SET, COPY too): 0 done, else entry_go's rc (the track on the
  * entry), 1 NOTHING TO COPY (COPY+: NO EMPTY ENTRY AFTER), 4 PATTERNS FULL */
 static int song_put(uint32_t k, uint32_t e, uint32_t p)
@@ -1734,7 +1770,7 @@ static int song_put(uint32_t k, uint32_t e, uint32_t p)
     if (p == SPICK_NEW) {
         bank_poll();
         rec_empty(bk_rec, &trk[k]);
-        if ((n = pool_alloc()) == NPAT || pat_keep_now(n, bk_rec)) {
+        if ((n = pool_alloc_beside(k, e)) == NPAT || pat_keep_now(n, bk_rec)) {
             ui_way("PATTERNS FULL", WAY_PATTERNS);
             return 4;
         }

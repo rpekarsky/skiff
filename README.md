@@ -409,16 +409,16 @@ The notes live in **patterns**, and a project says which ones each track plays:
 - **SAVE › PATTERNS** shows the pool, what each pattern's LENGTH is and how many entries use it; KNOB 4, ACTION, is
   what OCT+ does (stopped, after asking): **CLEAR** a pattern nothing uses, **EMPTY** one (2.0: its notes and
   automation go, its number, its settings and the entries naming it stay) or **UNUSED** (2.0: every pattern nothing
-  uses cleared at once).
+  uses cleared at once); on an empty number CLEAR is **NEW**: an empty pattern exactly there, for SONG to put in.
 - **Each track has a list** of 16 entries, A–P. An entry names a pattern (or none) and its REPS, the passes it plays
   (1–16). A track is always on one entry, and HOME, the SEQ pages and the keys edit that entry's pattern.
 - **Nothing to save:** what a track has is kept as the pattern it is on, written to flash at the quiet autosave (and
   before a project save or load, or a backup).
 - **SEQ › SONG** edits the lists: KNOB 1 the entry, KNOB 2 what goes in it (OCT+ puts it in, the footer saying
-  what): REST, a kept pattern, **NEW** (2.0: a new empty pattern), **COPY** (a copy of the entry's pattern),
-  **COPY+** (2.0: the copy into the first empty entry after it, this entry left as it is), CLEAR, then (2.0)
-  **SOUND** (the track's sound now onto the entry: SET SOUND STRINGS) and **NO SOUND**; KNOB 3 the REPS
-  (CHAIN, 1x–16x); KNOB 4 SONG (OFF, ON, ONCE).
+  what): REST, a kept pattern, **NEW** (2.0: a new empty pattern, numbered beside the list's patterns as a copy
+  is), **COPY** (a copy of the entry's pattern), **COPY+** (2.0: the copy into the first empty entry after it, this
+  entry left as it is), CLEAR, then (2.0) **SOUND** (the track's sound now onto the entry: SET SOUND STRINGS) and
+  **NO SOUND**; KNOB 3 the REPS (CHAIN, 1x–16x); KNOB 4 SONG (OFF, ON, ONCE).
 - **An entry's sound** (2.0): when the track comes onto it, the entry loads its sound, as PRESETS or USER would (a
   program change): all but the track's own settings (LEVEL, PAN, MUTE, ARP, SCALE, the pattern's, the SLICER, the
   ducking). Playing, it switches on the entry's first step, with its pattern; stopped, at once. An entry without one

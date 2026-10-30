@@ -53,12 +53,15 @@ static int pat_load(track_t *t, uint32_t id);
 static int pool_used(uint32_t id);
 static uint32_t pool_alloc(void);
 static uint32_t pool_alloc_after(uint32_t orig);   /* ((2.0, #34) a copy's number: bank.c) */
+static uint32_t pool_alloc_beside(uint32_t k, uint32_t e);   /* ((#14) NEW's) */
+static int pool_free(uint32_t id);
 static uint32_t bank_cur(uint32_t k);
 static uint32_t bank_gen(void);
 static void entry_ui(uint32_t e);
 static uint32_t pool_len(uint32_t id);         /* (Skiff phase 5) SAVE > PATTERNS, the pool view (bank.c) */
 static uint32_t pool_refs(uint32_t id);
 static void pool_clear(uint32_t id);
+static void pool_new(uint32_t id);
 static uint32_t pool_unused(void);               /* ((2.0, #46) its ACTION: EMPTY, CLEAR UNUSED) */
 static void pool_empty(uint32_t id);
 static void pool_clear_unused(void);
@@ -2326,9 +2329,9 @@ static const char *song_act_name(void)
     }
     if (p == PAT_REST)
         return "SET REST";
-    if (p == SPICK_NEW) {                        /* (the first free number: none, NEW alone) */
+    if (p == SPICK_NEW) {                        /* ((#14) the number song_put takes: none, NEW alone) */
         str_cpy(b, "NEW", sizeof b);
-        if ((n = pool_alloc()) < NPAT) {
+        if ((n = pool_alloc_beside(song.sel % NTRK, sg.entry % NENT)) < NPAT) {
             b[3] = ' ';
             pat_num(b + 4, n);
         }
@@ -2393,15 +2396,17 @@ static uint32_t act_col(void)
     return ui.act;
 }
 
-/* (2.0, #46) SAVE > PATTERNS' ACTION as the footer says it: CLEAR, EMPTY 21, CLEAR 3 UNUSED */
+/* (#14) SAVE > PATTERNS' CLEAR on a free number: NEW there instead */
+static int bank_new_here(void) { return ui.bact == BA_CLEAR && pool_free(ui.bslot % NPAT); }
+/* (2.0, #46) SAVE > PATTERNS' ACTION as the footer says it: CLEAR, EMPTY 21, CLEAR 3 UNUSED, ((#14) NEW 40) */
 static const char *bank_act_name(void)
 {
     static char b[16] __attribute__((section(".pool")));
-    if (ui.bact == BA_CLEAR)
+    if (ui.bact == BA_CLEAR && !bank_new_here())
         return "CLEAR";
-    str_cpy(b, ui.bact == BA_EMPTY ? "EMPTY " : "CLEAR ", sizeof b);
-    if (ui.bact == BA_EMPTY) {
-        pat_num(b + 6, ui.bslot % NPAT);
+    str_cpy(b, ui.bact == BA_UNUSED ? "CLEAR " : ui.bact == BA_EMPTY ? "EMPTY " : "NEW ", sizeof b);
+    if (ui.bact != BA_UNUSED) {
+        pat_num(b + str_len(b), ui.bslot % NPAT);
     } else {
         fmt_int(b + 6, (int32_t)pool_unused());
         str_cpy(b + str_len(b), " UNUSED", sizeof b - str_len(b));
@@ -2445,9 +2450,9 @@ static int act_ready(void)
         return c == 3u ? !song.playing : up_used(ui.uslot) && (c == 1u || !song.playing);
     if (cur_page()->graph == GR_SLOTS && c == 1u)       /* ((Skiff U2) NAME; (1.2.1) DELETE) */
         return project_used((uint32_t)song.g[G_SLOT] - 1u) && !transport_busy();
-    if (cur_page()->graph == GR_BANK)                   /* (Skiff phase 5) a pattern nothing uses, stopped */
-        return !transport_busy() && (ui.bact == BA_UNUSED ? pool_unused() != 0u : pool_used(ui.bslot % NPAT) &&
-                                     (ui.bact == BA_EMPTY || !pool_refs(ui.bslot % NPAT)));   /* ((2.0) ACTION) */
+    if (cur_page()->graph == GR_BANK)                   /* (Skiff phase 5) a pattern nothing uses, stopped; ((#14) NEW) */
+        return bank_new_here() || (!transport_busy() && (ui.bact == BA_UNUSED ? pool_unused() != 0u :
+                                   pool_used(ui.bslot % NPAT) && (ui.bact == BA_EMPTY || !pool_refs(ui.bslot % NPAT))));
 #if FELUCCA_SLICE
     if (cur_page()->graph == GR_SLICES)
         return slice_act_ready(c);

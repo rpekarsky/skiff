@@ -1634,7 +1634,8 @@ static void act_do(void)
 #endif
     if (cur_page()->graph == GR_BANK) {                   /* (Skiff phase 5) the pool view: CLEAR the pattern picked,
                                                          * after its dialog, when nothing uses it (bank.c pool_clear);
-                                                         * ((2.0, #46) KNOB 4's ACTION: or EMPTY it, or CLEAR UNUSED) */
+                                                         * ((2.0, #46) KNOB 4's ACTION: or EMPTY it, or CLEAR UNUSED;
+                                                         * (#14) CLEAR on a free number: NEW there) */
         uint32_t id = ui.bslot % NPAT, n;
         char b[24];
         if (ui.bact == BA_UNUSED) {
@@ -1644,6 +1645,8 @@ static void act_do(void)
                 ui_message("STOP TO CLEAR");
             else
                 confirm_open(CF_CLEAR_UNUSED, n);
+        } else if (bank_new_here()) {
+            pool_new(id);
         } else if (!pool_used(id)) {
             ui_message(ui.bact == BA_EMPTY ? "NOTHING TO EMPTY" : "NOTHING TO CLEAR");
         } else if (ui.bact == BA_EMPTY) {
