@@ -709,6 +709,31 @@ static void drum(uint32_t kit)
     trk[3].p[P_SLEN] = 32;
 }
 static void eng(uint32_t e) { set_engine_of(TSEL, e); }
+/* (#41) HOME's whole patterns: the tracks LEN 16, 24, 32, 64, 48, 40, each bar a little different (a note, now and then
+ * a tie after it), the sequencer past its first bar where it has one; T1 muted */
+static void home_fit(uint32_t sel)
+{
+    static const uint8_t LEN[NTRK] = {16, 24, 32, 64, 48, 40};
+    uint32_t k, i;
+    for (k = 0; k < NTRK; k++) {
+        track_t *t = &trk[k];
+        for (i = 0; i < NSTEP; i++) {
+            step_t *st = &t->step[i];
+            memset(st, 0, sizeof *st);
+            st->time = ST_NOTE;
+            if ((i * (k + 3u) + i / 16u + k) % 7u < 2u) {
+                st->note[0] = (uint8_t)(36 + i % 24u);
+                st->n = 1;
+                st->vel = 99;
+            } else if (i && t->step[i - 1u].n && i % 3u == 0u)
+                st->time = ST_TIE;
+        }
+        t->p[P_SLEN] = LEN[k];
+        t->seq_idx = (uint16_t)((37u + 5u * k) % LEN[k]);
+    }
+    trk[0].p[P_MUTE] = 1;
+    sel_set(sel);
+}
 /* (Skiff phase 5) track k's steps saved into its entry e as a pattern of their own (the pattern it was on untouched) */
 static void keep_as(uint32_t k, uint32_t e) { trk_pid[k] = 0; bank_put(k, e, 0); }
 /* .. the pool mockup's (design/mock_p5.py pool): those patterns kept (LEN 16), each named by as many entries as it
@@ -808,6 +833,7 @@ enum { S_HOME, S_HOME_IDLE, S_MESSAGE, S_MESSAGE_KEY, S_MESSAGE_NOFILE, S_PRESET
        S_LANE_MIX, S_LANE_MIX_DX, S_SONG_SOUND, S_SONG_SOUNDS,                               /* (2.0, #36, #30) */
        S_SONG_CHAINS, S_SONG_CHAIN_COPY,                                                      /* (2.0, #44's box) */
        S_DRUM_KIT_USR, S_LANES_USR,                                                           /* (2.0, #35) */
+       S_HOME_FIT16, S_HOME_FIT24, S_HOME_FIT32, S_HOME_FIT64,                                /* (#41) */
        S_MOCK_HOME, S_MOCK_PRESETS, S_MOCK_SEQ, S_MOCK_DRUM, S_MOCK_MIXER, S_MOCK_DIALOG, S_MOCK_MENU, S_COUNT };
 static const char *const S_NAME[S_COUNT] = {"home", "home_idle", "message", "message_key", "message_nofile", "presets", "presets_nofav", "user",
     "project", "lanes", "step", "pattern", "chance", "motion", "drum",
@@ -840,7 +866,8 @@ static const char *const S_NAME[S_COUNT] = {"home", "home_idle", "message", "mes
     "chorus_flanger", "chorus_phaser", "presets_bass", "song_rest", "song_rest_pick",
     "notes_range", "notes_pick", "feel_range", "notes_overlap", "momentary", "pool_empty", "pool_unused", "confirm_empty",
     "song_once", "song_new", "song_copyplus", "song_chain", "song_chain3", "notes_chain", "lane_mix", "lane_mix_dx",
-    "song_sound", "song_sounds", "song_chains", "song_chain_copy", "drum_kit_usr", "lanes_usr", "mock_home", "mock_presets", "mock_seq", "mock_drum", "mock_mixer", "mock_dialog", "mock_menu"};
+    "song_sound", "song_sounds", "song_chains", "song_chain_copy", "drum_kit_usr", "lanes_usr",
+    "home_fit16", "home_fit24", "home_fit32", "home_fit64", "mock_home", "mock_presets", "mock_seq", "mock_drum", "mock_mixer", "mock_dialog", "mock_menu"};
 
 /* the scenes of the UI design screens: the state the UI-redesign
  * prototype drew them from (its setup(): two pattern tracks, the drum pattern on track 4, a synthetic scope),
@@ -997,6 +1024,10 @@ static void setup(int s)
     state();
     switch (s) {
     case S_HOME: song.octave = 2; song.rec = 1; usb.config = 1; break;
+    case S_HOME_FIT16: home_fit(0); break;
+    case S_HOME_FIT24: home_fit(1); break;
+    case S_HOME_FIT32: home_fit(2); break;
+    case S_HOME_FIT64: home_fit(3); break;
     case S_HOME_IDLE: song.playing = 0; song.batt_raw = 570; ui.hot_col = 1; ui.hot_t = 30; break;
     case S_MESSAGE: ui_say("LOADED ", "07 A VERY LONG PATTERN NAME"); break;
     case S_MESSAGE_KEY: ui_message("HOLD [SAVE]: UNDO"); break;            /* a message with a keycap */
