@@ -29,7 +29,8 @@ typedef struct {
  * later 2.0's settings (kept as read, so one going back and forth keeps them). Firmware before 2.0 refuses it */
 typedef struct {                               /* Skiff's settings: favorites.factory[15][0..31] in RAM, in its order */
     uint8_t restore_slot, restore_clean[4];    /* RESTORE LAST: the slot + 1 (0 none), the music's value then (project.c) */
-    uint8_t cpu;                               /* bit 0 CPU 2 CORES, 1 STEP PREVIEW, 2 CPU CLOCK 320 MHZ (ui.c CPU2_BYTE) */
+    uint8_t cpu;                               /* bit 0 CPU 2 CORES, 1 STEP PREVIEW, 2 CPU CLOCK 320 MHZ, 3 PRESETS KNOB
+                                                * PAN (ui.c CPU2_BYTE) */
     uint8_t mch[6];                            /* T1..T6 CHANNEL (ui.c ui_mch) */
     uint8_t smk_kv, smk_master;                /* (SMK-37) KEY VELOCITY, MASTER's level / 4 + 1 (ui.c SMK_*_BYTE) */
     uint8_t cpal, playhead, ret, rsv17;        /* THEME CUSTOM's flags (CPAL_BYTE), PLAYHEAD LINE, RETURN (RET_BYTE) */

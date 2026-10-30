@@ -22,14 +22,14 @@
 #if BOARD_SMK37
 /* (SMK-37 Pro, SMK37_UX.md) KEY VELOCITY in CONTROL (question 8); no LEDS row (button LEDs A: on or off only): MI_LEDS
  * past MI_COUNT, so its setting stays and no tab shows it */
-enum { MI_COLOR, MI_PHEAD, MI_LARGE, MI_ANIM, MI_SCROFF, MI_HINTS, MI_HOLD, MI_ACCEL, MI_BPMLOCK, MI_SCLLED, MI_PREVIEW,
-       MI_RETURN, MI_KVEL, MI_LOWCUT, MI_USB, MI_CLICK, MI_CLKLVL, MI_COUNTIN, MI_TUNE, MI_CLOCK, MI_ROUTE,
+enum { MI_COLOR, MI_PHEAD, MI_LARGE, MI_ANIM, MI_SCROFF, MI_HINTS, MI_HOLD, MI_ACCEL, MI_BPMLOCK, MI_PKNOB, MI_SCLLED,
+       MI_PREVIEW, MI_RETURN, MI_KVEL, MI_LOWCUT, MI_USB, MI_CLICK, MI_CLKLVL, MI_COUNTIN, MI_TUNE, MI_CLOCK, MI_ROUTE,
        MI_LEARN, MI_LCLEAR, MI_TCH1, MI_TCH2, MI_TCH3, MI_TCH4, MI_TCH5, MI_TCH6, MI_SERIAL_IN MI_RESTORE, MI_CPU, MI_CLK,
        MI_PANEL, MI_RESET, MI_ABOUT, MI_COUNT, MI_LEDS MI_SERIAL_OUT };
 static const char *const KVEL_N[SMK_KV_N] = {"DYNAMIC", "SOFT", "HARD", "FIXED 64", "FIXED 100", "FIXED 127"};
 #else
-enum { MI_COLOR, MI_PHEAD, MI_LARGE, MI_ANIM, MI_LEDS, MI_SCROFF, MI_HINTS, MI_HOLD, MI_ACCEL, MI_BPMLOCK, MI_SCLLED,
-       MI_PREVIEW, MI_RETURN, MI_LOWCUT, MI_USB, MI_CLICK, MI_CLKLVL, MI_COUNTIN, MI_TUNE, MI_CLOCK, MI_ROUTE,
+enum { MI_COLOR, MI_PHEAD, MI_LARGE, MI_ANIM, MI_LEDS, MI_SCROFF, MI_HINTS, MI_HOLD, MI_ACCEL, MI_BPMLOCK, MI_PKNOB,
+       MI_SCLLED, MI_PREVIEW, MI_RETURN, MI_LOWCUT, MI_USB, MI_CLICK, MI_CLKLVL, MI_COUNTIN, MI_TUNE, MI_CLOCK, MI_ROUTE,
        MI_LEARN, MI_LCLEAR, MI_TCH1, MI_TCH2, MI_TCH3, MI_TCH4, MI_TCH5, MI_TCH6, MI_SERIAL_IN MI_RESTORE, MI_CPU, MI_CLK,
        MI_PANEL, MI_RESET, MI_ABOUT, MI_COUNT MI_SERIAL_OUT };
 #endif   /* ((Skiff U4, A3) HINTS; RESET SETTINGS, a row with no value: its dialog) */   /* ((Skiff U3, R8, R2) CLOCK, MIDI IN, TUNE: the unit's, GLOBAL's and SYSTEM's before; CPU: read) */   /* (1.1: the metronome's rows in
@@ -41,7 +41,7 @@ static const char *const MI_NAME[MI_COUNT] = {"THEME", "PLAYHEAD", "LARGE", "ANI
                                               "LEDS",
 #endif
                                               "SCREEN OFF", "HINTS", "HOLD", "KNOB ACCEL", "BPM LOCK",
-                                              "SCALE LEDS", "STEP PREVIEW", "RETURN",
+                                              "PRESETS KNOB", "SCALE LEDS", "STEP PREVIEW", "RETURN",
 #if BOARD_SMK37
                                               "KEY VELOCITY",
 #endif
@@ -68,6 +68,7 @@ static const uint8_t MI_TAB[MI_COUNT] = {
     MTAB_DISPLAY,                                                           /* (Skiff U4) HINTS */
     MTAB_CONTROL, MTAB_CONTROL, MTAB_CONTROL,                               /* HOLD KNOB ACCEL BPM LOCK ((Skiff U2) FX
                                                                              * LATCH gone: a locked FX layer latches) */
+    MTAB_CONTROL,                                                           /* (wishlist #10, #38) PRESETS KNOB */
     MTAB_CONTROL,                                                           /* SCALE LEDS (1.2) */
     MTAB_CONTROL,                                                           /* (Skiff 1.3) STEP PREVIEW */
     MTAB_CONTROL,                                                           /* (2.0, D 2A) RETURN */
@@ -193,6 +194,7 @@ static uint32_t menu_get(uint32_t row)
     case MI_TCH1: case MI_TCH2: case MI_TCH3: case MI_TCH4: case MI_TCH5: case MI_TCH6: return trk_midi_ch(row - MI_TCH1);
     case MI_HINTS: return ui_hints_off != 0;
     case MI_PREVIEW: return PREVIEW_SET ? 1u : 0u;
+    case MI_PKNOB: return PRESETS_PAN_SET;
     case MI_RETURN: return ret_mode();
     case MI_TUNE: return (uint32_t)clamp(song.g[G_TUNE] + 50, 0, 100);
 #if FELUCCA_CPU2
@@ -217,6 +219,7 @@ static const char *menu_vname(uint32_t row, uint32_t v)
     switch (row) {
     case MI_COLOR: return v < NPALETTES ? UI_PALETTES[v].name : "CUSTOM";
     case MI_PHEAD: return v & 1u ? "LINE" : "THEME";
+    case MI_PKNOB: return v & 1u ? "PAN" : "PRESETS";
     case MI_LOWCUT: return SPK_EQ[v % 3u];
     case MI_HOLD: return HOLD_N[v & 3u];
     case MI_CLICK: return CLICK_N[v % 3u];
@@ -320,6 +323,7 @@ static void menu_put(uint32_t row, uint32_t v)
     case MI_PREVIEW:                                   /* ((Skiff 1.3) a bit of CPU2_BYTE) */
         CPU2_BYTE = (uint8_t)(v & 1u ? CPU2_BYTE | 2u : CPU2_BYTE & ~2u);
         break;
+    case MI_PKNOB: CPU2_BYTE = (uint8_t)(v & 1u ? CPU2_BYTE | 8u : CPU2_BYTE & ~8u); break;
     case MI_RETURN: RET_BYTE = (uint8_t)(RET_BAR - v % 3u); break;   /* ((2.0) ui.c ret_mode) */
 #if FELUCCA_CPU2
     case MI_CPU:                                       /* ((Skiff 1.3) the second core: started at power-on only, main.c) */
@@ -364,6 +368,7 @@ static void settings_reset(void)
     menu_put(MI_HINTS, 0);
     menu_put(MI_PHEAD, 0);
     menu_put(MI_PREVIEW, 0);
+    menu_put(MI_PKNOB, 0);
     menu_put(MI_RETURN, RET_BAR);
 #if FELUCCA_CPU2
     menu_put(MI_CPU, 0);                               /* ((Skiff 1.3) 1 CORE) */

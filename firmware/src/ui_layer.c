@@ -1416,6 +1416,8 @@ static void shift_map(smap_t *m)
                                                      * NOTES, FEEL: the selection's, ui_input.c sel_shift, sel_copy) */
     uint32_t i;
     m[0] = (smap_t){"PRESETS", pj, (uint8_t)(pj != SND)};
+    if (PRESETS_PAN_SET && pj == SND && g != GR_BROWSE)   /* ((wishlist #38) PRESETS KNOB PAN) */
+        m[0].job = "PAN";
     if (!(ui_prefs & PREF_BPM_LOCK) && !sh)
         m[1] = (smap_t){"SELECT", "TEMPO", 1};
     else if (ui.home)
