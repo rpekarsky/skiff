@@ -1001,7 +1001,7 @@ bit 4 says the device has it; firmware without it answers no COLORS.
 Op 0 shows the colours in that look at once and stores nothing (RAM only; the device's THEME, op 3 or a restart bring
 back the THEME in use). Op 1 stores them, makes CUSTOM the THEME in use and saves like `UI_SET` (rc 0 saved, 3 RAM
 only, 4 saved at STOP). Op 2 removes the set: the look's own colours are in use (THEME stays the look), saved the same
-way. rc 1: arguments (other than none, 1 or 28 bytes; an op past 3; a look past 9; pack7 that is not 22 bytes);
+way. rc 1: arguments (other than none, 1 or 28 bytes; an op past 3; a look past 10; pack7 that is not 22 bytes);
 nothing changes. **The device takes any colours**: the editor warns of those hard to read (`web/editor.html` `colorWarnings`:
 TEXT on BG and on SURF below 4.5:1, THEME and ACCENT on BG below 3:1, a track's colour on BG below 3:1; no
 THEME of the device's falls short). With colours nobody can read, the way back is op 2, or the device's MENU: hold HOME,
