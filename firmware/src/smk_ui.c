@@ -302,6 +302,8 @@ static void smk_ui_boot(void)
 {
     if (SMK_MASTER_BYTE)
         smk_master = ((int32_t)SMK_MASTER_BYTE - 1) * 4;
+    if (MASTER_SAFE_SET && smk_master > (int32_t)MASTER_SAFE_POT)
+        smk_master = MASTER_SAFE_POT;
     smk_kv_mode = (uint8_t)(SMK_KV_BYTE % SMK_KV_N);
 }
 

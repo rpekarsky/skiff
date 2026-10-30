@@ -160,6 +160,10 @@ static const char *const RET_SAY[3] = {"BACK", "BACK OVER 1 BEAT", "BACK OVER 1 
  * at boot (main.c), bit 2 of CPU2_BYTE; clear: 360, as 1.3. clk320: what this boot did about it, kept across a soft reset
  * (which keeps the PLL), forgotten at power-on; CLK_WHY: FM1_CLK320_E*'s words (hal/fm1_clk320_probe.h) */
 #define CLK320_SET ((CPU2_BYTE >> 2) & 1u)
+/* MENU > AUDIO > MASTER START SAFE: at power-on the level at most MASTER_SAFE_POT's, rising from silence (master.c
+ * master_rise; the SMK's K1 put there, smk_ui.c); bit 4 of CPU2_BYTE (bit 3 is PRESETS KNOB), clear (every older
+ * setting): LAST, as before */
+#define MASTER_SAFE_SET ((CPU2_BYTE >> 4) & 1u)
 enum { CLK_NONE, CLK_ARMED, CLK_ON, CLK_KEPT, CLK_REFUSED, CLK_TRIPPED };   /* (ARMED: switching; TRIPPED: a reset then, so
                                                         * no switch till power-off) */
 #define CLK320_MAGIC 0x434C4B32u                       /* "CLK2" */
