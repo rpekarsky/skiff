@@ -516,6 +516,17 @@ static void tracks_edit(uint32_t slot, int32_t steps)
     ml_knob(t, (uint32_t)(vp - t->p));
 }
 
+/* (wishlist #38) MENU > PRESETS KNOB PAN: PRESETS is the selected track's PAN, as MIXER's KNOB 2 */
+static void pan_turn(int32_t s)
+{
+    track_t *t = TSEL;
+    const param_desc_t *d = &TP[P_PAN];
+    t->p[P_PAN] = (int16_t)clamp(t->p[P_PAN] + accel(EN_PRESET, s, d->max - d->min), d->min, d->max);
+    motion_capture(t, P_PAN, t->p[P_PAN]);
+    ml_knob(t, P_PAN);
+    say_track_value(song.sel, P_PAN, "PAN");
+}
+
 /* SEQ > NOTES' piano roll (not the DRUM grid, whose white keys stay its steps): where step recording writes */
 static int roll_on(void)
 {
@@ -1849,20 +1860,30 @@ static void cursor_turn(int32_t s)
     cursor_set(c);
 }
 
+static void sound_or_pan_turn(int32_t s)
+{
+    if (PRESETS_PAN_SET)
+        pan_turn(s);
+    else
+        preset_step(s);
+}
+
 /* Discussions #92 / #94: the PRESETS knob by page (the menu, a dialog, NAME and the layers: ui_input before this).
  *   SEQ's NOTES and FEEL ((2.0) and the DRUM grid): the step cursor, over a long note's ties (cursor_turn; a sound load
  *     there would drop the track's motion: never); SHIFT held: the selection (sel_shift); (#31) REC on, a chord held:
  *     its LENGTH; PATTERN: the track's DIR
  *   the list / action pages USER, PATTERNS, PROJECT, SONG: the selection, as their KNOB 1; TOOLS and SLICES: nothing
- *   HOME, PRESETS and every other page (EDIT, ENV, LFO, FX, SCL, ARP, MIXER, GLOBAL, ...): the selected track's
- *     sound, one list over every engine, then the used user presets (preset_step). A sound load keeps the steps
- *     (SAVE held undoes it). Up to 1.0.3 it did that on HOME and PRESETS only; (wishlist #10) MENU > PRESETS KNOB
- *     HOME ONLY does that again (elsewhere: a message, nothing loaded) */
+ *   PRESETS: the selected track's sound, one list over every engine, then the used user presets (preset_step). A sound
+ *     load keeps the steps (SAVE held undoes it)
+ *   HOME and every other page (EDIT, ENV, LFO, FX, SCL, ARP, MIXER, GLOBAL, ...): the sound as on PRESETS (up to 1.0.3
+ *     HOME's only); (wishlist #38) MENU > PRESETS KNOB PAN: the track's PAN, the sound with GLO or SHIFT held */
 static void presets_turn(int32_t s)
 {
     const page_t *pg = cur_page();
     uint32_t g = pg->graph;
-    if (ui.home || g == GR_BROWSE) {
+    if (ui.home) {
+        sound_or_pan_turn(s);
+    } else if (g == GR_BROWSE) {
         preset_step(s);
     } else if (step_page(g) || g == GR_FEEL) {
         if (roll_on() && ui.entry_open) {
@@ -1887,10 +1908,8 @@ static void presets_turn(int32_t s)
         if (slice_page_ok())
             slice_knob(0, s);
 #endif
-    } else if (PRESETS_HOME_SET) {
-        ui_way("PRESETS: HOME ONLY", "MENU > CONTROL");
     } else {
-        preset_step(s);
+        sound_or_pan_turn(s);
     }
 }
 
@@ -2230,6 +2249,12 @@ static void ui_input(void)
                 combo = 1;
                 perf_encoders(ls, lp);
             }
+        } else if (ui.ly == LAYER_GLO && PRESETS_PAN_SET) {   /* ((wishlist #38) PRESETS KNOB PAN: GLO + PRESETS the
+                                                         * sound, as GLO + SELECT the tempo) */
+            if ((s = panel_enc(EN_PRESET)) != 0) {
+                combo = 1;
+                preset_step(s);
+            }
         } else {
             panel_enc(EN_PRESET);                       /* (a stray turn would load another sound) */
         }
@@ -2486,6 +2511,10 @@ static void ui_input(void)
         if (shift_held() && sel_shift(s)) {             /* ((2.0) SHIFT + PRESETS on NOTES, FEEL: the selection, a */
             shift_mark();                               /* SHIFT combo) */
             home_long = 0;
+        } else if (shift_held() && PRESETS_PAN_SET) {   /* ((wishlist #38) PRESETS KNOB PAN: elsewhere the sound) */
+            shift_mark();
+            home_long = 0;
+            preset_step(s);
         } else {
             presets_turn(s);
         }

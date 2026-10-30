@@ -112,6 +112,9 @@ loader 7,859 B (the limit: 7,936 B, below).
   625 scans a second (the FM-1 does about 909). SHIFT's map names the controls as the SMK prints them (K4, BT,
   SEQ REC, ...), and MENU > LARGE's knob pills say K5..K8. The play button is printed with a play sign, which the
   screen's fonts don't have, so the map calls it PLAY.
+- **K4 as PAN:** MENU > CONTROL > PRESETS KNOB PAN turns K4 into the selected track's PAN wherever it would load a
+  sound (HOME included; `T1 PAN +25%` in the header, as the PAN fader bank says it); GLOBE + K4 (or SHIFT + K4) loads
+  the sound on every page. FADER BANK's PAN needs the bank switched and the fader picked up first.
 - **MASTER on K1:** a virtual pot, 24 steps a detent. The header says its level while it turns (`MASTER 70%`), and
   the settings keep it once it rests 1.5 s, so it comes back at power-on.
 - **The extra buttons:** KNOB BANK is SHIFT, as HOME held but on a button of its own: the map, + BT for TAKE, and

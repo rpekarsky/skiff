@@ -146,8 +146,6 @@ static void smk_faders(void)
         uint32_t k = top + j, id = SMK_FB_P[smk_fbank % 4u], v = fm1_in.fader[j], tgt = k | smk_fbank << 4;
         track_t *t = &trk[k % NTRK];
         int32_t cur = t->p[id] - TP[id].min;
-        char b[24], val[8];
-        const char *unit = "";
         if (smk_fd[j].tgt != tgt) {                  /* another track or bank: wait for it to reach the value */
             smk_fd[j].tgt = (uint8_t)tgt;
             smk_fd[j].picked = 0;
@@ -167,14 +165,7 @@ static void smk_faders(void)
         smk_fd[j].last = (uint8_t)v;
         t->p[id] = (int16_t)(TP[id].min + (int32_t)v);
         smk_fd[j].wrote = t->p[id];
-        param_format(&TP[id], t->p[id], val, &unit);
-        b[0] = 'T';
-        b[1] = (char)('1' + k % NTRK);
-        b[2] = ' ';
-        str_cpy(b + 3, SMK_FB_N[smk_fbank % 4u], sizeof b - 3u);
-        str_cpy(b + str_len(b), " ", sizeof b - str_len(b));
-        str_cpy(b + str_len(b), val, sizeof b - str_len(b));
-        ui_say(b, unit ? unit : "");
+        say_track_value(k, id, SMK_FB_N[smk_fbank % 4u]);
         ui.force = 1;
     }
 }

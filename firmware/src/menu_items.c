@@ -68,7 +68,7 @@ static const uint8_t MI_TAB[MI_COUNT] = {
     MTAB_DISPLAY,                                                           /* (Skiff U4) HINTS */
     MTAB_CONTROL, MTAB_CONTROL, MTAB_CONTROL,                               /* HOLD KNOB ACCEL BPM LOCK ((Skiff U2) FX
                                                                              * LATCH gone: a locked FX layer latches) */
-    MTAB_CONTROL,                                                           /* (wishlist #10) PRESETS KNOB */
+    MTAB_CONTROL,                                                           /* (wishlist #10, #38) PRESETS KNOB */
     MTAB_CONTROL,                                                           /* SCALE LEDS (1.2) */
     MTAB_CONTROL,                                                           /* (Skiff 1.3) STEP PREVIEW */
     MTAB_CONTROL,                                                           /* (2.0, D 2A) RETURN */
@@ -194,7 +194,7 @@ static uint32_t menu_get(uint32_t row)
     case MI_TCH1: case MI_TCH2: case MI_TCH3: case MI_TCH4: case MI_TCH5: case MI_TCH6: return trk_midi_ch(row - MI_TCH1);
     case MI_HINTS: return ui_hints_off != 0;
     case MI_PREVIEW: return PREVIEW_SET ? 1u : 0u;
-    case MI_PKNOB: return PRESETS_HOME_SET;
+    case MI_PKNOB: return PRESETS_PAN_SET;
     case MI_RETURN: return ret_mode();
     case MI_TUNE: return (uint32_t)clamp(song.g[G_TUNE] + 50, 0, 100);
 #if FELUCCA_CPU2
@@ -219,7 +219,7 @@ static const char *menu_vname(uint32_t row, uint32_t v)
     switch (row) {
     case MI_COLOR: return v < NPALETTES ? UI_PALETTES[v].name : "CUSTOM";
     case MI_PHEAD: return v & 1u ? "LINE" : "THEME";
-    case MI_PKNOB: return v & 1u ? "HOME ONLY" : "EVERYWHERE";
+    case MI_PKNOB: return v & 1u ? "PAN" : "PRESETS";
     case MI_LOWCUT: return SPK_EQ[v % 3u];
     case MI_HOLD: return HOLD_N[v & 3u];
     case MI_CLICK: return CLICK_N[v % 3u];

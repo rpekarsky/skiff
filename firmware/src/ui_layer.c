@@ -1416,6 +1416,8 @@ static void shift_map(smap_t *m)
                                                      * NOTES, FEEL: the selection's, ui_input.c sel_shift, sel_copy) */
     uint32_t i;
     m[0] = (smap_t){"PRESETS", pj, (uint8_t)(pj != SND)};
+    if (PRESETS_PAN_SET && pj == SND && g != GR_BROWSE)   /* ((wishlist #38) PRESETS KNOB PAN) */
+        m[0].job = "PAN";
     if (!(ui_prefs & PREF_BPM_LOCK) && !sh)
         m[1] = (smap_t){"SELECT", "TEMPO", 1};
     else if (ui.home)
@@ -1436,6 +1438,8 @@ static void shift_map(smap_t *m)
     }
     for (i = 0; i < 6u; i++)
         m[6 + i] = ALL[i < 3u && sel ? 6u + i : i];
+    if (PRESETS_PAN_SET && !sel)
+        m[6] = (smap_t){"GLO + PRESETS", SND, 0};
     if (sel)                                         /* ((2.0) there SHIFT + EDIT deletes, ui_input.c sel_delete) */
         m[11] = (smap_t){"+ EDIT", "DELETE", 2};
 #if BOARD_SMK37
@@ -1443,9 +1447,9 @@ static void shift_map(smap_t *m)
          * PRESETS, PARA EDIT, BT SAVE, SEQ REC REC, KNOB BANK SHIFT. PLAY stays PLAY: the SMK prints a play sign there,
          * which the screen's fonts don't have */
         static const char *const FM[] = {"PRESETS", "SELECT", "GLO + SELECT", "ALGO", "EDIT + REC", "HOLD SAVE",
-                                         "+ SAVE", "+ REC", "KEYS + REC", "+ PRESETS", "+ EDIT"};
+                                         "+ SAVE", "+ REC", "KEYS + REC", "+ PRESETS", "+ EDIT", "GLO + PRESETS"};
         static const char *const SMK[] = {"K4", "K2", "GLOBE + K2", "K3", "PARA + SEQ REC", "HOLD BT",
-                                          "+ BT", "+ SEQ REC", "KEYS + SEQ REC", "+ K4", "+ PARA"};
+                                          "+ BT", "+ SEQ REC", "KEYS + SEQ REC", "+ K4", "+ PARA", "GLOBE + K4"};
         uint32_t j;
         for (i = 0; i < 12u; i++)
             for (j = 0; j < NELEM(FM); j++)

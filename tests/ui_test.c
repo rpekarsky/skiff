@@ -2124,47 +2124,82 @@ static int test_presets_knob(void)
     return bad;
 }
 
-static int presets_turn_loads(uint32_t page, uint32_t home_only)
+enum { K4_LOADS = 1, K4_PANS = 2 };
+static uint32_t presets_turn_does(uint32_t page, uint32_t pan_mode)
 {
     track_t before;
     ui_power_on();
-    menu_put(MI_PKNOB, home_only);
+    menu_put(MI_PKNOB, pan_mode);
     sel_set(0);
     my_steps(TSEL);
     ui.home = 0; ui.page = (uint8_t)page; page_entered();
     frame();
     before = *TSEL;
     turn(EN_PRESET, 1);
-    return TSEL->preset != before.preset || TSEL->eng_req != before.eng_req ||
-           memcmp(TSEL->step, before.step, sizeof before.step);
+    return (TSEL->preset != before.preset || TSEL->eng_req != before.eng_req ||
+            memcmp(TSEL->step, before.step, sizeof before.step) ? K4_LOADS : 0u) |
+           (TSEL->p[P_PAN] > before.p[P_PAN] ? K4_PANS : 0u);
 }
-/* (wishlist #10) MENU > PRESETS KNOB HOME ONLY: on a page where PRESETS loads a sound, nothing loaded but on PRESETS
- * itself, and a message saying why; every other page's PRESETS as with EVERYWHERE; HOME still loads */
-static int test_presets_knob_home(void)
+static int pan_said(void) { return ui.msg_t && !memcmp(ui.msg, "T1 PAN ", 7); }
+/* (wishlist #38) MENU > PRESETS KNOB PAN: where PRESETS loads a sound (HOME, EDIT, ENV, FX, MIXER, ...) it turns the
+ * selected track's PAN, said and recorded as MIXER's; SAVE > PRESETS and the pages with a PRESETS of their own keep it;
+ * GLO or SHIFT held + PRESETS: the sound */
+static int test_presets_knob_pan(void)
 {
-    int bad = 0, kept = 1, browse_ok = 0, home_ok;
-    uint32_t i, n_kept = 0, preset;
+    int bad = 0, panned = 1, kept = 1, browse_ok = 0, home_ok, glo_ok, shift_ok, rec_ok;
+    uint32_t i, n_panned = 0, preset;
+    int16_t pan;
     for (i = 0; i < NPAGES; i++) {
-        uint32_t g = PAGES[i].graph;
-        if (!page_visible(i) || !presets_turn_loads(i, 0))
+        uint32_t g = PAGES[i].graph, loads;
+        if (!page_visible(i))
             continue;
+        loads = presets_turn_does(i, 0) & K4_LOADS;
         if (g == GR_BROWSE) {
-            browse_ok = presets_turn_loads(i, 1);
-            continue;
+            browse_ok = presets_turn_does(i, 1) == K4_LOADS;
+        } else if (loads) {
+            panned &= presets_turn_does(i, 1) == K4_PANS && pan_said() && ui.page == i && !ui.home;
+            n_panned++;
+        } else {
+            kept &= !presets_turn_does(i, 1);
         }
-        kept &= !presets_turn_loads(i, 1) && msg_is("PRESETS: HOME ONLY") && ui.page == i && !ui.home;
-        n_kept++;
     }
     ui_power_on();
-    bad += check("(wishlist #10) a new unit: PRESETS KNOB EVERYWHERE", menu_get(MI_PKNOB) == 0u);
+    bad += check("(wishlist #38) a new unit: PRESETS KNOB PRESETS", menu_get(MI_PKNOB) == 0u &&
+                 str_eq(menu_vname(MI_PKNOB, 0), "PRESETS") && str_eq(menu_vname(MI_PKNOB, 1), "PAN"));
     menu_put(MI_PKNOB, 1);
     sel_set(0);
     preset = TSEL->preset;
+    pan = TSEL->p[P_PAN];
     turn(EN_PRESET, 1);
-    home_ok = ui.home && TSEL->preset != preset;
-    bad += check("(wishlist #10) PRESETS KNOB HOME ONLY: EDIT, ENV, FX, MIXER, ...: nothing loaded, a message",
-                 kept && n_kept >= 15u);
-    bad += check("(wishlist #10)   HOME and PRESETS still load", home_ok && browse_ok);
+    home_ok = ui.home && TSEL->preset == preset && TSEL->p[P_PAN] > pan && pan_said();
+    pan = TSEL->p[P_PAN];
+    btn_down(B_GLO); frame();
+    turn(EN_PRESET, 1);
+    btn_up(B_GLO); frames(100);
+    glo_ok = ui.home && TSEL->preset != preset && TSEL->p[P_PAN] == pan;
+    go_title("EDIT 2");
+    preset = TSEL->preset;
+    btn_down(B_HOME); frame();
+    turn(EN_PRESET, 1);
+    btn_up(B_HOME); frames(100);
+    shift_ok = !ui.home && !ui.menu && str_eq(cur_page()->title, "EDIT 2") && TSEL->preset != preset &&
+               TSEL->p[P_PAN] == pan;
+    menu_put(MI_PKNOB, 0);
+    preset = TSEL->preset;
+    btn_down(B_GLO); frame();
+    turn(EN_PRESET, 1);
+    btn_up(B_GLO); frames(100);
+    glo_ok &= TSEL->preset == preset;
+    ui_power_on(); menu_put(MI_PKNOB, 1); song.rec = 1; seq_start(); go_home();
+    turn(EN_PRESET, 1);
+    rec_ok = motion_count(TSEL) == 1;
+    stop_transport();
+    bad += check("(wishlist #38) PRESETS KNOB PAN: HOME, EDIT, ENV, FX, MIXER, ...: the track's PAN, said, no sound loaded",
+                 home_ok && panned && n_panned >= 15u);
+    bad += check("(wishlist #38)   SAVE > PRESETS still loads; NOTES, FEEL, PATTERN, the lists, sheets: their own",
+                 browse_ok && kept);
+    bad += check("(wishlist #38)   GLO + PRESETS (PAN only), SHIFT + PRESETS: the sound, no page, no MENU", glo_ok && shift_ok);
+    bad += check("(wishlist #38)   REC on: the PAN turn recorded as automation", rec_ok);
     return bad;
 }
 
@@ -9641,7 +9676,7 @@ int main(void)
     bad += test_step_rec();
     bad += test_step_rec();
     bad += test_presets_knob();
-    bad += test_presets_knob_home();
+    bad += test_presets_knob_pan();
     bad += test_midi();
     bad += test_save();
     bad += test_actions();
