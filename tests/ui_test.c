@@ -1573,7 +1573,7 @@ static int test_menu_tabs(void)
     bad += check("MENU tabs: DISPLAY CONTROL AUDIO SYSTEM MIDI ((1.3) MIDI appended), rows in a run, 6 shown fit the page; "
                  "tab gaps constant (S, LARGE)",
                  ok && MTAB_COUNT == 5u && str_eq(MTAB_NAME[0], "DISPLAY") && str_eq(MTAB_NAME[MTAB_MIDI], "MIDI") &&
-                 mtab_rows(MTAB_DISPLAY) == 8u && mtab_rows(MTAB_CONTROL) == 6u && mtab_rows(MTAB_AUDIO) == 6u &&   /* (#27 x2; (2.0) RETURN) */
+                 mtab_rows(MTAB_DISPLAY) == 8u && mtab_rows(MTAB_CONTROL) == 6u && mtab_rows(MTAB_AUDIO) == 6u &&   /* (#27, POPUP TIME; (2.0) RETURN) */
                  mtab_rows(MTAB_SYSTEM) == 6u + FELUCCA_CDC && mtab_rows(MTAB_MIDI) == 10u);   /* ((Skiff) SYSTEM: CPU
                                                          * CLOCK; (Skiff 2.0) USB SERIAL with the console only) */
 
@@ -9589,7 +9589,7 @@ static int test_playhead_line(void)
     return bad;
 }
 
-/* (Skiff #27) MENU > DISPLAY > POPUP TIME: SHORT, NORMAL (the default, stored 0), LONG; the TAKE box, the undo box
+/* MENU > DISPLAY > POPUP TIME: SHORT, NORMAL (the default, stored 0), LONG; the TAKE box, the undo box
  * and its window last half, as before, twice as long */
 static uint32_t popup_take_t(void)
 {
@@ -9612,7 +9612,7 @@ static int test_popup_time(void)
          menu_step(MI_POPUP, 1) == POPUP_LONG && menu_step(MI_POPUP, -1) == POPUP_SHORT;
     POPUP_BYTE = 0x7Fu;
     ok &= menu_get(MI_POPUP) == POPUP_NORMAL;
-    bad += check("(#27) POPUP TIME: a MENU > DISPLAY row after HINTS, NORMAL the default (stored 0, an unknown byte too)", ok);
+    bad += check("POPUP TIME: a MENU > DISPLAY row after HINTS, NORMAL the default (stored 0, an unknown byte too)", ok);
     press(B_HOME);
     song.rec = 0;
     ok = 1;
@@ -9623,9 +9623,14 @@ static int test_popup_time(void)
         ok &= take_box.kind == 1u && ui.take_t * 2u == UNDO_WIN * HALVES[v] && ui.undo_w == ui.take_t;
         ui.take_t = ui.undo_w = 0;
     }
+    ui.layer = LAYER_PERF;
+    undo_step(1);
+    ok &= !ui.take_t && ui.undo_w == UNDO_WIN && str_eq(ui.msg2, "[OCT-] BACK  OCT+ REDO");
+    ui.layer = 0;
     menu_put(MI_POPUP, POPUP_NORMAL);
     ok &= !POPUP_BYTE;
-    bad += check("(#27) POPUP TIME: the TAKE box, the undo box and its window x0.5 SHORT, x1 NORMAL, x2 LONG", ok);
+    bad += check("POPUP TIME: the TAKE box, the undo box and its window x0.5 SHORT, x1 NORMAL, x2 LONG; the header's "
+                 "undo (no box) as before", ok);
     ui_power_on();
     return bad;
 }

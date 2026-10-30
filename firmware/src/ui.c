@@ -150,7 +150,7 @@ static uint32_t ret_mode(void)
 }
 static uint32_t ret_beats(void) { return ret_mode() == RET_BAR ? 4u : ret_mode(); }   /* (SNAP 0, a beat, a bar) */
 static const char *const RET_SAY[3] = {"BACK", "BACK OVER 1 BEAT", "BACK OVER 1 BAR"};   /* (the footers: LET GO: ..) */
-/* (Skiff #27) MENU > DISPLAY > POPUP TIME: how long the TAKE box and the undo box (and its window) stay. A settings
+/* MENU > DISPLAY > POPUP TIME: how long the TAKE box and the undo box (and its window) stay. A settings
  * byte ([15][17]), the value ^ 1: 0 = NORMAL in every older setting; unknown = NORMAL */
 #define POPUP_BYTE (favorites.factory[15][17])
 enum { POPUP_SHORT, POPUP_NORMAL, POPUP_LONG };
@@ -1814,7 +1814,7 @@ static void undo_step(int redo)
     char b[24];
     if (redo ? !undo_back : undo_back >= undo_n) {
         ui_message(redo ? "NOTHING TO REDO" : "NOTHING TO UNDO");
-        ui.undo_w = undo_n ? popup_frames(UNDO_WIN) : 0u;   /* (the other way may still go) */
+        ui.undo_w = undo_n ? UNDO_WIN : 0u;       /* (the other way may still go) */
         return;
     }
     if (redo)
@@ -1829,13 +1829,14 @@ static void undo_step(int redo)
         undo_back++;
     if (take_box_fits()) {
         take_box_undo(redo, (uint32_t)c->trk - 1u, c->name);
+        ui.undo_w = ui.take_t;                    /* (as long as the box: POPUP TIME) */
     } else {                                      /* "UNDO T1 TAKE", then the keys */
         str_cpy(b, redo ? "REDO T1 " : "UNDO T1 ", sizeof b);
         b[6] = (char)('1' + (c->trk - 1u) % NTRK);
         ui_say(b, c->name);
         str_cpy(ui.msg2, "[OCT-] BACK  OCT+ REDO", sizeof ui.msg2);
+        ui.undo_w = UNDO_WIN;                     /* (as long as the two words: MSG_T each) */
     }
-    ui.undo_w = popup_frames(UNDO_WIN);
 }
 
 static void track_defaults_steps(track_t *t)

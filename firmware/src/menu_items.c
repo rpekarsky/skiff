@@ -66,7 +66,7 @@ static const uint8_t MI_TAB[MI_COUNT] = {
 #endif
     MTAB_DISPLAY,                                                           /* SCREEN OFF (1.1.5) */
     MTAB_DISPLAY,                                                           /* (Skiff U4) HINTS */
-    MTAB_DISPLAY,                                                           /* (Skiff #27) POPUP TIME */
+    MTAB_DISPLAY,                                                           /* POPUP TIME */
     MTAB_CONTROL, MTAB_CONTROL, MTAB_CONTROL,                               /* HOLD KNOB ACCEL BPM LOCK ((Skiff U2) FX
                                                                              * LATCH gone: a locked FX layer latches) */
     MTAB_CONTROL,                                                           /* SCALE LEDS (1.2) */
@@ -135,7 +135,7 @@ static const char *const SCROFF_N[5] = {"NEVER", "5 MIN", "15 MIN", "30 MIN", "6
 /* (2.0, D 2A) RETURN (ui.c ret_mode): MOMENTARY's values, FX's macros and PERFORM's throws come back at once or over
  * this long; 1 BAR the default */
 static const char *const RET_N[3] = {"SNAP", "1 BEAT", "1 BAR"};
-static const char *const POPUP_N[3] = {"SHORT", "NORMAL", "LONG"};   /* (Skiff #27) ui.c popup_frames */
+static const char *const POPUP_N[3] = {"SHORT", "NORMAL", "LONG"};   /* (ui.c popup_frames) */
 
 /* MENU > USB SERIAL (#67). The serial console is a developer tool (README: FELUCCA_CDC). ON (the default) presents it,
  * the descriptors byte for byte as before; OFF re-enumerates as audio + MIDI only, device class 0 (the bytes of a
