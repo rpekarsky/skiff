@@ -629,8 +629,10 @@ static int other_fw_test(void)
         settings_init();
         f.per = per4_now();
         memcpy(&f.per.favorites.factory[15][18], REC[i < 3 ? i : 2], sizeof REC[0]);
+        f.per.favorites.factory[15][17] = REC_KNOBS_OFF;   /* (another firmware's: not Skiff's, cleared) */
         if (i == 3) {
             memcpy(&favorites.factory[15][18], REC[2], sizeof REC[2]);
+            ui_rec_knobs = REC_KNOBS_OFF;
             memset(&f.sks, 0, sizeof f.sks);
             settings_export(&f.sks);
         }
@@ -655,18 +657,20 @@ static int other_fw_test(void)
         unit_g_adopt = ui_set_rev < 2u;
         autosave_boot(1);
         unit_g_boot();
-        printf("persist:   %s: CLOCK %d MIDI IN %d TUNE %d, LIST %u HINTS OFF %u LAUNCH %u KEYS %u FEEL %u BPM LOCK %u\n",
+        printf("persist:   %s: CLOCK %d MIDI IN %d TUNE %d, LIST %u HINTS OFF %u LAUNCH %u KEYS %u FEEL %u KNOBS OFF %u "
+               "BPM LOCK %u\n",
                i == 0 ? "Felucca 1.6" : i == 1 ? "JIANT" : i == 2 ? "Skiff" : "Skiff SKS1", song.g[G_CLOCK],
                song.g[G_ROUTE], song.g[G_TUNE],
                ui_ptag, ui_hints_off, (unsigned)launch_mode(), (unsigned)perf_scenes(), (ui_rec_prefs & REC_FEEL) != 0u,
-               (ui_prefs & PREF_BPM_LOCK) != 0u);
+               (unsigned)ui_rec_knobs, (ui_prefs & PREF_BPM_LOCK) != 0u);
         if (i < 2)
             ok = !song.g[G_CLOCK] && !song.g[G_ROUTE] && !song.g[G_TUNE] && !ui_ptag && !ui_hints_off &&
-                 launch_mode() == LAUNCH_LOOP && !perf_scenes() && !(ui_rec_prefs & REC_FEEL) && (ui_prefs & PREF_BPM_LOCK) &&
-                 ui_set_rev == 2u;
+                 launch_mode() == LAUNCH_LOOP && !perf_scenes() && !(ui_rec_prefs & REC_FEEL) && !ui_rec_knobs &&
+                 (ui_prefs & PREF_BPM_LOCK) && ui_set_rev == 2u;
         else
             ok = song.g[G_CLOCK] == 1 && song.g[G_ROUTE] == 1 && song.g[G_TUNE] == -4 && ui_ptag == 3u && ui_hints_off &&
-                 launch_mode() == LAUNCH_NOW && perf_scenes() && (ui_rec_prefs & REC_FEEL) && !(ui_prefs & PREF_BPM_LOCK);
+                 launch_mode() == LAUNCH_NOW && perf_scenes() && (ui_rec_prefs & REC_FEEL) && ui_rec_knobs == REC_KNOBS_OFF &&
+                 !(ui_prefs & PREF_BPM_LOCK);
         bad += check(i == 0 ? "Felucca 1.4+ settings: its FX keys etc. are not Skiff's CLOCK MIDI IN TUNE ..: the defaults"
                      : i == 1 ? "JIANT settings: its SKIN, USB, LOAD .. are not Skiff's: the defaults"
                      : i == 2 ? "  .. Skiff's own (its mark): every one as saved"

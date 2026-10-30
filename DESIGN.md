@@ -59,7 +59,7 @@ Things to avoid:
 | SEL | SCALE, CHORD (1.2.1, #8: the button is printed SEL; the page was SCL) | SEL layer: root on the keys | Lock |
 | EDIT | EDIT pages, on every page (U2; on NOTES with REC armed it clears the cursor step, with a step held its locks) | EDIT layer: engine on the keys | Lock |
 | SEQ | SEQ pages | SEQ TOOLS, on every page (U2) | Lock |
-| REC | Arm, on the press (U2); on an armed track every track disarmed (1.4.1) | — | REC layer, locked: CLEAR (held), CLICK, COUNT-IN, LEVEL, FEEL |
+| REC | Arm, on the press (U2); on an armed track every track disarmed (1.4.1) | — | REC layer, locked: CLEAR (held), CLICK, COUNT-IN, LEVEL, FEEL, KNOBS (C4) |
 | HOME | HOME (a locked layer closes); on HOME, the tracks or the scope; with a layer's button held: locks that layer (1.2.1, #13) | **SHIFT**. Let go alone: MENU (not over a dialog or NAME, U2) | — |
 | PLAY | Start / stop | — | — |
 | OCT− / OCT+ | Octave. In dialogs and on action pages: OCT− cancel (or HOME, as its footer says), OCT+ do it. While the undo box (or message) shows: OCT− undo further, OCT+ redo (on action pages too, U2) | Both for 5 s: UPDATE MODE | — |

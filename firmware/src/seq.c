@@ -254,6 +254,7 @@ static uint32_t seq_at(const track_t *t)
 /* (Skiff) FEEL (the REC layer's KNOB 4, ui.c REC_FEEL): REC and TAKES keep where a note was played, pos samples into
  * the playing step, as the NUDGE of the step it goes in (that one, or next: the next one, the note early for it) */
 static uint8_t rec_feel;
+static uint8_t rec_knobs_off;                 /* (Skiff) the REC layer's KNOBS OFF (ui.c REC_KNOBS_OFF; motion.c) */
 static int32_t feel_of(const track_t *t, uint32_t pos, uint32_t next)
 {
     uint32_t q = step_samples(t, div_samples((uint32_t)t->p[P_SDIV]), t->seq_idx) / 64u;

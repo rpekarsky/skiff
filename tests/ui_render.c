@@ -1057,9 +1057,10 @@ static void setup(int s)
     case S_CHANCE: go_page(GR_FEEL); my_steps(TSEL); step_set_chance(&TSEL->step[0], 65); break;   /* ((2.0) FEEL: on a note) */
     case S_MOTION: go_page(GR_EVENTS); ui.ev_top = 1; break;   /* ((U3, R5) AUTOMATION's top row: PLAY, CLEAR) */
     /* 1.1.5, the REC layer (REC held): over HOME, the settings as they come (CLICK OFF, COUNT-IN OFF, LEVEL MID);
-     * over STEP armed, CLICK REC, COUNT-IN 2 BARS, LEVEL HIGH (KNOB 2 just turned) */
+     * over STEP armed, CLICK REC, COUNT-IN 2 BARS, LEVEL HIGH (KNOB 2 just turned), (#23) KNOBS OFF */
     case S_REC_LAYER: go_home(); ui.layer = LAYER_REC; break;
-    case S_REC_LAYER_SET: song.rec = 1; go_page(GR_ROLL); ui.cursor = 6; rp_put(RP_CLICK, 1u); rp_put(RP_COUNTIN, 2u);
+    case S_REC_LAYER_SET: song.rec = 1; go_page(GR_ROLL); ui.cursor = 6; ui_rec_knobs = REC_KNOBS_OFF;
+        rp_put(RP_CLICK, 1u); rp_put(RP_COUNTIN, 2u);
         rp_put(RP_LEVEL, 2u); ui.layer = LAYER_REC; ui.hot_col = 1; ui.hot_t = 30; break;
     /* 1.1 (Discussion #131): the count-in over the page: 1 BAR on its second beat (3 to go); 2 BARS, the first bar's
      * first beat (STEP under it); the MENU's AUDIO tab with CLICK REC selected, COUNT-IN 1 BAR */
@@ -2098,11 +2099,12 @@ static void align_sweeps(void)
         cur_name = "sweep: REC layer values";
         ui.home = 1; ui.layer = LAYER_REC;              /* (the map and the cards: every value of the three, each track) */
         for (k = 0; k < 27u * 2u; k++) {
+            ui_rec_knobs = (uint8_t)(k & REC_KNOBS_OFF);
             rp_put(RP_CLICK, k % 3u); rp_put(RP_COUNTIN, k / 3u % 3u); rp_put(RP_LEVEL, k / 9u % 3u);
             sel_set((uint8_t)(k % NTRK)); ui_prefs = k >= 27u ? PREF_LARGE : 0u;
             ui.force = 1; draw_layer(); ui.force = 0;
         }
-        ui.layer = 0; sel_set(0); ui_prefs = 0; ui_rec_prefs = 0;
+        ui.layer = 0; sel_set(0); ui_prefs = 0; ui_rec_prefs = 0; ui_rec_knobs = rec_knobs_off = 0;
         cur_name = "sweep: count-in";
         for (i = 1; i <= 2u; i++)                       /* 1 and 2 bars, every beat */
             for (k = 4u * i; k >= 1u; k--) {

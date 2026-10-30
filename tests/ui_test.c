@@ -6483,17 +6483,37 @@ static int test_rec_layer(void)
     rec_open(); frames(100);
     {
         uint32_t a = leds_at(0), b = leds_at(250), w0 = 1u << white(0), w1 = 1u << white(1), w2 = 1u << white(2),
-                 w3 = 1u << white(3);
-        ok = ((a ^ b) & (w0 | w1 | w2 | w3)) == (w0 | w1 | w2 | w3) && !(a & b) && !((a | b) & ~(w0 | w1 | w2 | w3));
+                 w3 = 1u << white(3), w4 = 1u << white(4);
+        ok = ((a ^ b) & (w0 | w1 | w2 | w3)) == (w0 | w1 | w2 | w3) && (a & b) == w4 &&
+             !((a | b) & ~(w0 | w1 | w2 | w3 | w4));
         rp_put(RP_CLICK, 2); rp_put(RP_COUNTIN, 2);
         a = leds_at(0); b = leds_at(250);
-        ok &= (a & b) == (w1 | w2 | w3) && (a ^ b) == w0;
+        ok &= (a & b) == (w1 | w2 | w3 | w4) && (a ^ b) == w0;
         track_defaults_steps(TSEL);
         a = leds_at(0); b = leds_at(250);
         ok &= !((a | b) & w0);
+        ui_rec_knobs = REC_KNOBS_OFF; rp_apply();
+        a = leds_at(0); b = leds_at(250);
+        ok &= ((a ^ b) & w4) != 0u;
     }
+    ui_rec_knobs = 0; rp_apply();
     rec_close();
-    bad += check("  LEDs: CLEAR breathes (dark when empty), CLICK / COUNT-IN lit when on, LEVEL with the click", ok);
+    bad += check("  LEDs: CLEAR breathes (dark when empty), CLICK / COUNT-IN lit when on, LEVEL with the click, "
+                 "KNOBS when on", ok);
+
+    /* (Skiff #23) C4 turns KNOBS OFF and ON; OCT- puts it back as the layer opened */
+    ui_power_on();
+    ui_rec_prefs = 0; rp_apply();
+    rec_open(); frames(100);
+    key_down(white(4)); frame(); key_up(white(4)); frame();
+    ok = rec_knobs_off && msg_is("KNOBS OFF");
+    key_down(white(4)); frame(); key_up(white(4)); frame();
+    ok &= !rec_knobs_off && msg_is("KNOBS ON");
+    key_down(white(4)); frame(); key_up(white(4)); frame();
+    press(B_OCTDN);
+    ok &= !rec_knobs_off && !ui_rec_knobs && msg_is("UNDONE: REC");
+    rec_close();
+    bad += check("  C4: KNOBS OFF / ON, OCT- puts it back", ok);
 
     /* locked: PLAY works in it; another layer locked: REC arms, the lock stays */
     ui_power_on();
