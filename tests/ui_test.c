@@ -8336,8 +8336,12 @@ static int test_u4(void)
     menu_put(MI_CLK, 1);
     ok &= CLK320_SET;
     menu_put(MI_PKNOB, 1);
+    menu_put(MI_MSTART, 1);
+    ok &= PRESETS_PAN_SET && MASTER_SAFE_SET;
     menu_put(MI_COLOR, UI_LCD_NIGHT_INDEX);
     SHARED_BYTE = REC_KNOBS_OFF;
+    menu_put(MI_POPUP, 12);
+    menu_put(MI_PCLOSE, 1);
     hold(B_HOME);
     for (i = 0; i < 12u && ui.menu_sel != MI_RESET; i++) {
         turn(EN_ALGO, 1);
@@ -8348,9 +8352,11 @@ static int test_u4(void)
     ok &= !ui.menu && ui.confirm == CF_RESET_SET;
     press(B_OCTUP);
     bad += check("U4 A3: HINTS OFF hides the layer's first-tap hint; RESET SETTINGS asks, then the MENU's defaults (TUNE 0, LEDS DIM HI, HINTS ON, "
-                 "(Skiff) CPU CLOCK 360 MHZ, (wishlist #38) PRESETS KNOB PRESETS, (#29) THEME SKIFF, (#23) REC KNOBS ON)",
+                 "(Skiff) CPU CLOCK 360 MHZ, (wishlist #38) PRESETS KNOB PRESETS, (#29) THEME SKIFF, (#23) REC KNOBS ON, "
+                 "(#32) MASTER START LAST, (#27) POPUP TIME DEFAULT, POPUP CLOSE TIMER)",
                  ok && !ui_hints_off && song.g[G_TUNE] == 0 && settings_leds == LEDS_DIM && !CLK320_SET && msg_is("SETTINGS RESET") &&
-                 !PRESETS_PAN_SET && menu_get(MI_COLOR) == UI_SKIFF_INDEX && SHARED_BYTE == 0u);
+                 !PRESETS_PAN_SET && menu_get(MI_COLOR) == UI_SKIFF_INDEX && SHARED_BYTE == 0u && !MASTER_SAFE_SET &&
+                 !popup_time() && !ui.popup_on_input);
     ui_power_on();
     return bad;
 }

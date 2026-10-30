@@ -496,6 +496,52 @@ static int test_pad_light(void)
     bad += check("SMK RESET SETTINGS: PAD LIGHT 100 %", smk_padl() == 0u && host_pad[3] == col);
     return bad;
 }
+/* (integration) the settings the wishlist packed into older bytes: [15][17] REC KNOBS (bit 0), PAD LIGHT (1..2), POPUP
+ * TIME (3..7), each kept beside the others and read back; 0, every stock or older record's, all three defaults;
+ * CPU2_BYTE's PRESETS KNOB (bit 3) and MASTER START (bit 4) apart; POPUP CLOSE never saved; RESET SETTINGS all */
+static int test_settings_bits(void)
+{
+    int bad = 0, ok;
+    sks_t p;
+    smk_power_on();
+    SHARED_BYTE |= REC_KNOBS_OFF;
+    menu_put(MI_PADL, 0);
+    menu_put(MI_POPUP, POPUP_TIMES - 1u);
+    menu_put(MI_PCLOSE, 1);
+    menu_put(MI_PKNOB, 1);
+    settings_export(&p);
+    ok = p.s.shared == (REC_KNOBS_OFF | 3u << SMK_PADL_SHIFT | (POPUP_TIMES - 1u) << POPUP_SHIFT) &&
+         (p.s.cpu & 0x18u) == 8u;
+    SHARED_BYTE = 0;
+    CPU2_BYTE = 0;
+    ui.popup_on_input = 0;
+    settings_import(&p, (int)sizeof p);
+    ok &= (SHARED_BYTE & REC_KNOBS_OFF) && smk_padl() == 3u && popup_time() == POPUP_TIMES - 1u && PRESETS_PAN_SET &&
+          !MASTER_SAFE_SET && !ui.popup_on_input;
+    bad += check("(integration) [15][17]: REC KNOBS, PAD LIGHT, POPUP TIME side by side, saved and read back; PRESETS KNOB "
+                 "and MASTER START on bits 3 and 4 of CPU2_BYTE; POPUP CLOSE not saved", ok);
+    menu_put(MI_MSTART, 1);
+    ok = MASTER_SAFE_SET && PRESETS_PAN_SET && CPU2_BYTE == 0x18u;
+    menu_put(MI_PKNOB, 0);
+    ok &= MASTER_SAFE_SET && !PRESETS_PAN_SET;
+    p.s.shared = 0;
+    p.s.cpu = 0;
+    settings_import(&p, (int)sizeof p);
+    ok &= !SHARED_BYTE && !rec_knobs_off && smk_padl() == 0u && popup_time() == 0u && !MASTER_SAFE_SET && !PRESETS_PAN_SET;
+    bad += check("(integration) an older record (0 in both bytes): KNOBS ON, PAD LIGHT 100 %, POPUP DEFAULT, LAST, "
+                 "PRESETS", ok);
+    SHARED_BYTE = 0xFF;
+    menu_put(MI_MSTART, 1);
+    menu_put(MI_PKNOB, 1);
+    menu_put(MI_PADF, SMK_PF_ROW);
+    menu_put(MI_PCLOSE, 1);
+    settings_reset();
+    bad += check("(integration) RESET SETTINGS: every wishlist setting its default (KNOBS ON, PAD LIGHT 100 %, PAD FOLLOW "
+                 "PAGE, POPUP DEFAULT and TIMER, MASTER START LAST, PRESETS KNOB PRESETS)",
+                 !SHARED_BYTE && smk_pf_mode() == SMK_PF_PAGE && !ui.popup_on_input && !MASTER_SAFE_SET &&
+                 !PRESETS_PAN_SET);
+    return bad;
+}
 /* (wishlist #42) MENU > PAD FOLLOW: the rows' first steps in every mode and direction, the wraps, a LEN not of 8 or 16,
  * stopped the screen's page; on the pads: the playing step's row, a tap on the step shown, the view kept while a pad
  * is held, the DRUM grid's keys on the screen's page; OFF as before; a DISPLAY row after ANIM; saved, an older
@@ -1247,6 +1293,7 @@ int main(void)
     bad += test_perf_breath();
     bad += test_pad_light();
     bad += test_pad_follow();
+    bad += test_settings_bits();
     bad += test_faders();
     bad += test_entries();
     bad += test_layer_arrows();
