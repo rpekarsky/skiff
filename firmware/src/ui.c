@@ -121,11 +121,11 @@ static uint32_t up_gen;                      /* bumped on every user bank change
 /* (Skiff #27, @tradiuz) MENU > DISPLAY > THEME CUSTOM: the user's colours from the web editor (editor_preferences.c
  * COLORS, after Felucca 1.6's CUSTOM palette, Leo Kuroshita), eleven: BG SURF TEXT THEME ACCENT and the six tracks',
  * RGB565 low byte first, in DRUM-X's favourites row past its presets ([14][8..29]); CPAL_BYTE bit 0 a set stored, bit 1
- * in use, bits 2..4 its look (the THEME whose faces and widgets it wears). In use, settings.palette is the look. ((2.0)
+ * in use, bits 2..5 its look (the THEME whose faces and widgets it wears). In use, settings.palette is the look. ((2.0)
  * SKS1's cpal and cpal_cols: settings_persist.c; another firmware's bytes there never read as a set) */
 #define CPAL_BYTE (favorites.factory[15][14])
 #define CPAL_COLS (&favorites.factory[14][8])          /* (22 bytes: 5 + UI_NTRK colours) */
-_Static_assert(UI_NPALETTES <= 8u, "CPAL_BYTE keeps the look in bits 2..4");
+_Static_assert(UI_NPALETTES <= 16u, "CPAL_BYTE keeps the look in bits 2..5");
 static uint32_t cpal_bits(void) { return CPAL_BYTE; }
 #define cpal_stored() (cpal_bits() & 1u)
 #define cpal_on() ((cpal_bits() & 3u) == 3u)

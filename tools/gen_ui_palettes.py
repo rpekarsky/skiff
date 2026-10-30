@@ -21,10 +21,10 @@ blends at palette_set() time (src/gfx.c, the same integer maths as mix() here):
 Outside the palette: REC, a fixed red; the QR code's fixed black and white; the crash screen's fixed red.
 (Skiff, the review's R1) The palettes are the MENU's THEME: SKIFF (the default), HI-CON and PAPER (for reading in
 bright or dim light), CRYPT and NEON (their own font and widgets besides: src/gfx.c ux.crypt, ux.neon), QUARK (its own
-widgets: ux.quark), (#29) LCD and LCD NIGHT (four tones, CRYPT's font, their own widgets: ux.h1n). Saved settings
-name them by a tagged id (THEME_TAG + index). Earlier ids are migrated: PAL_TAG + an index into the eleven palettes
-before THEME (UI_PALETTE_MIGRATE11), and below 20 Felucca's oldest twenty (UI_PALETTE_MIGRATE20); a palette that is
-gone is SKIFF.
+widgets: ux.quark), (#29) LCD and LCD NIGHT (four tones, CRYPT's font, their own widgets: ux.h1n), then the plain
+GAMEBOY, AMBER and BLUE-STN (wishlist #47: old handhelds' and synths' LCDs). Saved settings name them by a tagged id
+(THEME_TAG + index). Earlier ids are migrated: PAL_TAG + an index into the eleven palettes before THEME
+(UI_PALETTE_MIGRATE11), and below 20 Felucca's oldest twenty (UI_PALETTE_MIGRATE20); a palette that is gone is SKIFF.
 --report prints the WCAG contrast of every pairing. The tool fails (exit 1) on any miss.
 """
 import argparse
@@ -55,6 +55,12 @@ PALETTES = [
     # inverted LCD, navy, pale ink. SURF stays the dusk's, as it makes the ghost (RAISE); THEME is the MID tone, which
     # the dusk's orange (and five of its six tracks) snapped to; ACCENT the ink
     ("LCD NIGHT", (16, 24, 32), (28, 40, 54),   (242, 232, 216), (156, 149, 148), (242, 232, 216)),
+    # (wishlist #47) the LCD mockups (bg, off-segment ghost, mid, ink), lightened or darkened until they pass the
+    # CHECKS: the fixed REC needs a light BG near PAPER's luminance, a dark one near black. A monochrome LCD has no
+    # second hue, so its ACCENT is its ink, as SKIFF's is its white; the tracks are THEME, as PAPER's
+    ("GAMEBOY", (196, 232, 72), (178, 216, 64),  (9, 32, 9),       (36, 74, 36),    (9, 32, 9)),
+    ("AMBER",  (255, 212, 100), (240, 194, 84),  (40, 20, 4),      (92, 54, 8),     (40, 20, 4)),
+    ("BLUE-STN", (22, 32, 92),  (31, 45, 115),   (232, 238, 255), (150, 170, 240), (255, 255, 255)),
 ]
 SKIFF, CRYPT, NEON, QUARK, LCD, LCD_NIGHT = "SKIFF", "CRYPT", "NEON", "QUARK", "LCD", "LCD NIGHT"
 LCD_LOOKS = (LCD, LCD_NIGHT)       # src/gfx.c ux.h1n: four tones, CRYPT's font, ui_h1n.c's widgets

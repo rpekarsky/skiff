@@ -1569,7 +1569,7 @@ static int custom_colors(void)
     reset();
     ok = colors_req(255, 0, 0, 0) == 0 && host_wire[6] == 0 && host_wire[7] == 0;
     ok &= palettes_listed() == NPALETTES && menu_n(MI_COLOR) == NPALETTES && (request(ED_UI_STATE, 0, 0), host_wire[5] & ED_UI_COLORS);
-    bad += check("(#27) COLORS: none stored (flags 0), the 22 bytes in pack7; THEME lists its six; UI_STATE's caps say COLORS", ok);
+    bad += check("(#27) COLORS: none stored (flags 0), the 22 bytes in pack7; THEME lists its own; UI_STATE's caps say COLORS", ok);
 
     ok = colors_req(0, UI_QUARK_INDEX, CC, 99) == 0 && tokens_are(CC) && ux.quark && !ux.neon && settings.palette == 0u &&
          host_wire[6] == 0 && !CPAL_BYTE && !favorites.factory[14][8] && ui.force;
@@ -1587,7 +1587,7 @@ static int custom_colors(void)
     menu_desc(0, &it);
     ok &= it.max == (int32_t)NPALETTES && it.value == (int32_t)NPALETTES && !strcmp(it.names[NPALETTES], "CUSTOM") &&
           menu_get(MI_COLOR) == NPALETTES && !strcmp(menu_vname(MI_COLOR, NPALETTES), "CUSTOM");
-    bad += check("(#27) THEME CUSTOM, last while stored: UI_PALETTES 9 names, UI_STATE and MENU_DESC say it is in use", ok);
+    bad += check("(#27) THEME CUSTOM, last while stored: UI_PALETTES one name more, UI_STATE and MENU_DESC say it is in use", ok);
 
     a[0] = 0; a[1] = 1; request(ED_UI_SET, a, 2);           /* HI-CON */
     ok = host_wire[5] == 3 && settings.palette == 1u && tokens_builtin(1) && cpal_stored() && !cpal_on() &&
@@ -1595,13 +1595,20 @@ static int custom_colors(void)
          menu_n(MI_COLOR) == NPALETTES + 1u;
     a[1] = NPALETTES; request(ED_UI_SET, a, 2);             /* CUSTOM again: in its look */
     ok &= host_wire[5] == 3 && settings.palette == UI_NEON_INDEX && cpal_on() && tokens_are(CC) && ux.neon;
-    menu_put(MI_COLOR, UI_LCD_NIGHT_INDEX);                 /* the MENU's THEME: the last, LCD NIGHT, then a step on is CUSTOM */
-    ok &= settings.palette == UI_LCD_NIGHT_INDEX && ux.h1n && T_BG == UI_PALETTES[UI_LCD_NIGHT_INDEX].bg &&
-          menu_step(MI_COLOR, 1) == NPALETTES;
+    menu_put(MI_COLOR, NPALETTES - 1u);                     /* the MENU's THEME: the last palette, then a step on is CUSTOM */
+    ok &= settings.palette == NPALETTES - 1u && tokens_builtin(NPALETTES - 1u) && menu_step(MI_COLOR, 1) == NPALETTES;
     menu_put(MI_COLOR, menu_step(MI_COLOR, 1));
     ok &= cpal_on() && settings.palette == UI_NEON_INDEX && tokens_are(CC) && menu_step(MI_COLOR, 1) == 0u &&
-          menu_step(MI_COLOR, -1) == UI_LCD_NIGHT_INDEX;
-    bad += check("(#27) THEME: CUSTOM and back by UI_SET and the MENU (it wraps round nine), the set kept, CUSTOM in its look", ok);
+          menu_step(MI_COLOR, -1) == NPALETTES - 1u;
+    bad += check("(#27) THEME: CUSTOM and back by UI_SET and the MENU (it wraps round), the set kept, CUSTOM in its look", ok);
+
+    ok = colors_req(1, NPALETTES - 1u, CC, 99) == 3 && host_wire[7] == NPALETTES - 1u;
+    menu_put(MI_COLOR, 0u);
+    menu_put(MI_COLOR, NPALETTES);
+    ok &= cpal_on() && settings.palette == NPALETTES - 1u && colors_req(255, 0, 0, 0) == 0 && host_wire[7] == NPALETTES - 1u;
+    colors_req(1, UI_NEON_INDEX, CC, 99);
+    bad += check("(wishlist #47) CUSTOM in the last palette's look (past CPAL_BYTE's old bits 2..4): kept by the MENU and the "
+                 "editor", ok);
 
     for (i = 0; i < CPAL_N; i++) bad_c[i] = (uint16_t)~CC[i];
     ok = colors_req(1, 0, bad_c, 1) == 1 && colors_req(1, 0, bad_c, 2 + 26 - 1) == 1 &&
@@ -1630,7 +1637,7 @@ static int custom_colors(void)
          tokens_builtin(UI_NEON_INDEX) && palettes_listed() == NPALETTES && menu_n(MI_COLOR) == NPALETTES;
     a[1] = NPALETTES; request(ED_UI_SET, a, 2);
     ok &= host_wire[5] == 1 && settings.palette == UI_NEON_INDEX;
-    bad += check("(#27) COLORS op 2: removed, the look's own colours; CUSTOM gone from THEME (UI_SET 6: rc 1)", ok);
+    bad += check("(#27) COLORS op 2: removed, the look's own colours; CUSTOM gone from THEME (UI_SET NPALETTES: rc 1)", ok);
 
     colors_req(1, UI_CRYPT_INDEX, CC, 99);
     ui_ph_line = 1;

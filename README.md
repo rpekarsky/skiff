@@ -269,9 +269,9 @@ as a dot on a turning circle, pushed by its modulators (epicycles riding on it),
 
 MENU › THEME: **SKIFF** (each track its own colour), **HI-CON**, **PAPER**, **CRYPT** (stone, amber and pixel letters,
 the graphs as ASCII art, torches and skulls), **NEON** (synthwave: chrome numbers, neon, the striped sun and the grid,
-a car on HOME's highway), **QUARK** (particle physics: beams and collisions, nuclei, calorimeter towers) and **LCD**
+a car on HOME's highway), **QUARK** (particle physics: beams and collisions, nuclei, calorimeter towers), **LCD**
 (a reflective monochrome LCD: four tones, pixel letters, a dot grid, segments; HOME's scope an equalizer), with
-**LCD NIGHT** its backlit night:
+**LCD NIGHT** its backlit night, and the plain LCD colours of **GAMEBOY**, **AMBER** and **BLUE-STN**:
 
 ![HOME in the six themes: SKIFF, HI-CON, PAPER, CRYPT, NEON, QUARK](docs/img/themes.png)
 
@@ -591,7 +591,8 @@ every setting back as a new unit has it. The web editor's Settings tab reads and
   stone, amber, pixel letters, the graphs as ASCII art, torches and skulls), NEON (synthwave: chrome numbers, neon,
   the striped sun and the grid, a car on HOME's highway), QUARK (particle physics: beams and collisions, nuclei,
   calorimeter towers, the tracks the colour charges) or LCD (a reflective monochrome LCD, after the Zoom H1n: four
-  tones, pixel letters, a faint dot grid, segmented gauges; HOME's scope a 16-band equalizer) and LCD NIGHT (the same LCD, backlit at night); the web editor follows it; and CUSTOM, last, once the web
+  tones, pixel letters, a faint dot grid, segmented gauges; HOME's scope a 16-band equalizer) and LCD NIGHT (the same LCD, backlit at night),
+  GAMEBOY, AMBER or BLUE-STN (an old LCD's colours, light but BLUE-STN); the web editor follows it; and CUSTOM, last, once the web
   editor has stored colours of your own (1.4). A unit on a palette of before that is gone (GREY, GREEN, AMBER, ICE,
   VIOLET, ROSE, NIGHT, MONO) starts on SKIFF
 - **PLAYHEAD** (1.4): THEME (default) or LINE: HOME's playhead a plain line, without the theme's torch, car or

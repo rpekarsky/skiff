@@ -531,6 +531,9 @@ const PAL_BUILTIN = [
   ["QUARK", 0x0021, 0x08a4, 0xdf9f, 0x4e9f, 0xff0c, 0xfaac, 0x46f0, 0x5c7f, 0x3efe, 0xe31c, 0xfeea],
   ["LCD", 0xb5d4, 0xb5d4, 0x1903, 0x1903, 0x1903, 0x1903, 0x1903, 0x1903, 0x1903, 0x1903, 0x1903],
   ["LCD NIGHT", 0x10c4, 0x1946, 0xf75b, 0x9cb2, 0xf75b, 0x9cb2, 0x9cb2, 0x9cb2, 0x9cb2, 0x9cb2, 0x9cb2],
+  ["GAMEBOY", 0xc749, 0xb6c8, 0x0901, 0x2244, 0x0901, 0x2244, 0x2244, 0x2244, 0x2244, 0x2244, 0x2244],
+  ["AMBER", 0xfeac, 0xf60a, 0x28a0, 0x59a1, 0x28a0, 0x59a1, 0x59a1, 0x59a1, 0x59a1, 0x59a1, 0x59a1],
+  ["BLUE-STN", 0x110b, 0x196e, 0xef7f, 0x955e, 0xffdf, 0x955e, 0x955e, 0x955e, 0x955e, 0x955e, 0x955e],
 ].map(([name, ...c]) => ({ name, c }));
 const rgb8 = (c) => [(c >> 11) * 255 / 31 | 0, ((c >> 5) & 63) * 255 / 63 | 0, (c & 31) * 255 / 31 | 0];   /* (as the generator's) */
 const hex565 = (c) => "#" + rgb8(c).map((x) => x.toString(16).padStart(2, "0")).join("");
@@ -2426,7 +2429,7 @@ function makeMockDevice(opt = {}) {
     uiCaps: opt.legacy || opt.v3 || opt.v5 ? 0 : opt.uiCaps ?? 25,   /* ((Skiff #27) 16: COLORS) */
     custom: { flags: 0, look: 0, c: new Array(11).fill(0), preview: null },   /* ((Skiff #27) THEME CUSTOM's set) */
     palette: 0, font: 0, monitor: 0, filter: 0, bankSig: 0,
-    palettes: ["SKIFF", "HI-CON", "PAPER", "CRYPT", "NEON", "QUARK", "LCD", "LCD NIGHT"],   // (Skiff, R1) THEME: the device's list (tools/gen_ui_palettes.py)
+    palettes: PAL_BUILTIN.map((x) => x.name),   // (Skiff, R1) THEME: the device's list (tools/gen_ui_palettes.py)
     favorites: Array.from({ length: ENG.length + 1 }, () => []),
     watch: false, v4: false, lastReq: 0,
   };
@@ -5946,7 +5949,7 @@ function applyCustom(c) {
 function renderPreferences(force = false) {
   const d = dev, p = d && d.preferences;
   const LOOK = { SKIFF: "dark", "HI-CON": "dark", PAPER: "light", CRYPT: "crypt", NEON: "neon", QUARK: "quark", LCD: "h1n",
-    "LCD NIGHT": "h1n" };   /* (Skiff 1.0) */
+    "LCD NIGHT": "h1n", GAMEBOY: "light", AMBER: "light", "BLUE-STN": "dark" };   /* (Skiff 1.0) */
   const cu = p && p.palettes[p.state.palette] === "CUSTOM" && p.colors && p.colors.stored ? p.colors : null;
   /* (#29) LCD NIGHT wears LCD's look in its own colours, as CUSTOM over LCD does */
   const night = !cu && p && p.palettes[p.state.palette] === "LCD NIGHT" ? PAL_BUILTIN.find((b) => b.name === "LCD NIGHT") : null;

@@ -2322,7 +2322,7 @@ int main(int argc, char **argv)
     char path[600];
     uint32_t p, s;
     static const char *const SHOW[] = {"SKIFF", "HI-CON", "PAPER", "CRYPT", "NEON", "QUARK", "LCD",   /* ((Skiff, R1) THEME's) */
-                                       "LCD NIGHT"};
+                                       "LCD NIGHT", "GAMEBOY", "AMBER", "BLUE-STN"};               /* (wishlist #47) */
     snprintf(path, sizeof path, "%s/report.txt", out);
     rep = fopen(path, "w");
     if (!rep) { fprintf(stderr, "cannot write %s\n", path); return 1; }
