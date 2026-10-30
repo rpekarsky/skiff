@@ -21,9 +21,10 @@ blends at palette_set() time (src/gfx.c, the same integer maths as mix() here):
 Outside the palette: REC, a fixed red; the QR code's fixed black and white; the crash screen's fixed red.
 (Skiff, the review's R1) The palettes are the MENU's THEME: SKIFF (the default), HI-CON and PAPER (for reading in
 bright or dim light), CRYPT and NEON (their own font and widgets besides: src/gfx.c ux.crypt, ux.neon), QUARK (its own
-widgets: ux.quark). Saved settings name them by a
-tagged id (THEME_TAG + index). Earlier ids are migrated: PAL_TAG + an index into the eleven palettes before THEME
-(UI_PALETTE_MIGRATE11), and below 20 Felucca's oldest twenty (UI_PALETTE_MIGRATE20); a palette that is gone is SKIFF.
+widgets: ux.quark), (#29) H1N and H1N-NIGHT (four tones, CRYPT's font, their own widgets: ux.h1n). Saved settings
+name them by a tagged id (THEME_TAG + index). Earlier ids are migrated: PAL_TAG + an index into the eleven palettes
+before THEME (UI_PALETTE_MIGRATE11), and below 20 Felucca's oldest twenty (UI_PALETTE_MIGRATE20); a palette that is
+gone is SKIFF.
 --report prints the WCAG contrast of every pairing. The tool fails (exit 1) on any miss.
 """
 import argparse
@@ -46,8 +47,17 @@ PALETTES = [
     # (Skiff) QUARK, design/mock_quark.py's A COLLIDER: a detector's dark, cyan readouts, gold for the one active thing;
     # the tracks the colour charges red, green, blue and their anticolours cyan, magenta, yellow
     ("QUARK",  (3, 7, 12),      (10, 21, 32),    (216, 243, 255), (79, 209, 255),  (255, 224, 102)),
+    # (Skiff #29) H1N, the PO's H1N GREY (a reflective monochrome LCD, the Zoom H1n's): four tones only, BG, the unlit
+    # segments' ghost (RAISE: 160,170,148), MID, ink. No tiles (SURF is BG, as an LCD has no boxes); src/gfx.c
+    # lcd_tones pins the derived tokens to the four; every track ink, told apart by its number
+    ("H1N",    (178, 186, 166), (178, 186, 166), (28, 32, 26),    (28, 32, 26),    (28, 32, 26)),
+    # (Skiff #29) H1N-NIGHT, the PO's pick of THEME CUSTOM over H1N (tests/ui_render.c's dusk set), as it shows: an
+    # inverted LCD, navy, pale ink. SURF stays the dusk's, as it makes the ghost (RAISE); THEME is the MID tone, which
+    # the dusk's orange (and five of its six tracks) snapped to; ACCENT the ink
+    ("H1N-NIGHT", (16, 24, 32), (28, 40, 54),   (242, 232, 216), (156, 149, 148), (242, 232, 216)),
 ]
-SKIFF, CRYPT, NEON, QUARK = "SKIFF", "CRYPT", "NEON", "QUARK"
+SKIFF, CRYPT, NEON, QUARK, H1N, H1N_NIGHT = "SKIFF", "CRYPT", "NEON", "QUARK", "H1N", "H1N-NIGHT"
+LCD_LOOKS = (H1N, H1N_NIGHT)       # src/gfx.c ux.h1n: four tones, CRYPT's font, ui_h1n.c's widgets
 # the six tracks' colours (src/gfx.c T_TRK; (Skiff phase 6) T5, T6 too): a palette not named here gives every track
 # its THEME. Told apart by lightness as well as hue, and always drawn with the track's number (never the colour alone)
 TRACKS = {"SKIFF": [(255, 90, 54), (34, 195, 180), (255, 191, 0), (149, 128, 255),    # vermilion teal amber violet
@@ -72,6 +82,7 @@ REC_DARK, REC_LIGHT = (255, 72, 72), (190, 24, 40)
 QR_LIGHT, QR_DARK, CRASH_BG, CRASH_INK = (255, 255, 255), (0, 0, 0), (160, 0, 0), (255, 255, 255)
 PCT = {"MID": 70, "DIM": 42, "LINE": 18, "SEL": 80, "TINT": 12, "KEY": 78}
 RAISE_PCT = 12                     # SURF -> TEXT
+LCD_MID_PCT = 60                   # (H1N) its MID tone: BG -> TEXT
 
 
 def to565(c, exact=False):
@@ -129,6 +140,9 @@ def derive(p):
     d["ink"] = bg
     d["light"] = luma(bg) > 128
     d["rec"] = to565(REC_LIGHT if d["light"] else REC_DARK)
+    if name in LCD_LOOKS:                             # src/gfx.c lcd_tones
+        mid = mix(bg, text, LCD_MID_PCT)
+        d.update(mid=mid, dim=mid, line=d["raise_"], tint=d["raise_"], sel=text, key=text, rec=text)
     return name, d
 
 
@@ -144,6 +158,10 @@ CHECKS = [("text", "bg", 12.0, "body text"), ("text", "surf", 9.0, "body text on
           ("ink", "key", 4.5, "a keycap's label"), ("key", "bg", 3.0, "a keycap on the background"),
           ("key", "surf", 2.5, "a keycap on a surface"), ("ink", "dim", 1.8, "an unavailable keycap's label"),
           ("ink", "accent", 4.5, "text on the ARM badge")]
+# (H1N) a reflective LCD's floor: its ink 8.3:1 on its BG at best, the unlit ghost 1.2:1; the checks it can't meet
+# with four tones, at what its tones give (rounded down)
+LCD_MIN = {("text", "bg"): 8.0, ("text", "surf"): 8.0, ("mid", "bg"): 3.0, ("mid", "surf"): 3.0, ("line", "bg"): 1.2,
+           ("text", "raise_"): 6.5}
 
 
 def main():
@@ -156,6 +174,7 @@ def main():
     rows = [derive(p) for p in PALETTES]
     for name, d in rows:
         for f, b, lim, why in CHECKS:
+            lim = LCD_MIN.get((f, b), lim) if name in LCD_LOOKS else lim
             c = contrast(d[f], d[b])
             if c < lim:
                 fails.append(f"{name}: {f}/{b} {c:.2f} < {lim} ({why})")
@@ -190,10 +209,13 @@ def main():
                 f"#define UI_CRYPT_INDEX {names.index(CRYPT)}u          /* CRYPT: its own font and widgets too */",
                 f"#define UI_NEON_INDEX {names.index(NEON)}u          /* NEON: CRYPT's font, its own widgets */",
                 f"#define UI_QUARK_INDEX {names.index(QUARK)}u          /* QUARK: Skiff's font, its own widgets */",
+                f"#define UI_H1N_INDEX {names.index(H1N)}u          /* H1N: four tones, CRYPT's font, its own widgets */",
+                f"#define UI_H1N_NIGHT_INDEX {names.index(H1N_NIGHT)}u          /* H1N-NIGHT: H1N's look, its own colours */",
                 f"#define UI_THEME_TAG {THEME_TAG}u          /* stored id = UI_THEME_TAG + index */",
                 f"#define UI_PAL_TAG {PAL_TAG}u          /* before THEME: UI_PAL_TAG + an index into the eleven; below 20: "
                 "Felucca's oldest */"]
-        out += [f"#define UI_{k}_PCT {v}" for k, v in PCT.items()] + [f"#define UI_RAISE_PCT {RAISE_PCT}   /* SURF -> TEXT */"]
+        out += [f"#define UI_{k}_PCT {v}" for k, v in PCT.items()] + [f"#define UI_RAISE_PCT {RAISE_PCT}   /* SURF -> TEXT */",
+                                                    f"#define UI_LCD_MID_PCT {LCD_MID_PCT}   /* (H1N) BG -> TEXT */"]
         out += [f"#define UI_REC_DARK 0x{to565(REC_DARK):04x}u", f"#define UI_REC_LIGHT 0x{to565(REC_LIGHT):04x}u",
                 f"#define UI_QR_LIGHT 0x{to565(QR_LIGHT):04x}u", f"#define UI_QR_DARK 0x{to565(QR_DARK):04x}u",
                 f"#define UI_CRASH_BG 0x{to565(CRASH_BG):04x}u", f"#define UI_CRASH_INK 0x{to565(CRASH_INK):04x}u", "",

@@ -128,6 +128,7 @@ static struct {
     uint8_t light, crypt, neon;  /* (Skiff) THEME CRYPT, its own font and widgets (C2, C3); NEON, CRYPT's font and its
                                   * own widgets (design/mock_neon.py) */
     uint8_t quark;               /* (Skiff) THEME QUARK: Skiff's font, its own widgets (design/mock_quark.py) */
+    uint8_t h1n;                 /* (Skiff #29) THEME H1N, H1N-NIGHT: an LCD's four tones, CRYPT's font, own widgets */
     uint32_t gen;                /* bumped by palette_set (the text ramps follow) */
 } ux;
 /* The look (Skiff, DESIGN.md: BLOCKS; U2: the only one, FLAT and LINE retired): SURF tiles with square corners on the
@@ -168,6 +169,33 @@ static uint32_t ux_luma(uint16_t c)        /* 0..255 */
     return ((c >> 11) * 255u / 31u * 54u + ((c >> 5) & 63u) * 255u / 63u * 183u + (c & 31u) * 255u / 31u * 19u) >> 8;
 }
 
+/* (Skiff #29) THEME H1N: a reflective LCD's four tones, BG, RAISE (the unlit segments' ghost), MID and TEXT (its ink).
+ * Every token is one of them (tools/gen_ui_palettes.py derive); cv_lcd_rows snaps every pixel drawn to the nearest by
+ * luma, so text, curves and corners lose their anti-aliasing. THEME CUSTOM's colours over it: the same, from theirs */
+static struct { uint16_t tone[4]; uint32_t th[3]; } lcd;   /* lightest last; th: the lumas half way between */
+static uint32_t lcd_luma(uint16_t c) { return (c >> 11) * 6u + ((c >> 5) & 63u) * 10u + (c & 31u); }
+static uint16_t lcd_snap(uint16_t c)
+{
+    uint32_t l = lcd_luma(c);
+    return lcd.tone[(l > lcd.th[0]) + (l > lcd.th[1]) + (l > lcd.th[2])];
+}
+static void lcd_tones(void)
+{
+    uint32_t i, k;
+    ux.mid = ux.dim = ux_mix(ux.bg, ux.text, UI_LCD_MID_PCT);
+    ux.line = ux.tint = ux.lane = ux.grid = ux.raise;
+    ux.sel = ux.key = ux.rec = ux.text;
+    lcd.tone[0] = ux.bg; lcd.tone[1] = ux.raise; lcd.tone[2] = ux.mid; lcd.tone[3] = ux.text;
+    for (i = 1; i < 4u; i++)
+        for (k = i; k && lcd_luma(lcd.tone[k - 1u]) > lcd_luma(lcd.tone[k]); k--) {
+            uint16_t t = lcd.tone[k];
+            lcd.tone[k] = lcd.tone[k - 1u];
+            lcd.tone[k - 1u] = t;
+        }
+    for (i = 0; i < 3u; i++)
+        lcd.th[i] = (lcd_luma(lcd.tone[i]) + lcd_luma(lcd.tone[i + 1u])) / 2u;
+}
+
 /* (Skiff #27) THEME CUSTOM's colours over the palette's: 11 RGB565, low byte first (BG SURF TEXT THEME ACCENT, the six
  * tracks'), the rest derived from them as from a palette's; 0: the palette's own (ui.c theme_apply) */
 static const uint8_t *ux_cpal;
@@ -179,8 +207,9 @@ static void palette_set(uint32_t i)
     ux.crypt = i == UI_CRYPT_INDEX;
     ux.neon = i == UI_NEON_INDEX;
     ux.quark = i == UI_QUARK_INDEX;
-    uf.f = UF_FACE[ux.crypt || ux.neon];         /* (CRYPT, NEON: the pixel faces) */
-    uf.cap = UF_CAP[ux.crypt || ux.neon];
+    ux.h1n = i == UI_H1N_INDEX || i == UI_H1N_NIGHT_INDEX;
+    uf.f = UF_FACE[ux.crypt || ux.neon || ux.h1n];   /* (CRYPT, NEON, H1N: the pixel faces) */
+    uf.cap = UF_CAP[ux.crypt || ux.neon || ux.h1n];
     ux.bg = p->bg; ux.surf = p->surf; ux.text = p->text; ux.theme = p->theme;
     ux.accent = p->accent;
     for (k = 0; k < UI_NTRK; k++)
@@ -201,6 +230,8 @@ static void palette_set(uint32_t i)
     ux.grid = ux_mix(ux.surf, ux.text, 6);
     ux.light = ux_luma(ux.bg) > 128u;
     ux.rec = ux.light ? UI_REC_LIGHT : UI_REC_DARK;
+    if (ux.h1n)
+        lcd_tones();
     ux.gen++;                                    /* the text ramps change with the coverage curve */
 }
 
@@ -250,9 +281,33 @@ static void cv_vhs_rows(uint32_t y, uint32_t r0)
                 cv_px[r * cv_w + i] = swap16(ux_mix(swap16(cv_px[r * cv_w + i]), ux.bg, 55));
 }
 
+/* (Skiff #29) THEME H1N: rows r0.. of the canvas in the LCD's four tones, and its dot grid: the ghost every 3 px of the
+ * screen on open BG (not in a 1 px stroke of BG: the letters on an inverted band) */
+static void cv_lcd_rows(uint32_t x, uint32_t y, uint32_t r0)
+{
+    uint32_t r, i, last = ~0u;
+    uint16_t out = 0, bg = swap16(ux.bg);
+    if (!ux.h1n)
+        return;
+    for (i = r0 * cv_w; i < cv_h * cv_w; i++) {
+        if (cv_px[i] != last) {
+            last = cv_px[i];
+            out = swap16(lcd_snap(swap16(cv_px[i])));
+        }
+        cv_px[i] = out;
+    }
+    for (r = r0 + (3u - (y + r0) % 3u) % 3u; r < cv_h; r += 3u) {
+        uint16_t *p = cv_px + r * cv_w, *up = r > r0 ? p - cv_w : p, *dn = r + 1u < cv_h ? p + cv_w : p;
+        for (i = (3u - x % 3u) % 3u; i < cv_w; i += 3u)
+            if (p[i] == bg && up[i] == bg && dn[i] == bg && (!i || p[i - 1u] == bg) && (i + 1u == cv_w || p[i + 1u] == bg))
+                p[i] = swap16(ux.raise);
+    }
+}
+
 static void cv_blit(uint32_t x, uint32_t y)
 {
     cv_vhs_rows(y, 0);
+    cv_lcd_rows(x, y, 0);
     GFX_HOOK_BLIT(x, y, 0u);
     lcd_blit(x, y, cv_w, cv_h, cv_px);
 }
@@ -261,6 +316,7 @@ static void cv_blit(uint32_t x, uint32_t y)
 static void cv_blit_from(uint32_t x, uint32_t y, uint32_t r0)
 {
     cv_vhs_rows(y, r0);
+    cv_lcd_rows(x, y, r0);
     GFX_HOOK_BLIT(x, y, r0);
     if (r0 < cv_h)
         lcd_blit(x, y + r0, cv_w, cv_h - r0, cv_px + r0 * cv_w);
