@@ -821,6 +821,7 @@ enum { S_HOME, S_HOME_IDLE, S_MESSAGE, S_MESSAGE_KEY, S_MESSAGE_NOFILE, S_PRESET
        S_DRUM_KIT_USR, S_LANES_USR,                                                           /* (2.0, #35) */
        S_MENU_PKNOB, S_PKNOB_PAN, S_SHIFT_PAN,                                               /* (wishlist #38) */
        S_POOL_NEW,                                                                            /* (#14) */
+       S_HOME_LISTS,                                                                          /* (#34) */
        S_MOCK_HOME, S_MOCK_PRESETS, S_MOCK_SEQ, S_MOCK_DRUM, S_MOCK_MIXER, S_MOCK_DIALOG, S_MOCK_MENU, S_COUNT };
 static const char *const S_NAME[S_COUNT] = {"home", "home_idle", "message", "message_key", "message_nofile", "presets", "presets_nofav", "user",
     "project", "lanes", "step", "pattern", "chance", "motion", "drum",
@@ -854,7 +855,7 @@ static const char *const S_NAME[S_COUNT] = {"home", "home_idle", "message", "mes
     "chorus_flanger", "chorus_phaser", "presets_bass", "song_rest", "song_rest_pick",
     "notes_range", "notes_pick", "feel_range", "notes_overlap", "momentary", "pool_empty", "pool_unused", "confirm_empty",
     "song_once", "song_new", "song_copyplus", "song_chain", "song_chain3", "notes_chain", "lane_mix", "lane_mix_dx",
-    "song_sound", "song_sounds", "song_chains", "song_chain_copy", "drum_kit_usr", "lanes_usr", "menu_presets_knob", "presets_knob_pan", "shift_pan", "pool_new", "mock_home", "mock_presets", "mock_seq", "mock_drum", "mock_mixer", "mock_dialog", "mock_menu"};
+    "song_sound", "song_sounds", "song_chains", "song_chain_copy", "drum_kit_usr", "lanes_usr", "menu_presets_knob", "presets_knob_pan", "shift_pan", "pool_new", "home_lists", "mock_home", "mock_presets", "mock_seq", "mock_drum", "mock_mixer", "mock_dialog", "mock_menu"};
 
 /* the scenes of the UI design screens: the state the UI-redesign
  * prototype drew them from (its setup(): two pattern tracks, the drum pattern on track 4, a synthetic scope),
@@ -1004,6 +1005,7 @@ static void roll_scene(int s)
 static void setup(int s)
 {
     memset(kb_chn, 0, sizeof kb_chn);               /* no key held (roll_playing holds one) */
+    memset(midi_at, 0, sizeof midi_at);             /* ((#34) no MIDI IN mark: home_lists sets two) */
     fm1_in.buttons = 0;                             /* (no button held: momentary holds LFO) */
     if (s >= S_MOCK_HOME) {
         mock_state(s);
@@ -1411,6 +1413,15 @@ static void setup(int s)
         go_page(GR_FEEL); cursor_set(4); ui.hot_col = 0; ui.hot_t = 30;
         break;
     }
+    case S_HOME_LISTS:                              /* (#34) the lanes' patterns, playing SONG ON: T2 on a chain, T3
+                                                     * on a REST, MIDI IN playing T1 and T2, T5 muted */
+        song_lists(1);
+        lists.ent[1][2][1] = REPS_CHAIN;
+        lists.ent[2][0][0] = PAT_REST;
+        midi_at[0] = midi_at[1] = fm1_ms | 1u;
+        trk[4].p[P_MUTE] = 1;
+        trk_pid[2] = 0;
+        break;
     /* (Skiff phase 6) the screens of design/mock_p6.py: the last track but one selected (with six T5: the four shown
      * T2..T5, the scroll bar's thumb one down) */
     case S_SIX_HOME: song.octave = 2; song.rec = 1; usb.config = 1; sel_set(NTRK - 2u); break;
