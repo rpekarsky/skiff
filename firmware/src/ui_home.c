@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Skiff: HOME's panel, the tracks at a glance (DESIGN.md rule 10). Included by ui_graph.c (draw_graph). ((Skiff U3, N1)
  * all six: the selected one at today's size, the others compact; phase 6 showed four with a scroll bar)
- * A lane per_row track: its number (never the colour alone), its sound's name over its engine's, and its whole pattern:
+ * A lane per track: its number (never the colour alone), its sound's name over its engine's, and its whole pattern:
  * cells in fours, a note or a hit filled in the track's colour, a tie half filled; the step playing marked. ((#41, as
  * Melodee) LEN 16 a row of 16; to 32 two rows of 16; to 64 two rows of 32 narrower cells; on two rows the bar playing
  * underlined.)
