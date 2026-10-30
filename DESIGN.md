@@ -75,7 +75,7 @@ Things to avoid:
 | HOME held alone, then let go | MENU (settings). It opens on release, so it never fights a SHIFT combo. | Phase 1 |
 
 **TAKE in detail:**
-- **What it keeps:** the last *complete* pass with notes still in the log, notes and knob moves together, so a SHIFT + SAVE a loop or two late still finds it (#12). No complete pass with notes: the pass playing, from its start up to now (#33); no notes there either: the pass before it (its knob moves).
+- **What it keeps:** the last *complete* pass with notes or knob moves still in the log (knob moves alone count as played), notes and knob moves together, so a SHIFT + SAVE a loop or two late still finds it (#12). No such pass: the pass playing, from its start up to now (#33).
 - **What is logged:** while the track plays with REC off, the keys and their chords, MIDI and the arpeggiator (everything REC would record) and the knob moves are logged.
 - **How notes merge:** as REC merges them. A held note ties into empty steps only, so a take never wipes a note. (2.0, #25) On a POLY track playing forward a held note goes on by itself to its key's release, a per-note tie beside whatever each step holds (4 notes a step, no pitch twice; no room: it ends there), and a note played meanwhile doesn't end it; a note played into a long one goes in beside it.
 - **Undo:** one undo (hold SAVE) puts back the steps and the automation.

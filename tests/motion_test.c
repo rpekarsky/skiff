@@ -1039,6 +1039,26 @@ static int takes(void)
 
     t = tk_track();
     seq_start(); seq_tick(t, CTL);
+    input_on(t, 64, 100); input_off(t, 64);
+    for (i = 0; i < 8u; i++) lock_next(t);            /* pass 2: knobs only */
+    motion_capture(t, P_REV, 55);
+    for (i = 0; i < 8u; i++) lock_next(t);            /* pass 3 */
+    take_commit(0);
+    bad += check("takes:   (#12) a pass with knob moves only counts as played: its moves, not the notes before it",
+                 !tk_has(t, 64) && motion_count(t) == 1u && take_said(0));
+    seq_stop();
+
+    t = tk_track();
+    seq_start(); seq_tick(t, CTL);
+    motion_capture(t, P_REV, 55);
+    for (i = 0; i < 8u; i++) lock_next(t);            /* pass 2 */
+    take_commit(0);
+    bad += check("takes:   (#33) knob moves only in the first pass: taken in the next one, TAKE KEPT",
+                 motion_count(t) == 1u && take_said(0));
+    seq_stop();
+
+    t = tk_track();
+    seq_start(); seq_tick(t, CTL);
     for (i = 0; i < 140u; i++) { input_on(t, 48u + i % 24u, 100); input_off(t, 48u + i % 24u); }   /* 280 entries */
     for (i = 0; i < 8u; i++) lock_next(t);
     take_commit(0);
