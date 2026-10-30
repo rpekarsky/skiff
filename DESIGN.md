@@ -406,7 +406,10 @@ monochrome LCD, the Zoom H1n's. Four tones only: BG 178,186,166, the unlit segme
 number). `gfx.c` `lcd_tones` pins every derived token to a tone; `cv_lcd_rows`, at each blit, snaps every pixel to the
 nearest tone by luma (no anti-aliasing anywhere: text, curves, corners) and lays a ghost dot every 3 px of the screen on
 open BG (never inside a 1 px stroke, so the letters on an inverted band stay whole). CRYPT's pixel faces. Its widgets:
-the cards' gauges in segments, unlit ones ghost; the header's printed MID rule; the dialog a double ink frame.
+the cards' gauges in segments, unlit ones ghost; the header's printed MID rule; the dialog a double ink frame. HOME's
+scope (HOME tapped on HOME, MENU > LARGE's strip too) is an equalizer: 16 bands log-spaced 86 Hz to 11 kHz, 14
+segments 3 dB apart, from a 512-point fixed-point FFT of the scope's snapshot in the main loop (Hann window, the
+snapshot scaled to its peak, so MASTER doesn't shrink it); a bar falls a segment a redraw, its peak held 16 redraws.
 THEME CUSTOM over the H1N look: the user's colours in the same four tones (theirs BG, SURF to TEXT 12 %, MID, TEXT).
 
 **THEME CUSTOM** (#27, @tradiuz; after Felucca 1.6's CUSTOM palette; design/mock_c27.py, mockups/c27_sheet.png): the

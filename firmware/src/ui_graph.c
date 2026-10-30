@@ -12,7 +12,7 @@
 #include "ui_quark.c"                                 /* (Skiff Q2) THEME QUARK's cells, nuclei, tracks, the hazard sign */
 #define PANEL_X0 10                                  /* the graphs' inner area: x 10..230 */
 #define PANEL_W 220
-#include "ui_h1n.c"                                   /* (Skiff #29) THEME H1N's segments and window */
+#include "ui_h1n.c"                                   /* (Skiff #29) THEME H1N's segments, window and equalizer */
 #define GOY 11                                       /* graphs drawn on a 100 px scale sit at y 11..111 */
 /* the height ADSR and LFO are drawn on: 100 px, or (MENU > LARGE's strip: draw_graph) the strip's ~ 56 */
 static int32_t graph_ht = 100;
@@ -2524,7 +2524,8 @@ static void draw_graph(void)
         uint32_t k = strip_kind();
         cv_oy = k == SK_ADSR || k == SK_LFO ? 3 : k == SK_SCOPE ? 0 : pad;
         graph_ht = (int32_t)graph_h() - 6;
-        if (k == SK_SCOPE) graph_scope(c);
+        if (k == SK_SCOPE && ui.home && ux.h1n) hn_eq();   /* ((Skiff #29) H1N: the equalizer) */
+        else if (k == SK_SCOPE) graph_scope(c);
         else if (k == SK_ADSR) graph_adsr(t, c);
         else if (k == SK_LFO) graph_lfo(t, c);
         else if (k == SK_STEPS) graph_steps(t, c);
@@ -2532,7 +2533,9 @@ static void draw_graph(void)
         graph_ht = 100;
     } else if (ui.home) {
         cv_oy = 0;
-        if (ui.home_scope)
+        if (ui.home_scope && ux.h1n)
+            hn_eq();                                 /* (Skiff #29) H1N: the equalizer */
+        else if (ui.home_scope)
             graph_scope(c);
         else
             graph_tracks();                          /* Skiff: the four tracks (ui_home.c) */

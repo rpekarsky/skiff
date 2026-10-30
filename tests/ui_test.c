@@ -9591,6 +9591,47 @@ static int test_playhead_line(void)
     return bad;
 }
 
+/* (#29) THEME H1N's equalizer: a tone lights its band to the top whatever its level, the bands not next to it stay low,
+ * silence none; a bar falls a segment a redraw, its peak held HN_HOLD redraws */
+static int test_h1n_eq(void)
+{
+    static const uint16_t BIN[3] = {2, 23, 200};      /* 86 Hz, 990 Hz, 8.6 kHz */
+    static const uint8_t BAND[3] = {0, 8, 15};
+    uint8_t lv[HN_BANDS];
+    uint32_t t, i, k;
+    int bad = 0, ok = 1;
+    for (t = 0; t < 6u; t++) {
+        for (i = 0; i < SCOPE_N; i++)
+            scope_buf[i] = (int16_t)((t < 3u ? 20000.0 : 4000.0) * sin(6.2831853 * BIN[t % 3u] * i / SCOPE_N));
+        scope_w = 0;
+        hn_spectrum(lv);
+        for (k = 0; k < HN_BANDS; k++)
+            ok &= k == BAND[t % 3u] ? lv[k] == HN_ROWS : k + 1u >= BAND[t % 3u] && k <= BAND[t % 3u] + 1u ? 1 : lv[k] <= HN_ROWS / 2;
+        if (!ok) { printf("  tone in bin %u: band %u at %u\n", BIN[t % 3u], BAND[t % 3u], lv[BAND[t % 3u]]); break; }
+    }
+    memset(scope_buf, 0, sizeof scope_buf);
+    hn_spectrum(lv);
+    for (k = 0; k < HN_BANDS; k++)
+        ok &= !lv[k];
+    bad += check("(#29) H1N EQ: a tone in its band at the top (loud or quiet), its far bands low, silence dark", ok);
+    for (i = 0; i < SCOPE_N; i++)
+        scope_buf[i] = (int16_t)(20000.0 * sin(6.2831853 * 23 * i / SCOPE_N));
+    cv_begin(240, H_GRAPH, T_BG);
+    hn_eq();
+    ok = hn_bar[8] == HN_ROWS && hn_peak[8] == HN_ROWS;
+    memset(scope_buf, 0, sizeof scope_buf);
+    for (i = 0; i < 3u; i++)
+        hn_eq();
+    ok &= hn_bar[8] == HN_ROWS - 3 && hn_peak[8] == HN_ROWS;
+    for (; i < HN_HOLD; i++)
+        hn_eq();
+    ok &= !hn_bar[8] && hn_peak[8] == HN_ROWS;
+    hn_eq();
+    ok &= hn_peak[8] == HN_ROWS - 1;
+    bad += check("(#29) H1N EQ: the bar falls a segment a redraw, its peak held HN_HOLD redraws, then falling", ok);
+    return bad;
+}
+
 int main(void)
 {
     setvbuf(stdout, NULL, _IONBF, 0);
@@ -9690,6 +9731,7 @@ int main(void)
     bad += test_scale_leds();
     bad += test_screen_off();
     bad += test_playhead_line();
+    bad += test_h1n_eq();
     bad += test_fm6_charts();
 #if FELUCCA_FM4
     bad += test_fm_charts();                        /* (DIGITAL's charts: built with FELUCCA_FM4=1 only) */
