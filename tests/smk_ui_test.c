@@ -4,7 +4,8 @@
  *   PADS     on HOME the step taps, in a layer and the DRUM grid the white keys; a tap sets a step to the last note
  *            (its velocity), again clears it, one undo a run; DRUM: the lane; past LEN nothing; the colours (A).
  *   FADERS   the four tracks shown, taking over once they reach the value, FADER BANK (its LED), the window.
- *   ENTRIES  > and < the selected track's entry after and before, the first's end said.
+ *   ENTRIES  > and < the selected track's entry after and before, the first's end said; in PERFORM and GLO (held or
+ *            locked) the same, a combo (no tap, the lock kept); in another layer nothing.
  *   KEYS     the outer keys' notes and velocity (KEY VELOCITY), out of the TRS jack too; the curves.
  *   MENU     KEY VELOCITY in CONTROL, no LEDS row, the editor's rows; USR2 / USR3 not offered.
  *   WHEELS   the wheels and the pedal as MIDI in on the selected track's channel, back to rest on a switch.
@@ -501,6 +502,62 @@ static int test_entries(void)
     return bad;
 }
 
+static void hold(uint32_t label) { fm1_in.buttons |= 1u << panel.btn[label]; host_pressed |= 1u << panel.btn[label]; frame(); }
+static void let_go(uint32_t label) { fm1_in.buttons &= ~(1u << panel.btn[label]); frames(300); }
+static int test_layer_arrows(void)
+{
+    int bad = 0, ok;
+    uint32_t i;
+    smk_power_on();
+    sel_set(0);
+    for (i = 0; i < 3u; i++) {                    /* T1's entries A, B, C (as test_entries) */
+        track_t *t = TSEL;
+        track_defaults_steps(t);
+        t->step[i].n = 1;
+        t->step[i].note[0] = (uint8_t)(60 + i);
+        t->step[i].time = ST_NOTE;
+        bank_put(0, i, 0);
+    }
+    (void)entry_go(0, 0);
+    ui.home = 1;
+    frames(32);
+    hold(B_ARP);
+    press_id(SMK_BTN_RIGHT);
+    ok = ui.layer == LAYER_PERF && lists.cur[0] == 1u;
+    press_id(SMK_BTN_RIGHT);
+    press_id(SMK_BTN_LEFT);
+    let_go(B_ARP);
+    bad += check("SMK PERFORM held: > > < the entry after, after, before (as outside)", ok && lists.cur[0] == 1u);
+    bad += check("SMK PERFORM held, < >: a combo, ARP let go is no tap, no lock", ui.home && !ui.layer && !ui.lock &&
+                 song.sel == 0u);
+    hold(B_ARP);
+    press_id(SMK_BTN_LEFT);
+    press_id(SMK_BTN_LEFT);
+    ok = lists.cur[0] == 0u && msg_is("FIRST ENTRY");
+    let_go(B_ARP);
+    bad += check("SMK PERFORM: < on A: FIRST ENTRY, nowhere", ok);
+    hold(B_GLO);
+    press_id(SMK_BTN_RIGHT);
+    let_go(B_GLO);
+    bad += check("SMK GLO held: > the entry after, no tap", lists.cur[0] == 1u && ui.home && !ui.lock);
+    hold(B_EDIT);
+    press_id(SMK_BTN_RIGHT);
+    let_go(B_EDIT);
+    bad += check("SMK EDIT held: > nothing", lists.cur[0] == 1u);
+    fm1_in.buttons |= 1u << SMK_BTN_KNOB_BANK;   /* KNOB BANK (SHIFT) + ARP: PERFORM locked */
+    frame();
+    press(B_ARP);
+    fm1_in.buttons &= ~(1u << SMK_BTN_KNOB_BANK);
+    frames(100);
+    ok = ui.lock == LAYER_PERF;
+    press_id(SMK_BTN_RIGHT);
+    bad += check("SMK PERFORM locked: > the entry after, the lock kept", ok && lists.cur[0] == 2u &&
+                 ui.lock == LAYER_PERF && ui.layer == LAYER_PERF);
+    hold(B_ARP);                                  /* (its button closes the lock: the outer keys' test after plays) */
+    let_go(B_ARP);
+    return bad;
+}
+
 static int test_outer_keys(void)
 {
     int bad = 0;
@@ -805,6 +862,7 @@ int main(void)
     bad += test_perf_breath();
     bad += test_faders();
     bad += test_entries();
+    bad += test_layer_arrows();
     bad += test_outer_keys();
     bad += test_menu();
     bad += test_wheels();
