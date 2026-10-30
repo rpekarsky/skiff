@@ -11,6 +11,7 @@
  *   wheels A, the pedal: as MIDI in on the selected track's channel (bend, CC1: the MOD matrix's MODW; CC64 sustain);
  *            the pedal holds the track's keys too (seq.c);
  *   < >      the selected track's entry before and after (as PERFORM's keys: at once stopped, at LAUNCH playing);
+ *            the same in PERFORM and GLO, held or locked (#44), nothing in the other layers;
  *   MASTER   K1, kept with the settings; KEY VELOCITY (MENU > CONTROL).
  * KNOB BANK is SHIFT (ui_input.c); the button LEDs on or off (ui_input.c smk_leds_out). Main loop only. */
 
@@ -260,8 +261,10 @@ static void smk_buttons(void)
     static uint32_t prev;
     uint32_t now = fm1_in.buttons, pr = now & ~prev;
     prev = now;
-    if (ui.menu || ui.confirm || name_on() || ui.layer)
+    if (ui.menu || ui.confirm || name_on())
         return;
+    if (ui.layer)
+        pr &= layer_keeps_arrows(ui.layer) ? SMK_ARROWS : 0u;
     if ((pr >> SMK_BTN_FADER_BANK) & 1u) {
         smk_fbank = (uint8_t)((smk_fbank + 1u) % 4u);
         ui_say("FADERS ", SMK_FB_N[smk_fbank]);

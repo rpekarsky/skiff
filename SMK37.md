@@ -117,7 +117,9 @@ loader 7,859 B (the limit: 7,936 B, below).
 - **The extra buttons:** KNOB BANK is SHIFT, as HOME held but on a button of its own: the map, + BT for TAKE, and
   + a layer's button to lock that layer. Let go, it does nothing (HOME still taps home, and held opens MENU).
   FADER BANK steps the faders' bank. < and > go to the selected track's entry before and after, at once when stopped
-  and at the LAUNCH point when playing.
+  and at the LAUNCH point when playing. They do the same in PERFORM and GLO (the button held or the layer locked):
+  there they count as a combo, so letting the layer's button go is no tap, and a locked layer stays open. In the
+  other layers they do nothing.
 - **Pads:** always a grid. Where the FM-1's keys show a map of their own (a layer, the DRUM grid, NAME, SLICES, or a
   layer's button held), the pads are its 16 white keys, lit as the FM-1's key LEDs would be, in the track's colour.
   Elsewhere they are the selected track's 16 steps of the page shown. A tap sets an empty step to the last note

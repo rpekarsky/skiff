@@ -180,15 +180,23 @@ static void layer_let_go(uint32_t quiet)
     ui.lock = 0;
 }
 
+/* (#44) the SMK's < > in PERFORM and GLO: the entries, as outside a layer (smk_ui.c smk_buttons) */
+#if BOARD_SMK37
+#define SMK_ARROWS (1u << SMK_BTN_LEFT | 1u << SMK_BTN_RIGHT)
+#else
+#define SMK_ARROWS 0u
+#endif
+static int layer_keeps_arrows(uint32_t l) { return l == LAYER_PERF || l == LAYER_GLO; }
 /* each pass before the layer's buttons are read: a locked layer closes. Its own button pressed: the lock goes, the
  * button held keeps it open (a peek: let go, it closes, no tap). Another button but PLAY, REC, HOME and OCT- / OCT+
  * (another page button, another layer's, SAVE, SEQ): closed now, and that button acts as always ((Skiff U2) HOME: SHIFT,
  * its tap goes HOME anyway and the lock with it, layer_allowed). (Skiff) PERFORM's KEYS SCENE: SAVE is the layer's
- * (held + a key stores), so it stays open */
+ * (held + a key stores), so it stays open; so do PERFORM's and GLO's with the SMK's < > */
 static void layer_lock_input(uint32_t pressed)
 {
     uint32_t keep = 1u << panel.btn[B_PLAY] | 1u << panel.btn[B_REC] | 1u << panel.btn[B_OCTDN] | 1u << panel.btn[B_OCTUP] |
-                    (ui.lock == LAYER_PERF && perf_scenes() ? 1u << panel.btn[B_SAVE] : 0u);
+                    (ui.lock == LAYER_PERF && perf_scenes() ? 1u << panel.btn[B_SAVE] : 0u) |
+                    (layer_keeps_arrows(ui.lock) ? SMK_ARROWS : 0u);
     if (!ui.lock)
         return;
     if (pressed & ly_bit(ui.lock))
