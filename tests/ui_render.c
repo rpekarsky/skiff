@@ -990,6 +990,7 @@ static void roll_scene(int s)
 static void setup(int s)
 {
     memset(kb_chn, 0, sizeof kb_chn);               /* no key held (roll_playing holds one) */
+    memset(midi_at, 0, sizeof midi_at);             /* ((#34) no MIDI IN mark: home_lists sets two) */
     fm1_in.buttons = 0;                             /* (no button held: momentary holds LFO) */
     if (s >= S_MOCK_HOME) {
         mock_state(s);
@@ -1391,12 +1392,12 @@ static void setup(int s)
         go_page(GR_FEEL); cursor_set(4); ui.hot_col = 0; ui.hot_t = 30;
         break;
     }
-    case S_HOME_LISTS:                              /* (#34) the lanes' badges, playing SONG ON: T1 its C staged by the
-                                                     * user, T2 on a chain, T3 on a REST */
+    case S_HOME_LISTS:                              /* (#34) the lanes' patterns, playing SONG ON: T2 on a chain, T3
+                                                     * on a REST, MIDI IN playing T1 and T2 */
         song_lists(1);
-        launch_q[0].adv = 0;
         lists.ent[1][2][1] = REPS_CHAIN;
         lists.ent[2][0][0] = PAT_REST;
+        midi_at[0] = midi_at[1] = fm1_ms | 1u;
         trk_pid[2] = 0;
         break;
     /* (Skiff phase 6) the screens of design/mock_p6.py: the last track but one selected (with six T5: the four shown

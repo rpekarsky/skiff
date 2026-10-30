@@ -27,29 +27,12 @@ static uint32_t hl_bar(const track_t *t, uint32_t *n)
     return first;
 }
 
-/* (#34) the lane's badge: the entry track k is on and its pattern ("C 06"), a chain's entries ("A-B"), a REST's "C -",
- * a pattern on no entry its number; the user's launch staged after it (">D"). b: 8 bytes; "" nothing */
-static void hl_badge(uint32_t k, char *b)
+/* (#34) the pattern track k is on, a chain's part playing ("06"); "" none (nothing saved yet, a REST) */
+static void hl_pat(uint32_t k, char *b)
 {
-    uint32_t e = lists.cur[k] % NENT, id = trk_pat(k), kept = bank_cur(k) < NENT, nx = bank_next(k), b0, b1;
     b[0] = 0;
-    if (ent_rest(k, e)) {
-        b[0] = (char)('A' + e);
-        str_cpy(b + 1, " -", 3);
-    } else if (kept && ent_block(k, e, &b0, &b1)) {
-        str_cpy(b, "A-B", 4);
-        b[0] = (char)('A' + b0);
-        b[2] = (char)('A' + b1);
-    } else if (kept) {
-        b[0] = (char)('A' + e);
-        b[1] = ' ';
-        pat_num(b + 2, id);
-    } else if (id != PAT_NONE)
-        pat_num(b, id);
-    if (user_staged(k) && nx < NENT) {
-        str_cpy(b + str_len(b), ">A", 3);
-        b[str_len(b) - 1u] = (char)('A' + nx);
-    }
+    if (trk_pat(k) != PAT_NONE)
+        pat_num(b, trk_pat(k));
 }
 
 /* what the overview shows: a change of it redraws the panel (draw_graph's signature) */
@@ -60,9 +43,7 @@ static uint32_t home_sig(void)
         const track_t *t = &trk[k];
         const step_t *s = t->step;
         uint32_t first = hl_bar(t, &n);
-        char badge[8];
-        hl_badge(k, badge);
-        h = str_hash(h, badge);
+        h = (h ^ trk_pat(k)) * 16777619u;
         h = (h ^ (first + 977u * n + 7u * (uint32_t)t->p[P_MUTE] + 31u * t->eng_req + 257u * t->preset + 65537u * t->user +
                   (uint32_t)midi_mark(k) * 0x40000000u)) * 16777619u;
         if (song.playing)
@@ -78,26 +59,32 @@ static uint32_t home_sig(void)
  * HL_C_CELL_H); where all fit at today's size (four tracks) all as before */
 #define HL_C_H 18
 #define HL_C_CELL_H 12
+#define HL_C_PAT_X 20                                 /* ((#34) the pattern after the number; the names after it */
+#define HL_C_NAME_X 37                                /* when any track shows one) */
 static void graph_tracks(void)
 {
     uint32_t k, i, n;
     int32_t tx = -1, ty = 0;                          /* (Skiff C3) CRYPT: the torch's place (the selected track's playhead) */
     int32_t qx = -1, qy = 0;                          /* (Skiff Q3) QUARK: the collision's (the same) */
     int six = (int32_t)NTRK * (HL_H + 3) - 3 > (int32_t)graph_h();
-    int32_t y = six ? ((int32_t)graph_h() - (HL_H + ((int32_t)NTRK - 1) * (HL_C_H + 3))) / 2 : 0;
+    int32_t y = six ? ((int32_t)graph_h() - (HL_H + ((int32_t)NTRK - 1) * (HL_C_H + 3))) / 2 : 0, name_x = HL_NAME_X;
+    for (k = 0; k < NTRK; k++)                        /* ((#34) a pattern anywhere: the compact names make room for it) */
+        if (trk_pat(k) != PAT_NONE)
+            name_x = HL_C_NAME_X;
     cv_rect(0, 0, 240, (int32_t)graph_h(), T_BG);      /* (over the panel: the lanes are its tiles) */
     for (k = 0; k < NTRK; k++) {
         const track_t *t = &trk[k];
         const step_t *s = t->step;
         uint32_t first = hl_bar(t, &n), play = t->seq_idx % 16u;
         int sel = k == song.sel, muted = t->p[P_MUTE] != 0, big = sel || !six;
-        int32_t h = big ? HL_H : HL_C_H, ch = big ? HL_CELL_H : HL_C_CELL_H, b[4];
+        int32_t h = big ? HL_H : HL_C_H, ch = big ? HL_CELL_H : HL_C_CELL_H, b[4], pb[4];
         int ib = sel && !ux.quark;                    /* (the selected lane a band, INK on it; (Skiff Q3) QUARK: a beam,
                                                        * its colour faint, the colours as on the others) */
         uint16_t col = muted ? T_DIM : T_TRK(k), lane = sel ? (ux.quark ? ux_mix(col, T_BG, 80) : col) : ux.quark ? T_BG : T_SURF;
         uint16_t ink = ib ? T_INK : T_TEXT, on = ib ? T_INK : col, off = ib ? ux_mix(col, T_INK, 55) : T_LINE;
-        char name[20], badge[8], d[2] = {(char)('1' + k), 0};
-        int32_t bw;
+        char name[20], pat[3], d[2] = {(char)('1' + k), 0};
+        const aafont_t *nf;
+        int stacked;
         if (ux.crypt && !sel)                         /* (Skiff C3) CRYPT: the lanes stone */
             cr_stone(3, y, 234, h, lane);
         else if (ux.neon && sel) {                    /* (Skiff N3) NEON: the selected lane a neon sign (its colour into
@@ -116,27 +103,34 @@ static void graph_tracks(void)
         if (ux.neon && k + 1u < NTRK)
             for (i = 6; i < 234u; i += 10u)
                 cv_rect((int32_t)i, y + h + 1, 5, 1, ux_mix(NE_YELLOW, T_BG, 65));
-        text_ink(big ? &AF_V : &AF_M, d, b);             /* the number itself: the colour on SURF, INK on the band */
-        GFX_HOOK_ALIGN(0, y, 0, y + h, AL_V, "home lane number on its middle");
-        cv_text_on(HL_NUM_X - b[0], y + (big ? CAP_IN(V, HL_H) : CAP_IN(M, HL_C_H)), big ? &AF_V : &AF_M, d,
-                   ib ? T_INK : col, lane);
-        if (midi_mark(k))                             /* ((Skiff U4, F4) MIDI IN playing it: a mark after the number) */
-            cv_rect(HL_NUM_X + (big ? 14 : 10), y + h / 2 - 2, 4, 4, ib ? T_INK : T_THEME);
+        hl_pat(k, pat);
+        stacked = big && pat[0];                      /* ((#34) over its pattern, as the name over the engine) */
+        nf = big && !stacked ? &AF_V : &AF_M;
+        text_ink(nf, d, b);                           /* the number itself: the colour on SURF, INK on the band */
+        if (!stacked)
+            GFX_HOOK_ALIGN(0, y, 0, y + h, AL_V, "home lane number on its middle");
+        cv_text_on(HL_NUM_X - b[0], y + (stacked ? HL_NAME_CY - AF_M_CAP_Y : big ? CAP_IN(V, HL_H) : CAP_IN(M, HL_C_H)),
+                   nf, d, ib ? T_INK : col, lane);
+        if (pat[0]) {                                 /* ((#34) the pattern; a compact lane: after the number) */
+            text_ink(&AF_S, pat, pb);
+            cv_text_on((stacked ? HL_NUM_X : HL_C_PAT_X) - pb[0],
+                       y + (stacked ? HL_ENG_CY - AF_S_CAP_Y : CAP_IN(S, HL_C_H)), &AF_S, pat, ib ? T_INK : T_MID, lane);
+        }
+        if (midi_mark(k))                             /* ((Skiff U4, F4) MIDI IN playing it: a mark after the number;
+                                                       * (#34) before it where its pattern is after it) */
+            cv_rect(pat[0] && !big ? 4 : HL_NUM_X + (nf == &AF_V ? 14 : 10),
+                    stacked ? y + HL_NAME_CY + AF_M_CAP_H / 2 - 2 : y + h / 2 - 2, 4, 4, ib ? T_INK : T_THEME);
         sound_name(t, name);
-        hl_badge(k, badge);
-        bw = badge[0] ? text_w(&AF_S, badge) + 4 : 0;   /* ((#34) the badge at the S line's end, the text before it) */
         if (big) {
             cv_free_text(HL_NAME_X, y + HL_NAME_CY - AF_M_CAP_Y, &AF_M, name[0] ? name : "--", muted && !sel ? T_DIM : ink,
                          lane, HL_STEP_X - 4 - HL_NAME_X);
             cv_free_text(HL_NAME_X, y + HL_ENG_CY - AF_S_CAP_Y, &AF_S, ENGINES[t->eng_req % NENGINES]->name,
-                         ib ? T_INK : T_MID, lane, HL_STEP_X - 4 - HL_NAME_X - bw);
+                         ib ? T_INK : T_MID, lane, HL_STEP_X - 4 - HL_NAME_X);
         } else {
             GFX_HOOK_ALIGN(0, y, 0, y + h, AL_V, "home compact lane name on its middle");
-            cv_free_text(HL_NAME_X, y + CAP_IN(S, HL_C_H), &AF_S, name[0] ? name : "--", muted ? T_DIM : T_TEXT, lane,
-                         HL_STEP_X - 4 - HL_NAME_X - bw);
+            cv_free_text(name_x, y + CAP_IN(S, HL_C_H), &AF_S, name[0] ? name : "--", muted ? T_DIM : T_TEXT, lane,
+                         HL_STEP_X - 4 - name_x);
         }
-        if (badge[0])
-            cv_text_on(HL_STEP_X - bw, y + (big ? HL_ENG_CY - AF_S_CAP_Y : CAP_IN(S, HL_C_H)), &AF_S, badge, on, lane);
         for (i = 0; i < n; i++) {                     /* (past the track's length: nothing) */
             const step_t *st = &s[first + i];
             int32_t x = hl_cell_x(i), cy = y + (h - ch) / 2;

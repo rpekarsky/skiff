@@ -71,7 +71,6 @@ static void song_clear(uint32_t e);
 static int song_clear_at(uint32_t k, uint32_t e);
 static uint32_t song_clear_text(uint32_t e, char l[3][32], int *gone);
 static uint32_t bank_next(uint32_t k);
-static int user_staged(uint32_t k);
 static int bank_cancel(uint32_t k);
 static int stage_cancel(void);
 static void mute_switch(uint32_t k);
