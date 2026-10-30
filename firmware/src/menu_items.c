@@ -21,14 +21,15 @@
 #endif
 #if BOARD_SMK37
 /* (SMK-37 Pro, SMK37_UX.md) KEY VELOCITY in CONTROL (question 8); no LEDS row (button LEDs A: on or off only): MI_LEDS
- * past MI_COUNT, so its setting stays and no tab shows it; (wishlist #5) PAD LIGHT where FM-1's LEDS is */
-enum { MI_COLOR, MI_PHEAD, MI_LARGE, MI_ANIM, MI_PADL, MI_SCROFF, MI_HINTS, MI_HOLD, MI_ACCEL, MI_BPMLOCK, MI_PKNOB,
-       MI_SCLLED, MI_PREVIEW, MI_RETURN, MI_KVEL, MI_LOWCUT, MI_USB, MI_CLICK, MI_CLKLVL, MI_COUNTIN, MI_TUNE, MI_MSTART,
-       MI_CLOCK, MI_ROUTE,
+ * past MI_COUNT, so its setting stays and no tab shows it; (wishlist #5, #42) PAD LIGHT, PAD FOLLOW where FM-1's LEDS is */
+enum { MI_COLOR, MI_PHEAD, MI_LARGE, MI_ANIM, MI_PADL, MI_PADF, MI_SCROFF, MI_HINTS, MI_HOLD, MI_ACCEL, MI_BPMLOCK,
+       MI_PKNOB, MI_SCLLED, MI_PREVIEW, MI_RETURN, MI_KVEL, MI_LOWCUT, MI_USB, MI_CLICK, MI_CLKLVL, MI_COUNTIN, MI_TUNE,
+       MI_MSTART, MI_CLOCK, MI_ROUTE,
        MI_LEARN, MI_LCLEAR, MI_TCH1, MI_TCH2, MI_TCH3, MI_TCH4, MI_TCH5, MI_TCH6, MI_SERIAL_IN MI_RESTORE, MI_CPU, MI_CLK,
        MI_PANEL, MI_RESET, MI_ABOUT, MI_COUNT, MI_LEDS MI_SERIAL_OUT };
 static const char *const KVEL_N[SMK_KV_N] = {"DYNAMIC", "SOFT", "HARD", "FIXED 64", "FIXED 100", "FIXED 127"};
 static const char *const PADL_N[SMK_PADL_N] = {"25 %", "50 %", "75 %", "100 %"};   /* (right brighter: stored inverted) */
+static const char *const PADF_N[SMK_PF_N] = {"OFF", "PAGE", "ROW"};   /* (wishlist #42) */
 #else
 enum { MI_COLOR, MI_PHEAD, MI_LARGE, MI_ANIM, MI_LEDS, MI_SCROFF, MI_HINTS, MI_HOLD, MI_ACCEL, MI_BPMLOCK, MI_PKNOB,
        MI_SCLLED, MI_PREVIEW, MI_RETURN, MI_LOWCUT, MI_USB, MI_CLICK, MI_CLKLVL, MI_COUNTIN, MI_TUNE, MI_MSTART, MI_CLOCK,
@@ -43,6 +44,7 @@ static const char *const MSTART_N[2] = {"LAST", "SAFE"};   /* (MASTER START: ui.
 static const char *const MI_NAME[MI_COUNT] = {"THEME", "PLAYHEAD", "LARGE", "ANIM",
 #if BOARD_SMK37
                                               "PAD LIGHT",
+                                              "PAD FOLLOW",
 #else
                                               "LEDS",
 #endif
@@ -69,6 +71,9 @@ static const uint8_t MI_TAB[MI_COUNT] = {
     MTAB_DISPLAY, MTAB_DISPLAY, MTAB_DISPLAY, MTAB_DISPLAY,                 /* COLOR (Skiff #27) PLAYHEAD LARGE ANIM */
     MTAB_DISPLAY,                                                           /* LEDS ((Skiff U2) STYLE gone: BLOCKS is the
                                                                              * only look); SMK-37: PAD LIGHT */
+#if BOARD_SMK37
+    MTAB_DISPLAY,                                                           /* (SMK-37, #42) PAD FOLLOW */
+#endif
     MTAB_DISPLAY,                                                           /* SCREEN OFF (1.1.5) */
     MTAB_DISPLAY,                                                           /* (Skiff U4) HINTS */
     MTAB_CONTROL, MTAB_CONTROL, MTAB_CONTROL,                               /* HOLD KNOB ACCEL BPM LOCK ((Skiff U2) FX
@@ -178,7 +183,7 @@ static uint32_t menu_n(uint32_t row)
            row == MI_CLOCK ? NELEM(N_CLOCK) : row == MI_TUNE ? 101u : row == MI_CPU ? 1u + FELUCCA_CPU2 :
            MI_TCH(row) ? 16u : row == MI_LEARN || row == MI_LCLEAR ? 1u :
 #if BOARD_SMK37
-           row == MI_KVEL ? SMK_KV_N : row == MI_PADL ? SMK_PADL_N :
+           row == MI_KVEL ? SMK_KV_N : row == MI_PADL ? SMK_PADL_N : row == MI_PADF ? SMK_PF_N :
 #endif
            2u;
 }
@@ -210,6 +215,7 @@ static uint32_t menu_get(uint32_t row)
 #if BOARD_SMK37
     case MI_KVEL: return SMK_KV_BYTE % SMK_KV_N;
     case MI_PADL: return SMK_PADL_N - 1u - smk_padl();
+    case MI_PADF: return smk_pf_mode();
 #endif
     case MI_MSTART: return MASTER_SAFE_SET;
     case MI_LEDS:
@@ -253,6 +259,7 @@ static const char *menu_vname(uint32_t row, uint32_t v)
 #if BOARD_SMK37
     case MI_KVEL: return KVEL_N[v % SMK_KV_N];
     case MI_PADL: return PADL_N[v % SMK_PADL_N];
+    case MI_PADF: return PADF_N[v % SMK_PF_N];
 #endif
     case MI_MSTART: return MSTART_N[v & 1u];
     case MI_HINTS: return v & 1u ? "OFF" : "ON";
@@ -329,6 +336,7 @@ static void menu_put(uint32_t row, uint32_t v)
 #if BOARD_SMK37
     case MI_KVEL: SMK_KV_BYTE = (uint8_t)(v % SMK_KV_N); smk_kv_mode = SMK_KV_BYTE; break;
     case MI_PADL: shared_put((SMK_PADL_N - 1u) << SMK_PADL_SHIFT, (SMK_PADL_N - 1u - v % SMK_PADL_N) << SMK_PADL_SHIFT); break;
+    case MI_PADF: smk_pf_put(v); break;
 #endif
     case MI_MSTART: CPU2_BYTE = (uint8_t)(v & 1u ? CPU2_BYTE | 16u : CPU2_BYTE & ~16u); break;   /* (the next power-on) */
     case MI_HINTS: ui_hints_off = (uint8_t)(v & 1u); ui.force = 1; break;
@@ -367,6 +375,7 @@ static void settings_reset(void)
 #if BOARD_SMK37
     menu_put(MI_KVEL, SMK_KV_DYN);
     menu_put(MI_PADL, SMK_PADL_N - 1u);                /* (100 %) */
+    menu_put(MI_PADF, SMK_PF_PAGE);
 #endif
     menu_put(MI_MSTART, 0);
     menu_put(MI_HOLD, HOLD_DEF);

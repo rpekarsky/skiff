@@ -191,6 +191,21 @@ static const char *const CLK_WHY[11] = {"", "ALREADY 320", "SYS MODE", "PLL2 NOT
 #define SMK_PADL_N 4u
 #define SMK_PADL_SHIFT 1u
 #define smk_padl() ((SHARED_BYTE >> SMK_PADL_SHIFT) % SMK_PADL_N)
+/* (wishlist #42) MENU > PAD FOLLOW (smk_ui.c smk_pf_rows): bits 4..5 of the retired STYLE's byte ([15][29], STYLE's
+ * 0..2 kept as saved below them), stored as the distance from PAGE, the default: 0 PAGE in every older setting,
+ * 3 (unknown) PAGE too */
+#define SMK_PF_BYTE (favorites.factory[15][29])
+enum { SMK_PF_OFF, SMK_PF_PAGE, SMK_PF_ROW, SMK_PF_N };
+static uint32_t smk_pf_mode(void)
+{
+    uint32_t stored = SMK_PF_BYTE >> 4 & 3u;
+    return stored < SMK_PF_N ? (stored + SMK_PF_PAGE) % SMK_PF_N : SMK_PF_PAGE;
+}
+static void smk_pf_put(uint32_t mode)
+{
+    uint32_t stored = (mode % SMK_PF_N + SMK_PF_N - SMK_PF_PAGE) % SMK_PF_N;
+    SMK_PF_BYTE = (uint8_t)((SMK_PF_BYTE & ~0x30u) | stored << 4);
+}
 #endif
 static const uint8_t *const mch_io = &ui_mch(0);
 static const uint8_t UNIT_G[3] = {G_CLOCK, G_ROUTE, G_TUNE};
@@ -240,7 +255,7 @@ static void rp_put(uint32_t f, uint32_t v)
     rp_apply();
 }
 /* (favorites.factory[15][29] held MENU > STYLE, FLAT LINE BLOCKS: (Skiff U2) BLOCKS is the only look, the byte is left
- * as it was saved) */
+ * as it was saved; the SMK's bits 4..5: PAD FOLLOW, SMK_PF_BYTE above) */
 /* (Skiff) the PERFORM layer's KNOB 1, LAUNCH: where a pattern switched to while playing comes in (launch.c LAUNCH_*:
  * LOOP BAR BEAT NOW), a byte no engine uses (favorites.c), saved with the settings; 0 in older settings = LOOP */
 #define ui_launch (favorites.factory[15][26])

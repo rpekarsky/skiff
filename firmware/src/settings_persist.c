@@ -5,7 +5,7 @@
  * palette: UI_PAL_TAG + index; an old id (below 20, earlier firmware) is migrated on import.
  * bold: no longer used (one font weight); kept as it was saved, unless it holds the HOLD setting (panel.c).
  * zoom: no longer used (the large readout); kept as it was saved, unless it holds the LEDS setting (panel.c).
- * favorites.factory[15][28..31]: CLICK / CLICK LEVEL / COUNT-IN (1.1), STYLE (retired, Skiff U2: left as saved), MENU's flags, the layers seen (bytes no
+ * favorites.factory[15][28..31]: CLICK / CLICK LEVEL / COUNT-IN (1.1), STYLE (retired, Skiff U2: left as saved; SMK bits 4..5: PAD FOLLOW), MENU's flags, the layers seen (bytes no
  * engine uses; 0 in older settings = every one's default); [15][27]: SCREEN OFF (1.1.5; 0 = 30 MIN, the default);
  * [15][26]: Skiff's LAUNCH (ui.c ui_launch; 0 = LOOP, an unknown value read as LOOP); [15][25]: Skiff's PERFORM KEYS
  * (ui.c ui_perf_keys: 0 TRACK, 1 SCENE); [15][24]: Skiff's mark, 0xA5 (before 2.0 bank.c's, set once it had freed its
@@ -38,7 +38,8 @@ typedef struct {                               /* Skiff's settings: favorites.fa
     uint8_t unit_g[3];                         /* the unit's CLOCK, MIDI IN, TUNE (ui.c ui_unit_g) */
     uint8_t ptag, hints_off, set_rev, rsv24;   /* PRESETS' LIST type, HINTS OFF, the one-time changes; (24: RAM's mark) */
     uint8_t perf_keys, launch, scr, rec;       /* PERFORM KEYS, LAUNCH, SCREEN OFF, CLICK .. FEEL (ui_rec_prefs) */
-    uint8_t style, prefs, layers;              /* (STYLE, retired: as saved), MENU's flags (ui_prefs), the layers seen */
+    uint8_t style, prefs, layers;              /* (STYLE, retired: as saved; bits 4..5 the SMK's PAD FOLLOW), MENU's
+                                                * flags (ui_prefs), the layers seen */
 } sks_skiff_t;
 typedef struct {
     uint32_t magic, palette, lowcut, zoom, bold;   /* as PER4's */
@@ -95,11 +96,17 @@ static int settings_import_per(persist_t *p, int n)
         memset((uint8_t *)p->favorites.factory + 14u * 32u, 0, 32u + 27u);
         memset(&p->favorites.factory[ENGI_DIGITAL][1], 0, 31);
         p->favorites.factory[15][28] &= 0x7Fu;
+#if BOARD_SMK37
+        p->favorites.factory[15][29] &= 0x0Fu;     /* ((wishlist #42) PAD FOLLOW, ui.c SMK_PF_BYTE: PAGE) */
+#endif
         p->favorites.factory[15][24] = 0xA5u;      /* (as Skiff's now: the record read again, the same) */
     }
 #if BOARD_SMK37
     if (p->favorites.factory[15][12] >= SMK_KV_N)  /* (SMK-37) KEY VELOCITY (ui.c SMK_KV_BYTE): unknown = DYNAMIC */
         p->favorites.factory[15][12] = 0;
+    if (p->favorites.factory[15][29] & 0xCCu)      /* ((wishlist #42) bits besides STYLE's 0..1 and PAD FOLLOW's 4..5:
+                                                    * not a byte of ours, PAD FOLLOW PAGE) */
+        p->favorites.factory[15][29] &= 0x0Fu;
 #endif
     p->magic = PERSIST_MAGIC;
     p->palette = palette_to_stored(palette_from_stored(p->palette));

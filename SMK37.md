@@ -132,7 +132,11 @@ loader 7,859 B (the limit: 7,936 B, below).
   played, at the pad's velocity, or clears a set one; on a DRUM track it toggles the selected lane's hit. A run of
   taps is one undo (`PAD STEPS`). The colours follow the screen's step tiles: an empty step faint white, a step in the
   track's colour, a tie at half, the edited step white. A pad has one LED, so the playing step can't get the
-  mockup's ring: it shows half way to white instead. The pads' brightness is fixed.
+  mockup's ring: it shows half way to white instead. The pads' brightness is fixed. MENU > DISPLAY > PAD FOLLOW sets
+  which steps they show while playing: PAGE (the default) the 16 the playhead is in; OFF the screen's page; ROW the
+  two rows of 8, the playhead's on top and the 8 it plays next below (REV the row before, PING the way it goes),
+  moving up a row every 8 steps. Stopped, and on the DRUM grid, they show the screen's page; while a pad is held the
+  view stays, so a tap always hits the step under the finger.
 - **Faders:** a mixer for the four tracks the screen shows (T1..T4, or the six-track window). FADER BANK steps
   LEVEL, PAN, REVERB and DELAY, and the header names the bank. A fader takes over only once it reaches the value,
   and again after something else has set it, so nothing jumps.
