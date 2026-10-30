@@ -1136,9 +1136,10 @@ static void fm_ph_caption(const fm_sim_t *s, uint32_t c, const uint8_t *ch, uint
         cv_text_r(229, FM_CY + CAP_IN(S, 12), &AF_S, "BACKWARDS", hot, T_SURF);
         return;
     }
+    peak = (int32_t)((int64_t)peak * 6283 / 100 >> 24);
     str_cpy(b, "INDEX ", sizeof b);
-    fm_tenths(b + 6, (int32_t)((int64_t)peak * 6283 / 100 >> 24), 0);
-    cv_text_r(229, FM_CY + CAP_IN(S, 12), &AF_S, peak ? b : "PURE SINE", T_MID, T_SURF);
+    fm_tenths(b + 6, peak, 0);
+    cv_text_r(229, FM_CY + CAP_IN(S, 12), &AF_S, peak ? b : "PURE SINE", T_MID, T_SURF);   /* (below 0.1: not 0.0) */
 }
 /* the last turn up to virtual tick now: the dot's height per column (newest first), the ghost's, the deepest push;
  * the dot's phase at now. 1: it runs back */
@@ -1162,7 +1163,7 @@ static int fm_ph_trace(fm_pm_t *m, uint32_t kc, uint32_t now, int8_t *wave, int8
             ghost[ago / 2] = (int8_t)((fm6_sin((int32_t)(t << 12)) * FM_PH_R + 16384) >> 15);
         }
     }
-    return *ph - prev < 0;
+    return (int32_t)((uint32_t)*ph - (uint32_t)prev) < 0;   /* (wraps every 256 turns: no signed overflow) */
 }
 static void fm_phase_panel(const fm_sim_t *s, const uint16_t *sh, uint16_t c)
 {

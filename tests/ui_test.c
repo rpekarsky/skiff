@@ -2901,6 +2901,15 @@ static int test_fm6_lab(void)
     turn(EN_SELECT, -1);                                /* back: OPERATOR's foot */
     ok &= str_eq(cur_page()->title, "OPERATOR") && fm_ui[1] == 4u;
     bad += check("SELECT: OPERATOR's windows (ENV 1 RATE 2, MORE BREAK), past its foot ALL OPS's top, back its foot", ok);
+    btn_down(B_HOME); frame();                          /* (#20) SHIFT + SELECT: the panel PHASE, the window kept */
+    turn(EN_SELECT, 1);
+    btn_up(B_HOME); frame();
+    ok = fm_phase == 1u && fm_ui[1] == 4u && str_eq(cur_page()->title, "OPERATOR") && !ui.home && !ui.menu;
+    btn_down(B_HOME); frame();
+    turn(EN_SELECT, -1);
+    btn_up(B_HOME); frame();
+    ok &= fm_phase == 0u && fm_ui[1] == 4u && str_eq(cur_page()->title, "OPERATOR") && !ui.home && !ui.menu;
+    bad += check("(#20) HOME + SELECT on OPERATOR: right PHASE, left the envelopes; the window stays, no HOME, no MENU", ok);
     go_title("ALL OPS"); fm_ui[2] = 0; frame();
     TSEL->p[P_E0] = 5; TSEL->p[P_E1] = 2;               /* EDIT 1's ALGO and FEEDBACK over the patch's 5 and 3 */
     turn(EN_K1, 1);
