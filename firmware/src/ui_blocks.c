@@ -102,7 +102,7 @@ static void draw_head_blocks(void)
         ne_rule(H_HEAD - 2, 0);
     if (ux.quark)                                     /* (Skiff Q2) QUARK: a dotted rule */
         qk_rule(H_HEAD - 2);
-    if (ux.h1n)                                       /* (Skiff #29) H1N: a printed rule */
+    if (ux.h1n)                                       /* (Skiff #29) LCD: a printed rule */
         cv_rect(0, H_HEAD - 1, 240, 1, T_MID);
     GFX_HOOK_ALIGN(0, 0, 0, H_HEAD, AL_V, "header text on its middle");
     cv_text(HB_POS_X, HEAD_MY, &AF_M, pos, song.playing ? T_TEXT : T_MID);
@@ -279,7 +279,7 @@ static void draw_column_blocks(uint32_t c, const char *label, const char *val, c
         qk_dots(BK_L, COL_H - 5, COL_W - BK_L - BK_R, ratio, hot);
     else if (ratio >= 0 && ux.neon)                   /* (Skiff N3) NEON: a dash bargraph */
         ne_dash(BK_L, COL_H - 6, COL_W - BK_L - BK_R, ratio, hot);
-    else if (ratio >= 0 && ux.h1n)                    /* (Skiff #29) H1N: LCD segments */
+    else if (ratio >= 0 && ux.h1n)                    /* (Skiff #29) LCD: LCD segments */
         hn_meter(0, COL_H - BK_GH, COL_W, BK_GH, ratio, hot ? T_INK : vc == T_DIM ? T_DIM : T_TRK(tk), hot ? T_MID : T_LINE);
     else if (ratio >= 0 && ux.crypt)                  /* (Skiff C3) CRYPT: a sword, the blade as long as the value */
         cr_sword(3, COL_H - 6, COL_W - 6, ratio, hot ? T_INK : vc == T_DIM ? T_DIM : T_TRK(tk), hot ? T_INK : CR_GOLD,

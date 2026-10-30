@@ -128,7 +128,7 @@ static struct {
     uint8_t light, crypt, neon;  /* (Skiff) THEME CRYPT, its own font and widgets (C2, C3); NEON, CRYPT's font and its
                                   * own widgets (design/mock_neon.py) */
     uint8_t quark;               /* (Skiff) THEME QUARK: Skiff's font, its own widgets (design/mock_quark.py) */
-    uint8_t h1n;                 /* (Skiff #29) THEME H1N, H1N-NIGHT: an LCD's four tones, CRYPT's font, own widgets */
+    uint8_t h1n;                 /* (Skiff #29) THEME LCD, LCD NIGHT: an LCD's four tones, CRYPT's font, own widgets */
     uint32_t gen;                /* bumped by palette_set (the text ramps follow) */
 } ux;
 /* The look (Skiff, DESIGN.md: BLOCKS; U2: the only one, FLAT and LINE retired): SURF tiles with square corners on the
@@ -169,7 +169,7 @@ static uint32_t ux_luma(uint16_t c)        /* 0..255 */
     return ((c >> 11) * 255u / 31u * 54u + ((c >> 5) & 63u) * 255u / 63u * 183u + (c & 31u) * 255u / 31u * 19u) >> 8;
 }
 
-/* (Skiff #29) THEME H1N: a reflective LCD's four tones, BG, RAISE (the unlit segments' ghost), MID and TEXT (its ink).
+/* (Skiff #29) THEME LCD: a reflective LCD's four tones, BG, RAISE (the unlit segments' ghost), MID and TEXT (its ink).
  * Every token is one of them (tools/gen_ui_palettes.py derive); cv_lcd_rows snaps every pixel drawn to the nearest by
  * luma, so text, curves and corners lose their anti-aliasing. THEME CUSTOM's colours over it: the same, from theirs */
 static struct { uint16_t tone[4]; uint32_t th[3]; } lcd;   /* lightest last; th: the lumas half way between */
@@ -207,8 +207,8 @@ static void palette_set(uint32_t i)
     ux.crypt = i == UI_CRYPT_INDEX;
     ux.neon = i == UI_NEON_INDEX;
     ux.quark = i == UI_QUARK_INDEX;
-    ux.h1n = i == UI_H1N_INDEX || i == UI_H1N_NIGHT_INDEX;
-    uf.f = UF_FACE[ux.crypt || ux.neon || ux.h1n];   /* (CRYPT, NEON, H1N: the pixel faces) */
+    ux.h1n = i == UI_LCD_INDEX || i == UI_LCD_NIGHT_INDEX;
+    uf.f = UF_FACE[ux.crypt || ux.neon || ux.h1n];   /* (CRYPT, NEON, LCD: the pixel faces) */
     uf.cap = UF_CAP[ux.crypt || ux.neon || ux.h1n];
     ux.bg = p->bg; ux.surf = p->surf; ux.text = p->text; ux.theme = p->theme;
     ux.accent = p->accent;
@@ -281,7 +281,7 @@ static void cv_vhs_rows(uint32_t y, uint32_t r0)
                 cv_px[r * cv_w + i] = swap16(ux_mix(swap16(cv_px[r * cv_w + i]), ux.bg, 55));
 }
 
-/* (Skiff #29) THEME H1N: rows r0.. of the canvas in the LCD's four tones, and its dot grid: the ghost every 3 px of the
+/* (Skiff #29) THEME LCD: rows r0.. of the canvas in the LCD's four tones, and its dot grid: the ghost every 3 px of the
  * screen on open BG (not in a 1 px stroke of BG: the letters on an inverted band) */
 static void cv_lcd_rows(uint32_t x, uint32_t y, uint32_t r0)
 {

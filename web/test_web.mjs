@@ -156,11 +156,11 @@ async function editorMock() {
   const names = [];
   for (let e = 0; e < info.nengines; e++) names.push(E.parse[E.CMD.NAMES](await rq(E.req.names(e))).names);
   let prefs = await E.readDevicePreferences(rq, info, names);
-  ok(info.uiCaps === 25 && prefs.palettes.length === 8 && prefs.palettes[0] === "SKIFF" && prefs.palettes[1] === "HI-CON" && prefs.palettes[2] === "PAPER" && prefs.palettes[3] === "CRYPT" && prefs.palettes[4] === "NEON" && prefs.palettes[5] === "QUARK" && prefs.palettes[6] === "H1N" && prefs.palettes[7] === "H1N-NIGHT",
+  ok(info.uiCaps === 25 && prefs.palettes.length === 8 && prefs.palettes[0] === "SKIFF" && prefs.palettes[1] === "HI-CON" && prefs.palettes[2] === "PAPER" && prefs.palettes[3] === "CRYPT" && prefs.palettes[4] === "NEON" && prefs.palettes[5] === "QUARK" && prefs.palettes[6] === "LCD" && prefs.palettes[7] === "LCD NIGHT",
      "editor: preference capabilities (palette, favorites, (#27) COLORS) and palette names");
   const pal = E.parse[E.CMD.UI_SET](await rq(E.req.uiSet(0, 2)));
   ok(pal.rc === 0 && pal.palette === 2, "editor: display preference 0 (palette) round trip");
-  ok(E.parse[E.CMD.UI_SET](await rq(E.req.uiSet(0, 8))).rc === 1, "editor: out-of-range palette refused");   /* (7: H1N-NIGHT) */
+  ok(E.parse[E.CMD.UI_SET](await rq(E.req.uiSet(0, 8))).rc === 1, "editor: out-of-range palette refused");   /* (7: LCD NIGHT) */
   ok(E.parse[E.CMD.UI_SET](await rq(E.req.uiSet(1, 1))).rc === 2, "editor: the retired font weight answers not supported");
   ok(E.parse[E.CMD.FAV_SET](await rq(E.req.favSet(info.nengines, 31, true))).rc === 1, "editor: empty user slot cannot be favorited");
   await rq(E.req.favSet(0, 0, true));
@@ -234,7 +234,7 @@ async function editorMock() {
       const h = readFileSync(hp, "utf8");
       const five = [...h.matchAll(/\{"([^"]+)", (0x[0-9a-f]{4}), (0x[0-9a-f]{4}), (0x[0-9a-f]{4}), (0x[0-9a-f]{4}), (0x[0-9a-f]{4})\}/g)]
         .map((x) => [x[1], ...x.slice(2).map(Number)]);
-      const trk = [...h.matchAll(/\{((?:0x[0-9a-f]{4}, ){5}0x[0-9a-f]{4})\},\s+\/\* (\S+) \*\//g)].map((x) => [x[2], ...x[1].split(", ").map(Number)]);
+      const trk = [...h.matchAll(/\{((?:0x[0-9a-f]{4}, ){5}0x[0-9a-f]{4})\},\s+\/\* ([^*]+?) \*\//g)].map((x) => [x[2], ...x[1].split(", ").map(Number)]);
       ok(five.length === E.PAL_BUILTIN.length && E.PAL_BUILTIN.every((b, i) => b.name === five[i][0] && b.name === trk[i][0] &&
          b.c.join() === [...five[i].slice(1), ...trk[i].slice(1)].join()), "editor: the themes' colours to start from == the firmware's");
     } else console.log(`${"editor: the themes' colours (no build/gen/ui_palettes.h)".padEnd(64)} skip`);
@@ -270,7 +270,7 @@ async function editorMock() {
     const pal = m.state.palette;
     r = E.parse[E.CMD.MENU_SET](await rq(E.req.menuSet(0, 50)));
     ok(r.rc === 0 && r.value === 7 && E.parse[E.CMD.UI_STATE](await rq(E.req.uiState())).palette === 7,
-       "editor: MENU_SET clamps (THEME 50 -> 7, H1N-NIGHT), the same setting as UI_SET 0");
+       "editor: MENU_SET clamps (THEME 50 -> 7, LCD NIGHT), the same setting as UI_SET 0");
     r = E.parse[E.CMD.MENU_SET](await rq(E.req.menuSet(17, 9)));
     ok(r.rc === 0 && r.id === 17 && r.value === 4, "editor: MENU_SET clamps (SCREEN OFF 9 -> 60 MIN)");
     await rq(E.req.menuSet(17, 3));

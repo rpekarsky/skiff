@@ -43,10 +43,10 @@ int main(int argc, char **argv)
     static const uint8_t pd[] = {0x08, 0xf0};
     const aafont_t probe = {1, 1, 'A', 'A', 0, 0, pg, pd, 0, 0, 0};
     double worst = 100;
-    /* (Skiff, R1) THEME: SKIFF the default, HI-CON and PAPER, CRYPT, NEON, QUARK and (#29) H1N, H1N-NIGHT (their own
+    /* (Skiff, R1) THEME: SKIFF the default, HI-CON and PAPER, CRYPT, NEON, QUARK and (#29) LCD, LCD NIGHT (their own
      * widgets too) */
-    assert(NPALETTES == 8u && !strcmp(UI_PALETTES[6].name, "H1N") && UI_H1N_INDEX == 6u &&
-           !strcmp(UI_PALETTES[7].name, "H1N-NIGHT") && UI_H1N_NIGHT_INDEX == 7u &&
+    assert(NPALETTES == 8u && !strcmp(UI_PALETTES[6].name, "LCD") && UI_LCD_INDEX == 6u &&
+           !strcmp(UI_PALETTES[7].name, "LCD NIGHT") && UI_LCD_NIGHT_INDEX == 7u &&
            !strcmp(UI_PALETTES[5].name, "QUARK") && UI_QUARK_INDEX == 5u && !strcmp(UI_PALETTES[0].name, "SKIFF") && UI_SKIFF_INDEX == 0u &&
            !strcmp(UI_PALETTES[1].name, "HI-CON") && !strcmp(UI_PALETTES[2].name, "PAPER") &&
            !strcmp(UI_PALETTES[3].name, "CRYPT") && UI_CRYPT_INDEX == 3u &&
@@ -54,7 +54,7 @@ int main(int argc, char **argv)
     for (unsigned p = 0; p < NPALETTES; p++) {
         uint16_t *tok = &ux.bg;
         palette_set(p);
-        assert(ux.crypt == (p == UI_CRYPT_INDEX) && ux.h1n == (p == UI_H1N_INDEX || p == UI_H1N_NIGHT_INDEX));
+        assert(ux.crypt == (p == UI_CRYPT_INDEX) && ux.h1n == (p == UI_LCD_INDEX || p == UI_LCD_NIGHT_INDEX));
         /* text and the things read on the screen; the generator checks the same (tools/gen_ui_palettes.py) */
         struct { uint16_t fg, bg; double min; } c[] = {
             {T_TEXT, T_BG, 12.0}, {T_TEXT, T_SURF, 9.0}, {T_MID, T_BG, 5.0}, {T_MID, T_SURF, 4.0},
@@ -68,7 +68,7 @@ int main(int argc, char **argv)
             c[2].min = c[3].min = 3.0;
             c[11].min = 1.2;
             c[18].min = 6.5;
-            for (uint16_t *t = &ux.mid; t <= &ux.grid; t++)   /* every derived token one of its four tones (H1N-NIGHT's
+            for (uint16_t *t = &ux.mid; t <= &ux.grid; t++)   /* every derived token one of its four tones (LCD NIGHT's
                                                               * SURF: only to derive its ghost) */
                 assert(*t == T_BG || *t == T_RAISE || *t == T_MID || *t == T_TEXT);
             assert(T_RAISE != T_BG && T_MID != T_RAISE && T_TEXT != T_MID && T_DIM == T_MID && T_SEL == T_TEXT);
@@ -82,8 +82,8 @@ int main(int argc, char **argv)
         if (min < worst) worst = min;
         printf("%-7s text %.1f:1, labels %.1f:1, values %.1f:1, selection %.1f:1\n", UI_PALETTES[p].name,
                contrast(T_TEXT, T_BG), contrast(T_MID, T_BG), contrast(T_THEME, T_BG), contrast(T_INK, T_SEL));
-        assert((p == 2u || p == UI_H1N_INDEX) == ux.light);   /* PAPER and H1N are the light ones */
-        assert(T_REC == (ux.h1n ? T_TEXT : ux.light ? UI_REC_LIGHT : UI_REC_DARK));   /* (H1N: no red on an LCD) */
+        assert((p == 2u || p == UI_LCD_INDEX) == ux.light);   /* PAPER and LCD are the light ones */
+        assert(T_REC == (ux.h1n ? T_TEXT : ux.light ? UI_REC_LIGHT : UI_REC_DARK));   /* (LCD: no red on an LCD) */
         /* the blend: transparent, solid and an edge between the two, on two backgrounds */
         for (unsigned b = 0; b < 2; b++) {
             uint16_t under = b ? T_SEL : T_BG, ink = b ? T_INK : T_THEME;
@@ -139,7 +139,7 @@ int main(int argc, char **argv)
                        T_SEL == ux_mix(T_BG, T_THEME, UI_SEL_PCT) && T_LANE == ux_mix(T_SURF, T_THEME, 10) &&
                        T_REC == UI_REC_LIGHT);
             assert(ux.crypt == (p == UI_CRYPT_INDEX) && ux.neon == (p == UI_NEON_INDEX) && ux.quark == (p == UI_QUARK_INDEX) &&
-                   ux.h1n == (p == UI_H1N_INDEX || p == UI_H1N_NIGHT_INDEX));
+                   ux.h1n == (p == UI_LCD_INDEX || p == UI_LCD_NIGHT_INDEX));
         }
         ux_cpal = 0;
         palette_set(UI_NEON_INDEX);

@@ -576,12 +576,19 @@ static void hk_ink(uint16_t ink, uint16_t bg)
 enum { UG_MAX = 8192 };
 static struct ug { char name[64]; uint64_t h; } ug[UG_MAX];
 static uint32_t nug;
+/* a palette's name in a file name or a UI golden key: LCD NIGHT as LCD-NIGHT (the golden's lines split on spaces) */
+static void spaces_to_dashes(char *s)
+{
+    for (; *s; s++)
+        if (*s == ' ') *s = '-';
+}
 static void ug_add(const char *pal, const char *name, const uint8_t *b, size_t n)
 {
     uint64_t h = 1469598103934665603ull;
     while (n--) h = (h ^ *b++) * 1099511628211ull;
     if (nug < UG_MAX) {
         snprintf(ug[nug].name, sizeof ug[nug].name, "%s_%s", pal, name);
+        spaces_to_dashes(ug[nug].name);
         ug[nug].h = h;
     }
     nug++;                                          /* (past UG_MAX: ug_check fails) */
@@ -627,7 +634,7 @@ static int ug_check(void)                           /* 1: a picture changed, wen
 static void write_ppm(const char *dir, const char *pal, const char *name)
 {
     static uint8_t img[240u * 240u * 3u];
-    char path[512];
+    char path[512], file[128];
     uint32_t i;
     FILE *f;
     for (i = 0; i < 240u * 240u; i++) {
@@ -637,7 +644,9 @@ static void write_ppm(const char *dir, const char *pal, const char *name)
         img[3u * i + 2u] = (uint8_t)((c & 31u) * 255u / 31u);
     }
     ug_add(pal, name, img, sizeof img);
-    snprintf(path, sizeof path, "%s/ppm/%s_%s.ppm", dir, pal, name);
+    snprintf(file, sizeof file, "%s_%s", pal, name);
+    spaces_to_dashes(file);
+    snprintf(path, sizeof path, "%s/ppm/%s.ppm", dir, file);
     f = fopen(path, "wb");
     if (!f) { fprintf(stderr, "cannot write %s\n", path); return; }
     fprintf(f, "P6\n240 240\n255\n");
@@ -1991,9 +2000,11 @@ static void roll_film_put(uint8_t *img, uint32_t iw, uint32_t row, uint32_t k, i
 }
 static void roll_film_save(const char *dir, const char *pal, const char *name, const uint8_t *img, uint32_t iw, uint32_t ih)
 {
-    char path[512];
+    char path[512], file[128];
     FILE *f;
-    snprintf(path, sizeof path, "%s/%s_%s.ppm", dir, pal, name);
+    snprintf(file, sizeof file, "%s_%s", pal, name);
+    spaces_to_dashes(file);
+    snprintf(path, sizeof path, "%s/%s.ppm", dir, file);
     f = fopen(path, "wb");
     if (!f) { fprintf(stderr, "cannot write %s\n", path); return; }
     fprintf(f, "P6\n%u %u\n255\n", iw, ih);
@@ -2263,8 +2274,8 @@ int main(int argc, char **argv)
     const char *out = argc > 1 ? argv[1] : "build/ui_new";
     char path[600];
     uint32_t p, s;
-    static const char *const SHOW[] = {"SKIFF", "HI-CON", "PAPER", "CRYPT", "NEON", "QUARK", "H1N",   /* ((Skiff, R1) THEME's) */
-                                       "H1N-NIGHT"};
+    static const char *const SHOW[] = {"SKIFF", "HI-CON", "PAPER", "CRYPT", "NEON", "QUARK", "LCD",   /* ((Skiff, R1) THEME's) */
+                                       "LCD NIGHT"};
     snprintf(path, sizeof path, "%s/report.txt", out);
     rep = fopen(path, "w");
     if (!rep) { fprintf(stderr, "cannot write %s\n", path); return 1; }
@@ -2333,7 +2344,7 @@ int main(int argc, char **argv)
         static const uint16_t CC[11] = {RGB(16, 24, 32), RGB(28, 40, 54), RGB(242, 232, 216), RGB(255, 154, 60),
                                         RGB(127, 224, 200), RGB(255, 107, 107), RGB(255, 209, 102), RGB(6, 214, 160),
                                         RGB(76, 201, 240), RGB(199, 125, 255), RGB(244, 162, 97)};
-        static const uint8_t LOOKS[] = {UI_SKIFF_INDEX, UI_CRYPT_INDEX, UI_NEON_INDEX, UI_QUARK_INDEX, UI_H1N_INDEX};
+        static const uint8_t LOOKS[] = {UI_SKIFF_INDEX, UI_CRYPT_INDEX, UI_NEON_INDEX, UI_QUARK_INDEX, UI_LCD_INDEX};
         uint32_t n0 = nfind, k, l;
         for (l = 0; l < sizeof LOOKS; l++)
             for (s = 0; s < S_COUNT; s++) {

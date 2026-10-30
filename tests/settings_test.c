@@ -39,7 +39,7 @@ int main(void)
     assert(settings_import(&p, sizeof p) == 1); settings_init();
     assert(settings.palette == UI_SKIFF_INDEX && fx_lowcut && settings.zoom && panel.enc[0] == 3);
     assert(p.palette == palette_to_stored(UI_SKIFF_INDEX));       /* migrated in place */
-    {   /* (Skiff, R1) THEME: SKIFF HI-CON PAPER CRYPT NEON QUARK (#29) H1N H1N-NIGHT. Every old id maps to one (the
+    {   /* (Skiff, R1) THEME: SKIFF HI-CON PAPER CRYPT NEON QUARK (#29) LCD LCD NIGHT. Every old id maps to one (the
          * eleven before THEME: PAL_TAG + index; Felucca's twenty: below 20; a palette gone: SKIFF); THEME's ids round
          * trip; anything else is SKIFF */
         persist_t q = original;
@@ -60,10 +60,10 @@ int main(void)
         assert(settings_import(&q, sizeof q) == 1 && settings.palette == UI_NEON_INDEX);
         q.palette = palette_to_stored(UI_QUARK_INDEX);
         assert(settings_import(&q, sizeof q) == 1 && settings.palette == UI_QUARK_INDEX);
-        q.palette = palette_to_stored(UI_H1N_INDEX);
-        assert(settings_import(&q, sizeof q) == 1 && settings.palette == UI_H1N_INDEX);
-        q.palette = palette_to_stored(UI_H1N_NIGHT_INDEX);
-        assert(settings_import(&q, sizeof q) == 1 && settings.palette == UI_H1N_NIGHT_INDEX);
+        q.palette = palette_to_stored(UI_LCD_INDEX);
+        assert(settings_import(&q, sizeof q) == 1 && settings.palette == UI_LCD_INDEX);
+        q.palette = palette_to_stored(UI_LCD_NIGHT_INDEX);
+        assert(settings_import(&q, sizeof q) == 1 && settings.palette == UI_LCD_NIGHT_INDEX);
         settings.magic = SETTINGS_MAGIC_OLD; settings.palette = 13; settings_init();   /* retained SET3 */
         assert(settings.magic == SETTINGS_MAGIC && settings.palette == 2u);
         p = original; assert(settings_import(&p, sizeof p) == 1); settings_init();

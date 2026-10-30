@@ -1593,12 +1593,12 @@ static int custom_colors(void)
          menu_n(MI_COLOR) == NPALETTES + 1u;
     a[1] = NPALETTES; request(ED_UI_SET, a, 2);             /* CUSTOM again: in its look */
     ok &= host_wire[5] == 3 && settings.palette == UI_NEON_INDEX && cpal_on() && tokens_are(CC) && ux.neon;
-    menu_put(MI_COLOR, UI_H1N_NIGHT_INDEX);                 /* the MENU's THEME: the last, H1N-NIGHT, then a step on is CUSTOM */
-    ok &= settings.palette == UI_H1N_NIGHT_INDEX && ux.h1n && T_BG == UI_PALETTES[UI_H1N_NIGHT_INDEX].bg &&
+    menu_put(MI_COLOR, UI_LCD_NIGHT_INDEX);                 /* the MENU's THEME: the last, LCD NIGHT, then a step on is CUSTOM */
+    ok &= settings.palette == UI_LCD_NIGHT_INDEX && ux.h1n && T_BG == UI_PALETTES[UI_LCD_NIGHT_INDEX].bg &&
           menu_step(MI_COLOR, 1) == NPALETTES;
     menu_put(MI_COLOR, menu_step(MI_COLOR, 1));
     ok &= cpal_on() && settings.palette == UI_NEON_INDEX && tokens_are(CC) && menu_step(MI_COLOR, 1) == 0u &&
-          menu_step(MI_COLOR, -1) == UI_H1N_NIGHT_INDEX;
+          menu_step(MI_COLOR, -1) == UI_LCD_NIGHT_INDEX;
     bad += check("(#27) THEME: CUSTOM and back by UI_SET and the MENU (it wraps round nine), the set kept, CUSTOM in its look", ok);
 
     for (i = 0; i < CPAL_N; i++) bad_c[i] = (uint16_t)~CC[i];

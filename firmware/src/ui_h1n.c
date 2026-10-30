@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
-/* (Skiff #29) THEME H1N's widgets (skiff-tasks/lcd-mockups.png, H1N GREY, the PO's pick): a reflective monochrome LCD,
+/* (Skiff #29) THEME LCD's widgets (skiff-tasks/lcd-mockups.png, H1N GREY, the PO's pick): a reflective monochrome LCD,
  * the Zoom H1n's. Four tones and the dot grid are gfx.c's (lcd_tones, cv_lcd_rows); here what an LCD draws in
  * segments: the gauges, the dialog's window, HOME's equalizer. On the canvas (cv_*) when ux.h1n; CRYPT's pixel faces.
  * Included by ui_graph.c. */

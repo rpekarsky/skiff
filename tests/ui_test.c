@@ -1498,18 +1498,18 @@ static int test_display_preferences(void)
     bad += check("THEME OCT+ previews the next palette (PAPER, light) without closing the menu",
                  settings.palette == 2 && T_BG == UI_PALETTES[2].bg && ux.light && ui.menu == 1 && !song.octave &&
                  memcmp(before, host_screen, sizeof before) && !memcmp(sounds, trk, sizeof sounds));
-    bad += check("THEME KNOB 1 steps on to CRYPT, NEON (both the pixel faces), QUARK (Barlow), H1N, H1N-NIGHT (pixel), then "
-                 "wraps to SKIFF (R1: SKIFF HI-CON PAPER CRYPT NEON QUARK, #29 H1N H1N-NIGHT)",
+    bad += check("THEME KNOB 1 steps on to CRYPT, NEON (both the pixel faces), QUARK (Barlow), LCD, LCD NIGHT (pixel), then "
+                 "wraps to SKIFF (R1: SKIFF HI-CON PAPER CRYPT NEON QUARK, #29 LCD LCD NIGHT)",
                  str_eq(MI_NAME[MI_COLOR], "THEME") && (turn(EN_K1, 1), settings.palette == UI_CRYPT_INDEX) && ux.crypt &&
                  str_eq(UI_PALETTES[UI_CRYPT_INDEX].name, "CRYPT") && &AF_S == &AF_S_PX &&
                  (turn(EN_K1, 1), settings.palette == UI_NEON_INDEX) && ux.neon && !ux.crypt && &AF_S == &AF_S_PX &&
                  str_eq(UI_PALETTES[UI_NEON_INDEX].name, "NEON") &&
                  (turn(EN_K1, 1), settings.palette == UI_QUARK_INDEX) && ux.quark && !ux.neon && &AF_S != &AF_S_PX &&
                  str_eq(UI_PALETTES[UI_QUARK_INDEX].name, "QUARK") &&
-                 (turn(EN_K1, 1), settings.palette == UI_H1N_INDEX) && ux.h1n && !ux.quark && &AF_S == &AF_S_PX &&
-                 str_eq(UI_PALETTES[UI_H1N_INDEX].name, "H1N") &&
-                 (turn(EN_K1, 1), settings.palette == UI_H1N_NIGHT_INDEX) && ux.h1n && &AF_S == &AF_S_PX &&
-                 str_eq(UI_PALETTES[UI_H1N_NIGHT_INDEX].name, "H1N-NIGHT") &&
+                 (turn(EN_K1, 1), settings.palette == UI_LCD_INDEX) && ux.h1n && !ux.quark && &AF_S == &AF_S_PX &&
+                 str_eq(UI_PALETTES[UI_LCD_INDEX].name, "LCD") &&
+                 (turn(EN_K1, 1), settings.palette == UI_LCD_NIGHT_INDEX) && ux.h1n && &AF_S == &AF_S_PX &&
+                 str_eq(UI_PALETTES[UI_LCD_NIGHT_INDEX].name, "LCD NIGHT") &&
                  (turn(EN_K1, 1), settings.palette == UI_SKIFF_INDEX) && !ux.h1n && !ux.crypt && !ux.neon && &AF_S != &AF_S_PX &&
                  str_eq(UI_PALETTES[UI_SKIFF_INDEX].name, "SKIFF"));
     settings.lowcut = 2;
@@ -4426,7 +4426,7 @@ static int test_bughunt_ui2(void)
         ok &= !name_on() && up_used(3);
         bad += check("NAME: PLAY stops a running transport (never starts), REC ignored, then OCT+ saves", ok);
     }
-    {   /* 6. the piano roll's lowest C name ("C-1") stays inside the panel: nothing drawn left of x 3 ((#29) H1N: but its
+    {   /* 6. the piano roll's lowest C name ("C-1") stays inside the panel: nothing drawn left of x 3 ((#29) LCD: but its
          * dot grid) */
         uint32_t p, x, y, out = 0;
         uint16_t bg, dot;
@@ -8329,7 +8329,7 @@ static int test_u4(void)
     menu_put(MI_CLK, 1);
     ok &= CLK320_SET;
     menu_put(MI_PKNOB, 1);
-    menu_put(MI_COLOR, UI_H1N_NIGHT_INDEX);
+    menu_put(MI_COLOR, UI_LCD_NIGHT_INDEX);
     ui_rec_knobs = REC_KNOBS_OFF;
     hold(B_HOME);
     for (i = 0; i < 12u && ui.menu_sel != MI_RESET; i++) {
@@ -9757,7 +9757,7 @@ static int test_playhead_line(void)
     return bad;
 }
 
-/* (#29) THEME H1N's equalizer: a tone lights its band to the top whatever its level, the bands not next to it stay low,
+/* (#29) THEME LCD's equalizer: a tone lights its band to the top whatever its level, the bands not next to it stay low,
  * silence none; a bar falls a segment a redraw, its peak held HN_HOLD redraws */
 static int test_h1n_eq(void)
 {
@@ -9779,7 +9779,7 @@ static int test_h1n_eq(void)
     hn_spectrum(lv);
     for (k = 0; k < HN_BANDS; k++)
         ok &= !lv[k];
-    bad += check("(#29) H1N EQ: a tone in its band at the top (loud or quiet), its far bands low, silence dark", ok);
+    bad += check("(#29) LCD EQ: a tone in its band at the top (loud or quiet), its far bands low, silence dark", ok);
     for (i = 0; i < SCOPE_N; i++)
         scope_buf[i] = (int16_t)(20000.0 * sin(6.2831853 * 23 * i / SCOPE_N));
     cv_begin(240, H_GRAPH, T_BG);
@@ -9794,7 +9794,7 @@ static int test_h1n_eq(void)
     ok &= !hn_bar[8] && hn_peak[8] == HN_ROWS;
     hn_eq();
     ok &= hn_peak[8] == HN_ROWS - 1;
-    bad += check("(#29) H1N EQ: the bar falls a segment a redraw, its peak held HN_HOLD redraws, then falling", ok);
+    bad += check("(#29) LCD EQ: the bar falls a segment a redraw, its peak held HN_HOLD redraws, then falling", ok);
     return bad;
 }
 
