@@ -201,7 +201,7 @@ eb333bb43e15a520 CRYPT_samples
 975419615f24064f CRYPT_scl
 badc4be755b1e847 CRYPT_shift_env
 9516cc04f96f478d CRYPT_shift_home
-634d578befbc2cb5 CRYPT_shift_pan
+e830cbf1c5fbffd8 CRYPT_shift_pan
 7c2f20c7bef27272 CRYPT_shift_step
 b6ba44eb5bcd5dc8 CRYPT_six_edit
 25b1d76ffe9aa4c4 CRYPT_six_edit_said
@@ -445,7 +445,7 @@ a4562016936fed0a CUSTOM_CRYPT_roll_playing
 b8d4a0ee64a7d682 CUSTOM_CRYPT_scl
 9069983b6abd0045 CUSTOM_CRYPT_shift_env
 328ec6602c2dcc2e CUSTOM_CRYPT_shift_home
-1c4ca45526dce1c8 CUSTOM_CRYPT_shift_pan
+bf72ecb1cf1ce4f0 CUSTOM_CRYPT_shift_pan
 eafd05525e51ffa2 CUSTOM_CRYPT_shift_step
 f39891592b654834 CUSTOM_CRYPT_six_edit
 695b2ee760930628 CUSTOM_CRYPT_six_edit_said
@@ -689,7 +689,7 @@ df6eadb884c7cfad CUSTOM_NEON_roll_wide
 0529c6a33942e0bb CUSTOM_NEON_scl
 c1920bdd57fcc733 CUSTOM_NEON_shift_env
 0bd75b3061826ce1 CUSTOM_NEON_shift_home
-e664edf57b81e7e4 CUSTOM_NEON_shift_pan
+c2014746d056fb2d CUSTOM_NEON_shift_pan
 157a566f63f74e64 CUSTOM_NEON_shift_step
 1de6763ad860efe1 CUSTOM_NEON_six_edit
 2854918bdb470df5 CUSTOM_NEON_six_edit_said
@@ -933,7 +933,7 @@ ca8d042b39d275a5 CUSTOM_QUARK_roll_high
 d0f620ed0aaf0984 CUSTOM_QUARK_scl
 67d1f14057e7dcbf CUSTOM_QUARK_shift_env
 2465657835291336 CUSTOM_QUARK_shift_home
-a858fbc3c912659c CUSTOM_QUARK_shift_pan
+7baf0fb239407b70 CUSTOM_QUARK_shift_pan
 d5ffecd73b3d5d04 CUSTOM_QUARK_shift_step
 b19d819a4fce0c09 CUSTOM_QUARK_six_edit
 f7f3d9b67d25c853 CUSTOM_QUARK_six_edit_said
@@ -1177,7 +1177,7 @@ bc4bfd68b0ff47f2 CUSTOM_SKIFF_roll_wide
 7b39027cdc90df8a CUSTOM_SKIFF_scl
 e175fe052d1d97e3 CUSTOM_SKIFF_shift_env
 817a0a38ee68784c CUSTOM_SKIFF_shift_home
-6664c2a0f036b788 CUSTOM_SKIFF_shift_pan
+26cee17249085fc4 CUSTOM_SKIFF_shift_pan
 36043a2a89a7e654 CUSTOM_SKIFF_shift_step
 0cb656b2b03fcf09 CUSTOM_SKIFF_six_edit
 87c02b7f8fa7c0b7 CUSTOM_SKIFF_six_edit_said
@@ -1421,7 +1421,7 @@ f716258f504d3251 HI-CON_samples
 a51de9ba47a964d2 HI-CON_scl
 dd6f40b0baed09bd HI-CON_shift_env
 a63588a10ab7bead HI-CON_shift_home
-ac75a1feb8c86ddf HI-CON_shift_pan
+021e5a41c6b3b303 HI-CON_shift_pan
 0b71d8964586f4e6 HI-CON_shift_step
 c1f26ec66bb6ec7f HI-CON_six_edit
 06191e662096e03e HI-CON_six_edit_said
@@ -1665,7 +1665,7 @@ c07308ba735e7267 LARGE_CRYPT_roll_wide
 e7df8b1a46824792 LARGE_CRYPT_scl
 ce341ba978f703d3 LARGE_CRYPT_shift_env
 f4f93273d0bf8dfb LARGE_CRYPT_shift_home
-4482875f95244739 LARGE_CRYPT_shift_pan
+22a20cfe16a85eec LARGE_CRYPT_shift_pan
 f54efb94b3672434 LARGE_CRYPT_shift_step
 5dc77129ed89b4db LARGE_CRYPT_six_edit
 865189d44b376bc7 LARGE_CRYPT_six_edit_said
@@ -1909,7 +1909,7 @@ e02da5a978578d09 LARGE_NEON_roll_wide
 960d1074a81ce891 LARGE_NEON_scl
 73aee6fce064876b LARGE_NEON_shift_env
 c82bad5bc848ac34 LARGE_NEON_shift_home
-d0abc03cb05fa099 LARGE_NEON_shift_pan
+afdd45653509863b LARGE_NEON_shift_pan
 745ffa575ac78bb9 LARGE_NEON_shift_step
 66a3a0645070775e LARGE_NEON_six_edit
 265d022e20b0d392 LARGE_NEON_six_edit_said
@@ -2153,7 +2153,7 @@ e6b9bcfb538eee48 LARGE_QUARK_roll_playing
 f5279180cfbe785b LARGE_QUARK_scl
 500c312f0d22352d LARGE_QUARK_shift_env
 48250122e48726fa LARGE_QUARK_shift_home
-7d6e43dfb83288d7 LARGE_QUARK_shift_pan
+74008c75aec3e76e LARGE_QUARK_shift_pan
 b5adc19046f35257 LARGE_QUARK_shift_step
 6617dc1a6b298524 LARGE_QUARK_six_edit
 8d5e90669c3fc603 LARGE_QUARK_six_edit_said
@@ -2397,7 +2397,7 @@ d85e5e7836d6e7d4 LARGE_SKIFF_samples
 328f796af41047d2 LARGE_SKIFF_scl
 f2d6640f43af8998 LARGE_SKIFF_shift_env
 a0d82312fed5b1d2 LARGE_SKIFF_shift_home
-4a6b379c9a556a21 LARGE_SKIFF_shift_pan
+6ef57ab8375e3f55 LARGE_SKIFF_shift_pan
 f25ddd9d03f09edf LARGE_SKIFF_shift_step
 b17188a85bb69571 LARGE_SKIFF_six_edit
 6fa7fbfb56a74890 LARGE_SKIFF_six_edit_said
@@ -2643,7 +2643,7 @@ f7fd7102c459d860 NEON_roll_locks
 6c8400f2151a645e NEON_scl
 8ca77888635eb795 NEON_shift_env
 06a118af072bacdb NEON_shift_home
-dfebd418031ac06f NEON_shift_pan
+2a3c3d94dba7c565 NEON_shift_pan
 18ed400261b518b1 NEON_shift_step
 2e8bb9726cafca47 NEON_six_edit
 24c0ff78aa4f20d3 NEON_six_edit_said
@@ -2887,7 +2887,7 @@ c01001b86b81230e PAPER_roll_wide
 1bb652a7e6ae6360 PAPER_scl
 8fe5394d5fa5dea0 PAPER_shift_env
 3a4cac81d224af7b PAPER_shift_home
-5bbe18da5d6a3c5f PAPER_shift_pan
+ffabbf3a13504793 PAPER_shift_pan
 385bb2b92611fd91 PAPER_shift_step
 9398d2560194e1d1 PAPER_six_edit
 2a4ae2cf977464e6 PAPER_six_edit_said
@@ -3139,7 +3139,7 @@ e262ae3579d94034 QUARK_samples
 e8c698e4a134ebb7 QUARK_scl
 1c5d2c749a04a5b4 QUARK_shift_env
 979f56ddbd144c07 QUARK_shift_home
-e39f0274bff4c14e QUARK_shift_pan
+7524bed0beb12fb7 QUARK_shift_pan
 e39704dec79c764f QUARK_shift_step
 7ee9d8bdde3c6db8 QUARK_six_edit
 fcc11747dcfbdc27 QUARK_six_edit_said
@@ -3385,7 +3385,7 @@ c033b45b34344c55 SKIFF_samples
 3f0ff5f98bd0e649 SKIFF_scl
 153642e4e8d29d0b SKIFF_shift_env
 bcb9fef6a08a9bd3 SKIFF_shift_home
-ec8d1d673e26066e SKIFF_shift_pan
+394c157d3a7042ca SKIFF_shift_pan
 1a572f0268951b07 SKIFF_shift_step
 480f03aff8e6dce5 SKIFF_six_edit
 bf792663bbe1a298 SKIFF_six_edit_said

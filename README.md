@@ -461,7 +461,7 @@ by the keys, with what each key is in Skiff.
   F3 held clears the track's sequence, then CLICK, COUNT-IN, CLICK LEVEL, FEEL
 - **EDIT** opens the EDIT pages everywhere; on NOTES with REC armed it clears the cursor step
 - **SELECT** turns the pages of a family; **GLO + SELECT** sets the tempo (MENU › BPM LOCK, on by default)
-- **PRESETS** changes the sound (MENU › PRESETS KNOB PAN: the track's PAN, GLO + PRESETS the sound); on NOTES and FEEL
+- **PRESETS** changes the sound (MENU › PRESETS KNOB PAN: the track's PAN, SHIFT + PRESETS the sound); on NOTES and FEEL
   it moves the step cursor, on PATTERN it turns the direction, on lists it picks. With SAVE › PRESETS' LIST on a type
   (BASS, PAD ..) it steps through that type only
 - On NOTES and FEEL, **SHIFT + PRESETS** stretches the selection over a range of steps, **SHIFT + OCT− / OCT+** copy
@@ -622,9 +622,9 @@ every setting back as a new unit has it. The web editor's Settings tab reads and
   on any channel MIDI IN hears; a CC learned no longer reaches the standard map (CC7 LEVEL, CC74 the brightness ..).
   CC1, 6, 11, 32, 38, 64, 96–101 and 120–127 are never learned. **LEARN CLEAR** forgets them all
 - **PRESETS KNOB** (CONTROL): PRESETS (default) or PAN. PAN: where PRESETS would change the sound (HOME, EDIT, ENV, FX,
-  MIXER ..) it turns the selected track's PAN instead, as MIXER's KNOB 2 (said in the header, recorded with REC on); GLO
-  held + PRESETS, or SHIFT + PRESETS, changes the sound on every page. SAVE › PRESETS, NOTES, FEEL, PATTERN and the
-  lists keep their own PRESETS
+  MIXER ..) it turns the selected track's PAN instead, as MIXER's KNOB 2 (said in the header, recorded with REC on);
+  SHIFT + PRESETS changes the sound on every page but NOTES and FEEL (there it is the range). SAVE › PRESETS, NOTES,
+  FEEL, PATTERN and the lists keep their own PRESETS
 - **STEP PREVIEW** (CONTROL, 1.3): ON, a move of the cursor on NOTES or the drum grid (PRESETS, the grid's page keys)
   sounds the step it lands on, when stopped
 - **RETURN** (CONTROL, 2.0): SNAP, 1 BEAT or 1 BAR (default): how MOMENTARY's values (LFO held + a knob), the FX
