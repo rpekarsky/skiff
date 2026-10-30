@@ -8,9 +8,9 @@
  *             KEYS   L CURVE L DEPTH R DEPTH R CURVE            LFO      WAVE RATE FADE KEY SYNC
  *             MORE   BREAK KEY RATE VELOCITY LFO AMP            DEPTH    VIBRATO VIB SENS TREMOLO
  *   A knob edits a copy of the patch: fm6_set_patch (the audio ISR's copy follows), fm6_edited (SLOT: OWN, or the
- *   factory patch it now is; F n still while an own patch is kept aside). ALGO and FEEDBACK show what plays (EDIT 1's
- *   ALGO and FEEDBACK on the patch) and turning them puts that in the patch, the macro back to neutral. OKS is not
- *   here: the engine never reads it.
+ *   factory patch it now is; F n*, still F n, while an own patch is kept aside: "F3* DROPPED" when that was another's
+ *   F n*). ALGO and FEEDBACK show what plays (EDIT 1's ALGO and FEEDBACK on the patch) and turning them puts that in
+ *   the patch, the macro back to neutral. OKS is not here: the engine never reads it.
  * The panel (design/mock_fm6.py, direction D, the user's pick; after an idea in a video by Floyd Steinberg, drawn our
  * own way): the operators' envelopes as the engine runs them (fm6_op_env_init, the macros through fm6_macro), each as
  * straight segments between its breakpoints on a log time axis (the held note, then its release); the modulators
@@ -176,7 +176,7 @@ static int32_t fm_val(const fm_field_t *f, uint32_t i, const uint8_t *p, const t
 static void fm_knob(uint32_t pg, uint32_t k, int32_t s)
 {
     track_t *t = TSEL;
-    uint32_t tr = fm_tr(), w = fm_ui[1 + pg] % FM_NWIN, i, mx;
+    uint32_t tr = fm_tr(), w = fm_ui[1 + pg] % FM_NWIN, i, mx, dropped;
     const fm_field_t *f = &FM_F[pg & 1u][w][k & 3u];
     uint8_t v[FP_SIZE + 1u];
     int32_t d = s > 0 ? 1 : -1, x;
@@ -206,7 +206,12 @@ static void fm_knob(uint32_t pg, uint32_t k, int32_t s)
         break;
     }
     fm6_set_patch(tr, v);
-    fm6_edited(tr);
+    dropped = fm6_edited(tr);
+    if (dropped) {
+        char msg[] = "F0* DROPPED";
+        msg[1] = (char)('0' + dropped);
+        ui_message(msg);
+    }
 }
 static void fm_op_knob(uint32_t k, int32_t s) { fm_knob(0, k, s); }
 static void fm_all_knob(uint32_t k, int32_t s) { fm_knob(1, k, s); }
