@@ -86,7 +86,7 @@ static struct {
     uint8_t rp_dirty;                  /* REC: a setting changed (settings_save when the layer lets go) */
     int16_t v[2u * NTRK + 1u];         /* the values when it opened: GLO every track's mute, then level (NTRK + k); SCL
                                         * ROOT..TRN, CHRD VOIC; SEQ LEN DIV SWING GATE; REC the settings (ui_rec_prefs,
-                                        * ui_rec_knobs);
+                                        * SHARED_BYTE's REC_KNOBS_OFF);
                                         * the BPM last (LY_BPM) */
     uint32_t solo;                     /* GLO: the keys held that solo */
     uint32_t fill;                     /* GLO: D4 held, FILL (Skiff: seq.c seq_fill, the FILL / !FILL steps) */
@@ -282,7 +282,7 @@ static void layer_opened(uint32_t l)
     lys.v[LY_BPM] = song.g[G_BPM];
     if (l == LAYER_REC) {
         lys.v[0] = ui_rec_prefs;
-        lys.v[1] = ui_rec_knobs;
+        lys.v[1] = SHARED_BYTE & REC_KNOBS_OFF;
     }
     memcpy(lys.mute, drum_mute, sizeof lys.mute);
 }
@@ -489,7 +489,7 @@ static void rec_key(uint32_t p)
         return;
     }
     if (p == RL_KNOBS) {
-        ui_rec_knobs = (uint8_t)(ui_rec_knobs ^ REC_KNOBS_OFF);
+        SHARED_BYTE = (uint8_t)(SHARED_BYTE ^ REC_KNOBS_OFF);
         rp_apply();
         lys.rp_dirty = 1;
         ui_say("KNOBS ", rec_knobs_off ? "OFF" : "ON");
@@ -754,9 +754,10 @@ static uint32_t layer_oct(uint32_t pressed, uint32_t oct)
             if (lys.loaded)                             /* (SAVE held then: the tools / the clear again) */
                 (void)tl_put_back(t);
             if (lys.l == LAYER_REC) {                   /* REC: the settings as it opened */
-                lys.rp_dirty |= (uint8_t)(ui_rec_prefs != (uint8_t)lys.v[0] || ui_rec_knobs != (uint8_t)lys.v[1]);
+                lys.rp_dirty |= (uint8_t)(ui_rec_prefs != (uint8_t)lys.v[0] ||
+                                          (SHARED_BYTE & REC_KNOBS_OFF) != (uint32_t)lys.v[1]);
                 ui_rec_prefs = (uint8_t)lys.v[0];
-                ui_rec_knobs = (uint8_t)lys.v[1];
+                shared_put(REC_KNOBS_OFF, (uint32_t)lys.v[1]);
                 rp_apply();
             } else {
                 for (k = 0; k < 4u; k++)

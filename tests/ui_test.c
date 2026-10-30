@@ -6638,11 +6638,11 @@ static int test_rec_layer(void)
         track_defaults_steps(TSEL);
         a = leds_at(0); b = leds_at(250);
         ok &= !((a | b) & w0);
-        ui_rec_knobs = REC_KNOBS_OFF; rp_apply();
+        SHARED_BYTE = REC_KNOBS_OFF; rp_apply();
         a = leds_at(0); b = leds_at(250);
         ok &= ((a ^ b) & w4) != 0u;
     }
-    ui_rec_knobs = 0; rp_apply();
+    SHARED_BYTE = 0; rp_apply();
     rec_close();
     bad += check("  LEDs: CLEAR breathes (dark when empty), CLICK / COUNT-IN lit when on, LEVEL with the click, "
                  "KNOBS when on", ok);
@@ -6657,7 +6657,7 @@ static int test_rec_layer(void)
     ok &= !rec_knobs_off && msg_is("KNOBS ON");
     key_down(white(4)); frame(); key_up(white(4)); frame();
     press(B_OCTDN);
-    ok &= !rec_knobs_off && !ui_rec_knobs && msg_is("UNDONE: REC");
+    ok &= !rec_knobs_off && !SHARED_BYTE && msg_is("UNDONE: REC");
     rec_close();
     bad += check("  C4: KNOBS OFF / ON, OCT- puts it back", ok);
 
@@ -8331,7 +8331,7 @@ static int test_u4(void)
     ok &= CLK320_SET;
     menu_put(MI_PKNOB, 1);
     menu_put(MI_COLOR, UI_LCD_NIGHT_INDEX);
-    ui_rec_knobs = REC_KNOBS_OFF;
+    SHARED_BYTE = REC_KNOBS_OFF;
     hold(B_HOME);
     for (i = 0; i < 12u && ui.menu_sel != MI_RESET; i++) {
         turn(EN_ALGO, 1);
@@ -8344,7 +8344,7 @@ static int test_u4(void)
     bad += check("U4 A3: HINTS OFF hides the layer's first-tap hint; RESET SETTINGS asks, then the MENU's defaults (TUNE 0, LEDS DIM HI, HINTS ON, "
                  "(Skiff) CPU CLOCK 360 MHZ, (wishlist #38) PRESETS KNOB PRESETS, (#29) THEME SKIFF, (#23) REC KNOBS ON)",
                  ok && !ui_hints_off && song.g[G_TUNE] == 0 && settings_leds == LEDS_DIM && !CLK320_SET && msg_is("SETTINGS RESET") &&
-                 !PRESETS_PAN_SET && menu_get(MI_COLOR) == UI_SKIFF_INDEX && ui_rec_knobs == 0u);
+                 !PRESETS_PAN_SET && menu_get(MI_COLOR) == UI_SKIFF_INDEX && SHARED_BYTE == 0u);
     ui_power_on();
     return bad;
 }

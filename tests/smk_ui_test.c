@@ -2,7 +2,7 @@
 /* Host test of Skiff's SMK-37 Pro controls (BOARD_SMK37, design/SMK37_UX.md as picked): the UI of tests/ui_test.c built
  * for the SMK (its prelude, the input stood in by the SMK's, hal/smk_pads.h as it is), and smk_ui.c:
  *   PADS     on HOME the step taps, in a layer and the DRUM grid the white keys; a tap sets a step to the last note
- *            (its velocity), again clears it, one undo a run; DRUM: the lane; past LEN nothing; the colours (A).
+ *            (its velocity), again clears it, one undo a run; DRUM: the lane; past LEN nothing; the colours (A), PAD LIGHT.
  *   FADERS   the four tracks shown, taking over once they reach the value, FADER BANK (its LED), the window.
  *   ENTRIES  > and < the selected track's entry after and before, the first's end said; in PERFORM and GLO (held or
  *            locked) the same, a combo (no tap, the lock kept); in another layer nothing.
@@ -427,6 +427,61 @@ static int test_perf_breath(void)
                  floor_top * 4u < top_channel(peak));
     peak = breath_peak(LAYER_SCL, &floor_top);
     bad += check("(#43) another layer's breathing keys: up to a lit pad, as before", peak == rgb_of(T_TRK(0), SMK_PAD_FULL));
+    return bad;
+}
+/* (wishlist #5) MENU > DISPLAY > PAD LIGHT: 100 % the pads as they were; dimmer, lit dims most, an empty step stays
+ * visible, lit / tie / empty apart, the hue kept; right brighter; its two bits beside REC KNOBS', both kept; RESET SETTINGS 100 % */
+static int test_pad_light(void)
+{
+    int bad = 0, ok = 1;
+    track_t *t;
+    uint32_t i, full[3], lit = 0xFFFu, tie = 0, faint = 0, col = rgb_of(T_TRK(0), SMK_PAD_FULL);
+    smk_power_on();
+    sel_set(0);
+    t = TSEL;
+    track_defaults_steps(t);
+    t->p[P_SLEN] = 16;
+    t->step[3].n = 1;
+    t->step[3].note[0] = 60;
+    t->step[3].time = ST_NOTE;
+    t->step[4].time = ST_TIE;
+    bad += check("SMK PAD LIGHT: a DISPLAY row, 100 % by default (stored 0), four steps",
+                 MI_TAB[MI_PADL] == MTAB_DISPLAY && smk_padl() == 0u && menu_n(MI_PADL) == SMK_PADL_N &&
+                 str_eq(menu_vname(MI_PADL, menu_get(MI_PADL)), "100 %"));
+    frame();
+    full[0] = host_pad[3], full[1] = host_pad[4], full[2] = host_pad[0];
+    bad += check("SMK PAD LIGHT 100 %: the pads as they were", full[0] == col && full[2] == SMK_PAD_FAINT);
+    for (i = 1; i < SMK_PADL_N; i++) {
+        menu_put(MI_PADL, menu_step(MI_PADL, -1));
+        frame();
+        ok &= smk_padl() == i && top_channel(host_pad[3]) < lit && top_channel(host_pad[4]) < top_channel(full[1]);
+        lit = top_channel(host_pad[3]), tie = top_channel(host_pad[4]), faint = top_channel(host_pad[0]);
+        ok &= faint >= 8u && tie * 2u >= faint * 3u && lit * 2u >= tie * 3u;
+        ok &= ((col >> 16 & 255u) >= (col >> 8 & 255u)) == ((host_pad[3] >> 16 & 255u) >= (host_pad[3] >> 8 & 255u)) &&
+              ((col >> 8 & 255u) >= (col & 255u)) == ((host_pad[3] >> 8 & 255u) >= (host_pad[3] & 255u));
+    }
+    printf("  25 %%: lit %u -> %u, tie %u -> %u, empty %u -> %u\n", (unsigned)top_channel(full[0]), (unsigned)lit,
+           (unsigned)top_channel(full[1]), (unsigned)tie, (unsigned)top_channel(full[2]), (unsigned)faint);
+    bad += check("SMK PAD LIGHT left to 25 %: lit dims, an empty step stays lit, the levels apart, the hue kept",
+                 ok && str_eq(menu_vname(MI_PADL, menu_get(MI_PADL)), "25 %") && lit * 2u <= top_channel(full[0]));
+    menu_put(MI_PADL, menu_step(MI_PADL, -1));
+    bad += check("SMK PAD LIGHT: stops at 25 %", smk_padl() == 3u);
+    menu_put(MI_PADL, menu_step(MI_PADL, 1));
+    bad += check("SMK PAD LIGHT: right brighter", smk_padl() == 2u && str_eq(menu_vname(MI_PADL, menu_get(MI_PADL)), "50 %"));
+    {
+        sks_t p;
+        SHARED_BYTE |= REC_KNOBS_OFF;
+        settings_export(&p);
+        bad += check("SMK PAD LIGHT: saved in bits 1..2 of the shared byte, REC KNOBS OFF beside it",
+                     p.s.shared == (2u << SMK_PADL_SHIFT | REC_KNOBS_OFF));
+        SHARED_BYTE = 0;
+        settings_import(&p, (int)sizeof p);
+        bad += check("SMK settings: PAD LIGHT and REC KNOBS read back", smk_padl() == 2u && SHARED_BYTE & REC_KNOBS_OFF);
+    }
+    menu_put(MI_PADL, 0);
+    settings_reset();
+    frame();
+    bad += check("SMK RESET SETTINGS: PAD LIGHT 100 %", smk_padl() == 0u && host_pad[3] == col);
     return bad;
 }
 
@@ -938,6 +993,7 @@ int main(void)
     bad += test_pad_taps();
     bad += test_pad_colours();
     bad += test_perf_breath();
+    bad += test_pad_light();
     bad += test_faders();
     bad += test_entries();
     bad += test_layer_arrows();

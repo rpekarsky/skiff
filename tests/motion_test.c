@@ -1292,7 +1292,7 @@ static int feel(void)
  * no automation of it; TAKE still writes it (#12: a take keeps what was played); ON as before */
 static void knobs_set(uint32_t off)
 {
-    ui_rec_knobs = (uint8_t)(off ? REC_KNOBS_OFF : 0u);
+    SHARED_BYTE = (uint8_t)(off ? REC_KNOBS_OFF : 0u);
     rp_apply();
 }
 static int knobs(void)

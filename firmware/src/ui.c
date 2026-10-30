@@ -184,9 +184,13 @@ static const char *const CLK_WHY[11] = {"", "ALREADY 320", "SYS MODE", "PLL2 NOT
 #define ui_mch(i) (favorites.factory[15][6 + (i)])
 #if BOARD_SMK37
 /* (SMK-37 Pro) settings bytes ([15][12..13]: 0 the defaults): MENU > KEY VELOCITY (SMK_KV_*,
- * 0 DYNAMIC) and MASTER's level / 4 + 1 (K1, smk_ui.c; 0: none kept, the power-on level) */
+ * 0 DYNAMIC) and MASTER's level / 4 + 1 (K1, smk_ui.c; 0: none kept, the power-on level). (wishlist #5) MENU > PAD LIGHT:
+ * bits 1..2 of SHARED_BYTE, 0 100 %, 1 75 %, 2 50 %, 3 25 % (smk_ui.c smk_pad_light) */
 #define SMK_KV_BYTE (favorites.factory[15][12])
 #define SMK_MASTER_BYTE (favorites.factory[15][13])
+#define SMK_PADL_N 4u
+#define SMK_PADL_SHIFT 1u
+#define smk_padl() ((SHARED_BYTE >> SMK_PADL_SHIFT) % SMK_PADL_N)
 #endif
 static const uint8_t *const mch_io = &ui_mch(0);
 static const uint8_t UNIT_G[3] = {G_CLOCK, G_ROUTE, G_TUNE};
@@ -208,11 +212,12 @@ _Static_assert(PT_N == 8, "settings_persist.c keeps ui_ptag below 8");
 #define PREF_REC 0xFF00u                       /* (menu_items.c MENU_FLAGS: a bit of ui_rec_prefs, << 8) */
 #define PREF_SCALE_LEDS (0x40u << 8)
 #define REC_FEEL 0x80u                         /* (Skiff: a bit of ui_rec_prefs itself) */
-/* (Skiff #23) the REC layer's C4, KNOBS OFF: a knob turn sounds and becomes the base, REC records no automation of it
- * (seq.c rec_knobs_off); TAKE still writes it (#12). Bit 0 of a settings byte ([15][17], free since phase 5): 0 in older
- * settings = ON */
-#define ui_rec_knobs (favorites.factory[15][17])
+/* [15][17], free since phase 5 (SKS1's shared): small settings packed bit by bit, 0 in every older record = all their
+ * defaults. Bit 0 (Skiff #23) the REC layer's C4, KNOBS OFF: a knob turn sounds and becomes the base, REC records no
+ * automation of it (seq.c rec_knobs_off); TAKE still writes it (#12). Bits 1..2 (SMK-37) PAD LIGHT (SMK_PADL_SHIFT) */
+#define SHARED_BYTE (favorites.factory[15][17])
 #define REC_KNOBS_OFF 1u
+static void shared_put(uint32_t mask, uint32_t bits) { SHARED_BYTE = (uint8_t)((SHARED_BYTE & ~mask) | (bits & mask)); }
 enum { RP_CLICK, RP_LEVEL, RP_COUNTIN };
 static uint32_t rp_get(uint32_t f)                     /* a field as the MENU steps it: 0..2 */
 {
@@ -226,7 +231,7 @@ static void rp_apply(void)                             /* the settings into clic
     click_lvl = (uint8_t)rp_get(RP_LEVEL);
     cin_bars = (uint8_t)rp_get(RP_COUNTIN);
     rec_feel = (ui_rec_prefs & REC_FEEL) != 0u;         /* (Skiff) */
-    rec_knobs_off = (ui_rec_knobs & REC_KNOBS_OFF) != 0u;
+    rec_knobs_off = (SHARED_BYTE & REC_KNOBS_OFF) != 0u;
 }
 static void rp_put(uint32_t f, uint32_t v)
 {
