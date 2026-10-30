@@ -1393,11 +1393,12 @@ static void setup(int s)
         break;
     }
     case S_HOME_LISTS:                              /* (#34) the lanes' patterns, playing SONG ON: T2 on a chain, T3
-                                                     * on a REST, MIDI IN playing T1 and T2 */
+                                                     * on a REST, MIDI IN playing T1 and T2, T5 muted */
         song_lists(1);
         lists.ent[1][2][1] = REPS_CHAIN;
         lists.ent[2][0][0] = PAT_REST;
         midi_at[0] = midi_at[1] = fm1_ms | 1u;
+        trk[4].p[P_MUTE] = 1;
         trk_pid[2] = 0;
         break;
     /* (Skiff phase 6) the screens of design/mock_p6.py: the last track but one selected (with six T5: the four shown

@@ -114,7 +114,8 @@ static void graph_tracks(void)
         if (pat[0]) {                                 /* ((#34) the pattern; a compact lane: after the number) */
             text_ink(&AF_S, pat, pb);
             cv_text_on((stacked ? HL_NUM_X : HL_C_PAT_X) - pb[0],
-                       y + (stacked ? HL_ENG_CY - AF_S_CAP_Y : CAP_IN(S, HL_C_H)), &AF_S, pat, ib ? T_INK : T_MID, lane);
+                       y + (stacked ? HL_ENG_CY - AF_S_CAP_Y : CAP_IN(S, HL_C_H)), &AF_S, pat,
+                       ib ? T_INK : muted ? T_DIM : T_MID, lane);
         }
         if (midi_mark(k))                             /* ((Skiff U4, F4) MIDI IN playing it: a mark after the number;
                                                        * (#34) before it where its pattern is after it) */
