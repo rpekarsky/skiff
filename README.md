@@ -648,8 +648,8 @@ every setting back as a new unit has it. The web editor's Settings tab reads and
 - **COUNT-IN:** OFF (default), 1 BAR or 2 BARS: with a track armed, PLAY counts in first (clicking even with
   CLICK OFF), and a note played in the last half beat lands on step 1. Not with an external clock
 - **MASTER START:** LAST (default) or SAFE, for headphones after a loud session. SAFE: at power-on the sound rises from
-  silence over a second to at most 20 % of the MASTER knob, and stays there, wherever the knob is, until you move it;
-  then it follows the knob
+  silence over a second to at most 20 % of the MASTER knob, and stays there, wherever the knob is, until you turn it up
+  or down to 20 %; then it follows the knob (turning it down above 20 % never makes it louder)
 - **USB SERIAL** (2.0: only in a build from source without `--release`, see [BUILDING.md](BUILDING.md)): the serial
   console, a developer tool. A release has none, so the FM-1 is a plain audio + MIDI device and macOS 13–15 see its
   USB audio input

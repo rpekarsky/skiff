@@ -6,8 +6,9 @@
  * master_knob: the pot x16, smoothed per UI frame (master_poll) */
 static int32_t master_knob = 512 * 16;
 /* MENU > AUDIO > MASTER START SAFE (master_rise): after power-on the level rises from silence over MASTER_RISE_MS, and
- * stays at most MASTER_SAFE_POT's until the pot is picked up: moved MASTER_CATCH steps from where it stood (smoothed,
- * so no ADC noise gets that far) or down to that level; then it glides to the pot. The SMK's K1 starts at that level */
+ * stays at most MASTER_SAFE_POT's until the pot is picked up: turned MASTER_CATCH steps up from where it stood (smoothed,
+ * so no ADC noise gets that far) or down to that level (a turn down above it changes nothing: never louder for turning
+ * down); then it glides to the pot. The SMK's K1 starts at that level */
 #define MASTER_RISE_MS 1000u
 #define MASTER_CATCH 32
 enum { MASTER_FREE, MASTER_HOLD_FIRST, MASTER_HOLD };
@@ -24,8 +25,7 @@ static uint32_t master_risen(uint32_t q12)
 }
 static int master_picked_up(void)
 {
-    int32_t moved = master_knob - master_held_knob;
-    return moved >= MASTER_CATCH * 16 || moved <= -MASTER_CATCH * 16 || master_knob / 16 <= (int32_t)MASTER_SAFE_POT;
+    return master_knob - master_held_knob >= MASTER_CATCH * 16 || master_knob / 16 <= (int32_t)MASTER_SAFE_POT;
 }
 static void master_poll(void)
 {

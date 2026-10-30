@@ -288,7 +288,7 @@ static void boot_rise(void)
 {
     uint32_t safe = master_of_pot(MASTER_SAFE_POT), start, half, end, noisy, i;
     int ok;
-    safe_boot(1023);
+    safe_boot(800);
     start = song.master_q12;
     fm1_ms += MASTER_RISE_MS / 2u;
     master_poll();
@@ -300,20 +300,23 @@ static void boot_rise(void)
           start == 0u && half == safe / 2u && end == safe && !master_rising);
     ok = 1;
     for (i = 0; i < 200u; i++) {
-        host_pot = 1023 - (int32_t)(i * 7u % 25u);
+        host_pot = 788 + (int32_t)(i * 7u % 25u);
         polls(1);
         ok &= song.master_q12 == safe;
     }
     noisy = song.master_q12;
-    host_pot = 1023 - 2 * MASTER_CATCH;
+    host_pot = 800 + 2 * MASTER_CATCH;
     polls(1);
     ok &= song.master_q12 >= safe && song.master_q12 < master_of_pot(MASTER_SAFE_POT + 64u);
     polls(200);
-    check("MASTER START SAFE: ADC noise of 24 steps keeps the level; the pot moved, it glides up to the pot's",
+    check("MASTER START SAFE: ADC noise of 24 steps keeps the level; the pot turned up, it glides up to the pot's",
           ok && noisy == safe && song.master_q12 == master_of_pot((uint32_t)(master_knob / 16)) &&
           master_knob / 16 >= host_pot - 1);
     safe_boot(1023);
     polls(150);
+    host_pot = 1023 - 4 * MASTER_CATCH;
+    polls(200);
+    check("MASTER START SAFE: the pot turned down, still above 20 %, the level stays", song.master_q12 == safe);
     host_pot = 150;
     polls(200);
     check("MASTER START SAFE: the pot turned down past 20 %, it follows",
