@@ -229,7 +229,7 @@ static void rp_put(uint32_t f, uint32_t v)
     rp_apply();
 }
 /* (favorites.factory[15][29] held MENU > STYLE, FLAT LINE BLOCKS: (Skiff U2) BLOCKS is the only look, the byte is left
- * as it was saved) */
+ * as it was saved; the SMK's bits 4..5: PAD FOLLOW, SMK_PF_BYTE above) */
 /* (Skiff) the PERFORM layer's KNOB 1, LAUNCH: where a pattern switched to while playing comes in (launch.c LAUNCH_*:
  * LOOP BAR BEAT NOW), a byte no engine uses (favorites.c), saved with the settings; 0 in older settings = LOOP */
 #define ui_launch (favorites.factory[15][26])

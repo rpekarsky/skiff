@@ -5,7 +5,7 @@
  * palette: UI_PAL_TAG + index; an old id (below 20, earlier firmware) is migrated on import.
  * bold: no longer used (one font weight); kept as it was saved, unless it holds the HOLD setting (panel.c).
  * zoom: no longer used (the large readout); kept as it was saved, unless it holds the LEDS setting (panel.c).
- * favorites.factory[15][28..31]: CLICK / CLICK LEVEL / COUNT-IN (1.1), STYLE (retired, Skiff U2: left as saved), MENU's flags, the layers seen (bytes no
+ * favorites.factory[15][28..31]: CLICK / CLICK LEVEL / COUNT-IN (1.1), STYLE (retired, Skiff U2: left as saved; SMK bits 4..5: PAD FOLLOW), MENU's flags, the layers seen (bytes no
  * engine uses; 0 in older settings = every one's default); [15][27]: SCREEN OFF (1.1.5; 0 = 30 MIN, the default);
  * [15][26]: Skiff's LAUNCH (ui.c ui_launch; 0 = LOOP, an unknown value read as LOOP); [15][25]: Skiff's PERFORM KEYS
  * (ui.c ui_perf_keys: 0 TRACK, 1 SCENE); [15][24]: Skiff's mark, 0xA5 (before 2.0 bank.c's, set once it had freed its
