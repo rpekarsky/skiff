@@ -115,7 +115,8 @@ loader 7,859 B (the limit: 7,936 B, below).
 - **MASTER on K1:** a virtual pot, 24 steps a detent. The header says its level while it turns (`MASTER 70%`), and
   the settings keep it once it rests 1.5 s, so it comes back at power-on.
 - **The extra buttons:** KNOB BANK is SHIFT, as HOME held but on a button of its own: the map, + BT for TAKE, and
-  + a layer's button to lock that layer. Let go, it does nothing (HOME still taps home, and held opens MENU).
+  + a layer's button to lock that layer. Let go, it does nothing (HOME still taps home, and held opens MENU); (#20)
+  tapped on FM6's OPERATOR or ALL OPS (let go before the map, nothing else touched), the panel turns PHASE and back.
   FADER BANK steps the faders' bank. < and > go to the selected track's entry before and after, at once when stopped
   and at the LAUNCH point when playing.
 - **Pads:** always a grid. Where the FM-1's keys show a map of their own (a layer, the DRUM grid, NAME, SLICES, or a

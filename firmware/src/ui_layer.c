@@ -1434,6 +1434,8 @@ static void shift_map(smap_t *m)
         m[3] = (smap_t){"KEYS", "STEPS", 1};
         m[4] = (smap_t){"EDIT + REC", "CLEAR", 1};
     }
+    if (sh && sh->eng == ENGI_FM6)                   /* (#20) the panel: PHASE (right) or the envelopes */
+        m[3] = (smap_t){"+ SELECT", "PHASE", 2};
     for (i = 0; i < 6u; i++)
         m[6 + i] = ALL[i < 3u && sel ? 6u + i : i];
     if (sel)                                         /* ((2.0) there SHIFT + EDIT deletes, ui_input.c sel_delete) */
@@ -1443,9 +1445,9 @@ static void shift_map(smap_t *m)
          * PRESETS, PARA EDIT, BT SAVE, SEQ REC REC, KNOB BANK SHIFT. PLAY stays PLAY: the SMK prints a play sign there,
          * which the screen's fonts don't have */
         static const char *const FM[] = {"PRESETS", "SELECT", "GLO + SELECT", "ALGO", "EDIT + REC", "HOLD SAVE",
-                                         "+ SAVE", "+ REC", "KEYS + REC", "+ PRESETS", "+ EDIT"};
+                                         "+ SAVE", "+ REC", "KEYS + REC", "+ PRESETS", "+ EDIT", "+ SELECT"};
         static const char *const SMK[] = {"K4", "K2", "GLOBE + K2", "K3", "PARA + SEQ REC", "HOLD BT",
-                                          "+ BT", "+ SEQ REC", "KEYS + SEQ REC", "+ K4", "+ PARA"};
+                                          "+ BT", "+ SEQ REC", "KEYS + SEQ REC", "+ K4", "+ PARA", "+ K2"};
         uint32_t j;
         for (i = 0; i < 12u; i++)
             for (j = 0; j < NELEM(FM); j++)
