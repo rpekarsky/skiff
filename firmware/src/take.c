@@ -39,14 +39,20 @@ static uint32_t take_stamp(const track_t *t, uint32_t *pass, int32_t *feel)
     uint32_t len = t->p[P_SLEN] > 0 ? (uint32_t)t->p[P_SLEN] : 1u, idx = t->seq_idx % len, next = 0;
     uint32_t pos = t->seq_pos > TAKE_LAT ? t->seq_pos - TAKE_LAT : 0u;
     *pass = take_pass[trk_index(t)];
-    if (t->seq_pos < 0x7FFFFFFFu && pos > step_samples(t, div_samples((uint32_t)t->p[P_SDIV]), t->seq_idx) / 2u &&
-        t->p[P_DIR] != DIR_RAND) {                    /* (0x7FFFFFFF: PLAY, before the first block; RAND: no next) */
+    if (t->seq_pos >= 0x7FFFFFFFu) {                  /* PLAY's block, before step 0 fires (keys, MIDI after a
+                                                       * Start): pass 1's first step (seq_next), not the parked last */
+        *pass = 1;
+        *feel = 0;
+        return t->p[P_DIR] == DIR_REV ? len - 1u : 0u;
+    }
+    if (pos > step_samples(t, div_samples((uint32_t)t->p[P_SDIV]), t->seq_idx) / 2u &&
+        t->p[P_DIR] != DIR_RAND) {                    /* (RAND: no next) */
         if (seq_pass_last(t, len))
             ++*pass;                                  /* past the middle of the pass's last step: the next pass */
         idx = seq_peek(t, len);                       /* the next step in its direction (seq.c) */
         next = 1;
     }
-    *feel = t->seq_pos < 0x7FFFFFFFu ? feel_of(t, pos, next) : 0;
+    *feel = feel_of(t, pos, next);
     return idx;
 }
 

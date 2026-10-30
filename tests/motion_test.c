@@ -1007,6 +1007,27 @@ static int takes(void)
     seq_stop();
 
     t = tk_track();
+    seq_start();
+    input_on(t, 60, 100); input_off(t, 60);           /* with PLAY: its block, before step 1 fires */
+    seq_tick(t, CTL);
+    for (i = 0; i < 8u; i++) lock_next(t);
+    take_commit(0);
+    bad += check("takes:   a note with PLAY: pass 1's downbeat (step 1), in its take",
+                 t->step[0].note[0] == 60 && t->step[0].time == ST_NOTE && !t->step[7].n && take_said(0));
+    seq_stop();
+
+    t = tk_track();
+    t->p[P_DIR] = DIR_REV;
+    seq_start();
+    input_on(t, 60, 100); input_off(t, 60);
+    seq_tick(t, CTL);
+    for (i = 0; i < 8u; i++) lock_next(t);
+    take_commit(0);
+    bad += check("takes:   a note with PLAY, REV: its first step (step 8), pass 1",
+                 t->step[7].note[0] == 60 && !t->step[0].n && !t->step[6].n);
+    seq_stop();
+
+    t = tk_track();
     seq_start(); seq_tick(t, CTL);
     for (i = 0; i < 140u; i++) { input_on(t, 48u + i % 24u, 100); input_off(t, 48u + i % 24u); }   /* 280 entries */
     for (i = 0; i < 8u; i++) lock_next(t);
