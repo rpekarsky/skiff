@@ -724,7 +724,7 @@ static int test_master(void)
     bad += check("SMK MENU > MASTER START SAFE: in AUDIO, bit 3 of CPU2_BYTE", MI_TAB[MI_MSTART] == MTAB_AUDIO &&
                  MASTER_SAFE_SET && str_eq(menu_vname(MI_MSTART, menu_get(MI_MSTART)), "SAFE"));
     smk_ui_boot();
-    bad += check("SMK power-on, SAFE: MASTER at most 30 %", smk_master == SMK_MASTER_SAFE);
+    bad += check("SMK power-on, SAFE: MASTER at most 20 %", smk_master == (int32_t)MASTER_SAFE_POT);
     SMK_MASTER_BYTE = 200u / 4u + 1u;
     smk_ui_boot();
     bad += check("SMK power-on, SAFE: a lower MASTER as left", smk_master == 200);

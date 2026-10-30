@@ -570,7 +570,7 @@ and BREAK 1.1's own break.
 
 Hold **HOME** and let it go for the menu. It is in five tabs: **DISPLAY** (THEME, PLAYHEAD, LARGE, ANIM, LEDS,
 SCREEN OFF, HINTS), **CONTROL** (HOLD, KNOB ACCEL, BPM LOCK, SCALE LEDS, STEP PREVIEW, RETURN), **AUDIO** (SPEAKER EQ,
-USB LEVEL, CLICK, CLICK LEVEL, COUNT-IN, TUNE), **SYSTEM** (RESTORE LAST, CPU, CPU CLOCK, HARDWARE CALIBRATION, RESET
+USB LEVEL, CLICK, CLICK LEVEL, COUNT-IN, TUNE, MASTER START), **SYSTEM** (RESTORE LAST, CPU, CPU CLOCK, HARDWARE CALIBRATION, RESET
 SETTINGS, ABOUT) and **MIDI** (CLOCK, MIDI IN, MIDI LEARN, LEARN CLEAR, T1–T6 CHANNEL); a tab of more than six rows
 scrolls.
 ALGORITHM moves between the tabs and PRESETS through the rows of one; any of KNOB 1–4, or OCT+ / OCT−,
@@ -647,6 +647,9 @@ every setting back as a new unit has it. The web editor's Settings tab reads and
   bar's first beat higher. **CLICK LEVEL:** LOW, MID (default) or HIGH; MASTER sets it too
 - **COUNT-IN:** OFF (default), 1 BAR or 2 BARS: with a track armed, PLAY counts in first (clicking even with
   CLICK OFF), and a note played in the last half beat lands on step 1. Not with an external clock
+- **MASTER START:** LAST (default) or SAFE, for headphones after a loud session. SAFE: at power-on the sound rises from
+  silence over a second to at most 20 % of the MASTER knob, and stays there, wherever the knob is, until you move it;
+  then it follows the knob
 - **USB SERIAL** (2.0: only in a build from source without `--release`, see [BUILDING.md](BUILDING.md)): the serial
   console, a developer tool. A release has none, so the FM-1 is a plain audio + MIDI device and macOS 13–15 see its
   USB audio input

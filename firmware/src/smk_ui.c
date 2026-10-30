@@ -300,14 +300,13 @@ static void smk_master_poll(void)                    /* K1: its level said while
     }
 }
 
-#define SMK_MASTER_SAFE 307                           /* (MENU > AUDIO > MASTER START SAFE) K1's 30 % */
 /* power-on, the settings read (persist_boot), before master_boot: MASTER where it was left */
 static void smk_ui_boot(void)
 {
     if (SMK_MASTER_BYTE)
         smk_master = ((int32_t)SMK_MASTER_BYTE - 1) * 4;
-    if (MASTER_SAFE_SET && smk_master > SMK_MASTER_SAFE)
-        smk_master = SMK_MASTER_SAFE;
+    if (MASTER_SAFE_SET && smk_master > (int32_t)MASTER_SAFE_POT)
+        smk_master = MASTER_SAFE_POT;
     smk_kv_mode = (uint8_t)(SMK_KV_BYTE % SMK_KV_N);
 }
 

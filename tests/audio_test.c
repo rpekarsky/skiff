@@ -268,16 +268,27 @@ static void boot_keys(void)
           ref > 100.0 && fabs(quiet - ref) < 1e-9 && silent == 0.0);
 }
 
-/* (SMK-37) MENU > AUDIO > MASTER START SAFE: master_rise after master_boot, the level from silence to the knob's in
- * MASTER_RISE_MS, linear, then the knob's as before */
-static void boot_rise(void)
+/* MENU > AUDIO > MASTER START SAFE: master_rise after master_boot, the level from silence in MASTER_RISE_MS, linear,
+ * to at most MASTER_SAFE_POT's; held there through ADC noise until the pot is picked up, then gliding to it */
+static void safe_boot(int32_t pot)
 {
-    uint32_t full, start, half, end;
-    host_pot = 1023;
+    host_pot = pot;
     fm1_ms = 5000;
     master_boot();
-    full = song.master_q12;
     master_rise();
+}
+static void polls(uint32_t n)
+{
+    while (n--) {
+        fm1_ms += 10u;
+        master_poll();
+    }
+}
+static void boot_rise(void)
+{
+    uint32_t safe = master_of_pot(MASTER_SAFE_POT), start, half, end, noisy, i;
+    int ok;
+    safe_boot(1023);
     start = song.master_q12;
     fm1_ms += MASTER_RISE_MS / 2u;
     master_poll();
@@ -285,8 +296,39 @@ static void boot_rise(void)
     fm1_ms += MASTER_RISE_MS / 2u;
     master_poll();
     end = song.master_q12;
-    check("MASTER START SAFE: silent at power-on, half way at 0.5 s, the knob's level from 1 s",
-          full > 4000u && start == 0u && half == full / 2u && end == full && !master_rising);
+    check("MASTER START SAFE: silent at power-on, half way at 0.5 s, 20 % of the knob's travel from 1 s",
+          start == 0u && half == safe / 2u && end == safe && !master_rising);
+    ok = 1;
+    for (i = 0; i < 200u; i++) {
+        host_pot = 1023 - (int32_t)(i * 7u % 25u);
+        polls(1);
+        ok &= song.master_q12 == safe;
+    }
+    noisy = song.master_q12;
+    host_pot = 1023 - 2 * MASTER_CATCH;
+    polls(1);
+    ok &= song.master_q12 >= safe && song.master_q12 < master_of_pot(MASTER_SAFE_POT + 64u);
+    polls(200);
+    check("MASTER START SAFE: ADC noise of 24 steps keeps the level; the pot moved, it glides up to the pot's",
+          ok && noisy == safe && song.master_q12 == master_of_pot((uint32_t)(master_knob / 16)) &&
+          master_knob / 16 >= host_pot - 1);
+    safe_boot(1023);
+    polls(150);
+    host_pot = 150;
+    polls(200);
+    check("MASTER START SAFE: the pot turned down past 20 %, it follows",
+          song.master_q12 == master_of_pot((uint32_t)(master_knob / 16)) && master_knob / 16 <= 151);
+    safe_boot(100);
+    polls(150);
+    check("MASTER START SAFE: a pot below 20 % at power-on, its own level", song.master_q12 == master_of_pot(100));
+    host_pot = -1;
+    fm1_ms = 5000;
+    master_knob = 512 * 16;
+    master_boot();
+    master_rise();
+    host_pot = 1023;
+    polls(150);
+    check("MASTER START SAFE: no reading at power-on, held from the first", song.master_q12 == safe);
 }
 
 int main(void)
