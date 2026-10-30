@@ -1237,6 +1237,49 @@ static int feel(void)
     return bad;
 }
 
+/* Skiff #23 KNOBS OFF (the REC layer's C4, seq.c rec_knobs_off): a knob turn sounds and becomes the base, REC records
+ * no automation of it, TAKES logs none; ON as before */
+static void knobs_set(uint32_t off)
+{
+    ui_rec_knobs = (uint8_t)(off ? REC_KNOBS_OFF : 0u);
+    rp_apply();
+}
+static int knobs(void)
+{
+    int bad = 0, ok;
+    track_t *t = tk_track();
+    knobs_set(1);
+    song.rec = 1;
+    seq_start(); seq_tick(t, CTL);
+    t->p[P_REV] = 88; motion_capture(t, P_REV, 88);
+    lock_next(t);
+    seq_stop();
+    bad += check("KNOBS OFF: REC armed, a turn records no automation, it stays as the new base",
+                 motion_count(t) == 0u && t->p[P_REV] == 88 && motion_base_value(t, P_REV) == 88);
+
+    t = tk_track();
+    knobs_set(1);
+    seq_start(); seq_tick(t, CTL);
+    input_on(t, 60, 100); input_off(t, 60);
+    lock_next(t);
+    t->p[P_REV] = 77; motion_capture(t, P_REV, 77);
+    for (uint32_t i = 0; i < 8u; i++) lock_next(t);
+    take_commit(0);
+    ok = tk_has(t, 60) && motion_count(t) == 0u && t->p[P_REV] == 77;
+    seq_stop();
+    bad += check("KNOBS OFF:   a take keeps the notes, no automation of the turn", ok);
+
+    t = tk_track();
+    knobs_set(0);
+    song.rec = 1;
+    seq_start(); seq_tick(t, CTL);
+    t->p[P_REV] = 99; motion_capture(t, P_REV, 99);
+    ok = motion_count(t) == 1u;
+    seq_stop();
+    bad += check("KNOBS ON:   REC records the turn, as before", ok && t->p[P_REV] == 20);
+    return bad;
+}
+
 int main(void)
 {
     int bad = motion_recording() + motion_capacity() + probability_playback() + compact_project() + fun7_89() + loads_and_song() + repeat_mode();
@@ -1246,6 +1289,7 @@ int main(void)
     bad += conditions();                              /* Skiff: trig conditions (seq.c step_cond_ok) */
     bad += direction();                               /* Skiff: play direction (seq.c seq_next) */
     bad += feel();                                    /* Skiff: FEEL (seq.c feel_of) */
+    bad += knobs();                                   /* Skiff #23: KNOBS OFF (motion.c motion_capture) */
     bad += step_gates();                              /* Skiff: a step's own GATE (a lock) */
     printf("%s\n", bad ? "MOTION TEST FAILED" : "motion/chance/compact storage tests passed"); return bad != 0;
 }

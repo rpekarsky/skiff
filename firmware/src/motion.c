@@ -227,13 +227,13 @@ static int motion_capture(track_t *t, uint32_t id, int16_t value)
 {
     uint32_t k = trk_index(t), idx, len, period, f;
     if (!motion_param(id)) return 0;
-    if (!rec_on(t) || t != TSEL) {
+    if (!rec_on(t) || t != TSEL || rec_knobs_off) {
         /* A live edit becomes a new base, even when an earlier motion value is
          * currently sounding. Subsequent recorded events can still override it. */
         f = motion_guard();
         if ((motion_base_valid >> k) & 1u) motion_base[k][id] = value;
         motion_unguard(f);
-        if (t == TSEL)
+        if (t == TSEL && !rec_knobs_off)
             take_knob(t, id, value);                /* (Skiff) TAKES: the move, by pass and step (take.c) */
         return 0;
     }

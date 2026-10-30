@@ -33,7 +33,8 @@ typedef struct {                               /* Skiff's settings: favorites.fa
                                                 * PAN (ui.c CPU2_BYTE) */
     uint8_t mch[6];                            /* T1..T6 CHANNEL (ui.c ui_mch) */
     uint8_t smk_kv, smk_master;                /* (SMK-37) KEY VELOCITY, MASTER's level / 4 + 1 (ui.c SMK_*_BYTE) */
-    uint8_t cpal, playhead, ret, rsv17;        /* THEME CUSTOM's flags (CPAL_BYTE), PLAYHEAD LINE, RETURN (RET_BYTE) */
+    uint8_t cpal, playhead, ret, rec_knobs;    /* THEME CUSTOM's flags (CPAL_BYTE), PLAYHEAD LINE, RETURN (RET_BYTE),
+                                                * (#23) REC KNOBS OFF (ui.c ui_rec_knobs) */
     uint8_t unit_g[3];                         /* the unit's CLOCK, MIDI IN, TUNE (ui.c ui_unit_g) */
     uint8_t ptag, hints_off, set_rev, rsv24;   /* PRESETS' LIST type, HINTS OFF, the one-time changes; (24: RAM's mark) */
     uint8_t perf_keys, launch, scr, rec;       /* PERFORM KEYS, LAUNCH, SCREEN OFF, CLICK .. FEEL (ui_rec_prefs) */
@@ -81,6 +82,8 @@ static int settings_import_per(persist_t *p, int n)
     }
     if ((p->favorites.factory[15][27] ^ 3u) > 4u)  /* SCREEN OFF (1.1.5, ui.c ui_scr): stored ^ 3, unknown = 0 (30 MIN) */
         p->favorites.factory[15][27] = 0;
+    if (p->favorites.factory[15][17] > 1u)         /* (Skiff #23) REC KNOBS OFF (ui.c ui_rec_knobs): unknown = ON */
+        p->favorites.factory[15][17] = 0;
     if (p->favorites.factory[15][21] >= 8u)        /* (Skiff phase 9) PRESETS' LIST type (ui.c ui_ptag, below PT_N) */
         p->favorites.factory[15][21] = 0;
     if (p->favorites.factory[15][24] != 0xA5u) {   /* (no Skiff mark: Felucca's or JIANT's settings) [15][18..26]
