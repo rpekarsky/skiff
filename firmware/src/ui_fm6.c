@@ -979,26 +979,41 @@ static void fm_lfo(const fm_sim_t *s, uint16_t c)
     cv_text_r(229, FM_CY + CAP_IN(S, 12), &AF_S, "2.0 S", T_MID, T_SURF);
 }
 
-/* (#20) PHASE: phase modulation as a dot on a circle. The carrier (the picked operator, else the first one it feeds)
- * turns once a second: its dot where the modulators push it, a ghost where it would be without them, the arc between;
- * on the dot the modulators feeding it as epicycles (through the picked one, else the strongest; three deep), each
- * turning at its own speed, as wide as it is deep; to the right the dot's height over the last turn, the ghost's
+/* (#20) PHASE: phase modulation as rings round one centre, one an operator of the picked one's chain: its modulators
+ * (all of them, up to the top), the path down to the output, and what else feeds that path (dim). Each ring's dot turns
+ * at the operator's own speed, the carrier it ends in once a second; the carrier outermost, the modulators inward by
+ * depth. A modulator adds a number to its target's phase, not a vector: on each modulated ring of the picked one's
+ * chain the sector from the ghost (where the dot would be without it) to the dot is that push now, in shares, a
+ * modulator's in its colour (bright where it carries the picked operator, else dim; opposite signs either way from
+ * the ghost); the feedback's an arc just outside its own ring. The picked ring thick in the track's colour. To the
+ * right the output over the last turn: the chain's carriers bright, every carrier faint behind, the carrier's ghost
  * dotted. The algorithm as fm6_core_render runs it (the buses, FM6_THRESH, the feedback), one sample a step, 256 steps
- * a turn, from scratch each frame; the levels the held note's sustain, the carrier at full scale. Left out: the
- * envelopes in time, the LFO, the pitch envelope, DTUN's spread, the matrix */
+ * a turn, from scratch each frame; the levels the held note's sustain, the carriers at full scale together. Left out:
+ * the envelopes in time, the LFO, the pitch envelope, DTUN's spread, the matrix */
 #define FM_PH_TURN 4096u                                /* virtual ticks a carrier turn (a second) */
 #define FM_PH_STEP 16u
 #define FM_PH_COLS 128                                  /* the trace: a turn, a column every other step */
 #define FM_PH_WARM 64                                   /* steps before it (the feedback settles) */
-#define FM_PH_CX 52
-#define FM_PH_CY 76
-#define FM_PH_R 28
-#define FM_PH_TX 104                                    /* the trace's newest column */
+#define FM_PH_CX 53
+#define FM_PH_CY 73
+#define FM_PH_R 41                                      /* the outermost ring; the innermost 9 */
+#define FM_PH_AMP 34                                    /* the trace's full scale */
+#define FM_PH_TX 102                                    /* the trace's newest column */
 typedef struct {
     int32_t rel[6], gain[6];                            /* (FM6_ALG's order) speed against the carrier's Q16; output Q24 */
-    int32_t in[6], fb[2];                               /* the last step's phase input (Q24 cycles); the feedback's */
+    int32_t in[6], out[6], fb[2];                       /* the last step's phase input and output (Q24 cycles); the feedback's */
     uint32_t alg, fbs;
 } fm_pm_t;
+typedef struct {
+    int8_t wave[FM_PH_COLS], all[FM_PH_COLS], ghost[FM_PH_COLS];   /* newest first */
+    int32_t was[6], peak;                               /* the inputs a step before the last; the carrier's deepest push */
+} fm_ph_trace_t;
+typedef struct {                                        /* masks: bit k OP k + 1 */
+    uint32_t sel, up, down, side;                       /* the picked one; its modulators; the path to the output; */
+                                                        /* the path's other modulators */
+    uint8_t ring[6], n;                                 /* the rings, outermost first */
+    uint8_t depth[6], route[6];                         /* the steps to the output; fm6_routes */
+} fm_chain_t;
 
 static int32_t fm_rel(int32_t d)                        /* 2^(d / 2^24) Q16, d clamped to 2^-16 .. 2^13 */
 {
@@ -1029,6 +1044,10 @@ static void fm_pm_init(fm_pm_t *m, const fm_sim_t *s, uint32_t c)
     for (k = 0; k < 6u; k++)
         m->rel[k] = fm_rel(lg[k] - lg[5u - c]);
 }
+static int32_t fm_pm_phase(const fm_pm_t *m, uint32_t k, uint32_t t)   /* operator k's own phase at tick t (Q24) */
+{
+    return (int32_t)(uint32_t)((uint64_t)t * (uint32_t)m->rel[k] >> 4);
+}
 /* one sample at virtual tick t: fm6_core_render's operators, a value each */
 static void fm_pm_step(fm_pm_t *m, uint32_t t)
 {
@@ -1039,7 +1058,7 @@ static void fm_pm_step(fm_pm_t *m, uint32_t t)
     for (k = 0; k < 6u; k++) {
         uint32_t f = a[k], ib = f >> 4 & 3u, ob = f & 3u, fb = (f & 0xC0u) == 0xC0u;
         int32_t in = 0, y;
-        m->in[k] = 0;
+        m->in[k] = m->out[k] = 0;
         if (m->gain[k] < FM6_THRESH) {
             if (!(f & FM6_OADD))
                 has[ob] = 0;
@@ -1049,7 +1068,7 @@ static void fm_pm_step(fm_pm_t *m, uint32_t t)
             in = (m->fb[0] + m->fb[1]) >> (m->fbs + 1u);
         else if (ib && has[ib])
             in = bus[ib];
-        y = (int32_t)(((int64_t)fm6_sin((int32_t)(uint32_t)((uint64_t)t * (uint32_t)m->rel[k] >> 4) + in) * m->gain[k]) >> 15);
+        y = (int32_t)(((int64_t)fm6_sin((int32_t)((uint32_t)fm_pm_phase(m, k, t) + (uint32_t)in)) * m->gain[k]) >> 15);
         if (fb) {
             m->fb[0] = m->fb[1];
             m->fb[1] = y;
@@ -1057,9 +1076,10 @@ static void fm_pm_step(fm_pm_t *m, uint32_t t)
         bus[ob] = (f & FM6_OADD) && has[ob] ? bus[ob] + y : y;
         has[ob] = 1;
         m->in[k] = in;
+        m->out[k] = y;
     }
 }
-/* the carrier PHASE shows: the picked operator, or the first carrier it feeds */
+/* the carrier PHASE turns once a second: the picked operator, or the first carrier it feeds */
 static uint32_t fm_ph_carrier(const fm_sim_t *s)
 {
     uint32_t sel = fm_ui[0] % 6u, k;
@@ -1070,39 +1090,56 @@ static uint32_t fm_ph_carrier(const fm_sim_t *s)
             return k;
     return 0;
 }
-/* the epicycles from carrier c up (ch: OP k + 1 as k): through the picked operator, else the strongest */
-static uint32_t fm_ph_chain(const fm_sim_t *s, const fm_pm_t *m, uint32_t c, uint8_t *ch)
+static void fm_ph_depths(const fm_sim_t *s, fm_chain_t *ch)   /* the steps to the output, the carriers 0 */
 {
-    uint8_t r[6];
-    uint32_t sel = fm_ui[0] % 6u, n = 0, k, best;
-    fm6_routes(s->alg, r);
-    while (n < 3u && r[c]) {
-        best = 6;
-        for (k = 0; k < 6u; k++) {
-            if (!(r[c] >> k & 1u))
-                continue;
-            if (k == sel || (fm_feeders(s->alg, k) >> sel & 1u)) {
-                best = k;
-                break;
-            }
-            if (best == 6u || m->gain[5u - k] > m->gain[5u - best])
-                best = k;
-        }
-        ch[n++] = (uint8_t)best;
-        c = best;
-    }
-    return n;
+    uint32_t i, k, d;
+    for (k = 0; k < 6u; k++)
+        ch->depth[k] = (s->car >> k & 1u) ? 0u : 6u;
+    for (i = 0; i < 6u; i++)
+        for (k = 0; k < 6u; k++)
+            for (d = 0; d < 6u; d++)
+                if ((ch->route[k] >> d & 1u) && ch->depth[d] > ch->depth[k] + 1u)
+                    ch->depth[d] = (uint8_t)(ch->depth[k] + 1u);
+}
+/* the picked operator's chain and its rings: by depth, then by number */
+static void fm_ph_chain(const fm_sim_t *s, fm_chain_t *ch)
+{
+    uint32_t sel = fm_ui[0] % 6u, all, i, k, d;
+    fm6_routes(s->alg, ch->route);
+    ch->sel = 1u << sel;
+    ch->up = fm_feeders(s->alg, sel);
+    ch->down = ch->side = 0;
+    for (i = 0; i < 6u; i++)
+        for (k = 0; k < 6u; k++)
+            if (ch->route[k] & (ch->sel | ch->down))
+                ch->down |= 1u << k;
+    for (k = 0; k < 6u; k++)
+        if (ch->down >> k & 1u)
+            ch->side |= ch->route[k];
+    ch->side &= ~(ch->sel | ch->up | ch->down);
+    fm_ph_depths(s, ch);
+    all = ch->sel | ch->up | ch->down | ch->side;
+    ch->n = 0;
+    for (d = 0; d < 6u; d++)
+        for (k = 0; k < 6u; k++)
+            if ((all >> k & 1u) && ch->depth[k] == d)
+                ch->ring[ch->n++] = (uint8_t)k;
+}
+static int32_t fm_ph_radius(const fm_chain_t *ch, uint32_t i)
+{
+    int32_t step = ch->n > 1u ? (FM_PH_R - 9) / (int32_t)(ch->n - 1u) : 0;
+    return FM_PH_R - (int32_t)i * (step > 12 ? 12 : step);
 }
 static void fm_ph_pt(int32_t cx, int32_t cy, int32_t r, int32_t ph, int32_t *x, int32_t *y)
 {
-    *x = cx + ((fm6_sin(ph + (1 << 22)) * r + 16384) >> 15);
+    *x = cx + ((fm6_sin((int32_t)((uint32_t)ph + (1u << 22))) * r + 16384) >> 15);
     *y = cy - ((fm6_sin(ph) * r + 16384) >> 15);
 }
-static void fm_ph_circle(int32_t cx, int32_t cy, int32_t r, uint16_t c)
+static void fm_ph_circle(int32_t r, uint16_t c)
 {
     int32_t i, n = r * 7, x, y;
     for (i = 0; i < n; i++) {
-        fm_ph_pt(cx, cy, r, (int32_t)(((int64_t)i << 24) / n), &x, &y);
+        fm_ph_pt(FM_PH_CX, FM_PH_CY, r, (int32_t)(((int64_t)i << 24) / n), &x, &y);
         cv_pset(x, y, c);
     }
 }
@@ -1118,20 +1155,54 @@ static void fm_ph_dot(int32_t x, int32_t y, int32_t r, uint16_t c)
                 cv_pset(x + dx, y + dy, T_BG);
         }
 }
-/* the caption: the path into the carrier (OP3 > 2 > 1, FB where the feedback is on it), the deepest push over the
- * trace in radians, or BACKWARDS while the dot runs back */
-static void fm_ph_caption(const fm_sim_t *s, uint32_t c, const uint8_t *ch, uint32_t n, int32_t peak, int back,
-                          uint16_t hot)
+/* the arc on ring r from phase ph by d (Q24 cycles), a brush w wide */
+static void fm_ph_arc(int32_t r, int32_t ph, int32_t d, int32_t w, uint16_t c)
 {
-    char b[24], *p = b;
-    uint32_t i, fbop = fm6_fb_op(s->alg), fb = s->fb && fbop == c;
+    int32_t n = (int32_t)(((int64_t)(d < 0 ? -d : d) * r) >> 21), j, x, y;
+    for (j = 0; j <= n; j++) {
+        fm_ph_pt(FM_PH_CX, FM_PH_CY, r, (int32_t)((uint32_t)ph + (uint32_t)(int32_t)((int64_t)d * j / (n ? n : 1))), &x, &y);
+        fm_brush(x, y, w, c);
+    }
+}
+/* the push into ring i's operator now, from its ghost at phase gh: its modulators' shares, the positive ones forward
+ * and the negative back, a turn each way at most; the feedback's outside the ring */
+static void fm_ph_sector(const fm_sim_t *s, const fm_chain_t *ch, const fm_pm_t *m, uint32_t i, int32_t gh)
+{
+    uint32_t op = ch->ring[i], j, all_lit = (ch->sel | ch->up) >> op & 1u;
+    int32_t r = fm_ph_radius(ch, i), fwd = 0, back = 0;
+    if (s->fb && fm6_fb_op(s->alg) == op) {
+        fm_ph_arc(r + 3, gh, clamp(m->in[5u - op], -(1 << 24), 1 << 24), 2, T_TRK(op));
+        return;
+    }
+    for (j = 0; j < 6u; j++) {
+        int32_t y = m->out[5u - j], *side = y < 0 ? &back : &fwd, d;
+        int lit = all_lit || ((ch->sel | ch->down) >> j & 1u);
+        if (!(ch->route[op] >> j & 1u) || !y)
+            continue;
+        d = clamp(*side + y, -(1 << 24), 1 << 24) - *side;
+        fm_ph_arc(r, (int32_t)((uint32_t)gh + (uint32_t)*side), d, lit ? 3 : 2, lit ? T_TRK(j) : ux_mix(T_SURF, T_TRK(j), 40));
+        *side += d;
+    }
+}
+/* the caption: the chain by depth, the deepest first (OP4+5+6 > 3, FB where the feedback is in it), the carrier's
+ * deepest push over the trace in radians, or BACKWARDS while its dot runs back */
+static void fm_ph_caption(const fm_sim_t *s, const fm_chain_t *ch, int32_t peak, int back, uint16_t hot)
+{
+    char b[32], *p = b;
+    uint32_t d = ch->depth[ch->ring[ch->n - 1u]] + 1u, fbop = fm6_fb_op(s->alg), fb = 0, i;
     *p++ = 'O', *p++ = 'P';
-    for (i = n + 1u; i-- > 0;) {
-        uint32_t k = i ? ch[i - 1u] : c;
-        fb |= s->fb && fbop == k;
-        *p++ = (char)('1' + k);
-        if (i)
-            *p++ = ' ', *p++ = '>', *p++ = ' ';
+    while (d-- > 0) {
+        const char *sep = p > b + 2 ? " > " : "";
+        for (i = 0; i < ch->n; i++) {
+            uint32_t k = ch->ring[i];
+            if (ch->depth[k] != d)
+                continue;
+            str_cpy(p, sep, 4);
+            p += str_len(sep);
+            *p++ = (char)('1' + k);
+            sep = "+";
+            fb |= s->fb && fbop == k;
+        }
     }
     str_cpy(p, fb ? " FB" : "", 4);
     cv_text_on(10, FM_CY + CAP_IN(S, 12), &AF_S, b, T_MID, T_SURF);
@@ -1144,76 +1215,113 @@ static void fm_ph_caption(const fm_sim_t *s, uint32_t c, const uint8_t *ch, uint
     fm_tenths(b + 6, peak, 0);
     cv_text_r(229, FM_CY + CAP_IN(S, 12), &AF_S, peak ? b : "PURE SINE", T_MID, T_SURF);   /* (below 0.1: not 0.0) */
 }
-/* the last turn up to virtual tick now: the dot's height per column (newest first), the ghost's, the deepest push;
- * the dot's phase at now. 1: it runs back */
-static int fm_ph_trace(fm_pm_t *m, uint32_t kc, uint32_t now, int8_t *wave, int8_t *ghost, int32_t *peak, int32_t *ph)
+/* 1: operator k's dot ran back over the last step (was: its input a step before; unsigned: no overflow) */
+static int fm_ph_runs_back(const fm_pm_t *m, const int32_t *was, uint32_t k, uint32_t now)
 {
-    int32_t steps = FM_PH_COLS * 2 + FM_PH_WARM, prev = 0, push;
-    uint32_t t0 = now - (uint32_t)(steps - 1) * FM_PH_STEP, i;
-    *peak = *ph = 0;
+    uint32_t ph = (uint32_t)fm_pm_phase(m, k, now) + (uint32_t)m->in[k];
+    return (int32_t)(ph - ((uint32_t)fm_pm_phase(m, k, now - FM_PH_STEP) + (uint32_t)was[k])) < 0;
+}
+/* the trace's height of the carriers in mask car (bit k: OP k + 1), at full scale when they sum to full (their gains
+ * >> 8; six at 2^27 at most: no 64-bit division, which the device's libgcc lacks) */
+static int8_t fm_ph_height(const fm_pm_t *m, uint32_t car, int32_t full)
+{
+    int32_t sum = 0;
+    uint32_t k;
+    for (k = 0; k < 6u; k++)
+        if (car >> k & 1u)
+            sum += m->out[5u - k];
+    return (int8_t)(full ? (sum >> 8) * FM_PH_AMP / full : 0);
+}
+/* the last turn up to virtual tick now, a column every other step: the output of the chain's carriers (those in carrying) and of
+ * all of them; carrier c's ghost and its deepest push. Leaves m at tick now. 1: carrier c's dot runs back */
+static int fm_ph_trace(fm_pm_t *m, const fm_sim_t *s, uint32_t carrying, uint32_t c, uint32_t now, fm_ph_trace_t *tr)
+{
+    int32_t steps = FM_PH_COLS * 2 + FM_PH_WARM, push;
+    uint32_t t0 = now - (uint32_t)(steps - 1) * FM_PH_STEP, i, k, kc = 5u - c;
+    int32_t full = 0;
+    for (k = 0; k < 6u; k++)
+        if ((s->car >> k & 1u) && m->gain[5u - k] >= FM6_THRESH)
+            full += m->gain[5u - k] >> 8;
+    tr->peak = 0;
     for (i = 0; i < (uint32_t)steps; i++) {
         int32_t ago = steps - 1 - (int32_t)i;
         uint32_t t = t0 + i * FM_PH_STEP;
+        memcpy(tr->was, m->in, sizeof tr->was);
         fm_pm_step(m, t);
-        prev = *ph;
-        *ph = (int32_t)(t << 12) + m->in[kc];           /* (the carrier's speed: 1, Q16) */
         if (ago >= FM_PH_COLS * 2)
             continue;
         push = m->in[kc] < 0 ? -m->in[kc] : m->in[kc];
-        *peak = push > *peak ? push : *peak;
+        tr->peak = push > tr->peak ? push : tr->peak;
         if (!(ago & 1)) {
-            wave[ago / 2] = (int8_t)((fm6_sin(*ph) * FM_PH_R + 16384) >> 15);
-            ghost[ago / 2] = (int8_t)((fm6_sin((int32_t)(t << 12)) * FM_PH_R + 16384) >> 15);
+            tr->wave[ago / 2] = fm_ph_height(m, s->car & carrying, full);
+            tr->all[ago / 2] = fm_ph_height(m, s->car, full);
+            tr->ghost[ago / 2] = (int8_t)((fm6_sin(fm_pm_phase(m, kc, t)) * FM_PH_AMP + 16384) >> 15);
         }
     }
-    return (int32_t)((uint32_t)*ph - (uint32_t)prev) < 0;   /* (wraps every 256 turns: no signed overflow) */
+    return fm_ph_runs_back(m, tr->was, kc, now);
+}
+static void fm_ph_wave(const fm_ph_trace_t *tr, uint16_t c)
+{
+    int32_t i;
+    cv_rect(FM_PH_TX, FM_PH_CY, FM_PH_COLS, 1, FM_GUIDE);
+    for (i = 0; i < FM_PH_COLS; i += 2)
+        cv_pset(FM_PH_TX + i, FM_PH_CY - tr->ghost[i], T_DIM);
+    for (i = 1; i < FM_PH_COLS; i++)
+        fm_seg(FM_PH_TX + i - 1, FM_PH_CY - tr->all[i - 1], FM_PH_TX + i, FM_PH_CY - tr->all[i], 1, ux_mix(T_SURF, c, 40), 0, 0);
+    for (i = 1; i < FM_PH_COLS; i++)
+        fm_seg2(FM_PH_TX + i - 1, FM_PH_CY - tr->wave[i - 1], FM_PH_TX + i, FM_PH_CY - tr->wave[i], 2, c);
+}
+/* ring i's dots: the ghost where it is pushed, the dot (REC's hot end while it runs back); the carrier's height across
+ * to the trace when the trace is its alone */
+static void fm_ph_dots(const fm_chain_t *ch, const fm_pm_t *m, const fm_ph_trace_t *tr, uint32_t i, uint32_t now,
+                       int link, const uint16_t *sh, uint16_t c)
+{
+    uint32_t op = ch->ring[i], k = 5u - op, gh = (uint32_t)fm_pm_phase(m, k, now);
+    int picked = ch->sel >> op & 1u, back = fm_ph_runs_back(m, tr->was, k, now);
+    int32_t r = fm_ph_radius(ch, i), x, y, lx;
+    if (m->in[k]) {
+        fm_ph_pt(FM_PH_CX, FM_PH_CY, r, (int32_t)gh, &x, &y);
+        fm_ph_dot(x, y, 2, ux_mix(T_SURF, picked ? c : T_TRK(op), 45));
+    }
+    fm_ph_pt(FM_PH_CX, FM_PH_CY, r, (int32_t)(gh + (uint32_t)m->in[k]), &x, &y);
+    if (link)
+        for (lx = x + 6; lx < FM_PH_TX; lx += 3)
+            cv_pset(lx, y, T_DIM);
+    fm_ph_dot(x, y, picked ? 3 : 2, back ? sh[11] : picked ? T_TEXT : T_TRK(op));
 }
 static void fm_phase_panel(const fm_sim_t *s, const uint16_t *sh, uint16_t c)
 {
     fm_pm_t m;
-    int8_t wave[FM_PH_COLS], ghost[FM_PH_COLS];
-    uint8_t ch[3];
-    uint32_t car = fm_ph_carrier(s), kc = 5u - car, n, i, now;
-    int32_t peak, back, ph, x, y, px, py, dx, dy;
+    fm_ph_trace_t tr;
+    fm_chain_t ch;
+    uint32_t car = fm_ph_carrier(s), now, i, carrying, alone;
+    int back;
     fm_pm_init(&m, s, car);
-    n = fm_ph_chain(s, &m, car, ch);
+    fm_ph_chain(s, &ch);
+    carrying = ch.sel | ch.down;                       /* (their outputs carry the picked one's) */
+    alone = (s->car & carrying) == 1u << car;
     now = (uint32_t)((uint64_t)(fm1_ms - fm_ph_t0) * FM_PH_TURN / 1000u);
-    back = fm_ph_trace(&m, kc, now, wave, ghost, &peak, &ph);
-    cv_rect(FM_PH_TX, FM_PH_CY, FM_PH_COLS, 1, FM_GUIDE);
-    for (i = 0; i < (uint32_t)FM_PH_COLS; i += 2u)
-        cv_pset(FM_PH_TX + (int32_t)i, FM_PH_CY - ghost[i], T_DIM);
-    for (i = 1; i < (uint32_t)FM_PH_COLS; i++)
-        fm_seg2(FM_PH_TX + (int32_t)i - 1, FM_PH_CY - wave[i - 1u], FM_PH_TX + (int32_t)i, FM_PH_CY - wave[i], 2, c);
-    fm_ph_circle(FM_PH_CX, FM_PH_CY, FM_PH_R, FM_GUIDE);
-    {                                                   /* the push: the arc from the ghost to the dot (a turn at most) */
-        int32_t gh = (int32_t)(now << 12), d = clamp(m.in[kc], -(1 << 24), 1 << 24), j, na = (d < 0 ? -d : d) >> 16;
-        for (j = 0; j <= na; j++) {
-            fm_ph_pt(FM_PH_CX, FM_PH_CY, FM_PH_R, gh + (int32_t)((int64_t)d * j / (na ? na : 1)), &x, &y);
-            fm_brush(x, y, 3, sh[11]);
-        }
-        fm_ph_pt(FM_PH_CX, FM_PH_CY, FM_PH_R, gh, &x, &y);
-        fm_ph_dot(x, y, 3, ux_mix(T_SURF, c, 45));
+    back = fm_ph_trace(&m, s, carrying, car, now, &tr);
+    fm_ph_wave(&tr, c);
+    for (i = 0; i < ch.n; i++) {
+        uint32_t op = ch.ring[i];
+        int32_t r = fm_ph_radius(&ch, i);
+        if (ch.sel >> op & 1u) {
+            fm_ph_circle(r, c);
+            fm_ph_circle(r - 1, c);
+        } else
+            fm_ph_circle(r, ux_mix(T_SURF, T_TRK(op), ch.side >> op & 1u ? 30 : 55));
     }
-    fm_ph_pt(FM_PH_CX, FM_PH_CY, FM_PH_R, ph, &px, &py);
-    for (x = px + 6; x < FM_PH_TX; x += 3)              /* the dot's height, across to the trace */
-        cv_pset(x, py, T_DIM);
-    cv_line(FM_PH_CX, FM_PH_CY, px, py, c);
-    fm_ph_dot(px, py, 3, back ? sh[11] : T_TEXT);
-    for (i = 0; i < n; i++) {                           /* the epicycles: their push's 66 dB up to 2 turns, wider */
-        static const uint8_t RMAX[3] = {13, 8, 5};
-        uint32_t k = 5u - ch[i];
-        int32_t r;
-        uint16_t oc = T_TRK(ch[i]);
-        if (m.gain[k] < FM6_THRESH)
-            break;
-        r = 3 + (RMAX[i] - 3) * clamp(fm_log2((uint32_t)m.gain[k]) - (14 << 16), 0, 11 << 16) / (11 << 16);
-        fm_ph_circle(px, py, r, ux_mix(T_SURF, oc, 60));
-        fm_ph_pt(px, py, r, (int32_t)(uint32_t)((uint64_t)now * (uint32_t)m.rel[k] >> 4) + m.in[k], &dx, &dy);
-        cv_line(px, py, dx, dy, oc);
-        px = dx, py = dy;
-        fm_brush(px, py, 3, oc);
-    }
-    fm_ph_caption(s, car, ch, n, peak, back, sh[11]);
+    for (i = 0; i < ch.n; i++)
+        if (!(ch.side >> ch.ring[i] & 1u))
+            fm_ph_sector(s, &ch, &m, i, fm_pm_phase(&m, 5u - ch.ring[i], now));
+    for (i = 0; i < ch.n; i++)
+        if (!(ch.sel >> ch.ring[i] & 1u))
+            fm_ph_dots(&ch, &m, &tr, i, now, alone && ch.ring[i] == car, sh, c);
+    for (i = 0; i < ch.n; i++)
+        if (ch.sel >> ch.ring[i] & 1u)
+            fm_ph_dots(&ch, &m, &tr, i, now, alone && ch.ring[i] == car, sh, c);
+    fm_ph_caption(s, &ch, tr.peak, back, sh[11]);
 }
 
 /* the scroll bar: where the knobs are among the windows */
