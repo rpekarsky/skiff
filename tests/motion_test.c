@@ -1044,8 +1044,8 @@ static int takes(void)
     motion_capture(t, P_REV, 55);
     for (i = 0; i < 8u; i++) lock_next(t);            /* pass 3 */
     take_commit(0);
-    bad += check("takes:   (#12) a pass with knob moves only counts as played: its moves, not the notes before it",
-                 !tk_has(t, 64) && motion_count(t) == 1u && take_said(0));
+    bad += check("takes:   (#12) a knob-only pass after a pass with notes: the notes' pass, not the knob nudge",
+                 t->step[0].note[0] == 64 && motion_count(t) == 0u && take_said(0));
     seq_stop();
 
     t = tk_track();
@@ -1053,7 +1053,7 @@ static int takes(void)
     motion_capture(t, P_REV, 55);
     for (i = 0; i < 8u; i++) lock_next(t);            /* pass 2 */
     take_commit(0);
-    bad += check("takes:   (#33) knob moves only in the first pass: taken in the next one, TAKE KEPT",
+    bad += check("takes:   (#33) no pass with notes: the knob-only first pass, taken in the next one, TAKE KEPT",
                  motion_count(t) == 1u && take_said(0));
     seq_stop();
 
