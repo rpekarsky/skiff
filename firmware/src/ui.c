@@ -178,15 +178,20 @@ static const char *const CLK_WHY[11] = {"", "ALREADY 320", "SYS MODE", "PLL2 NOT
 #define SMK_KV_BYTE (favorites.factory[15][12])
 #define SMK_MASTER_BYTE (favorites.factory[15][13])
 /* (wishlist #42) MENU > PAD FOLLOW (smk_ui.c smk_pf_rows): bits 4..5 of the retired STYLE's byte ([15][29], STYLE's
- * 0..2 kept as saved below them); 0 OFF in every older setting, 3 (unknown) OFF too */
+ * 0..2 kept as saved below them), stored as the distance from PAGE, the default: 0 PAGE in every older setting,
+ * 3 (unknown) PAGE too */
 #define SMK_PF_BYTE (favorites.factory[15][29])
 enum { SMK_PF_OFF, SMK_PF_PAGE, SMK_PF_ROW, SMK_PF_N };
 static uint32_t smk_pf_mode(void)
 {
-    uint32_t v = SMK_PF_BYTE >> 4 & 3u;
-    return v < SMK_PF_N ? v : SMK_PF_OFF;
+    uint32_t stored = SMK_PF_BYTE >> 4 & 3u;
+    return stored < SMK_PF_N ? (stored + SMK_PF_PAGE) % SMK_PF_N : SMK_PF_PAGE;
 }
-static void smk_pf_put(uint32_t v) { SMK_PF_BYTE = (uint8_t)((SMK_PF_BYTE & ~0x30u) | (v % SMK_PF_N) << 4); }
+static void smk_pf_put(uint32_t mode)
+{
+    uint32_t stored = (mode % SMK_PF_N + SMK_PF_N - SMK_PF_PAGE) % SMK_PF_N;
+    SMK_PF_BYTE = (uint8_t)((SMK_PF_BYTE & ~0x30u) | stored << 4);
+}
 #endif
 static const uint8_t *const mch_io = &ui_mch(0);
 static const uint8_t UNIT_G[3] = {G_CLOCK, G_ROUTE, G_TUNE};

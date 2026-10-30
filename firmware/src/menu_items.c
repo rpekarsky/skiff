@@ -21,9 +21,10 @@
 #endif
 #if BOARD_SMK37
 /* (SMK-37 Pro, SMK37_UX.md) KEY VELOCITY in CONTROL (question 8); no LEDS row (button LEDs A: on or off only): MI_LEDS
- * past MI_COUNT, so its setting stays and no tab shows it */
-enum { MI_COLOR, MI_PHEAD, MI_LARGE, MI_ANIM, MI_SCROFF, MI_HINTS, MI_HOLD, MI_ACCEL, MI_BPMLOCK, MI_SCLLED, MI_PREVIEW,
-       MI_RETURN, MI_KVEL, MI_PADF, MI_LOWCUT, MI_USB, MI_CLICK, MI_CLKLVL, MI_COUNTIN, MI_TUNE, MI_CLOCK, MI_ROUTE,
+ * past MI_COUNT, so its setting stays and no tab shows it; (wishlist #42) PAD FOLLOW where FM-1's LEDS is, after
+ * (wishlist #5) PAD LIGHT once both are in */
+enum { MI_COLOR, MI_PHEAD, MI_LARGE, MI_ANIM, MI_PADF, MI_SCROFF, MI_HINTS, MI_HOLD, MI_ACCEL, MI_BPMLOCK, MI_SCLLED,
+       MI_PREVIEW, MI_RETURN, MI_KVEL, MI_LOWCUT, MI_USB, MI_CLICK, MI_CLKLVL, MI_COUNTIN, MI_TUNE, MI_CLOCK, MI_ROUTE,
        MI_LEARN, MI_LCLEAR, MI_TCH1, MI_TCH2, MI_TCH3, MI_TCH4, MI_TCH5, MI_TCH6, MI_SERIAL_IN MI_RESTORE, MI_CPU, MI_CLK,
        MI_PANEL, MI_RESET, MI_ABOUT, MI_COUNT, MI_LEDS MI_SERIAL_OUT };
 static const char *const KVEL_N[SMK_KV_N] = {"DYNAMIC", "SOFT", "HARD", "FIXED 64", "FIXED 100", "FIXED 127"};
@@ -38,13 +39,15 @@ enum { MI_COLOR, MI_PHEAD, MI_LARGE, MI_ANIM, MI_LEDS, MI_SCROFF, MI_HINTS, MI_H
                                                                                              * in CONTROL) */
 #define MI_VALUES MI_PANEL
 static const char *const MI_NAME[MI_COUNT] = {"THEME", "PLAYHEAD", "LARGE", "ANIM",
-#if !BOARD_SMK37
+#if BOARD_SMK37
+                                              "PAD FOLLOW",
+#else
                                               "LEDS",
 #endif
                                               "SCREEN OFF", "HINTS", "HOLD", "KNOB ACCEL", "BPM LOCK",
                                               "SCALE LEDS", "STEP PREVIEW", "RETURN",
 #if BOARD_SMK37
-                                              "KEY VELOCITY", "PAD FOLLOW",
+                                              "KEY VELOCITY",
 #endif
                                               "SPEAKER EQ", "USB LEVEL", "CLICK", "CLICK LEVEL", "COUNT-IN", "TUNE",
                                               "CLOCK", "MIDI IN", "MIDI LEARN", "LEARN CLEAR",
@@ -61,10 +64,8 @@ enum { MTAB_DISPLAY, MTAB_CONTROL, MTAB_AUDIO, MTAB_SYSTEM, MTAB_MIDI, MTAB_COUN
 static const char *const MTAB_NAME[MTAB_COUNT] = {"DISPLAY", "CONTROL", "AUDIO", "SYSTEM", "MIDI"};
 static const uint8_t MI_TAB[MI_COUNT] = {
     MTAB_DISPLAY, MTAB_DISPLAY, MTAB_DISPLAY, MTAB_DISPLAY,                 /* COLOR (Skiff #27) PLAYHEAD LARGE ANIM */
-#if !BOARD_SMK37
     MTAB_DISPLAY,                                                           /* LEDS ((Skiff U2) STYLE gone: BLOCKS is the
-                                                                             * only look) */
-#endif
+                                                                             * only look); SMK-37: (#42) PAD FOLLOW */
     MTAB_DISPLAY,                                                           /* SCREEN OFF (1.1.5) */
     MTAB_DISPLAY,                                                           /* (Skiff U4) HINTS */
     MTAB_CONTROL, MTAB_CONTROL, MTAB_CONTROL,                               /* HOLD KNOB ACCEL BPM LOCK ((Skiff U2) FX
@@ -73,7 +74,7 @@ static const uint8_t MI_TAB[MI_COUNT] = {
     MTAB_CONTROL,                                                           /* (Skiff 1.3) STEP PREVIEW */
     MTAB_CONTROL,                                                           /* (2.0, D 2A) RETURN */
 #if BOARD_SMK37
-    MTAB_CONTROL, MTAB_CONTROL,                                             /* (SMK-37) KEY VELOCITY, (#42) PAD FOLLOW */
+    MTAB_CONTROL,                                                           /* (SMK-37) KEY VELOCITY */
 #endif
     MTAB_AUDIO, MTAB_AUDIO, MTAB_AUDIO, MTAB_AUDIO, MTAB_AUDIO,             /* SPEAKER EQ, USB LEVEL, CLICK, CLICK LEVEL,
                                                                              * COUNT-IN */
@@ -354,7 +355,7 @@ static void settings_reset(void)
     menu_put(MI_LEDS, 2);                              /* (LEDS_MENU: DIM HI) */
 #if BOARD_SMK37
     menu_put(MI_KVEL, SMK_KV_DYN);
-    menu_put(MI_PADF, SMK_PF_OFF);
+    menu_put(MI_PADF, SMK_PF_PAGE);
 #endif
     menu_put(MI_HOLD, HOLD_DEF);
     menu_put(MI_LOWCUT, 0);

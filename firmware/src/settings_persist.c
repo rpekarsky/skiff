@@ -95,13 +95,16 @@ static int settings_import_per(persist_t *p, int n)
         memset(&p->favorites.factory[ENGI_DIGITAL][1], 0, 31);
         p->favorites.factory[15][28] &= 0x7Fu;
 #if BOARD_SMK37
-        p->favorites.factory[15][29] &= 0x0Fu;     /* ((wishlist #42) PAD FOLLOW, ui.c SMK_PF_BYTE: OFF) */
+        p->favorites.factory[15][29] &= 0x0Fu;     /* ((wishlist #42) PAD FOLLOW, ui.c SMK_PF_BYTE: PAGE) */
 #endif
         p->favorites.factory[15][24] = 0xA5u;      /* (as Skiff's now: the record read again, the same) */
     }
 #if BOARD_SMK37
     if (p->favorites.factory[15][12] >= SMK_KV_N)  /* (SMK-37) KEY VELOCITY (ui.c SMK_KV_BYTE): unknown = DYNAMIC */
         p->favorites.factory[15][12] = 0;
+    if (p->favorites.factory[15][29] & 0xCCu)      /* ((wishlist #42) bits besides STYLE's 0..1 and PAD FOLLOW's 4..5:
+                                                    * not a byte of ours, PAD FOLLOW PAGE) */
+        p->favorites.factory[15][29] &= 0x0Fu;
 #endif
     p->magic = PERSIST_MAGIC;
     p->palette = palette_to_stored(palette_from_stored(p->palette));

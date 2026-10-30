@@ -390,8 +390,8 @@ static int test_pad_colours(void)
 
 /* (wishlist #42) MENU > PAD FOLLOW: the rows' first steps in every mode and direction, the wraps, a LEN not of 8 or 16,
  * stopped the screen's page; on the pads: the playing step's row, a tap on the step shown, the view kept while a pad
- * is held, the DRUM grid's keys on the screen's page; OFF as before; saved, an unknown value and another firmware's
- * byte OFF, RESET SETTINGS OFF */
+ * is held, the DRUM grid's keys on the screen's page; OFF as before; a DISPLAY row after ANIM; saved, an older
+ * setting, an unknown value, a byte not ours and another firmware's PAGE, RESET SETTINGS PAGE */
 static int rows_are(uint32_t mode, uint32_t at, uint32_t len, uint32_t dir, uint32_t down, uint32_t top, uint32_t bottom)
 {
     uint16_t r[2];
@@ -428,9 +428,10 @@ static int test_pad_follow(void)
                  rows_are(SMK_PF_ROW, 29, 32, DIR_RAND, 0, 24, 0) && rows_are(SMK_PF_ROW, 3, 8, DIR_FWD, 0, 0, SMK_PF_NONE) &&
                  rows_are(SMK_PF_ROW, 3, 5, DIR_REV, 0, 0, SMK_PF_NONE));
 
-    bad += check("SMK MENU > PAD FOLLOW: a CONTROL row, OFF PAGE ROW, OFF by default",
-                 MI_TAB[MI_PADF] == MTAB_CONTROL && menu_n(MI_PADF) == SMK_PF_N && smk_pf_mode() == SMK_PF_OFF &&
-                 str_eq(MI_NAME[MI_PADF], "PAD FOLLOW") && str_eq(menu_vname(MI_PADF, menu_get(MI_PADF)), "OFF"));
+    bad += check("SMK MENU > PAD FOLLOW: a DISPLAY row after ANIM (seven), OFF PAGE ROW, PAGE by default",
+                 MI_TAB[MI_PADF] == MTAB_DISPLAY && MI_PADF == MI_ANIM + 1u && mtab_rows(MTAB_DISPLAY) == 7u &&
+                 mtab_rows(MTAB_CONTROL) == 7u && menu_n(MI_PADF) == SMK_PF_N && smk_pf_mode() == SMK_PF_PAGE &&
+                 str_eq(MI_NAME[MI_PADF], "PAD FOLLOW") && str_eq(menu_vname(MI_PADF, menu_get(MI_PADF)), "PAGE"));
     sel_set(0);
     t = TSEL;
     track_defaults_steps(t);
@@ -443,6 +444,7 @@ static int test_pad_follow(void)
     col = rgb_of(T_TRK(0), SMK_PAD_FULL);
     song.playing = 1;
     t->seq_idx = 17;
+    menu_put(MI_PADF, SMK_PF_OFF);
     frame();
     bad += check("SMK PAD FOLLOW OFF, playing step 18: the pads stay on steps 1..16, none playing",
                  host_pad[0] == col && host_pad[1] == SMK_PAD_FAINT && host_pad[15] == SMK_PAD_FAINT &&
@@ -491,24 +493,44 @@ static int test_pad_follow(void)
     {
         sks_t p;
         persist_t q;
+        uint32_t style;
         SMK_PF_BYTE = 2;                          /* (STYLE LINE, as saved) */
         menu_put(MI_PADF, SMK_PF_ROW);
         settings_export(&p);
-        ok = p.s.style == (2u | SMK_PF_ROW << 4);
+        ok = (p.s.style & 0x0Fu) == 2u;
         p.s.style = 0x32;
         settings_import(&p, (int)sizeof p);
-        ok &= smk_pf_mode() == SMK_PF_OFF && SMK_PF_BYTE == 0x32u;
-        bad += check("SMK PAD FOLLOW: saved in STYLE's byte (bits 4..5, STYLE kept); an unknown value OFF", ok);
+        ok &= smk_pf_mode() == SMK_PF_PAGE && SMK_PF_BYTE == 0x32u;
+        for (i = 0; i < SMK_PF_N; i++) {
+            menu_put(MI_PADF, i);
+            settings_export(&p);
+            settings_import(&p, (int)sizeof p);
+            ok &= menu_get(MI_PADF) == i && (SMK_PF_BYTE & 0x0Fu) == 2u;
+        }
+        bad += check("SMK PAD FOLLOW: saved in STYLE's byte (bits 4..5, STYLE kept), each mode read back; an unknown "
+                     "value PAGE", ok);
+        ok = 1;
+        for (style = 0; style < 3u; style++) {    /* (Skiff before U2, Felucca: FLAT LINE BLOCKS) */
+            settings_export(&p);
+            p.s.style = (uint8_t)style;
+            settings_import(&p, (int)sizeof p);
+            ok &= smk_pf_mode() == SMK_PF_PAGE;
+        }
+        settings_export(&p);
+        p.s.style = 0x9A;
+        settings_import(&p, (int)sizeof p);
+        bad += check("SMK PAD FOLLOW: an older setting (STYLE 0..2) PAGE; a byte not ours (0x9A) PAGE",
+                     ok && smk_pf_mode() == SMK_PF_PAGE && SMK_PF_BYTE == 0x0Au);
         memset(&q, 0, sizeof q);
         q.magic = PERSIST_MAGIC;
         q.favorites.factory[15][29] = 0x21;
         settings_import_per(&q, (int)sizeof q);
-        bad += check("SMK PAD FOLLOW: another firmware's settings (no Skiff mark): OFF, its STYLE kept",
-                     favorites.factory[15][29] == 0x01u && smk_pf_mode() == SMK_PF_OFF);
+        bad += check("SMK PAD FOLLOW: another firmware's settings (no Skiff mark): PAGE, its STYLE kept",
+                     favorites.factory[15][29] == 0x01u && smk_pf_mode() == SMK_PF_PAGE);
     }
-    menu_put(MI_PADF, SMK_PF_PAGE);
+    menu_put(MI_PADF, SMK_PF_ROW);
     settings_reset();
-    bad += check("SMK RESET SETTINGS: PAD FOLLOW OFF", smk_pf_mode() == SMK_PF_OFF);
+    bad += check("SMK RESET SETTINGS: PAD FOLLOW PAGE", smk_pf_mode() == SMK_PF_PAGE && (SMK_PF_BYTE & 0x30u) == 0u);
     return bad;
 }
 
