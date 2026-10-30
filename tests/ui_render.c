@@ -832,7 +832,7 @@ enum { S_HOME, S_HOME_IDLE, S_MESSAGE, S_MESSAGE_KEY, S_MESSAGE_NOFILE, S_PRESET
        S_MOD_GRID, S_VOICE2, S_VOICE2_UNI, S_ARP_ON, S_ARP2, S_EDIT_FLT, S_GLOBAL_SWING, S_VOICE_GLIDE,   /* (Skiff U5) */
        S_SHIFT_ENV, S_SHIFT_STEP, S_SHIFT_HOME, S_LFO_RUN, S_HOME_SCOPE,
        S_FM_TONE, S_FM_ENV, S_FM_KEYS, S_FM_ALGO, S_FM_PITCH, S_FM_LFO, S_FM_INIT,   /* (FM6 LAB) */
-       S_FM_PHASE_LOW, S_FM_PHASE_HIGH, S_FM_PHASE_FB, S_SHIFT_FM,                           /* (#20) */
+       S_FM_PHASE_LOW, S_FM_PHASE_HIGH, S_FM_PHASE_FB, S_SHIFT_FM, S_FM_PHASE_SUM,           /* (#20) */
        S_DRIVE_SOFT, S_DRIVE_HARD, S_DRIVE_FOLD, S_DRIVE_CRUSH, S_DRIVE_FUZZ, S_INS_FUZZ, S_INS_CRUSH, S_INS_FLANG,
        S_MENU_MIDI, S_MENU_MIDI_SCROLL, S_LEARN, S_LEARN_CC, S_LFO2, S_ENV2, S_LANES_TUNE, S_REVERB_HALL, S_CHORUS_FB,
        S_CHORUS_FLANGER, S_CHORUS_PHASER, S_PRESETS_BASS,                                     /* (Skiff phase 9) */
@@ -877,7 +877,7 @@ static const char *const S_NAME[S_COUNT] = {"home", "home_idle", "message", "mes
     "mod_grid", "voice_2", "voice_2_uni", "arp_on", "arp_2", "edit_flt", "global_swing", "voice_glide",
     "shift_env", "shift_step", "shift_home", "lfo_run", "home_scope",
     "fm_op_tone", "fm_op_env", "fm_op_keys", "fm_all_algo", "fm_all_pitch", "fm_all_lfo", "fm_init", "fm_phase_low",
-    "fm_phase_high", "fm_phase_fb", "shift_fm",
+    "fm_phase_high", "fm_phase_fb", "shift_fm", "fm_phase_sum",
     "drive_soft", "drive_hard", "drive_fold", "drive_crush", "drive_fuzz", "insert_fuzz", "insert_crush", "insert_flanger",
     "menu_midi", "menu_midi_scroll", "learn", "learn_cc", "lfo_2", "env_2", "lanes_tune", "reverb_hall", "chorus_feedback",
     "chorus_flanger", "chorus_phaser", "presets_bass", "song_rest", "song_rest_pick",
@@ -1520,7 +1520,8 @@ static void setup(int s)
         break;
     case S_FM_PHASE_LOW:                            /* (#20) PHASE: INIT's OP1 under OP2 a little (MOD LVL -24), OP1 */
     case S_FM_PHASE_HIGH:                           /* picked on TONE; OP2 deep at x3, picked, on ALL OPS; ALG 1's */
-    case S_FM_PHASE_FB: {                           /* OP3 under OP4 < 5 < 6 with FEEDBACK 6, OP4 picked */
+    case S_FM_PHASE_FB:                             /* OP3 under OP4 < 5 < 6 with FEEDBACK 6, OP4 picked; ALG 16's */
+    case S_FM_PHASE_SUM: {                          /* OP1 under 2 + 3 + 5 (3 under 4, 5 under 6), OP3 picked */
         uint32_t i = s - S_FM_PHASE_LOW, tr = trk_index(TSEL);
         uint8_t v[FP_SIZE + 1u];
         eng(ENGI_FM6);
@@ -1533,6 +1534,14 @@ static void setup(int s)
                 v[(3u - k) * FP_OP + FP_FC] = (uint8_t)(1u + k / 2u);
             }
             v[FP_FB] = 6;
+        } else if (s == S_FM_PHASE_SUM) {
+            static const uint8_t OL[6] = {99, 68, 74, 64, 70, 62}, FC[6] = {1, 1, 2, 3, 1, 2};
+            uint32_t k;
+            for (k = 0; k < 6u; k++) {
+                v[(5u - k) * FP_OP + FP_OL] = OL[k];
+                v[(5u - k) * FP_OP + FP_FC] = FC[k];
+            }
+            v[FP_ALG] = 15;
         } else {
             v[4u * FP_OP + FP_OL] = s == S_FM_PHASE_LOW ? 80 : 92;
             v[4u * FP_OP + FP_FC] = s == S_FM_PHASE_LOW ? 1 : 3;
@@ -1540,7 +1549,7 @@ static void setup(int s)
         }
         fm6_set_patch(tr, v);
         fm6_adopt(tr);
-        fm_ui[0] = (uint8_t)(s == S_FM_PHASE_LOW ? 0 : s == S_FM_PHASE_HIGH ? 1 : 3);
+        fm_ui[0] = (uint8_t)(s == S_FM_PHASE_LOW ? 0 : s == S_FM_PHASE_HIGH ? 1 : s == S_FM_PHASE_FB ? 3 : 2);
         go_title(i ? "ALL OPS" : "OPERATOR");
         fm_ui[1] = FMW_TONE;
         fm_ui[2] = FMW_ALGO;
