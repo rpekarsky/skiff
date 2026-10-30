@@ -47,15 +47,55 @@ static uint32_t smk_breath(uint32_t c)               /* a breathing pad: dark ..
     return o;
 }
 
-/* the selected track's steps of the page shown as pads (colours A): the DRUM grid's selected lane, or the notes */
+/* (wishlist #42) MENU > PAD FOLLOW: the steps the pads show while the transport plays, as two rows of 8 (smk_pf_row:
+ * each row's first step). OFF the page on the screen (ui.bank), as before; PAGE the 16 the playhead is in; ROW the 8
+ * it is in on top and below the 8 it plays next, which move up when it gets there: FWD and RAND the row after (the
+ * first after the last), REV the row before, PING the way it is going (back at either end); a pattern of one row: the
+ * bottom dark. Stopped, every mode the screen's page; and where the pads are the white keys (the DRUM grid: its keys
+ * edit the screen's page). While a pad is held as a step tap the view stays (not OFF's), so the step under the finger
+ * is the one its tap is about */
+#define SMK_PF_NONE 0xFFFFu
+static uint16_t smk_pf_row[2] = {0, 8};
+static void smk_pf_rows(uint32_t mode, uint32_t at, uint32_t len, uint32_t dir, uint32_t down, uint16_t *row)
+{
+    uint32_t r = at / 8u, rows = (len + 7u) / 8u, back, nx;
+    if (mode == SMK_PF_OFF || at >= len) {
+        row[0] = (uint16_t)(ui.bank * 16u);
+        row[1] = (uint16_t)(row[0] + 8u);
+        return;
+    }
+    if (mode == SMK_PF_PAGE) {
+        row[0] = (uint16_t)(at / 16u * 16u);
+        row[1] = (uint16_t)(row[0] + 8u);
+        return;
+    }
+    back = dir == DIR_REV || (dir == DIR_PING && (down ? r > 0u : r + 1u == rows));
+    nx = (back ? r + rows - 1u : r + 1u) % rows;
+    row[0] = (uint16_t)(r * 8u);
+    row[1] = (uint16_t)(nx == r ? SMK_PF_NONE : nx * 8u);
+}
+static int smk_pads_held(void)                       /* a pad down as a step tap (smk_input.h smk__padq) */
+{
+    uint32_t p;
+    for (p = 0; p < SMK_NPAD; p++)
+        if (smk_pad_note[p] == SMK_PAD_TAP)
+            return 1;
+    return 0;
+}
+static uint32_t smk_pad_step(uint32_t p) { return (uint32_t)smk_pf_row[p >> 3 & 1u] + (p & 7u); }
+
+/* the selected track's steps the pads show (colours A): the DRUM grid's selected lane, or the notes */
 static void smk_pads_steps(void)
 {
     const track_t *t = TSEL;
     uint32_t p, len = (uint32_t)t->p[P_SLEN], col = smk_rgb(T_TRK(song.sel), SMK_PAD_FULL);
-    uint32_t ph = song.playing && t->seq_idx < len && t->seq_idx / 16u == ui.bank ? t->seq_idx % 16u : 0xFFu;
+    uint32_t mode = smk_pad_steps ? smk_pf_mode() : SMK_PF_OFF;
+    uint32_t ph = song.playing && t->seq_idx < len ? t->seq_idx : SMK_PF_NONE;
     int edit = !ui.home && !ui.menu && step_page(cur_page()->graph), drum = drum_track(t);
+    if (mode == SMK_PF_OFF || !smk_pads_held())
+        smk_pf_rows(mode, ph, len, (uint32_t)t->p[P_DIR], t->seq_down, smk_pf_row);
     for (p = 0; p < 16u; p++) {
-        uint32_t i = ui.bank * 16u + p, c;
+        uint32_t i = smk_pad_step(p), c;
         const step_t *st = &t->step[i % NSTEP];
         if (i >= len) {
             padled_set(p, 0, 0, 0);
@@ -67,7 +107,7 @@ static void smk_pads_steps(void)
             c = step_on(st) ? col : step_tie(st) ? smk_rgb(T_TRK(song.sel), SMK_PAD_FULL / 2u) : SMK_PAD_FAINT;
         if (edit && i >= sel_lo() && i <= sel_hi() && !song.playing)   /* ((2.0) the selection's range) */
             c = SMK_PAD_WHITE << 16 | SMK_PAD_WHITE << 8 | SMK_PAD_WHITE;
-        if (p == ph)
+        if (i == ph)
             c = smk_mixw(c, 128u);
         padled_set(p, (uint8_t)(c >> 16), (uint8_t)(c >> 8), (uint8_t)c);
     }
@@ -93,14 +133,14 @@ static void smk_pads_out(const uint8_t *nl, const uint8_t *nd, const uint8_t *nb
     }
 }
 
-/* a step tap (steps mode): the selected track's step at pad p of the page shown. A DRUM track: the selected lane's hit
+/* a step tap (steps mode): the selected track's step pad p shows (smk_pad_step). A DRUM track: the selected lane's hit
  * there, toggled (as the grid's white keys); a melodic one: a step with notes cleared, an empty one set to the last
  * note played (at the pad's velocity). A run of taps is one undo (SMK_TAPS); on the step pages the cursor goes there */
 static const char SMK_TAPS[] = "PAD STEPS";
 static void smk_pad_tap(uint32_t p, uint32_t vel)
 {
     track_t *t = TSEL;
-    uint32_t i = ui.bank * 16u + p;
+    uint32_t i = smk_pad_step(p);
     step_t *st;
     if (ui.menu || ui.confirm || name_on() || i >= (uint32_t)t->p[P_SLEN] || i >= NSTEP)
         return;

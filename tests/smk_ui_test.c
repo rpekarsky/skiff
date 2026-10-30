@@ -2,7 +2,8 @@
 /* Host test of Skiff's SMK-37 Pro controls (BOARD_SMK37, design/SMK37_UX.md as picked): the UI of tests/ui_test.c built
  * for the SMK (its prelude, the input stood in by the SMK's, hal/smk_pads.h as it is), and smk_ui.c:
  *   PADS     on HOME the step taps, in a layer and the DRUM grid the white keys; a tap sets a step to the last note
- *            (its velocity), again clears it, one undo a run; DRUM: the lane; past LEN nothing; the colours (A).
+ *            (its velocity), again clears it, one undo a run; DRUM: the lane; past LEN nothing; the colours (A);
+ *            PAD FOLLOW (OFF PAGE ROW: the steps shown while playing, a tap's step, held).
  *   FADERS   the four tracks shown, taking over once they reach the value, FADER BANK (its LED), the window.
  *   ENTRIES  > and < the selected track's entry after and before, the first's end said.
  *   KEYS     the outer keys' notes and velocity (KEY VELOCITY), out of the TRS jack too; the curves.
@@ -387,6 +388,130 @@ static int test_pad_colours(void)
     return bad;
 }
 
+/* (wishlist #42) MENU > PAD FOLLOW: the rows' first steps in every mode and direction, the wraps, a LEN not of 8 or 16,
+ * stopped the screen's page; on the pads: the playing step's row, a tap on the step shown, the view kept while a pad
+ * is held, the DRUM grid's keys on the screen's page; OFF as before; saved, an unknown value and another firmware's
+ * byte OFF, RESET SETTINGS OFF */
+static int rows_are(uint32_t mode, uint32_t at, uint32_t len, uint32_t dir, uint32_t down, uint32_t top, uint32_t bottom)
+{
+    uint16_t r[2];
+    smk_pf_rows(mode, at, len, dir, down, r);
+    return r[0] == top && r[1] == bottom;
+}
+static int test_pad_follow(void)
+{
+    int bad = 0, ok;
+    track_t *t;
+    uint32_t col, i;
+    smk_power_on();
+    ui.bank = 1;
+    bad += check("SMK PAD FOLLOW OFF: the screen's page, playing or not",
+                 rows_are(SMK_PF_OFF, 37, 48, DIR_FWD, 0, 16, 24) && rows_are(SMK_PF_OFF, SMK_PF_NONE, 48, DIR_FWD, 0, 16, 24));
+    bad += check("SMK PAD FOLLOW stopped (no playhead): the screen's page in PAGE and ROW",
+                 rows_are(SMK_PF_PAGE, SMK_PF_NONE, 48, DIR_FWD, 0, 16, 24) &&
+                 rows_are(SMK_PF_ROW, SMK_PF_NONE, 48, DIR_FWD, 0, 16, 24));
+    ui.bank = 0;
+    bad += check("SMK PAD FOLLOW PAGE: the 16 the playhead is in, any direction",
+                 rows_are(SMK_PF_PAGE, 5, 48, DIR_FWD, 0, 0, 8) && rows_are(SMK_PF_PAGE, 37, 48, DIR_REV, 0, 32, 40) &&
+                 rows_are(SMK_PF_PAGE, 18, 20, DIR_RAND, 0, 16, 24));
+    bad += check("SMK PAD FOLLOW ROW FWD: the playhead's 8 on top, the next 8 below, the first after the last",
+                 rows_are(SMK_PF_ROW, 5, 32, DIR_FWD, 0, 0, 8) && rows_are(SMK_PF_ROW, 13, 32, DIR_FWD, 0, 8, 16) &&
+                 rows_are(SMK_PF_ROW, 31, 32, DIR_FWD, 0, 24, 0) && rows_are(SMK_PF_ROW, 17, 20, DIR_FWD, 0, 16, 0) &&
+                 rows_are(SMK_PF_ROW, 9, 12, DIR_FWD, 0, 8, 0) && rows_are(SMK_PF_ROW, 2, 12, DIR_FWD, 0, 0, 8));
+    bad += check("SMK PAD FOLLOW ROW REV: the row before below, the last after the first",
+                 rows_are(SMK_PF_ROW, 13, 32, DIR_REV, 0, 8, 0) && rows_are(SMK_PF_ROW, 3, 32, DIR_REV, 0, 0, 24) &&
+                 rows_are(SMK_PF_ROW, 3, 20, DIR_REV, 0, 0, 16));
+    bad += check("SMK PAD FOLLOW ROW PING: the way it goes, back at either end",
+                 rows_are(SMK_PF_ROW, 13, 32, DIR_PING, 0, 8, 16) && rows_are(SMK_PF_ROW, 29, 32, DIR_PING, 0, 24, 16) &&
+                 rows_are(SMK_PF_ROW, 13, 32, DIR_PING, 1, 8, 0) && rows_are(SMK_PF_ROW, 3, 32, DIR_PING, 1, 0, 8));
+    bad += check("SMK PAD FOLLOW ROW RAND: as FWD; one row: the bottom dark",
+                 rows_are(SMK_PF_ROW, 29, 32, DIR_RAND, 0, 24, 0) && rows_are(SMK_PF_ROW, 3, 8, DIR_FWD, 0, 0, SMK_PF_NONE) &&
+                 rows_are(SMK_PF_ROW, 3, 5, DIR_REV, 0, 0, SMK_PF_NONE));
+
+    bad += check("SMK MENU > PAD FOLLOW: a CONTROL row, OFF PAGE ROW, OFF by default",
+                 MI_TAB[MI_PADF] == MTAB_CONTROL && menu_n(MI_PADF) == SMK_PF_N && smk_pf_mode() == SMK_PF_OFF &&
+                 str_eq(MI_NAME[MI_PADF], "PAD FOLLOW") && str_eq(menu_vname(MI_PADF, menu_get(MI_PADF)), "OFF"));
+    sel_set(0);
+    t = TSEL;
+    track_defaults_steps(t);
+    t->p[P_SLEN] = 20;
+    for (i = 0; i < 20u; i += 4u) {
+        t->step[i].n = 1;
+        t->step[i].note[0] = 60;
+        t->step[i].time = ST_NOTE;
+    }
+    col = rgb_of(T_TRK(0), SMK_PAD_FULL);
+    song.playing = 1;
+    t->seq_idx = 17;
+    frame();
+    bad += check("SMK PAD FOLLOW OFF, playing step 18: the pads stay on steps 1..16, none playing",
+                 host_pad[0] == col && host_pad[1] == SMK_PAD_FAINT && host_pad[15] == SMK_PAD_FAINT &&
+                 smk_pf_row[0] == 0u && smk_pf_row[1] == 8u);
+    menu_put(MI_PADF, SMK_PF_PAGE);
+    frame();
+    bad += check("SMK PAD FOLLOW PAGE, step 18: steps 17..20, the rest dark, step 18 playing",
+                 host_pad[0] == col && host_pad[1] == smk_mixw(SMK_PAD_FAINT, 128u) && host_pad[3] == SMK_PAD_FAINT &&
+                 host_pad[4] == 0u && host_pad[8] == 0u);
+    menu_put(MI_PADF, SMK_PF_ROW);
+    t->seq_idx = 13;
+    frame();
+    ok = host_pad[0] == col && host_pad[5] == smk_mixw(SMK_PAD_FAINT, 128u) && host_pad[8] == col && host_pad[12] == 0u;
+    t->seq_idx = 17;
+    frame();
+    bad += check("SMK PAD FOLLOW ROW: steps 9..16 over 17..20; at step 18 17..20 over 1..8 (the rest dark)",
+                 ok && host_pad[0] == col && host_pad[1] == smk_mixw(SMK_PAD_FAINT, 128u) && host_pad[4] == 0u &&
+                 host_pad[8] == col && host_pad[12] == col && host_pad[13] == SMK_PAD_FAINT);
+    smk_pad_note[2] = SMK_PAD_TAP;
+    pad_tap(2, 100);
+    ok = step_on(&t->step[18]);
+    t->seq_idx = 3;
+    frame();
+    ok &= smk_pf_row[0] == 16u && smk_pf_row[1] == 0u;
+    pad_tap(9, 100);
+    ok &= step_on(&t->step[1]);
+    smk_pad_note[2] = 0;
+    pad_tap(2, 0);
+    bad += check("SMK PAD FOLLOW ROW: a tap the step shown (19); one held: the view stays, the next tap's step too",
+                 ok && smk_pf_row[0] == 0u && smk_pf_row[1] == 8u);
+    song.playing = 0;
+    ui.bank = 1;
+    frame();
+    bad += check("SMK PAD FOLLOW ROW stopped: the screen's page", smk_pf_row[0] == 16u && smk_pf_row[1] == 24u);
+    song.playing = 1;
+    sel_set(3);                                   /* T4 DRUM KIT: the grid's white keys edit the screen's page */
+    t = TSEL;
+    t->p[P_SLEN] = 32;
+    t->seq_idx = 17;
+    ui.bank = 0;
+    go_page(GR_ROLL);
+    frame();
+    bad += check("SMK PAD FOLLOW ROW, the DRUM grid (the pads its keys): the screen's page",
+                 grid_on() && smk_pad_steps == 0u && smk_pf_row[0] == 0u && smk_pf_row[1] == 8u);
+    song.playing = 0;
+    {
+        sks_t p;
+        persist_t q;
+        SMK_PF_BYTE = 2;                          /* (STYLE LINE, as saved) */
+        menu_put(MI_PADF, SMK_PF_ROW);
+        settings_export(&p);
+        ok = p.s.style == (2u | SMK_PF_ROW << 4);
+        p.s.style = 0x32;
+        settings_import(&p, (int)sizeof p);
+        ok &= smk_pf_mode() == SMK_PF_OFF && SMK_PF_BYTE == 0x32u;
+        bad += check("SMK PAD FOLLOW: saved in STYLE's byte (bits 4..5, STYLE kept); an unknown value OFF", ok);
+        memset(&q, 0, sizeof q);
+        q.magic = PERSIST_MAGIC;
+        q.favorites.factory[15][29] = 0x21;
+        settings_import_per(&q, (int)sizeof q);
+        bad += check("SMK PAD FOLLOW: another firmware's settings (no Skiff mark): OFF, its STYLE kept",
+                     favorites.factory[15][29] == 0x01u && smk_pf_mode() == SMK_PF_OFF);
+    }
+    menu_put(MI_PADF, SMK_PF_PAGE);
+    settings_reset();
+    bad += check("SMK RESET SETTINGS: PAD FOLLOW OFF", smk_pf_mode() == SMK_PF_OFF);
+    return bad;
+}
+
 static int test_faders(void)
 {
     int bad = 0;
@@ -760,6 +885,7 @@ int main(void)
     bad += test_pad_modes();
     bad += test_pad_taps();
     bad += test_pad_colours();
+    bad += test_pad_follow();
     bad += test_faders();
     bad += test_entries();
     bad += test_outer_keys();

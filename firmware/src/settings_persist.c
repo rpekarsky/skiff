@@ -36,7 +36,8 @@ typedef struct {                               /* Skiff's settings: favorites.fa
     uint8_t unit_g[3];                         /* the unit's CLOCK, MIDI IN, TUNE (ui.c ui_unit_g) */
     uint8_t ptag, hints_off, set_rev, rsv24;   /* PRESETS' LIST type, HINTS OFF, the one-time changes; (24: RAM's mark) */
     uint8_t perf_keys, launch, scr, rec;       /* PERFORM KEYS, LAUNCH, SCREEN OFF, CLICK .. FEEL (ui_rec_prefs) */
-    uint8_t style, prefs, layers;              /* (STYLE, retired: as saved), MENU's flags (ui_prefs), the layers seen */
+    uint8_t style, prefs, layers;              /* (STYLE, retired: as saved; bits 4..5 the SMK's PAD FOLLOW), MENU's
+                                                * flags (ui_prefs), the layers seen */
 } sks_skiff_t;
 typedef struct {
     uint32_t magic, palette, lowcut, zoom, bold;   /* as PER4's */
@@ -93,6 +94,9 @@ static int settings_import_per(persist_t *p, int n)
         memset((uint8_t *)p->favorites.factory + 14u * 32u, 0, 32u + 27u);
         memset(&p->favorites.factory[ENGI_DIGITAL][1], 0, 31);
         p->favorites.factory[15][28] &= 0x7Fu;
+#if BOARD_SMK37
+        p->favorites.factory[15][29] &= 0x0Fu;     /* ((wishlist #42) PAD FOLLOW, ui.c SMK_PF_BYTE: OFF) */
+#endif
         p->favorites.factory[15][24] = 0xA5u;      /* (as Skiff's now: the record read again, the same) */
     }
 #if BOARD_SMK37
