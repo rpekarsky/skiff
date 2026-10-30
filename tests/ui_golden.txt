@@ -79,6 +79,9 @@ be8eaf5d4f35df5b CRYPT_fm6_alg_32
 65fd15797ef052ae CRYPT_fm_op_env
 f55ef68bdf16cc05 CRYPT_fm_op_keys
 aac8d7598d71aee8 CRYPT_fm_op_tone
+004b62dfee6e1149 CRYPT_fm_phase_fb
+eda238099217171f CRYPT_fm_phase_high
+ffa7b0d4709e6ef8 CRYPT_fm_phase_low
 c0a84a8c73ca7462 CRYPT_fx
 4bc548db11117c1c CRYPT_fx_duck
 4b8b70715f4c5675 CRYPT_fx_duck_off
@@ -200,6 +203,7 @@ f3838592e64bc805 CRYPT_roll_wide
 eb333bb43e15a520 CRYPT_samples
 975419615f24064f CRYPT_scl
 badc4be755b1e847 CRYPT_shift_env
+4b356fedbd9f50b5 CRYPT_shift_fm
 9516cc04f96f478d CRYPT_shift_home
 e830cbf1c5fbffd8 CRYPT_shift_pan
 7c2f20c7bef27272 CRYPT_shift_step
@@ -324,6 +328,9 @@ f71edf4a45b0114e CUSTOM_CRYPT_fm6_alg_05
 4d1c16a2c510e999 CUSTOM_CRYPT_fm_op_env
 ee860116a8bc33c5 CUSTOM_CRYPT_fm_op_keys
 a6339739f64aeea0 CUSTOM_CRYPT_fm_op_tone
+5e625d0f898f7ae8 CUSTOM_CRYPT_fm_phase_fb
+dc82e778c4fd10f7 CUSTOM_CRYPT_fm_phase_high
+1be841096673dfc8 CUSTOM_CRYPT_fm_phase_low
 20f03f935c5785cc CUSTOM_CRYPT_fx
 b475bbb03437fccc CUSTOM_CRYPT_fx_duck
 a50e6b0306444f81 CUSTOM_CRYPT_fx_duck_off
@@ -445,6 +452,7 @@ a4562016936fed0a CUSTOM_CRYPT_roll_playing
 26ba54961e96692f CUSTOM_CRYPT_samples
 b8d4a0ee64a7d682 CUSTOM_CRYPT_scl
 9069983b6abd0045 CUSTOM_CRYPT_shift_env
+e22217291b4bf3ee CUSTOM_CRYPT_shift_fm
 328ec6602c2dcc2e CUSTOM_CRYPT_shift_home
 bf72ecb1cf1ce4f0 CUSTOM_CRYPT_shift_pan
 eafd05525e51ffa2 CUSTOM_CRYPT_shift_step
@@ -569,6 +577,9 @@ d29e1a340fcf67d4 CUSTOM_NEON_fm_init
 e4377d0c37ee8ff3 CUSTOM_NEON_fm_op_env
 3e3961872377862e CUSTOM_NEON_fm_op_keys
 e8953ea965fd0651 CUSTOM_NEON_fm_op_tone
+c482a9766d2437c5 CUSTOM_NEON_fm_phase_fb
+276b35411738b244 CUSTOM_NEON_fm_phase_high
+14ae7b0efee13790 CUSTOM_NEON_fm_phase_low
 077a80c3b97b988b CUSTOM_NEON_fx
 566c7462dbd9d2e6 CUSTOM_NEON_fx_duck
 1d0cbd4a8b102d70 CUSTOM_NEON_fx_duck_off
@@ -690,6 +701,7 @@ df6eadb884c7cfad CUSTOM_NEON_roll_wide
 1d93124b19e33343 CUSTOM_NEON_samples
 0529c6a33942e0bb CUSTOM_NEON_scl
 c1920bdd57fcc733 CUSTOM_NEON_shift_env
+1148de42eab7265b CUSTOM_NEON_shift_fm
 0bd75b3061826ce1 CUSTOM_NEON_shift_home
 c2014746d056fb2d CUSTOM_NEON_shift_pan
 157a566f63f74e64 CUSTOM_NEON_shift_step
@@ -814,6 +826,9 @@ b3f13191befad649 CUSTOM_QUARK_fm_all_algo
 f14878b38a6944f2 CUSTOM_QUARK_fm_op_env
 7448ff707dbf6c59 CUSTOM_QUARK_fm_op_keys
 2f3577a9c45b0b31 CUSTOM_QUARK_fm_op_tone
+0508ba2909de27b9 CUSTOM_QUARK_fm_phase_fb
+8984db46e970ec2d CUSTOM_QUARK_fm_phase_high
+d4e71acb7a10b2f9 CUSTOM_QUARK_fm_phase_low
 e66a3a12b5f0a34e CUSTOM_QUARK_fx
 7b97b68b2e760fea CUSTOM_QUARK_fx_duck
 53dc677a54d87ada CUSTOM_QUARK_fx_duck_off
@@ -935,6 +950,7 @@ ca8d042b39d275a5 CUSTOM_QUARK_roll_high
 6755a721b5695d58 CUSTOM_QUARK_samples
 d0f620ed0aaf0984 CUSTOM_QUARK_scl
 67d1f14057e7dcbf CUSTOM_QUARK_shift_env
+d06280fc592dbddd CUSTOM_QUARK_shift_fm
 2465657835291336 CUSTOM_QUARK_shift_home
 7baf0fb239407b70 CUSTOM_QUARK_shift_pan
 d5ffecd73b3d5d04 CUSTOM_QUARK_shift_step
@@ -1059,6 +1075,9 @@ f89362015ee4b665 CUSTOM_SKIFF_fm_all_pitch
 de57e5c5568374ca CUSTOM_SKIFF_fm_op_env
 fa4f9ae9f33dacd0 CUSTOM_SKIFF_fm_op_keys
 e5b9a7838a14ef65 CUSTOM_SKIFF_fm_op_tone
+63abab58bf33d210 CUSTOM_SKIFF_fm_phase_fb
+14d75a8285df4539 CUSTOM_SKIFF_fm_phase_high
+9b0a62cc81dc1706 CUSTOM_SKIFF_fm_phase_low
 6ab2a372cff9a615 CUSTOM_SKIFF_fx
 57f264f0f6e0643d CUSTOM_SKIFF_fx_duck
 38b6350a75f00901 CUSTOM_SKIFF_fx_duck_off
@@ -1180,6 +1199,7 @@ bc4bfd68b0ff47f2 CUSTOM_SKIFF_roll_wide
 04f1987f2e025767 CUSTOM_SKIFF_samples
 7b39027cdc90df8a CUSTOM_SKIFF_scl
 e175fe052d1d97e3 CUSTOM_SKIFF_shift_env
+b002816f8f8f7489 CUSTOM_SKIFF_shift_fm
 817a0a38ee68784c CUSTOM_SKIFF_shift_home
 26cee17249085fc4 CUSTOM_SKIFF_shift_pan
 36043a2a89a7e654 CUSTOM_SKIFF_shift_step
@@ -1304,6 +1324,9 @@ eb6fbd3e57424ee9 HI-CON_fm_all_pitch
 48120c9dd112246c HI-CON_fm_op_env
 d97a49d0eb0174cd HI-CON_fm_op_keys
 f9f9feae340da599 HI-CON_fm_op_tone
+c56c369a2f955cba HI-CON_fm_phase_fb
+9f0357d3cae699fb HI-CON_fm_phase_high
+66146e6ec034a0c0 HI-CON_fm_phase_low
 72763e621a29310f HI-CON_fx
 ebae64e544533938 HI-CON_fx_duck
 fb38fdc24bd97c10 HI-CON_fx_duck_off
@@ -1425,6 +1448,7 @@ ebaa88b3629d303a HI-CON_roll_wide
 f716258f504d3251 HI-CON_samples
 a51de9ba47a964d2 HI-CON_scl
 dd6f40b0baed09bd HI-CON_shift_env
+28fe06780caca018 HI-CON_shift_fm
 a63588a10ab7bead HI-CON_shift_home
 021e5a41c6b3b303 HI-CON_shift_pan
 0b71d8964586f4e6 HI-CON_shift_step
@@ -1549,6 +1573,9 @@ c1442a45708091e2 LARGE_CRYPT_fm_all_lfo
 db38babb0d5fc497 LARGE_CRYPT_fm_op_env
 7fe87fea68684af7 LARGE_CRYPT_fm_op_keys
 be876d0fe2e4efa8 LARGE_CRYPT_fm_op_tone
+2119637d01774911 LARGE_CRYPT_fm_phase_fb
+ec18d4d1446d4fb7 LARGE_CRYPT_fm_phase_high
+266b7fe6cc709d02 LARGE_CRYPT_fm_phase_low
 b0803eeb7e45c1d7 LARGE_CRYPT_fx
 dcecac91312e5367 LARGE_CRYPT_fx_duck
 8d50453c57afbd96 LARGE_CRYPT_fx_duck_off
@@ -1670,6 +1697,7 @@ c07308ba735e7267 LARGE_CRYPT_roll_wide
 7770ca67c5804626 LARGE_CRYPT_samples
 e7df8b1a46824792 LARGE_CRYPT_scl
 ce341ba978f703d3 LARGE_CRYPT_shift_env
+572f82594fafc173 LARGE_CRYPT_shift_fm
 f4f93273d0bf8dfb LARGE_CRYPT_shift_home
 22a20cfe16a85eec LARGE_CRYPT_shift_pan
 f54efb94b3672434 LARGE_CRYPT_shift_step
@@ -1794,6 +1822,9 @@ eb0e2b35d362ac2c LARGE_NEON_fm_all_algo
 06fa3207f28dd29e LARGE_NEON_fm_op_env
 6b551c7202b8d44b LARGE_NEON_fm_op_keys
 e907f23a21f80365 LARGE_NEON_fm_op_tone
+0c416eabc276551d LARGE_NEON_fm_phase_fb
+ef9cbfb6e5b9fe99 LARGE_NEON_fm_phase_high
+11a93399659e6d6b LARGE_NEON_fm_phase_low
 78d691947cb7ede8 LARGE_NEON_fx
 11e5c921ab42159b LARGE_NEON_fx_duck
 3c2fa9f8675a6087 LARGE_NEON_fx_duck_off
@@ -1915,6 +1946,7 @@ e02da5a978578d09 LARGE_NEON_roll_wide
 84623beb15b3fb2d LARGE_NEON_samples
 960d1074a81ce891 LARGE_NEON_scl
 73aee6fce064876b LARGE_NEON_shift_env
+14c002452218c281 LARGE_NEON_shift_fm
 c82bad5bc848ac34 LARGE_NEON_shift_home
 afdd45653509863b LARGE_NEON_shift_pan
 745ffa575ac78bb9 LARGE_NEON_shift_step
@@ -2039,6 +2071,9 @@ d9f3ab5d8029fafe LARGE_QUARK_fm_all_pitch
 cc53661c24e27581 LARGE_QUARK_fm_op_env
 4dff22bbf13405dd LARGE_QUARK_fm_op_keys
 093ca5c8193c19c9 LARGE_QUARK_fm_op_tone
+f4a16aa8f7024ad5 LARGE_QUARK_fm_phase_fb
+2aba5f2be63aa648 LARGE_QUARK_fm_phase_high
+1c7c01419074415f LARGE_QUARK_fm_phase_low
 61a81ceb1184acf2 LARGE_QUARK_fx
 cc9aede9cc14bb37 LARGE_QUARK_fx_duck
 e3b6216829fa4ead LARGE_QUARK_fx_duck_off
@@ -2160,6 +2195,7 @@ e6b9bcfb538eee48 LARGE_QUARK_roll_playing
 1397c85a8f0a3e56 LARGE_QUARK_samples
 f5279180cfbe785b LARGE_QUARK_scl
 500c312f0d22352d LARGE_QUARK_shift_env
+30e62cf699b066ab LARGE_QUARK_shift_fm
 48250122e48726fa LARGE_QUARK_shift_home
 74008c75aec3e76e LARGE_QUARK_shift_pan
 b5adc19046f35257 LARGE_QUARK_shift_step
@@ -2284,6 +2320,9 @@ c01163483adebea8 LARGE_SKIFF_fm_all_algo
 f3417ba71991d2f5 LARGE_SKIFF_fm_op_env
 26a26b89cf44b4ab LARGE_SKIFF_fm_op_keys
 09ecc813e891c52d LARGE_SKIFF_fm_op_tone
+2bb9b5b95d6c777c LARGE_SKIFF_fm_phase_fb
+a445bac5f06ededa LARGE_SKIFF_fm_phase_high
+d139edbc0f79aeb1 LARGE_SKIFF_fm_phase_low
 75836aa4a870bff2 LARGE_SKIFF_fx
 444bc1632422a54c LARGE_SKIFF_fx_duck
 c781bfa08d97577e LARGE_SKIFF_fx_duck_off
@@ -2405,6 +2444,7 @@ d0ca1a3326cd3394 LARGE_SKIFF_roll_wide
 d85e5e7836d6e7d4 LARGE_SKIFF_samples
 328f796af41047d2 LARGE_SKIFF_scl
 f2d6640f43af8998 LARGE_SKIFF_shift_env
+175686434fb1099b LARGE_SKIFF_shift_fm
 a0d82312fed5b1d2 LARGE_SKIFF_shift_home
 6ef57ab8375e3f55 LARGE_SKIFF_shift_pan
 f25ddd9d03f09edf LARGE_SKIFF_shift_step
@@ -2531,6 +2571,9 @@ ed58f215e9c10ab9 NEON_fm_all_lfo
 0662686b7097bc94 NEON_fm_op_env
 1d011b3835422bcd NEON_fm_op_keys
 a423bedab28ac490 NEON_fm_op_tone
+65c0b4512ec7d531 NEON_fm_phase_fb
+2e3c0404b804d41d NEON_fm_phase_high
+ab9fc9f0dc852f0f NEON_fm_phase_low
 31cea45aa863ec24 NEON_fx
 c7b5b0ce3b2f630a NEON_fx_duck
 fef3f006b7c2ce07 NEON_fx_duck_off
@@ -2652,6 +2695,7 @@ f7fd7102c459d860 NEON_roll_locks
 4651f29955400aef NEON_samples
 6c8400f2151a645e NEON_scl
 8ca77888635eb795 NEON_shift_env
+591b8a5c37bb1ebd NEON_shift_fm
 06a118af072bacdb NEON_shift_home
 2a3c3d94dba7c565 NEON_shift_pan
 18ed400261b518b1 NEON_shift_step
@@ -2776,6 +2820,9 @@ ff8ffdd46207f5f7 PAPER_env_2
 81ad963c10cb22ae PAPER_fm_op_env
 549ec85b9f310cf6 PAPER_fm_op_keys
 ee310e60136e8956 PAPER_fm_op_tone
+5739d0871c4006e3 PAPER_fm_phase_fb
+75e4aa85ecda8b2b PAPER_fm_phase_high
+71ca83ae47ec5aa6 PAPER_fm_phase_low
 8657b4d48a708a1e PAPER_fx
 5d84f66d6c08ed25 PAPER_fx_duck
 c4b07b3a9f2b4119 PAPER_fx_duck_off
@@ -2897,6 +2944,7 @@ c01001b86b81230e PAPER_roll_wide
 0d768a45f8934700 PAPER_samples
 1bb652a7e6ae6360 PAPER_scl
 8fe5394d5fa5dea0 PAPER_shift_env
+b8ef358cc114aa38 PAPER_shift_fm
 3a4cac81d224af7b PAPER_shift_home
 ffabbf3a13504793 PAPER_shift_pan
 385bb2b92611fd91 PAPER_shift_step
@@ -3029,6 +3077,9 @@ bb7e1cad4c8222a0 QUARK_fm_init
 2470a4a47b5d5e49 QUARK_fm_op_env
 c7fc3d3a22528669 QUARK_fm_op_keys
 3df0baa891d68a13 QUARK_fm_op_tone
+cba2a12b63dfca57 QUARK_fm_phase_fb
+7c05407c1bed6012 QUARK_fm_phase_high
+9a08dc577a3d115f QUARK_fm_phase_low
 14fdf834a6ca9972 QUARK_fx
 6687462a867ff630 QUARK_fx_duck
 4b593da58a603616 QUARK_fx_duck_off
@@ -3150,6 +3201,7 @@ e978c3ddf01adfcc QUARK_roll_ties
 e262ae3579d94034 QUARK_samples
 e8c698e4a134ebb7 QUARK_scl
 1c5d2c749a04a5b4 QUARK_shift_env
+20019ea34320b097 QUARK_shift_fm
 979f56ddbd144c07 QUARK_shift_home
 7524bed0beb12fb7 QUARK_shift_pan
 e39704dec79c764f QUARK_shift_step
@@ -3276,6 +3328,9 @@ e4ae0c52926f7620 SKIFF_fm_all_pitch
 f7ac04f200440d4c SKIFF_fm_op_env
 6abd2d09a6bea80c SKIFF_fm_op_keys
 a13895aae388af84 SKIFF_fm_op_tone
+6960a2e072b0e0c3 SKIFF_fm_phase_fb
+1c9749d6dff7dcd9 SKIFF_fm_phase_high
+f63c54bcbddc9e4c SKIFF_fm_phase_low
 519a56e419c8af9b SKIFF_fx
 fefdbe7c7e86c50e SKIFF_fx_duck
 dcf31d7059187d67 SKIFF_fx_duck_off
@@ -3397,6 +3452,7 @@ ae3250a0cbd9ab1c SKIFF_roll_wide
 c033b45b34344c55 SKIFF_samples
 3f0ff5f98bd0e649 SKIFF_scl
 153642e4e8d29d0b SKIFF_shift_env
+3191e13fbeb4b9ce SKIFF_shift_fm
 bcb9fef6a08a9bd3 SKIFF_shift_home
 394c157d3a7042ca SKIFF_shift_pan
 1a572f0268951b07 SKIFF_shift_step

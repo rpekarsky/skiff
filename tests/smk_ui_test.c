@@ -806,6 +806,51 @@ static int test_shift(void)
     return bad;
 }
 
+/* (#20) KNOB BANK tapped on an FM6 sheet: its panel PHASE <-> the envelopes; held, or with a knob, a key: SHIFT only */
+static int test_phase(void)
+{
+    int bad = 0;
+    uint32_t kb = 1u << SMK_BTN_KNOB_BANK;
+    smk_power_on();
+    set_engine_of(TSEL, ENGI_FM6);
+    go_page(GR_FMOP);
+    frame();
+    press_id(SMK_BTN_KNOB_BANK);
+    bad += check("SMK KNOB BANK tapped on OPERATOR: PHASE", fm_phase == 1u);
+    press_id(SMK_BTN_KNOB_BANK);
+    bad += check("SMK KNOB BANK tapped again: the envelopes", fm_phase == 0u);
+    fm1_in.buttons |= kb;
+    frames(400);
+    fm1_in.buttons &= ~kb;
+    frame();
+    bad += check("SMK KNOB BANK held past SHIFT's map and let go: nothing", fm_phase == 0u && !ui.menu);
+    fm1_in.buttons |= kb;
+    frame();
+    host_enc[panel.enc[EN_K1]] += panel.dir[EN_K1];
+    frame();
+    fm1_in.buttons &= ~kb;
+    frame();
+    bad += check("SMK KNOB BANK with KNOB 1 turned: no tap", fm_phase == 0u);
+    fm1_in.buttons |= kb;
+    frame();
+    host_enc[panel.enc[EN_SELECT]] += panel.dir[EN_SELECT];
+    frame();
+    fm1_in.buttons &= ~kb;
+    frame();
+    bad += check("SMK KNOB BANK + K2 right: PHASE (the window stays)", fm_phase == 1u && fm_ui[1] == 0u);
+    fm1_in.buttons |= kb;
+    frame();
+    host_enc[panel.enc[EN_SELECT]] -= panel.dir[EN_SELECT];
+    frame();
+    fm1_in.buttons &= ~kb;
+    frame();
+    bad += check("SMK KNOB BANK + K2 left: the envelopes", fm_phase == 0u && cur_page()->graph == GR_FMOP);
+    ui.home = 1;
+    press_id(SMK_BTN_KNOB_BANK);
+    bad += check("SMK KNOB BANK tapped on HOME: nothing", fm_phase == 0u && ui.home);
+    return bad;
+}
+
 static int test_master(void)
 {
     int bad = 0;
@@ -868,6 +913,7 @@ int main(void)
     bad += test_wheels();
     bad += test_pedal();
     bad += test_shift();
+    bad += test_phase();
     bad += test_master();
     bad += test_clock_out();
     printf("%s\n", bad ? "SMK UI TEST FAILED" : "smk ui test passed");

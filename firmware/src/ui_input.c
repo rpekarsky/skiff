@@ -2079,9 +2079,12 @@ static void ui_notices(void)
     }
 }
 
+#define SHIFT_MAP_MS 250u                               /* SHIFT held this long alone: its map */
 #if BOARD_SMK37
 static uint32_t smk_sh_t0;                              /* KNOB BANK as SHIFT (ui_input) */
+static uint8_t smk_kb_alone;                            /* (#20) KNOB BANK down, nothing else touched: a tap if let go soon */
 #endif
+static int fm_phase_set(int on);                        /* (#20) ui_fm6.c */
 /* (Skiff 2.0) SHIFT held (HOME; the SMK's KNOB BANK too), and a combo of it taken: no HOME tap, no MENU after (the
  * caller drops ui_input's home_long) */
 static int shift_held(void)
@@ -2111,6 +2114,9 @@ static void ui_input(void)
     int32_t s, sel = 0, ks[4] = {0, 0, 0, 0};
     static uint32_t lock_ms;                            /* BPM LOCK: the last locked SELECT turn (fm1_ms | 1; 0 none) */
     static uint8_t home_long;                           /* Skiff: HOME held past 0.7 s, the menu closed: MENU when let go */
+#if BOARD_SMK37
+    uint32_t moved = panel_moved;                       /* (a knob turned in the last pass: scr_input clears it) */
+#endif
     fm6_poll();                                         /* FM6: PTCH turned -> its patch */
     unit_g_poll();                                      /* ((Skiff U3, R8) the unit's CLOCK MIDI IN TUNE) */
     clock_wait_poll();                                  /* (PLAY on an external clock that sends nothing: say so) */
@@ -2166,10 +2172,18 @@ static void ui_input(void)
      * HOME's (+ SAVE TAKE, + a layer's button its lock, pressed with a layer's button held: that layer locked) and its
      * map comes after the same moment; let go it does nothing (HOME still taps home, and held opens the MENU).
      * smk_sh_t0: its press time | 1, | 2 once a combo used it */
-    if (!((fm1_in.buttons >> SMK_BTN_KNOB_BANK) & 1u))
+    if (!((fm1_in.buttons >> SMK_BTN_KNOB_BANK) & 1u)) {
+        if (smk_kb_alone && !moved && !(smk_sh_t0 & 2u) && now - (smk_sh_t0 & ~3u) < SHIFT_MAP_MS * 1000u * FM1_TICKS_PER_US &&
+            !ui.menu && !ui.confirm && !name_on() && !ui.layer)
+            (void)fm_phase_set(-1);                     /* (#20) tapped (let go before SHIFT's map): an FM6 sheet's panel */
         smk_sh_t0 = 0;
-    else if (!smk_sh_t0)
+        smk_kb_alone = 0;
+    } else if (!smk_sh_t0) {
         smk_sh_t0 = (now | 1u) & ~2u;
+        smk_kb_alone = !(pressed & ~(1u << SMK_BTN_KNOB_BANK)) && !notes;
+    } else if ((pressed & ~(1u << SMK_BTN_KNOB_BANK)) || notes || moved) {
+        smk_kb_alone = 0;
+    }
     if (smk_sh_t0 && !ui.home_t0 && ((pressed >> panel.btn[B_SAVE]) & 1u) && !ui.menu && !ui.confirm && !name_on()) {
         smk_sh_t0 |= 2u;
         ui.save_t0 |= 2u;
@@ -2289,10 +2303,10 @@ static void ui_input(void)
                                                          * page (not over a layer; HINTS OFF: none); past the hold too
                                                          * (home_long: let go, the MENU), a combo ends it */
         uint8_t sh = ui.home_t0 && (!(ui.home_t0 & 2u) || home_long) && !ui.menu && !ui.confirm && !name_on() && !ui.layer &&
-                     !ui_hints_off && now - (ui.home_t0 & ~3u) > 250u * 1000u * FM1_TICKS_PER_US;
+                     !ui_hints_off && now - (ui.home_t0 & ~3u) > SHIFT_MAP_MS * 1000u * FM1_TICKS_PER_US;
 #if BOARD_SMK37
         sh = sh || (smk_sh_t0 && !(smk_sh_t0 & 2u) && !ui.menu && !ui.confirm && !name_on() && !ui.layer &&
-                    !ui_hints_off && now - (smk_sh_t0 & ~3u) > 250u * 1000u * FM1_TICKS_PER_US);
+                    !ui_hints_off && now - (smk_sh_t0 & ~3u) > SHIFT_MAP_MS * 1000u * FM1_TICKS_PER_US);
 #endif
         if (sh != ui.shift) {
             ui.shift = sh;
@@ -2524,6 +2538,9 @@ static void ui_input(void)
             ui.bpm_t = 40;                              /* the header's BPM lights up; no message over the header */
         } else if (lay) {
             ;                                           /* (another layer held: not the page under it) */
+        } else if (!ui.home && shift_held() && fm_phase_set(s > 0)) {   /* (#20) SHIFT + SELECT on an FM6 sheet: */
+            shift_mark();                               /* right PHASE, left the envelopes */
+            home_long = 0;
         } else if (!ui.home) {
             select_turn(s);
         } else {                                        /* MENU > BPM LOCK ON (#58), on HOME (no pages): only with GLO

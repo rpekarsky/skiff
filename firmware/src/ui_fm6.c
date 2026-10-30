@@ -47,6 +47,10 @@ static const char *const FM_CURVE[4] = {"-LIN", "-EXP", "+EXP", "+LIN"};
 static const char *const FM_WAVE[6] = {"TRI", "SAW DN", "SAW UP", "SQUARE", "SINE", "RANDOM"};
 static const char *const FM_HZ[4] = {"1", "10", "100", "1K"};          /* a fixed operator's range (FC & 3) */
 
+static uint8_t fm_phase __attribute__((section(".pool")));      /* (#20) the panel PHASE, not the envelopes; not saved */
+static uint32_t fm_ph_t0 __attribute__((section(".pool")));     /* (fm1_ms) PHASE's clock from 0 */
+#define FM_PH_MS 40u                                            /* PHASE redrawn every 40 ms */
+
 static uint32_t fm_tr(void) { return trk_index(TSEL) % NTRK; }
 /* field f's byte in the patch (operator fm_ui[0] on OPERATOR) */
 static uint32_t fm_at(uint32_t pg, const fm_field_t *f)
@@ -251,7 +255,21 @@ static const char *fm_all_title(void) { return "ALL OPS"; }
 static uint32_t fm_sig(void)
 {
     return (fm6_pgen[fm_tr()] + 1u) * 2246822519u ^ (fm_ui[0] + fm_ui[1] * 7u + fm_ui[2] * 49u) * 40503u ^
-           (ui.hot_t ? ui.hot_col + 1u : 0u) * 65537u;
+           (ui.hot_t ? ui.hot_col + 1u : 0u) * 65537u ^ (fm_phase ? (fm1_ms - fm_ph_t0) / FM_PH_MS * 2654435761u + 1u : 0u);
+}
+/* (#20) SHIFT + SELECT, the SMK's KNOB BANK tapped: on an FM6 sheet, its panel PHASE (on), the envelopes (0) or the
+ * other (< 0). 0: not on one */
+static int fm_phase_set(int on)
+{
+    uint32_t g = cur_page()->graph;
+    if (ui.home || (g != GR_FMOP && g != GR_FMALL) || TSEL->eng_req % NENGINES != ENGI_FM6)
+        return 0;
+    if (on < 0)
+        on = !fm_phase;
+    if (on && !fm_phase)
+        fm_ph_t0 = fm1_ms;
+    fm_phase = (uint8_t)(on != 0);
+    return 1;
 }
 
 /* ------------------------------------------------------------------ the panel: the note as the engine plays it --- */
@@ -964,6 +982,243 @@ static void fm_lfo(const fm_sim_t *s, uint16_t c)
     cv_text_r(229, FM_CY + CAP_IN(S, 12), &AF_S, "2.0 S", T_MID, T_SURF);
 }
 
+/* (#20) PHASE: phase modulation as a dot on a circle. The carrier (the picked operator, else the first one it feeds)
+ * turns once a second: its dot where the modulators push it, a ghost where it would be without them, the arc between;
+ * on the dot the modulators feeding it as epicycles (through the picked one, else the strongest; three deep), each
+ * turning at its own speed, as wide as it is deep; to the right the dot's height over the last turn, the ghost's
+ * dotted. The algorithm as fm6_core_render runs it (the buses, FM6_THRESH, the feedback), one sample a step, 256 steps
+ * a turn, from scratch each frame; the levels the held note's sustain, the carrier at full scale. Left out: the
+ * envelopes in time, the LFO, the pitch envelope, DTUN's spread, the matrix */
+#define FM_PH_TURN 4096u                                /* virtual ticks a carrier turn (a second) */
+#define FM_PH_STEP 16u
+#define FM_PH_COLS 128                                  /* the trace: a turn, a column every other step */
+#define FM_PH_WARM 64                                   /* steps before it (the feedback settles) */
+#define FM_PH_CX 52
+#define FM_PH_CY 76
+#define FM_PH_R 28
+#define FM_PH_TX 104                                    /* the trace's newest column */
+typedef struct {
+    int32_t rel[6], gain[6];                            /* (FM6_ALG's order) speed against the carrier's Q16; output Q24 */
+    int32_t in[6], fb[2];                               /* the last step's phase input (Q24 cycles); the feedback's */
+    uint32_t alg, fbs;
+} fm_pm_t;
+
+static int32_t fm_rel(int32_t d)                        /* 2^(d / 2^24) Q16, d clamped to 2^-16 .. 2^13 */
+{
+    int32_t i = clamp(d >> 24, -16, 13);
+    return (int32_t)(fm6_mant(d) >> (14 - i));
+}
+/* the operators at the held note's sustain (fm6_env_advance's target of stage 3, MOD LVL on the modulators), their
+ * speeds against carrier c's */
+static void fm_pm_init(fm_pm_t *m, const fm_sim_t *s, uint32_t c)
+{
+    int32_t note = 60 + s->q[FP_TRNSP] - 24, lf = fm6_note_logfreq(note * 16, 0), lg[6];
+    uint32_t k, car = fm6_carriers(s->alg);
+    memset(m, 0, sizeof *m);
+    m->alg = s->alg;
+    m->fbs = s->fb ? 8u - s->fb : 16u;
+    for (k = 0; k < 6u; k++) {
+        const uint8_t *op = s->q + k * FP_OP;
+        fm6_env_t e;
+        int32_t lv;
+        fm6_op_env_init(&e, op, note, 100);
+        lv = ((fm6_scaleout(op[FP_L1 + 2]) >> 1) << 6) + e.outlevel - 4256;
+        lv = (lv < 16 ? 16 : lv) << 16;
+        if (!(car >> k & 1u))
+            lv += s->modlvl << 8;
+        m->gain[k] = fm6_exp2(clamp(lv, 0, 17 << 24) - (14 << 24));
+        lg[k] = op[FP_MODE] ? fm6_osc_base(op, note, 0) : lf + fm6_osc_base(op, note, 0);
+    }
+    for (k = 0; k < 6u; k++)
+        m->rel[k] = fm_rel(lg[k] - lg[5u - c]);
+}
+/* one sample at virtual tick t: fm6_core_render's operators, a value each */
+static void fm_pm_step(fm_pm_t *m, uint32_t t)
+{
+    const uint8_t *a = FM6_ALG[m->alg & 31u];
+    int32_t bus[3] = {0, 0, 0};
+    uint8_t has[3] = {0, 0, 0};
+    uint32_t k;
+    for (k = 0; k < 6u; k++) {
+        uint32_t f = a[k], ib = f >> 4 & 3u, ob = f & 3u, fb = (f & 0xC0u) == 0xC0u;
+        int32_t in = 0, y;
+        m->in[k] = 0;
+        if (m->gain[k] < FM6_THRESH) {
+            if (!(f & FM6_OADD))
+                has[ob] = 0;
+            continue;
+        }
+        if (fb && m->fbs < 16u)
+            in = (m->fb[0] + m->fb[1]) >> (m->fbs + 1u);
+        else if (ib && has[ib])
+            in = bus[ib];
+        y = (int32_t)(((int64_t)fm6_sin((int32_t)(uint32_t)((uint64_t)t * (uint32_t)m->rel[k] >> 4) + in) * m->gain[k]) >> 15);
+        if (fb) {
+            m->fb[0] = m->fb[1];
+            m->fb[1] = y;
+        }
+        bus[ob] = (f & FM6_OADD) && has[ob] ? bus[ob] + y : y;
+        has[ob] = 1;
+        m->in[k] = in;
+    }
+}
+/* the carrier PHASE shows: the picked operator, or the first carrier it feeds */
+static uint32_t fm_ph_carrier(const fm_sim_t *s)
+{
+    uint32_t sel = fm_ui[0] % 6u, k;
+    if (s->car >> sel & 1u)
+        return sel;
+    for (k = 0; k < 6u; k++)
+        if ((s->car >> k & 1u) && (fm_feeders(s->alg, k) >> sel & 1u))
+            return k;
+    return 0;
+}
+/* the epicycles from carrier c up (ch: OP k + 1 as k): through the picked operator, else the strongest */
+static uint32_t fm_ph_chain(const fm_sim_t *s, const fm_pm_t *m, uint32_t c, uint8_t *ch)
+{
+    uint8_t r[6];
+    uint32_t sel = fm_ui[0] % 6u, n = 0, k, best;
+    fm6_routes(s->alg, r);
+    while (n < 3u && r[c]) {
+        best = 6;
+        for (k = 0; k < 6u; k++) {
+            if (!(r[c] >> k & 1u))
+                continue;
+            if (k == sel || (fm_feeders(s->alg, k) >> sel & 1u)) {
+                best = k;
+                break;
+            }
+            if (best == 6u || m->gain[5u - k] > m->gain[5u - best])
+                best = k;
+        }
+        ch[n++] = (uint8_t)best;
+        c = best;
+    }
+    return n;
+}
+static void fm_ph_pt(int32_t cx, int32_t cy, int32_t r, int32_t ph, int32_t *x, int32_t *y)
+{
+    *x = cx + ((fm6_sin(ph + (1 << 22)) * r + 16384) >> 15);
+    *y = cy - ((fm6_sin(ph) * r + 16384) >> 15);
+}
+static void fm_ph_circle(int32_t cx, int32_t cy, int32_t r, uint16_t c)
+{
+    int32_t i, n = r * 7, x, y;
+    for (i = 0; i < n; i++) {
+        fm_ph_pt(cx, cy, r, (int32_t)(((int64_t)i << 24) / n), &x, &y);
+        cv_pset(x, y, c);
+    }
+}
+static void fm_ph_dot(int32_t x, int32_t y, int32_t r, uint16_t c)
+{
+    int32_t dx, dy;
+    for (dy = -r - 1; dy <= r + 1; dy++)
+        for (dx = -r - 1; dx <= r + 1; dx++) {
+            int32_t d2 = dx * dx + dy * dy;
+            if (d2 <= r * r + r)
+                cv_pset(x + dx, y + dy, c);
+            else if (d2 <= (r + 1) * (r + 1) + r + 1)
+                cv_pset(x + dx, y + dy, T_BG);
+        }
+}
+/* the caption: the path into the carrier (OP3 > 2 > 1, FB where the feedback is on it), the deepest push over the
+ * trace in radians, or BACKWARDS while the dot runs back */
+static void fm_ph_caption(const fm_sim_t *s, uint32_t c, const uint8_t *ch, uint32_t n, int32_t peak, int back,
+                          uint16_t hot)
+{
+    char b[24], *p = b;
+    uint32_t i, fbop = fm6_fb_op(s->alg), fb = s->fb && fbop == c;
+    *p++ = 'O', *p++ = 'P';
+    for (i = n + 1u; i-- > 0;) {
+        uint32_t k = i ? ch[i - 1u] : c;
+        fb |= s->fb && fbop == k;
+        *p++ = (char)('1' + k);
+        if (i)
+            *p++ = ' ', *p++ = '>', *p++ = ' ';
+    }
+    str_cpy(p, fb ? " FB" : "", 4);
+    cv_text_on(10, FM_CY + CAP_IN(S, 12), &AF_S, b, T_MID, T_SURF);
+    if (back) {
+        cv_text_r(229, FM_CY + CAP_IN(S, 12), &AF_S, "BACKWARDS", hot, T_SURF);
+        return;
+    }
+    peak = (int32_t)((int64_t)peak * 6283 / 100 >> 24);
+    str_cpy(b, "INDEX ", sizeof b);
+    fm_tenths(b + 6, peak, 0);
+    cv_text_r(229, FM_CY + CAP_IN(S, 12), &AF_S, peak ? b : "PURE SINE", T_MID, T_SURF);   /* (below 0.1: not 0.0) */
+}
+/* the last turn up to virtual tick now: the dot's height per column (newest first), the ghost's, the deepest push;
+ * the dot's phase at now. 1: it runs back */
+static int fm_ph_trace(fm_pm_t *m, uint32_t kc, uint32_t now, int8_t *wave, int8_t *ghost, int32_t *peak, int32_t *ph)
+{
+    int32_t steps = FM_PH_COLS * 2 + FM_PH_WARM, prev = 0, push;
+    uint32_t t0 = now - (uint32_t)(steps - 1) * FM_PH_STEP, i;
+    *peak = *ph = 0;
+    for (i = 0; i < (uint32_t)steps; i++) {
+        int32_t ago = steps - 1 - (int32_t)i;
+        uint32_t t = t0 + i * FM_PH_STEP;
+        fm_pm_step(m, t);
+        prev = *ph;
+        *ph = (int32_t)(t << 12) + m->in[kc];           /* (the carrier's speed: 1, Q16) */
+        if (ago >= FM_PH_COLS * 2)
+            continue;
+        push = m->in[kc] < 0 ? -m->in[kc] : m->in[kc];
+        *peak = push > *peak ? push : *peak;
+        if (!(ago & 1)) {
+            wave[ago / 2] = (int8_t)((fm6_sin(*ph) * FM_PH_R + 16384) >> 15);
+            ghost[ago / 2] = (int8_t)((fm6_sin((int32_t)(t << 12)) * FM_PH_R + 16384) >> 15);
+        }
+    }
+    return (int32_t)((uint32_t)*ph - (uint32_t)prev) < 0;   /* (wraps every 256 turns: no signed overflow) */
+}
+static void fm_phase_panel(const fm_sim_t *s, const uint16_t *sh, uint16_t c)
+{
+    fm_pm_t m;
+    int8_t wave[FM_PH_COLS], ghost[FM_PH_COLS];
+    uint8_t ch[3];
+    uint32_t car = fm_ph_carrier(s), kc = 5u - car, n, i, now;
+    int32_t peak, back, ph, x, y, px, py, dx, dy;
+    fm_pm_init(&m, s, car);
+    n = fm_ph_chain(s, &m, car, ch);
+    now = (uint32_t)((uint64_t)(fm1_ms - fm_ph_t0) * FM_PH_TURN / 1000u);
+    back = fm_ph_trace(&m, kc, now, wave, ghost, &peak, &ph);
+    cv_rect(FM_PH_TX, FM_PH_CY, FM_PH_COLS, 1, FM_GUIDE);
+    for (i = 0; i < (uint32_t)FM_PH_COLS; i += 2u)
+        cv_pset(FM_PH_TX + (int32_t)i, FM_PH_CY - ghost[i], T_DIM);
+    for (i = 1; i < (uint32_t)FM_PH_COLS; i++)
+        fm_seg2(FM_PH_TX + (int32_t)i - 1, FM_PH_CY - wave[i - 1u], FM_PH_TX + (int32_t)i, FM_PH_CY - wave[i], 2, c);
+    fm_ph_circle(FM_PH_CX, FM_PH_CY, FM_PH_R, FM_GUIDE);
+    {                                                   /* the push: the arc from the ghost to the dot (a turn at most) */
+        int32_t gh = (int32_t)(now << 12), d = clamp(m.in[kc], -(1 << 24), 1 << 24), j, na = (d < 0 ? -d : d) >> 16;
+        for (j = 0; j <= na; j++) {
+            fm_ph_pt(FM_PH_CX, FM_PH_CY, FM_PH_R, gh + (int32_t)((int64_t)d * j / (na ? na : 1)), &x, &y);
+            fm_brush(x, y, 3, sh[11]);
+        }
+        fm_ph_pt(FM_PH_CX, FM_PH_CY, FM_PH_R, gh, &x, &y);
+        fm_ph_dot(x, y, 3, ux_mix(T_SURF, c, 45));
+    }
+    fm_ph_pt(FM_PH_CX, FM_PH_CY, FM_PH_R, ph, &px, &py);
+    for (x = px + 6; x < FM_PH_TX; x += 3)              /* the dot's height, across to the trace */
+        cv_pset(x, py, T_DIM);
+    cv_line(FM_PH_CX, FM_PH_CY, px, py, c);
+    fm_ph_dot(px, py, 3, back ? sh[11] : T_TEXT);
+    for (i = 0; i < n; i++) {                           /* the epicycles: their push's 66 dB up to 2 turns, wider */
+        static const uint8_t RMAX[3] = {13, 8, 5};
+        uint32_t k = 5u - ch[i];
+        int32_t r;
+        uint16_t oc = T_TRK(ch[i]);
+        if (m.gain[k] < FM6_THRESH)
+            break;
+        r = 3 + (RMAX[i] - 3) * clamp(fm_log2((uint32_t)m.gain[k]) - (14 << 16), 0, 11 << 16) / (11 << 16);
+        fm_ph_circle(px, py, r, ux_mix(T_SURF, oc, 60));
+        fm_ph_pt(px, py, r, (int32_t)(uint32_t)((uint64_t)now * (uint32_t)m.rel[k] >> 4) + m.in[k], &dx, &dy);
+        cv_line(px, py, dx, dy, oc);
+        px = dx, py = dy;
+        fm_brush(px, py, 3, oc);
+    }
+    fm_ph_caption(s, car, ch, n, peak, back, sh[11]);
+}
+
 /* the scroll bar: where the knobs are among the windows */
 static void fm_scroll(uint32_t w)
 {
@@ -977,7 +1232,11 @@ static void fm_draw(uint32_t pg, const track_t *t, uint16_t c)
     uint16_t sh[12];
     uint32_t w = fm_ui[1 + pg] % FM_NWIN;
     fm_ramp(sh);
-    if (pg && w == FMW_ALGO) {
+    if (fm_phase) {
+        fm_ops(&s, t);
+        fm_tabs(&s, sh, !pg && w == FMW_TONE);
+        fm_phase_panel(&s, sh, c);
+    } else if (pg && w == FMW_ALGO) {
         fm_algo(t, c);
     } else if (!pg && (w == FMW_KEYS || w == FMW_MORE)) {
         fm_ops(&s, t);

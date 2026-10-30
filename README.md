@@ -216,7 +216,8 @@ EDIT › OPERATOR and ALL OPS put every value of an FM6 patch on the unit's knob
 its ratio, envelope, keyboard scaling, the algorithm, the pitch envelope and the LFO. INIT starts from a bare sine, and
 SAVE › USER keeps the result as a sound of its own. The graph, after an idea by Floyd Steinberg, is the note as the
 engine plays it: every operator's envelope, each carrier coloured along its length from cool (a sine) to hot (where
-the modulators make it bite).
+the modulators make it bite). SHIFT + SELECT (on the SMK-37 also a tap of KNOB BANK) turns it into PHASE: the carrier
+as a dot on a turning circle, pushed by its modulators (epicycles riding on it), and the wave that traces out.
 
 <table>
 <tr>
