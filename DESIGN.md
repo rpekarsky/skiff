@@ -75,7 +75,7 @@ Things to avoid:
 | HOME held alone, then let go | MENU (settings). It opens on release, so it never fights a SHIFT combo. | Phase 1 |
 
 **TAKE in detail:**
-- **What it keeps:** the last *complete* pass, notes and knob moves together.
+- **What it keeps:** the last *complete* pass with notes still in the log, notes and knob moves together, so a SHIFT + SAVE a loop or two late still finds it (#12), and a knob nudged in a later pass does not push it out. No complete pass with notes: the last complete pass with knob moves. Neither: the pass playing, from its start up to now (#33).
 - **What is logged:** while the track plays with REC off, the keys and their chords, MIDI and the arpeggiator (everything REC would record) and the knob moves are logged.
 - **How notes merge:** as REC merges them. A held note ties into empty steps only, so a take never wipes a note. (2.0, #25) On a POLY track playing forward a held note goes on by itself to its key's release, a per-note tie beside whatever each step holds (4 notes a step, no pitch twice; no room: it ends there), and a note played meanwhile doesn't end it; a note played into a long one goes in beside it.
 - **Undo:** one undo (hold SAVE) puts back the steps and the automation.
@@ -83,8 +83,8 @@ Things to avoid:
 - **What it says:**
   - **BLOCKS:** the TAKE box sits over the panel for about 2 s. It shows the track's number on its colour, TAKE KEPT, what went in (14 NOTES, 3 KNOB MOVES; AUTOMATION FULL when the moves found no room), and [SAVE] HOLD TO UNDO. A newer message, an undo for example, ends it.
   - **Views with no panel for the box** (a layer, LARGE's tall cards, the MIXER): TAKE T1 in the header, then HOLD [SAVE]: UNDO (U4: one wording for the undo hint).
-  - **Partial:** TAKE PARTIAL (TAKE T1 PARTIAL in the header) when more than about 128 notes in the pass overflowed the log.
-  - PLAY ONE LOOP FIRST, NOTHING PLAYED or DISARM REC FOR A TAKE when there is nothing to take (U4: the way out, not just the problem).
+  - **Partial:** TAKE PARTIAL (TAKE T1 PARTIAL in the header) when more than about 128 notes in the pass overflowed the log; TAKE PARTIAL PASS (TAKE T1 PARTIAL PASS) when it took the pass playing.
+  - NOTHING PLAYED, DISARM REC FOR A TAKE, or on a chain PLAY ONE LOOP FIRST, when there is nothing to take (U4: the way out, not just the problem).
 - **Hint:** while HOME is held, the header says [SAVE] TAKE.
 
 Add a combo here before adding it to the code. Every SHIFT combo has to appear on the SHIFT map.

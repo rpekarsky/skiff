@@ -238,6 +238,7 @@ b722e4598b782da3 CRYPT_step_tiles
 63b7e515f5ff54fa CRYPT_step_tiles_drum
 175992c3853d244d CRYPT_take_box
 1e432b36f86fd483 CRYPT_take_partial
+2fd3ad2989aa9fab CRYPT_take_pass
 6db32e8311fcec94 CRYPT_uboot
 785df093099f8427 CRYPT_undo_box
 5836b5371d4fd3c3 CRYPT_user
@@ -482,6 +483,7 @@ ca6588b77d8ca985 CUSTOM_CRYPT_step_tiles_bar2
 5383033239f1d240 CUSTOM_CRYPT_step_tiles_drum
 6437d3d0b3f02d88 CUSTOM_CRYPT_take_box
 d2d37ef6e92f98ce CUSTOM_CRYPT_take_partial
+5e387a2b8059c1fa CUSTOM_CRYPT_take_pass
 62096859cf879d74 CUSTOM_CRYPT_uboot
 66c6ee48c3b0ab32 CUSTOM_CRYPT_undo_box
 67b8ccf0f192bcaa CUSTOM_CRYPT_user
@@ -726,6 +728,7 @@ dcc8ea6095b6df63 CUSTOM_NEON_step_tiles
 ab58c9cc83e26eda CUSTOM_NEON_step_tiles_drum
 6024024a09050f8a CUSTOM_NEON_take_box
 77cb7cd2897855e0 CUSTOM_NEON_take_partial
+0f93e81f3849c0e4 CUSTOM_NEON_take_pass
 715f06dcbc453ee0 CUSTOM_NEON_uboot
 438af9c5660e13c4 CUSTOM_NEON_undo_box
 de9f2ffffd8e9ae8 CUSTOM_NEON_user
@@ -970,6 +973,7 @@ faee4a12413b21f8 CUSTOM_QUARK_step_tiles
 617b0ea80e18773f CUSTOM_QUARK_step_tiles_drum
 6f64587aa05d0313 CUSTOM_QUARK_take_box
 37ddc434ae487657 CUSTOM_QUARK_take_partial
+5d578e33c8f30128 CUSTOM_QUARK_take_pass
 fa9470cba86e4aeb CUSTOM_QUARK_uboot
 43b3e99fccb624cf CUSTOM_QUARK_undo_box
 30412cd5befcb93d CUSTOM_QUARK_user
@@ -1214,6 +1218,7 @@ f1856769d01dcdd6 CUSTOM_SKIFF_step_tiles_bar2
 aeefa6bdaf630f5a CUSTOM_SKIFF_step_tiles_drum
 9ba95fa8621e1ffa CUSTOM_SKIFF_take_box
 b1712c36022db10a CUSTOM_SKIFF_take_partial
+1fecced9d891a13d CUSTOM_SKIFF_take_pass
 765a29dbde56b61b CUSTOM_SKIFF_uboot
 d5b13ce57b9ecd56 CUSTOM_SKIFF_undo_box
 86eb8a426f76d1f6 CUSTOM_SKIFF_user
@@ -1458,6 +1463,7 @@ c10a511522eda44a HI-CON_step_tiles
 c5b589b7fed92d07 HI-CON_step_tiles_drum
 a2ca236e28149451 HI-CON_take_box
 85b9326301c15c99 HI-CON_take_partial
+7584fb80e46d2169 HI-CON_take_pass
 2f717c925d068be4 HI-CON_uboot
 09822a089a5d44db HI-CON_undo_box
 6a017dec6419e705 HI-CON_user
@@ -1702,6 +1708,7 @@ fa365a152e3ba8b9 LARGE_CRYPT_step
 f43c31f5319beed0 LARGE_CRYPT_step_tiles_drum
 da30938cec273e6c LARGE_CRYPT_take_box
 da30938cec273e6c LARGE_CRYPT_take_partial
+da30938cec273e6c LARGE_CRYPT_take_pass
 6db32e8311fcec94 LARGE_CRYPT_uboot
 da30938cec273e6c LARGE_CRYPT_undo_box
 ab95b1df5b102ed0 LARGE_CRYPT_user
@@ -1946,6 +1953,7 @@ d2292648cb5f302f LARGE_NEON_step_tiles
 bd1cf7247227314b LARGE_NEON_step_tiles_drum
 21b019a0833075bd LARGE_NEON_take_box
 21b019a0833075bd LARGE_NEON_take_partial
+21b019a0833075bd LARGE_NEON_take_pass
 00b30677b58a29a4 LARGE_NEON_uboot
 21b019a0833075bd LARGE_NEON_undo_box
 e1a1e6b6d712b8cc LARGE_NEON_user
@@ -2190,6 +2198,7 @@ dca996092fbd3472 LARGE_QUARK_step_tiles_bar2
 df9d996b8d3f4877 LARGE_QUARK_step_tiles_drum
 997f6b42b8e77c94 LARGE_QUARK_take_box
 997f6b42b8e77c94 LARGE_QUARK_take_partial
+997f6b42b8e77c94 LARGE_QUARK_take_pass
 46ee8bbddf9448ce LARGE_QUARK_uboot
 997f6b42b8e77c94 LARGE_QUARK_undo_box
 6495cf0856f107f3 LARGE_QUARK_user
@@ -2434,6 +2443,7 @@ d8a26c1b8b33813e LARGE_SKIFF_splash
 7149939846e64273 LARGE_SKIFF_step_tiles_drum
 b02becb143bb520f LARGE_SKIFF_take_box
 b02becb143bb520f LARGE_SKIFF_take_partial
+b02becb143bb520f LARGE_SKIFF_take_pass
 11470830f75229c2 LARGE_SKIFF_uboot
 b02becb143bb520f LARGE_SKIFF_undo_box
 521acc0c0d84a4a6 LARGE_SKIFF_user
@@ -2680,6 +2690,7 @@ b732c46b74f18b40 NEON_step_tiles
 76777d208d18662d NEON_step_tiles_drum
 79431f24e21e00cc NEON_take_box
 52d96468e679033a NEON_take_partial
+33d07553032446e4 NEON_take_pass
 00b30677b58a29a4 NEON_uboot
 7511205b11bbd792 NEON_undo_box
 f2d2dc9b85b9ae64 NEON_user
@@ -2924,6 +2935,7 @@ df2a768ad8152660 PAPER_step_tiles
 225bb184078d9ecc PAPER_step_tiles_drum
 71a9410397abd3ab PAPER_take_box
 fe3812a1eb420535 PAPER_take_partial
+46466139836648b8 PAPER_take_pass
 c1125f5b99f630a9 PAPER_uboot
 15184fa6311cf6eb PAPER_undo_box
 58405d009a2c7e31 PAPER_user
@@ -3176,6 +3188,7 @@ f3669850d1aef65c QUARK_step_tiles_bar2
 47feed06fc6e9ecf QUARK_step_tiles_drum
 febca0b858adbcd2 QUARK_take_box
 83d51825308e1d11 QUARK_take_partial
+651380eed388f233 QUARK_take_pass
 46ee8bbddf9448ce QUARK_uboot
 c82b79c110e33c54 QUARK_undo_box
 65d06a7d3ab73974 QUARK_user
@@ -3422,6 +3435,7 @@ be3797e720d65fa9 SKIFF_step
 e22c070a85cc649b SKIFF_step_tiles_drum
 ea8dc672ac5b3bb4 SKIFF_take_box
 28f24bf2878b4a0d SKIFF_take_partial
+4d2d48d657716fd8 SKIFF_take_pass
 11470830f75229c2 SKIFF_uboot
 346f46e15c4f18d1 SKIFF_undo_box
 f48abd5d7c430945 SKIFF_user

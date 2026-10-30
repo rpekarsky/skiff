@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Skiff: SHIFT + SAVE puts the last complete pass of a track's TAKES log (take.c) into the track. Included by ui.c
+ * Skiff: SHIFT + SAVE puts a pass of a track's TAKES log (take.c) into the track (take_pick). Included by ui.c
  * after load_end (the undo copy). Main loop only. */
 
 /* (2.0, #25) the NOTES edit copy (ui_input.c): a take on a POLY track playing forward ties each held note on by itself */
@@ -90,6 +90,28 @@ static uint32_t take_notes(uint32_t k, step_t *tmp, uint32_t len, uint32_t want,
                                                        * an overdub, it never wipes a note) */
     }
     return notes;
+}
+
+/* (#12, #33) the pass of track k's log a take keeps (cur: the one playing, or stopped in): the last whole one with a
+ * note still in the log (a late SHIFT + SAVE loses nothing, a knob nudged after it neither); no such pass: the last
+ * whole one with a knob move; else the one playing so far. Pass 0 is none: played with PLAY, before step 0 (the
+ * parked last step) */
+static uint32_t take_pick(uint32_t k, uint32_t len, uint32_t cur)
+{
+    uint32_t n = take_ev_n, i, with_notes = 0, with_knobs = 0;
+    for (i = n > TAKE_EV ? n - TAKE_EV : 0u; i < n; i++) {
+        const take_ev_t *e = &take_ev[i % TAKE_EV];
+        if (e->trk == k && e->vel && e->step < len && e->pass && e->pass < cur && e->pass > with_notes)
+            with_notes = e->pass;
+    }
+    if (with_notes)
+        return with_notes;
+    for (i = 0; i < (take_kv_n < TAKE_KV ? take_kv_n : TAKE_KV); i++) {
+        const take_kv_t *m = &take_kv[i];
+        if (m->trk == k && m->step < len && m->pass && m->pass < cur && m->pass > with_knobs)
+            with_knobs = m->pass;
+    }
+    return with_knobs ? with_knobs : cur;
 }
 
 /* "14 NOTES" / "1 NOTE" after what b holds (a ", " between them) */
@@ -183,8 +205,8 @@ static void take_commit(uint32_t k)
 {
     track_t *t = &trk[k % NTRK];
     uint32_t len = t->p[P_SLEN] > 0 ? (uint32_t)t->p[P_SLEN] : 1u, want, i, e, b0, b1, j, chain = 0, tied = 0, mine;
-    uint32_t notes = 0, moves = 0, full = 0, from;
-    int own = rec_poly(t);                            /* ((2.0, #25) notes overlap: each held note its own tie) */
+    uint32_t notes = 0, moves = 0, full = 0, from, cur = take_pass[k % NTRK];
+    int own = rec_poly(t), part_pass;                 /* ((2.0, #25) notes overlap: each held note its own tie) */
     step_t tmp[NSTEP];
     char b[24];
     if (len > NSTEP)
@@ -193,11 +215,7 @@ static void take_commit(uint32_t k)
         ui_message("DISARM REC FOR A TAKE");          /* (REC records it already; (Skiff U4) the way) */
         return;
     }
-    if (take_pass[k % NTRK] < 2u) {
-        ui_message("PLAY ONE LOOP FIRST");            /* not a whole pass played since PLAY (the first is pass 1) */
-        return;
-    }
-    want = take_pass[k % NTRK] - 1u;                  /* the pass before the one playing (or stopped in) */
+    want = take_pick(k, len, cur);
     if ((e = trk_ent(k)) < NENT && ent_block(k, e, &b0, &b1)) {   /* ((2.0, #44) on a chain: its last whole round, */
         if (!chain_pl[k % NTRK]) {                                 /* each part's pass into it (the others' first, */
             ui_message("PLAY ONE LOOP FIRST");                     /* each with an undo copy of its own) */
@@ -210,6 +228,7 @@ static void take_commit(uint32_t k)
                 take_part(k, j, chain_pl[k % NTRK] + j - b0, tmp, &notes, &moves, &full);
     }
     from = chain ? chain_pl[k % NTRK] : want;
+    part_pass = !chain && want == cur;
     memcpy(tmp, t->step, sizeof tmp);
     if (own)                                          /* ((2.0) unfolded: a note played into a long one goes beside it) */
         ed_open(tmp, t, len);
@@ -248,7 +267,8 @@ static void take_commit(uint32_t k)
         take_box.trk = (uint8_t)(k % NTRK);
         take_box.gen++;
         take_box.kind = 0;
-        str_cpy(take_box.title, take_lost[k % NTRK] > from ? "TAKE PARTIAL" : "TAKE KEPT", sizeof take_box.title);
+        str_cpy(take_box.title, take_lost[k % NTRK] > from ? "TAKE PARTIAL" : part_pass ? "TAKE PARTIAL PASS" : "TAKE KEPT",
+                sizeof take_box.title);
         take_box.line[0] = 0;
         if (notes)
             say_count(take_box.line, sizeof take_box.line, notes, " NOTE");
@@ -265,6 +285,6 @@ static void take_commit(uint32_t k)
     str_cpy(b, "TAKE T", sizeof b);
     b[6] = (char)('1' + k % NTRK);
     b[7] = 0;
-    ui_say(b, take_lost[k % NTRK] > from ? " PARTIAL" : full ? " AUTO FULL" : "");
+    ui_say(b, take_lost[k % NTRK] > from ? " PARTIAL" : part_pass ? " PARTIAL PASS" : full ? " AUTO FULL" : "");
     str_cpy(ui.msg2, "HOLD [SAVE]: UNDO", sizeof ui.msg2);
 }

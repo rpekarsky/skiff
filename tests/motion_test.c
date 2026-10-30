@@ -999,11 +999,62 @@ static int takes(void)
     t = tk_track();
     seq_start(); seq_tick(t, CTL);
     take_commit(0);
-    ok = str_eq(ui.msg, "PLAY ONE LOOP FIRST");
+    ok = str_eq(ui.msg, "NOTHING PLAYED");
     for (i = 0; i < 8u; i++) lock_next(t);
     take_commit(0);
-    bad += check("takes:   before a whole pass: PLAY ONE LOOP FIRST; a pass with nothing played: NOTHING PLAYED, no change",
+    bad += check("takes:   nothing played, in the first pass or a whole one: NOTHING PLAYED, no change",
                  ok && str_eq(ui.msg, "NOTHING PLAYED") && !t->step[0].n);
+    seq_stop();
+
+    t = tk_track();                                   /* (#33) */
+    seq_start(); seq_tick(t, CTL);
+    input_on(t, 62, 100); input_off(t, 62);
+    lock_next(t); lock_next(t);
+    take_commit(0);
+    ok = (ui.take_t && !take_box.kind && str_eq(take_box.title, "TAKE PARTIAL PASS")) ||
+         str_eq(ui.msg, "TAKE T1 PARTIAL PASS");
+    bad += check("takes:   (#33) in the first pass: the pass so far, TAKE PARTIAL PASS", ok && t->step[0].note[0] == 62);
+    seq_stop();
+
+    t = tk_track();
+    seq_start();
+    input_on(t, 60, 100); input_off(t, 60);           /* with PLAY, before step 0: pass 0 */
+    seq_tick(t, CTL);
+    input_on(t, 62, 100); input_off(t, 62);
+    lock_next(t);
+    take_commit(0);
+    bad += check("takes:   (#33) a note with PLAY (pass 0) is no whole pass: the pass so far",
+                 t->step[0].note[0] == 62 && !tk_has(t, 60));
+    seq_stop();
+
+    t = tk_track();                                   /* (#12) */
+    seq_start(); seq_tick(t, CTL);
+    input_on(t, 64, 100); input_off(t, 64);
+    for (i = 0; i < 16u; i++) lock_next(t);           /* pass 2 empty, pass 3 .. */
+    input_on(t, 67, 100); input_off(t, 67);           /* .. noodling in it */
+    take_commit(0);
+    bad += check("takes:   (#12) a pass late: the last whole pass with notes (empty ones skipped), not the one playing",
+                 t->step[0].note[0] == 64 && !tk_has(t, 67) && take_said(0));
+    seq_stop();
+
+    t = tk_track();
+    seq_start(); seq_tick(t, CTL);
+    input_on(t, 64, 100); input_off(t, 64);
+    for (i = 0; i < 8u; i++) lock_next(t);            /* pass 2: knobs only */
+    motion_capture(t, P_REV, 55);
+    for (i = 0; i < 8u; i++) lock_next(t);            /* pass 3 */
+    take_commit(0);
+    bad += check("takes:   (#12) a knob-only pass after a pass with notes: the notes' pass, not the knob nudge",
+                 t->step[0].note[0] == 64 && motion_count(t) == 0u && take_said(0));
+    seq_stop();
+
+    t = tk_track();
+    seq_start(); seq_tick(t, CTL);
+    motion_capture(t, P_REV, 55);
+    for (i = 0; i < 8u; i++) lock_next(t);            /* pass 2 */
+    take_commit(0);
+    bad += check("takes:   (#33) no pass with notes: the knob-only first pass, taken in the next one, TAKE KEPT",
+                 motion_count(t) == 1u && take_said(0));
     seq_stop();
 
     t = tk_track();
