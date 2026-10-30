@@ -229,10 +229,25 @@ _Static_assert(PT_N == 8, "settings_persist.c keeps ui_ptag below 8");
 #define REC_FEEL 0x80u                         /* (Skiff: a bit of ui_rec_prefs itself) */
 /* [15][17], free since phase 5 (SKS1's shared): small settings packed bit by bit, 0 in every older record = all their
  * defaults. Bit 0 (Skiff #23) the REC layer's C4, KNOBS OFF: a knob turn sounds and becomes the base, REC records no
- * automation of it (seq.c rec_knobs_off); TAKE still writes it (#12). Bits 1..2 (SMK-37) PAD LIGHT (SMK_PADL_SHIFT) */
+ * automation of it (seq.c rec_knobs_off); TAKE still writes it (#12). Bits 1..2 (SMK-37) PAD LIGHT (SMK_PADL_SHIFT).
+ * Bits 3..7 POPUP TIME (POPUP_SHIFT) */
 #define SHARED_BYTE (favorites.factory[15][17])
 #define REC_KNOBS_OFF 1u
 static void shared_put(uint32_t mask, uint32_t bits) { SHARED_BYTE = (uint8_t)((SHARED_BYTE & ~mask) | (bits & mask)); }
+/* MENU > DISPLAY > POPUP TIME, POPUP CLOSE: the TAKE box and the undo box (TIME not their undo window: UNDO_WIN; ON INPUT
+ * ends the window too, ui_take.c popup_input). TIME: 0 DEFAULT (each box its own), n: n / 10 s, 28..31 DEFAULT too.
+ * CLOSE (ui.popup_on_input) is an evaluation setting: not saved, TIMER at every power-on */
+#define POPUP_SHIFT 3u
+#define POPUP_TIMES 28u                                /* DEFAULT, 0.1 .. 2.7 s (2.7: the undo box's DEFAULT) */
+static uint32_t popup_time(void)
+{
+    uint32_t t = SHARED_BYTE >> POPUP_SHIFT;
+    return t < POPUP_TIMES ? t : 0u;
+}
+static uint8_t popup_frames(uint32_t dflt)
+{
+    return (uint8_t)(popup_time() ? popup_time() * 20u / 3u : dflt);   /* (15 ms frames) */
+}
 enum { RP_CLICK, RP_LEVEL, RP_COUNTIN };
 static uint32_t rp_get(uint32_t f)                     /* a field as the MENU steps it: 0..2 */
 {
@@ -309,6 +324,7 @@ static struct {
     uint8_t home_scope;          /* Skiff: HOME's panel the scope (HOME tapped on HOME) instead of the tracks (ui_home.c) */
     uint8_t take_t;              /* Skiff: the TAKE box's frames left (ui_take.c; a message ends it) */
     uint8_t undo_w;              /* Skiff: the undo window's frames left (ui.c undo_step; a message ends it) */
+    uint8_t popup_on_input;      /* MENU > POPUP CLOSE ON INPUT (popup_time) */
     uint8_t page;                /* index into PAGES */
     uint8_t fam_last[FAM_COUNT]; /* last page used per family */
     uint8_t bank;                /* SEQ: 16-step bank (follows the cursor) */
@@ -1411,6 +1427,7 @@ typedef struct {
  * are used. `undo` is the newest: loads in a row share it as before */
 #define UNDO_N 8u
 #define UNDO_WIN 180u                    /* the undo window, frames (~2.7 s): OCT- back, OCT+ redo (undo_step) */
+#define UNDO_KEYS "[OCT-] BACK  OCT+ REDO"     /* (the header's word for the window, without the box) */
 static undo_t undo_ring[UNDO_N] __attribute__((section(".ramx")));
 static uint8_t undo_n, undo_top, undo_back;
 static const char *undo_label;   /* the next copy's name, set just before its load_begin (tl_undo_take,
@@ -1872,7 +1889,7 @@ static void undo_step(int redo)
         str_cpy(b, redo ? "REDO T1 " : "UNDO T1 ", sizeof b);
         b[6] = (char)('1' + (c->trk - 1u) % NTRK);
         ui_say(b, c->name);
-        str_cpy(ui.msg2, "[OCT-] BACK  OCT+ REDO", sizeof ui.msg2);
+        str_cpy(ui.msg2, UNDO_KEYS, sizeof ui.msg2);
     }
     ui.undo_w = UNDO_WIN;
 }

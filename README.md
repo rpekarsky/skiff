@@ -574,7 +574,7 @@ and BREAK 1.1's own break.
 ## Menu
 
 Hold **HOME** and let it go for the menu. It is in five tabs: **DISPLAY** (THEME, PLAYHEAD, LARGE, ANIM, LEDS,
-SCREEN OFF, HINTS), **CONTROL** (HOLD, KNOB ACCEL, BPM LOCK, PRESETS KNOB, SCALE LEDS, STEP PREVIEW, RETURN), **AUDIO** (SPEAKER EQ,
+SCREEN OFF, HINTS, POPUP TIME, POPUP CLOSE), **CONTROL** (HOLD, KNOB ACCEL, BPM LOCK, PRESETS KNOB, SCALE LEDS, STEP PREVIEW, RETURN), **AUDIO** (SPEAKER EQ,
 USB LEVEL, CLICK, CLICK LEVEL, COUNT-IN, TUNE, MASTER START), **SYSTEM** (RESTORE LAST, CPU, CPU CLOCK, HARDWARE CALIBRATION, RESET
 SETTINGS, ABOUT) and **MIDI** (CLOCK, MIDI IN, MIDI LEARN, LEARN CLEAR, T1–T6 CHANNEL); a tab of more than six rows
 scrolls. On the SMK-37 Pro, DISPLAY has PAD FOLLOW where LEDS is and CONTROL ends with KEY VELOCITY
@@ -647,6 +647,11 @@ every setting back as a new unit has it. The web editor's Settings tab reads and
   refuses it and says why (NO 320 MHZ: ...). ABOUT shows the clock the FM-1 runs at
 - **HINTS** (DISPLAY): ON or OFF; OFF drops the one line of hint (HOLD HOME: SHIFT, KEYS: STEPS, a layer's
   first HOLD [X]: SHORTCUTS) and SHIFT's map; what OCT+ and OCT- do on an action page stays
+- **POPUP TIME** (DISPLAY): how long the TAKE box and the undo box stay up: DEFAULT (about 2 s for TAKE, 2.7 s for
+  undo) or 0.1 to 2.7 s. OCT- / OCT+ step the undo for 2.7 s whatever the box
+- **POPUP CLOSE** (DISPLAY): TIMER (default) or ON INPUT: any button, key, knob or (SMK) fader closes the TAKE or undo
+  box at once (and still does its own job), and ends the undo, so OCT- / OCT+ are the octave again; OCT- / OCT+ while
+  they step the undo keep stepping it
 - **RESET SETTINGS** (SYSTEM): OCT+ asks, then puts every MENU setting back as a new unit has it (the channels too, and
   nothing learned); the calibration, the favourite sounds and the music stay
 - **SPEAKER EQ:** FLAT, LOWCUT or BASS+, a tone setting for the built-in speaker (not a switch). It also

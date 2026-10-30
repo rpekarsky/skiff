@@ -525,9 +525,9 @@ static int test_pad_follow(void)
                  rows_are(SMK_PF_ROW, 29, 32, DIR_RAND, 0, 24, 0) && rows_are(SMK_PF_ROW, 3, 8, DIR_FWD, 0, 0, SMK_PF_NONE) &&
                  rows_are(SMK_PF_ROW, 3, 5, DIR_REV, 0, 0, SMK_PF_NONE));
 
-    bad += check("SMK MENU > PAD FOLLOW: a DISPLAY row after PAD LIGHT (eight), OFF PAGE ROW, PAGE by default",
-                 MI_TAB[MI_PADF] == MTAB_DISPLAY && MI_PADF == MI_PADL + 1u && mtab_rows(MTAB_DISPLAY) == 8u &&
-                 mtab_rows(MTAB_CONTROL) == 7u && menu_n(MI_PADF) == SMK_PF_N && smk_pf_mode() == SMK_PF_PAGE &&
+    bad += check("SMK MENU > PAD FOLLOW: a DISPLAY row after PAD LIGHT (ten with POPUP TIME, CLOSE), OFF PAGE ROW, PAGE by default",
+                 MI_TAB[MI_PADF] == MTAB_DISPLAY && MI_PADF == MI_PADL + 1u && mtab_rows(MTAB_DISPLAY) == 10u &&
+                 mtab_rows(MTAB_CONTROL) == 8u && menu_n(MI_PADF) == SMK_PF_N && smk_pf_mode() == SMK_PF_PAGE &&
                  str_eq(MI_NAME[MI_PADF], "PAD FOLLOW") && str_eq(menu_vname(MI_PADF, menu_get(MI_PADF)), "PAGE"));
     sel_set(0);
     t = TSEL;
@@ -633,7 +633,7 @@ static int test_pad_follow(void)
 
 static int test_faders(void)
 {
-    int bad = 0;
+    int bad = 0, ok;
     smk_power_on();
     trk[1].p[P_LEVEL] = 100;
     fm1_in.fader[1] = 20;
@@ -672,6 +672,19 @@ static int test_faders(void)
     fm1_in.fader[0] = 60;
     frame();
     bad += check("SMK faders follow the window: T6 selected, F1 is T3", trk[2].p[P_LEVEL] == 60);
+    trk[2].p[P_LEVEL] = 100;
+    ui.take_t = ui.undo_w = 50;
+    fm1_in.fader[0] = 62;
+    frame();
+    ok = ui.take_t && ui.undo_w;                  /* (POPUP CLOSE TIMER: a move leaves them) */
+    menu_put(MI_PCLOSE, 1);
+    frame();
+    ok &= ui.take_t && ui.undo_w;
+    fm1_in.fader[0] = 64;
+    frame();
+    ok &= !ui.take_t && !ui.undo_w && trk[2].p[P_LEVEL] == 100;
+    menu_put(MI_PCLOSE, 0);
+    bad += check("SMK fader, POPUP CLOSE ON INPUT: a move, short of the value too, ends the box and the undo window", ok);
     return bad;
 }
 

@@ -364,9 +364,9 @@ static void menu_row(uint32_t k, uint32_t row)
             cr_leader(nx, x0, ly);
         return;
     }
-    if (row == MI_HOLD) {                              /* "0.4" and its unit */
-        char b[8] = "0.4";
-        b[2] = (char)('0' + HOLD_MS[settings_hold % 4u] / 100u);
+    if (row == MI_HOLD || (row == MI_POPUP && popup_time())) {   /* "0.4" and its unit (their names "0.4 s") */
+        char b[4];
+        str_cpy(b, v, sizeof b);
         GFX_HOOK_ALIGN(0, y, 0, y + h, AL_V, "menu row value centred up/down");
         GFX_HOOK_ALIGN(0, 0, 0, vy + AF_M.asc, AL_B, "menu row unit on its value's baseline");
         x0 = cv_text_r(cv_text_r(MR_VR, vy + AF_M.asc - AF_S.asc, &AF_S, "s", sk, bg) - 3, vy, &AF_M, b, val, bg);

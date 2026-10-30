@@ -197,7 +197,26 @@ static void take_box_undo(int redo, uint32_t trk, const char *name)
     str_cpy(take_box.line + n, " UNDONE", sizeof take_box.line - n);
     ui.msg_t = 0;                                     /* (the box says it: no header word) */
     ui.msg2[0] = 0;
-    ui.take_t = UNDO_WIN;
+    ui.take_t = popup_frames(UNDO_WIN);
+}
+static int oct_undoes(void);                          /* (ui_input.c) */
+/* POPUP CLOSE ON INPUT, before the input acts: a key pressed, a knob turned (ui_input.c; panel_moved, the turns since
+ * ui.c scr_input last looked) or a fader moved (smk_ui.c) ends the box and the undo window (OCT- / OCT+ the octave
+ * again; the header's keys for it go too), but OCT- / OCT+ stepping the window, its BACK and REDO */
+static void popup_input(uint32_t pressed, uint32_t notes, uint32_t moved)
+{
+    if (!ui.popup_on_input || !(ui.take_t | ui.undo_w))
+        return;
+    if (oct_undoes())
+        pressed &= ~(1u << panel.btn[B_OCTDN] | 1u << panel.btn[B_OCTUP]);
+    if (!(pressed | notes | moved))
+        return;
+    ui.take_t = 0;
+    ui.undo_w = 0;
+    if (str_eq(ui.msg2, UNDO_KEYS))
+        ui.msg2[0] = 0;
+    else if (str_eq(ui.msg, UNDO_KEYS))
+        ui.msg_t = 0;
 }
 
 /* SHIFT + SAVE (ui_input.c) on track k */
@@ -279,7 +298,7 @@ static void take_commit(uint32_t k)
             say_count(take_box.line, sizeof take_box.line, moves, " KNOB MOVE");
         ui.msg_t = 0;                                 /* (the SHIFT hint is over) */
         ui.msg2[0] = 0;
-        ui.take_t = TB_FRAMES;
+        ui.take_t = popup_frames(TB_FRAMES);
         return;
     }
     str_cpy(b, "TAKE T", sizeof b);
