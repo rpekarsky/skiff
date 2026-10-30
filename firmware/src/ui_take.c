@@ -94,7 +94,7 @@ static uint32_t take_notes(uint32_t k, step_t *tmp, uint32_t len, uint32_t want,
 
 /* (#12, #33) the pass of track k's log a take keeps (cur: the one playing, or stopped in): the last whole one with a
  * note still in the log (a late SHIFT + SAVE loses nothing), else the one playing so far if it has one, else the one
- * before it (its knob moves) */
+ * before it (its knob moves). Pass 0 is none: a note with PLAY, before step 0 (the parked last step) */
 static uint32_t take_pick(uint32_t k, uint32_t len, uint32_t cur)
 {
     uint32_t n = take_ev_n, i, last = 0, cur_played = 0;
@@ -102,12 +102,12 @@ static uint32_t take_pick(uint32_t k, uint32_t len, uint32_t cur)
         const take_ev_t *e = &take_ev[i % TAKE_EV];
         if (e->trk != k || !e->vel || e->step >= len)
             continue;
-        if (e->pass < cur && e->pass + 1u > last)
-            last = e->pass + 1u;                      /* (+ 1: 0 is none) */
+        if (e->pass && e->pass < cur && e->pass > last)
+            last = e->pass;
         cur_played |= e->pass == cur;
     }
     if (last)
-        return last - 1u;
+        return last;
     return cur_played || cur < 2u ? cur : cur - 1u;
 }
 

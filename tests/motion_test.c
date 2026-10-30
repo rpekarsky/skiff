@@ -1016,6 +1016,17 @@ static int takes(void)
     bad += check("takes:   (#33) in the first pass: the pass so far, TAKE PARTIAL PASS", ok && t->step[0].note[0] == 62);
     seq_stop();
 
+    t = tk_track();
+    seq_start();
+    input_on(t, 60, 100); input_off(t, 60);           /* with PLAY, before step 0: pass 0 */
+    seq_tick(t, CTL);
+    input_on(t, 62, 100); input_off(t, 62);
+    lock_next(t);
+    take_commit(0);
+    bad += check("takes:   (#33) a note with PLAY (pass 0) is no whole pass: the pass so far",
+                 t->step[0].note[0] == 62 && !tk_has(t, 60));
+    seq_stop();
+
     t = tk_track();                                   /* (#12) */
     seq_start(); seq_tick(t, CTL);
     input_on(t, 64, 100); input_off(t, 64);
