@@ -1782,6 +1782,7 @@ static int undo_swap(undo_t *c)
         fm6_set_patch(tr, c->fm6);
         fm6_slot[tr] = c->fm6_slot;               /* (fm6_poll: the patch stays) */
         fm6_own_ok &= (uint8_t)~(1u << tr);
+        fm6_edit_f[tr] = 0;
         memcpy(c->fm6, v, FP_SIZE);
         c->fm6_slot = sl;
     }

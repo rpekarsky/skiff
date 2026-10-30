@@ -18,7 +18,10 @@
  *   DTUN  spreads the carriers apart in pitch (up to about +-36 cents between the outer ones)
  *   SLOT  F1..F8 load a factory patch; OWN (8) is the track's own patch: what a project, a user preset or the
  *         editor put there. A load shows F n when the patch is that factory one unchanged, else OWN (fm6_adopt).
- *         Turning SLOT from OWN to F n keeps the own patch aside; back to OWN brings it back (fm6_poll).
+ *         Turning SLOT from OWN to F n keeps the own patch aside; back to OWN brings it back (fm6_poll). Editing
+ *         F n on the device meanwhile keeps it aside too and makes F n* (fm6_edited): its edits stay when SLOT
+ *         turns away, and come back with F n; one F n* a track, editing another drops it. Both in RAM only: a power
+ *         cycle, a load, an undo or the editor's patch drops them.
  *         Before 1.0.3 the values 8..34 were F1..F8 then B1..B27, a flash bank (retired: its patches moved into
  *         the user presets, up_fm6.c); a stored 8..34 is clamped to 8, OWN, and its patch comes with the record
  * The operator envelopes are the voice's amplitude and end it (engine_t.ownenv / done): the track's ADSR,
@@ -42,6 +45,9 @@ static volatile uint8_t fm6_pgen[NTRK];          /* +1 after each write of fm6_p
 static uint8_t fm6_slot[NTRK];                   /* the SLOT value last loaded (main loop); 0xFF = none */
 static uint8_t fm6_own[NTRK][FM6_PACKED];        /* the own patch while SLOT shows a factory one (fm6_poll) */
 static uint8_t fm6_own_ok;                       /* bit tr: fm6_own[tr] holds it */
+static uint8_t fm6_edit[NTRK][FM6_PACKED];       /* (#30) F n* while SLOT is not F n (fm6_poll) */
+static volatile uint8_t fm6_edit_f[NTRK];        /* n + 1: track tr has F n*, 0 none. A byte a track: the audio ISR
+                                                  * clears one (launch.c esnd_put) */
 static struct {                                  /* the patch through the macros: the audio ISR's copy */
     uint8_t p[FP_SIZE + 1u];
     uint8_t gen, alg, fb, ok;
@@ -154,13 +160,15 @@ static void fm6_set_patch(uint32_t tr, const uint8_t *v)
     fm6_pgen[tr]++;
 }
 
-/* SLOT value s < FM6_NFACTORY: that factory patch into track tr */
+/* SLOT value s < FM6_NFACTORY: that factory patch into track tr (F n*: its edits) */
 static void fm6_load_slot(uint32_t tr, uint32_t s)
 {
     uint8_t v[FP_SIZE + 1u];
-    fm6_unpack(FM6_FACTORY[s % FM6_NFACTORY], v);
+    tr %= NTRK;
+    s %= FM6_NFACTORY;
+    fm6_unpack(fm6_edit_f[tr] == s + 1u ? fm6_edit[tr] : FM6_FACTORY[s], v);
     fm6_set_patch(tr, v);
-    fm6_slot[tr % NTRK] = (uint8_t)(s % FM6_NFACTORY);
+    fm6_slot[tr] = (uint8_t)s;
 }
 
 /* the SLOT patch p shows: the factory patch it equals (F n; looked for from SLOT s on), else OWN */
@@ -175,18 +183,41 @@ static int32_t fm6_match(const uint8_t *p, int32_t s)
     }
     return FM6_OWN;
 }
-/* track tr's patch was just put in as its own (a project, a user preset, the editor, a conversion): an FM6 track's
- * SLOT shows the factory patch it equals unchanged (F n; the SLOT it had first), else OWN; nothing reloads over it
- * (fm6_poll) */
-static void fm6_adopt(uint32_t tr)
+/* an FM6 track's SLOT shows the factory patch track tr's patch equals unchanged (F n; the SLOT it had first), else
+ * OWN; nothing reloads over it (fm6_poll) */
+static void fm6_reslot(uint32_t tr)
 {
     track_t *t = &trk[tr % NTRK];
     int32_t s = t->p[P_E7];
     tr %= NTRK;
-    fm6_own_ok &= (uint8_t)~(1u << tr);
     if (t->eng_req == ENGI_FM6)
         t->p[P_E7] = (int16_t)(s = fm6_match(fm6_patch[tr], s));
     fm6_slot[tr] = (uint8_t)s;
+}
+
+/* track tr's patch was just put in as its own (a project, a user preset, the editor, a conversion): fm6_reslot, the
+ * own patch kept aside and F n* dropped */
+static void fm6_adopt(uint32_t tr)
+{
+    tr %= NTRK;
+    fm6_own_ok &= (uint8_t)~(1u << tr);
+    fm6_edit_f[tr] = 0;
+    fm6_reslot(tr);
+}
+
+/* (#30) track tr's patch edited on the device. While an own patch is kept aside (SLOT F n, turned from OWN) SLOT stays
+ * F n and the patch is F n*; returns the F m* that drops for it (m + 1), 0 none. Else fm6_reslot */
+static uint32_t fm6_edited(uint32_t tr)
+{
+    uint32_t was;
+    tr %= NTRK;
+    if (!(fm6_own_ok & (1u << tr))) {
+        fm6_reslot(tr);
+        return 0;
+    }
+    was = fm6_edit_f[tr];
+    fm6_edit_f[tr] = (uint8_t)(fm6_slot[tr] + 1u);
+    return was == fm6_edit_f[tr] ? 0u : was;
 }
 
 /* a factory sound load put a SLOT value in (a preset, an engine change): its patch (OWN: the patch stays) */
@@ -195,6 +226,7 @@ static void fm6_track_loaded(const track_t *t)
     uint32_t tr = (uint32_t)(t - trk);
     if (tr < NTRK && t->eng_req == ENGI_FM6) {
         fm6_own_ok &= (uint8_t)~(1u << tr);
+        fm6_edit_f[tr] = 0;
         if (t->p[P_E7] >= 0 && t->p[P_E7] < (int32_t)FM6_NFACTORY)
             fm6_load_slot(tr, (uint32_t)t->p[P_E7]);
         else
@@ -215,7 +247,7 @@ static void fm6_init(void)
 }
 
 /* main loop: SLOT turned (a knob, the editor, MIDI, motion) -> that factory patch; from OWN the own patch is kept
- * aside (fm6_own), and turning back to OWN brings it back */
+ * aside (fm6_own), and turning back to OWN brings it back; from F n* its edits are kept aside (fm6_edit) */
 static void fm6_poll(void)
 {
     uint32_t tr, bit;
@@ -224,6 +256,8 @@ static void fm6_poll(void)
         if (trk[tr].eng_req != ENGI_FM6 || s == fm6_slot[tr])
             continue;
         bit = 1u << tr;
+        if (fm6_edit_f[tr] == fm6_slot[tr] + 1u)
+            fm6_pack(fm6_patch[tr], fm6_edit[tr]);
         if (s < 0 || s >= (int32_t)FM6_NFACTORY) {           /* OWN */
             if (fm6_own_ok & bit) {
                 uint8_t v[FP_SIZE + 1u];

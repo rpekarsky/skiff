@@ -70,6 +70,7 @@ static __attribute__((noinline)) void esnd_put(track_t *t, const esnd_t *s)
         memcpy(fm6_patch[k], s->f6, sizeof s->f6);
         fm6_pgen[k]++;
         fm6_own_ok &= (uint8_t)~(1u << k);         /* (fm6_poll takes SLOT as it is now) */
+        fm6_edit_f[k] = 0;
     }
     drum_mute[k] = 0;                              /* (the lanes' mutes go with the sound) */
     trk_all_off(t);                                /* (MONO / POLY may change: what sounds let go) */

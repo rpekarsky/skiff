@@ -457,6 +457,8 @@ static void param_format(const param_desc_t *d, int32_t v, char *val, const char
             while (d->names[k])
                 k++;
             str_cpy(val, d->names[(uint32_t)(clamp(v, d->min, d->max) - d->min) * k / (uint32_t)(d->max - d->min + 1)], 6);
+            if (d->names == N_FM6_PATCH && fm6_edit_f[song.sel % NTRK] == v + 1)   /* (#30) the edited F n */
+                str_cpy(val + str_len(val), "*", 2);
         } else {
             fmt_int(val, v);
         }
