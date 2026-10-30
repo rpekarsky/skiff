@@ -12,6 +12,7 @@
 #include "ui_quark.c"                                 /* (Skiff Q2) THEME QUARK's cells, nuclei, tracks, the hazard sign */
 #define PANEL_X0 10                                  /* the graphs' inner area: x 10..230 */
 #define PANEL_W 220
+#include "ui_h1n.c"                                   /* (Skiff #29) THEME H1N's segments and window */
 #define GOY 11                                       /* graphs drawn on a 100 px scale sit at y 11..111 */
 /* the height ADSR and LFO are drawn on: 100 px, or (MENU > LARGE's strip: draw_graph) the strip's ~ 56 */
 static int32_t graph_ht = 100;

@@ -1593,12 +1593,12 @@ static int custom_colors(void)
          menu_n(MI_COLOR) == NPALETTES + 1u;
     a[1] = NPALETTES; request(ED_UI_SET, a, 2);             /* CUSTOM again: in its look */
     ok &= host_wire[5] == 3 && settings.palette == UI_NEON_INDEX && cpal_on() && tokens_are(CC) && ux.neon;
-    menu_put(MI_COLOR, UI_QUARK_INDEX);                     /* the MENU's THEME: QUARK, then a step on is CUSTOM */
-    ok &= settings.palette == UI_QUARK_INDEX && tokens_builtin(UI_QUARK_INDEX) && menu_step(MI_COLOR, 1) == NPALETTES;
+    menu_put(MI_COLOR, UI_H1N_INDEX);                       /* the MENU's THEME: the last, H1N, then a step on is CUSTOM */
+    ok &= settings.palette == UI_H1N_INDEX && ux.h1n && T_BG == UI_PALETTES[UI_H1N_INDEX].bg && menu_step(MI_COLOR, 1) == NPALETTES;
     menu_put(MI_COLOR, menu_step(MI_COLOR, 1));
     ok &= cpal_on() && settings.palette == UI_NEON_INDEX && tokens_are(CC) && menu_step(MI_COLOR, 1) == 0u &&
-          menu_step(MI_COLOR, -1) == UI_QUARK_INDEX;
-    bad += check("(#27) THEME: CUSTOM and back by UI_SET and the MENU (it wraps round seven), the set kept, CUSTOM in its look", ok);
+          menu_step(MI_COLOR, -1) == UI_H1N_INDEX;
+    bad += check("(#27) THEME: CUSTOM and back by UI_SET and the MENU (it wraps round eight), the set kept, CUSTOM in its look", ok);
 
     for (i = 0; i < CPAL_N; i++) bad_c[i] = (uint16_t)~CC[i];
     ok = colors_req(1, 0, bad_c, 1) == 1 && colors_req(1, 0, bad_c, 2 + 26 - 1) == 1 &&

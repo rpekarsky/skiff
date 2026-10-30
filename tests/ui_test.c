@@ -1498,15 +1498,17 @@ static int test_display_preferences(void)
     bad += check("THEME OCT+ previews the next palette (PAPER, light) without closing the menu",
                  settings.palette == 2 && T_BG == UI_PALETTES[2].bg && ux.light && ui.menu == 1 && !song.octave &&
                  memcmp(before, host_screen, sizeof before) && !memcmp(sounds, trk, sizeof sounds));
-    bad += check("THEME KNOB 1 steps on to CRYPT, NEON (both the pixel faces), QUARK (Barlow), then wraps to SKIFF (R1: "
-                 "SKIFF HI-CON PAPER CRYPT NEON QUARK)",
+    bad += check("THEME KNOB 1 steps on to CRYPT, NEON (both the pixel faces), QUARK (Barlow), H1N (pixel), then wraps to "
+                 "SKIFF (R1: SKIFF HI-CON PAPER CRYPT NEON QUARK, #29 H1N)",
                  str_eq(MI_NAME[MI_COLOR], "THEME") && (turn(EN_K1, 1), settings.palette == UI_CRYPT_INDEX) && ux.crypt &&
                  str_eq(UI_PALETTES[UI_CRYPT_INDEX].name, "CRYPT") && &AF_S == &AF_S_PX &&
                  (turn(EN_K1, 1), settings.palette == UI_NEON_INDEX) && ux.neon && !ux.crypt && &AF_S == &AF_S_PX &&
                  str_eq(UI_PALETTES[UI_NEON_INDEX].name, "NEON") &&
                  (turn(EN_K1, 1), settings.palette == UI_QUARK_INDEX) && ux.quark && !ux.neon && &AF_S != &AF_S_PX &&
                  str_eq(UI_PALETTES[UI_QUARK_INDEX].name, "QUARK") &&
-                 (turn(EN_K1, 1), settings.palette == UI_SKIFF_INDEX) && !ux.quark && !ux.crypt && !ux.neon && &AF_S != &AF_S_PX &&
+                 (turn(EN_K1, 1), settings.palette == UI_H1N_INDEX) && ux.h1n && !ux.quark && &AF_S == &AF_S_PX &&
+                 str_eq(UI_PALETTES[UI_H1N_INDEX].name, "H1N") &&
+                 (turn(EN_K1, 1), settings.palette == UI_SKIFF_INDEX) && !ux.h1n && !ux.crypt && !ux.neon && &AF_S != &AF_S_PX &&
                  str_eq(UI_PALETTES[UI_SKIFF_INDEX].name, "SKIFF"));
     settings.lowcut = 2;
     ui.menu_sel = MI_LOWCUT;
@@ -4282,9 +4284,10 @@ static int test_bughunt_ui2(void)
         ok &= !name_on() && up_used(3);
         bad += check("NAME: PLAY stops a running transport (never starts), REC ignored, then OCT+ saves", ok);
     }
-    {   /* 6. the piano roll's lowest C name ("C-1") stays inside the panel: nothing drawn left of x 3 */
+    {   /* 6. the piano roll's lowest C name ("C-1") stays inside the panel: nothing drawn left of x 3 ((#29) H1N: but its
+         * dot grid) */
         uint32_t p, x, y, out = 0;
-        uint16_t bg;
+        uint16_t bg, dot;
         for (p = 0; p < NPALETTES; p++) {
             track_t *t;
             uint8_t lo = 0, hi = 127;
@@ -4293,10 +4296,11 @@ static int test_bughunt_ui2(void)
             t->step[0].time = t->step[5].time = ST_NOTE; t->step[0].n = t->step[5].n = 1;
             t->step[0].note[0] = lo; t->step[5].note[0] = hi;
             go_page(GR_ROLL); cursor_set(0); ui.force = 1; frame(); frame();
-            bg = (uint16_t)((T_BG >> 8) | (T_BG << 8));
+            bg = swap16(T_BG);
+            dot = ux.h1n ? swap16(T_RAISE) : bg;
             for (y = Y_GRAPH; y < Y_GRAPH + H_GRAPH; y++)
                 for (x = 0; x < 3u; x++)
-                    out += host_screen[y * 240u + x] != bg;
+                    out += host_screen[y * 240u + x] != bg && host_screen[y * 240u + x] != dot;
         }
         bad += check("piano roll: the C-1 label stays inside the panel (every palette)", !out);
     }

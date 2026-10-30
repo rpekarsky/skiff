@@ -620,7 +620,7 @@ static void fm_tabs(const fm_sim_t *s, const uint16_t *sh, int ratios)
                 str_cpy(b, ".5", sizeof b);
             str_cpy(b + str_len(b), op[FP_MODE] ? "" : "x", sizeof b - str_len(b));
             cv_text_r(x + 30, 4 + CAP_IN(S, 17), &AF_S, b, live ? T_MID : T_DIM, T_SURF);
-            if (ux.crypt || ux.neon)                    /* ((FM6 LAB T) the pixel letters run together: a divider) */
+            if (ux.crypt || ux.neon || ux.h1n)          /* ((FM6 LAB T) the pixel letters run together: a divider) */
                 cv_rect(x + 12, 8, 1, 9, T_DIM);
         } else {
             b[0] = 'O', b[1] = 'P', b[2] = (char)('1' + k), b[3] = 0;

@@ -43,15 +43,16 @@ int main(int argc, char **argv)
     static const uint8_t pd[] = {0x08, 0xf0};
     const aafont_t probe = {1, 1, 'A', 'A', 0, 0, pg, pd, 0, 0, 0};
     double worst = 100;
-    /* (Skiff, R1) THEME: SKIFF the default, HI-CON and PAPER, CRYPT, NEON and QUARK (their own widgets too) */
-    assert(NPALETTES == 6u && !strcmp(UI_PALETTES[5].name, "QUARK") && UI_QUARK_INDEX == 5u && !strcmp(UI_PALETTES[0].name, "SKIFF") && UI_SKIFF_INDEX == 0u &&
+    /* (Skiff, R1) THEME: SKIFF the default, HI-CON and PAPER, CRYPT, NEON, QUARK and (#29) H1N (their own widgets too) */
+    assert(NPALETTES == 7u && !strcmp(UI_PALETTES[6].name, "H1N") && UI_H1N_INDEX == 6u &&
+           !strcmp(UI_PALETTES[5].name, "QUARK") && UI_QUARK_INDEX == 5u && !strcmp(UI_PALETTES[0].name, "SKIFF") && UI_SKIFF_INDEX == 0u &&
            !strcmp(UI_PALETTES[1].name, "HI-CON") && !strcmp(UI_PALETTES[2].name, "PAPER") &&
            !strcmp(UI_PALETTES[3].name, "CRYPT") && UI_CRYPT_INDEX == 3u &&
            !strcmp(UI_PALETTES[4].name, "NEON") && UI_NEON_INDEX == 4u);
     for (unsigned p = 0; p < NPALETTES; p++) {
         uint16_t *tok = &ux.bg;
         palette_set(p);
-        assert(ux.crypt == (p == UI_CRYPT_INDEX));
+        assert(ux.crypt == (p == UI_CRYPT_INDEX) && ux.h1n == (p == UI_H1N_INDEX));
         /* text and the things read on the screen; the generator checks the same (tools/gen_ui_palettes.py) */
         struct { uint16_t fg, bg; double min; } c[] = {
             {T_TEXT, T_BG, 12.0}, {T_TEXT, T_SURF, 9.0}, {T_MID, T_BG, 5.0}, {T_MID, T_SURF, 4.0},
@@ -60,6 +61,15 @@ int main(int argc, char **argv)
             {T_INK, T_KEY, 4.5}, {T_KEY, T_BG, 3.0}, {T_KEY, T_SURF, 2.5}, {T_INK, T_DIM, 1.8}, {T_INK, T_ACCENT, 4.5},
             {T_TEXT, T_RAISE, 7.0}};
         double min = 100;
+        if (ux.h1n) {   /* (#29) a reflective LCD's floor (gen_ui_palettes.py LCD_MIN): text, labels, dividers, chips */
+            c[0].min = c[1].min = 8.0;
+            c[2].min = c[3].min = 3.0;
+            c[11].min = 1.2;
+            c[18].min = 6.5;
+            for (uint16_t *t = &ux.bg; t <= &ux.grid; t++)   /* every token one of its four tones */
+                assert(*t == T_BG || *t == T_RAISE || *t == T_MID || *t == T_TEXT);
+            assert(T_RAISE != T_BG && T_MID != T_RAISE && T_TEXT != T_MID && T_DIM == T_MID && T_SEL == T_TEXT);
+        }
         for (unsigned i = 0; i < sizeof c / sizeof c[0]; i++) {
             double r = contrast(c[i].fg, c[i].bg);
             if (r < c[i].min) printf("%s: pairing %u contrast %.2f < %.2f\n", UI_PALETTES[p].name, i, r, c[i].min);
@@ -69,8 +79,8 @@ int main(int argc, char **argv)
         if (min < worst) worst = min;
         printf("%-7s text %.1f:1, labels %.1f:1, values %.1f:1, selection %.1f:1\n", UI_PALETTES[p].name,
                contrast(T_TEXT, T_BG), contrast(T_MID, T_BG), contrast(T_THEME, T_BG), contrast(T_INK, T_SEL));
-        assert((p == 2u) == ux.light);                         /* PAPER is the light one */
-        assert(T_REC == (ux.light ? UI_REC_LIGHT : UI_REC_DARK));
+        assert((p == 2u || p == UI_H1N_INDEX) == ux.light);   /* PAPER and H1N are the light ones */
+        assert(T_REC == (ux.h1n ? T_TEXT : ux.light ? UI_REC_LIGHT : UI_REC_DARK));   /* (H1N: no red on an LCD) */
         /* the blend: transparent, solid and an edge between the two, on two backgrounds */
         for (unsigned b = 0; b < 2; b++) {
             uint16_t under = b ? T_SEL : T_BG, ink = b ? T_INK : T_THEME;
@@ -117,10 +127,16 @@ int main(int argc, char **argv)
             palette_set(p);
             for (unsigned k = 0; k < 5; k++) assert(tok[k] == (cc[2 * k] | cc[2 * k + 1] << 8));
             for (unsigned k = 0; k < UI_NTRK; k++) assert(T_TRK(k) == (cc[10 + 2 * k] | cc[11 + 2 * k] << 8));
-            assert(T_MID == ux_mix(T_BG, T_TEXT, UI_MID_PCT) && T_DIM == ux_mix(T_BG, T_TEXT, UI_DIM_PCT) &&
-                   T_SEL == ux_mix(T_BG, T_THEME, UI_SEL_PCT) && T_RAISE == ux_mix(T_SURF, T_TEXT, UI_RAISE_PCT) &&
-                   T_LANE == ux_mix(T_SURF, T_THEME, 10) && T_INK == T_BG && ux.light && T_REC == UI_REC_LIGHT);
-            assert(ux.crypt == (p == UI_CRYPT_INDEX) && ux.neon == (p == UI_NEON_INDEX) && ux.quark == (p == UI_QUARK_INDEX));
+            assert(T_RAISE == ux_mix(T_SURF, T_TEXT, UI_RAISE_PCT) && T_INK == T_BG && ux.light);
+            if (ux.h1n)                               /* (#29) the user's colours in four tones too */
+                assert(T_MID == ux_mix(T_BG, T_TEXT, UI_LCD_MID_PCT) && T_DIM == T_MID && T_SEL == T_TEXT &&
+                       T_LANE == T_RAISE && T_REC == T_TEXT && lcd_snap(T_THEME) == T_TEXT);
+            else
+                assert(T_MID == ux_mix(T_BG, T_TEXT, UI_MID_PCT) && T_DIM == ux_mix(T_BG, T_TEXT, UI_DIM_PCT) &&
+                       T_SEL == ux_mix(T_BG, T_THEME, UI_SEL_PCT) && T_LANE == ux_mix(T_SURF, T_THEME, 10) &&
+                       T_REC == UI_REC_LIGHT);
+            assert(ux.crypt == (p == UI_CRYPT_INDEX) && ux.neon == (p == UI_NEON_INDEX) && ux.quark == (p == UI_QUARK_INDEX) &&
+                   ux.h1n == (p == UI_H1N_INDEX));
         }
         ux_cpal = 0;
         palette_set(UI_NEON_INDEX);
