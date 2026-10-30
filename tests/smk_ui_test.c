@@ -387,6 +387,48 @@ static int test_pad_colours(void)
     return bad;
 }
 
+static uint32_t top_channel(uint32_t c)
+{
+    uint32_t r = c >> 16, g = c >> 8 & 255u, b = c & 255u, rg = r > g ? r : g;
+    return rg > b ? rg : b;
+}
+/* pad 1 (the second white key) breathing in that layer: its colour at the top of the cycle, its darkest frame's top
+ * channel */
+static uint32_t breath_peak(uint32_t layer, uint32_t *floor_top)
+{
+    uint8_t lit[FM1_NCOL] = {0}, breathing[FM1_NCOL] = {0}, none[FM1_NCOL] = {0};
+    uint32_t key = LED_KEY0 + 2u, ms, peak = 0, top;
+    breathing[key >> 3] = (uint8_t)(1u << (key & 7u));
+    ui.layer = (uint8_t)layer;
+    *floor_top = 255u;
+    for (ms = 0; ms < 1100u; ms++) {
+        fm1_ms = ms;
+        smk_pads_out(lit, none, breathing, none);
+        top = top_channel(host_pad[1]);
+        if (ms == 550u)
+            peak = host_pad[1];
+        if (top < *floor_top)
+            *floor_top = top;
+    }
+    ui.layer = 0;
+    return peak;
+}
+static int test_perf_breath(void)
+{
+    int bad = 0;
+    uint32_t peak, floor_top;
+    smk_power_on();
+    sel_set(0);
+    peak = breath_peak(LAYER_PERF, &floor_top);
+    bad += check("(#43) [ARP] PERFORM: a pattern to launch breathes up to half a lit pad, in the track's hue",
+                 peak == rgb_of(T_TRK(0), SMK_PAD_FULL / 2u));
+    bad += check("(#43) [ARP] PERFORM: it still breathes (its darkest well under its peak)",
+                 floor_top * 4u < top_channel(peak));
+    peak = breath_peak(LAYER_SCL, &floor_top);
+    bad += check("(#43) another layer's breathing keys: up to a lit pad, as before", peak == rgb_of(T_TRK(0), SMK_PAD_FULL));
+    return bad;
+}
+
 static int test_faders(void)
 {
     int bad = 0;
@@ -760,6 +802,7 @@ int main(void)
     bad += test_pad_modes();
     bad += test_pad_taps();
     bad += test_pad_colours();
+    bad += test_perf_breath();
     bad += test_faders();
     bad += test_entries();
     bad += test_outer_keys();
