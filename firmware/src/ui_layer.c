@@ -1451,6 +1451,10 @@ static void shift_map(smap_t *m)
             for (j = 0; j < NELEM(FM); j++)
                 if (str_eq(m[i].key, FM[j]))
                     m[i].key = SMK[j];
+        if (!sel) {                                  /* (#39) over PAGES and HOLD BT's UNDO (BT held still undoes) */
+            m[6] = (smap_t){"+ FADER BANK", "FADERS", 2};
+            m[8] = (smap_t){"TAP K / F BANK", "UNDO REDO", 0};
+        }
     }
 #endif
 }

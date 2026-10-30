@@ -115,9 +115,13 @@ loader 7,859 B (the limit: 7,936 B, below).
 - **MASTER on K1:** a virtual pot, 24 steps a detent. The header says its level while it turns (`MASTER 70%`), and
   the settings keep it once it rests 1.5 s, so it comes back at power-on.
 - **The extra buttons:** KNOB BANK is SHIFT, as HOME held but on a button of its own: the map, + BT for TAKE, and
-  + a layer's button to lock that layer. Let go, it does nothing (HOME still taps home, and held opens MENU).
-  FADER BANK steps the faders' bank. < and > go to the selected track's entry before and after, at once when stopped
-  and at the LAUNCH point when playing.
+  + a layer's button to lock that layer. Held and let go, it does nothing (HOME still taps home, and held opens MENU).
+  A tap of KNOB BANK is UNDO and a tap of FADER BANK is REDO, as BT held and OCT+ in the undo window: the same undo
+  box, NOTHING TO UNDO / REDO when there is none, and OCT- / OCT+ or more taps go on from there. A tap is let go
+  before HOLD TIME with nothing else used meanwhile (a button, a key, a knob, a pad, a fader), and KNOB BANK's
+  before SHIFT's map shows. SHIFT (HOME or KNOB BANK held) + FADER BANK steps the faders' bank; FADER BANK alone
+  doesn't. < and > go to the selected track's entry before and after, at once when stopped and at the LAUNCH point
+  when playing.
 - **Pads:** always a grid. Where the FM-1's keys show a map of their own (a layer, the DRUM grid, NAME, SLICES, or a
   layer's button held), the pads are its 16 white keys, lit as the FM-1's key LEDs would be, in the track's colour.
   Elsewhere they are the selected track's 16 steps of the page shown. A tap sets an empty step to the last note
@@ -125,8 +129,8 @@ loader 7,859 B (the limit: 7,936 B, below).
   taps is one undo (`PAD STEPS`). The colours follow the screen's step tiles: an empty step faint white, a step in the
   track's colour, a tie at half, the edited step white. A pad has one LED, so the playing step can't get the
   mockup's ring: it shows half way to white instead. The pads' brightness is fixed.
-- **Faders:** a mixer for the four tracks the screen shows (T1..T4, or the six-track window). FADER BANK steps
-  LEVEL, PAN, REVERB and DELAY, and the header names the bank. A fader takes over only once it reaches the value,
+- **Faders:** a mixer for the four tracks the screen shows (T1..T4, or the six-track window). SHIFT + FADER
+  BANK steps LEVEL, PAN, REVERB and DELAY, and the header names the bank. A fader takes over only once it reaches the value,
   and again after something else has set it, so nothing jumps.
 - **Wheels and pedal:** as MIDI in on the selected track's channel: a pitch bend (2 semitones, or what RPN set), the
   mod wheel as CC1 (the MOD matrix's MODW), the pedal as CC64 sustain. The pedal holds the keys too: while it is
