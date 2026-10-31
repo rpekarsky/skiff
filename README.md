@@ -477,6 +477,11 @@ by the keys, with what each key is in Skiff.
   **CPU 42/71 %** (as MENU › CPU shows it, then the busiest audio buffer lately, falling back slowly); for 2 s after a
   dropout (a click) the line turns red and reads **DROP 3 / 89%** (dropouts since power-on, the load); the figures change
   4 times a second
+- **The header**, on every page: for 2 s after a dropout it says **AUDIO DROP** in red at the right (over a message said
+  before it, not over a newer one or a dialog). When the pattern memory is over half full, a small two-row meter sits
+  before the battery: the top row the pattern numbers taken (of 64), the bottom row's six segments the patterns changed
+  while playing that wait for STOP to be saved (all six taken: PATTERNS FULL / STOP TO SAVE). A row turns red near full
+  (58 numbers, 5 waiting)
 - Hold FX, GLO, SEL, EDIT, ARP or SEQ for its layer; **SHIFT + the button** (or the button held, then HOME) keeps it open (the header says
   LOCKED), the button closes it. A locked FX layer latches its effects
 - **SAVE** tapped: its pages (PRESETS, USER, PATTERNS, PROJECT); **held**: undo. **SHIFT + SAVE**: TAKE
@@ -599,10 +604,10 @@ and BREAK 1.1's own break.
 
 Hold **HOME** and let it go for the menu. It is in five tabs: **DISPLAY** (THEME, PLAYHEAD, LARGE, ANIM, LEDS,
 SCREEN OFF, HINTS, POPUP TIME, POPUP CLOSE), **CONTROL** (HOLD, KNOB ACCEL, BPM LOCK, PRESETS KNOB, SCALE LEDS, STEP PREVIEW, RETURN, SHARED WARN), **AUDIO** (SPEAKER EQ,
-USB LEVEL, CLICK, CLICK LEVEL, COUNT-IN, TUNE, MASTER START), **SYSTEM** (RESTORE LAST, CPU, CPU CLOCK, HARDWARE CALIBRATION, RESET
+USB LEVEL, CLICK, CLICK LEVEL, COUNT-IN, TUNE), **SYSTEM** (RESTORE LAST, CPU, CPU CLOCK, HARDWARE CALIBRATION, RESET
 SETTINGS, ABOUT) and **MIDI** (CLOCK, MIDI IN, MIDI LEARN, LEARN CLEAR, T1–T6 CHANNEL); a tab of more than six rows
-scrolls. On the SMK-37 Pro, DISPLAY has PAD FOLLOW where LEDS is and CONTROL ends with KEY VELOCITY
-([SMK37.md](SMK37.md)).
+scrolls. On the SMK-37 Pro, DISPLAY has PAD FOLLOW where LEDS is, CONTROL ends with KEY VELOCITY and AUDIO with
+MASTER START ([SMK37.md](SMK37.md)).
 ALGORITHM moves between the tabs and PRESETS through the rows of one; any of KNOB 1–4, or OCT+ / OCT−,
 changes the value (OCT+ opens HARDWARE CALIBRATION and ABOUT, starts MIDI LEARN and clears what it learned); press
 HOME to close the menu. RESET SETTINGS puts
@@ -694,9 +699,6 @@ every setting back as a new unit has it. The web editor's Settings tab reads and
   bar's first beat higher. **CLICK LEVEL:** LOW, MID (default) or HIGH; MASTER sets it too
 - **COUNT-IN:** OFF (default), 1 BAR or 2 BARS: with a track armed, PLAY counts in first (clicking even with
   CLICK OFF), and a note played in the last half beat lands on step 1. Not with an external clock
-- **MASTER START:** LAST (default) or SAFE, for headphones after a loud session. SAFE: at power-on the sound rises from
-  silence over a second to at most 20 % of the MASTER knob, and stays there, wherever the knob is, until you turn it up
-  or down to 20 %; then it follows the knob (turning it down above 20 % never makes it louder)
 - **USB SERIAL** (2.0: only in a build from source without `--release`, see [BUILDING.md](BUILDING.md)): the serial
   console, a developer tool. A release has none, so the FM-1 is a plain audio + MIDI device and macOS 13–15 see its
   USB audio input

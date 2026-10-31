@@ -849,6 +849,15 @@ static int32_t cv_free_text(int32_t x, int32_t y, const aafont_t *f, const char 
     int cut = text_fit(b, sizeof b, s, f, maxw);
     return cv_text_flags(x, y, f, b, fg, bg, cut ? 9u : 8u);
 }
+static int32_t cv_free_text_r(int32_t xr, int32_t y, const aafont_t *f, const char *s, uint16_t fg, uint16_t bg,
+                              int32_t maxw)   /* .. its right end at xr -> its left */
+{
+    char b[48];
+    int cut = text_fit(b, sizeof b, s, f, maxw);
+    int32_t x = xr - text_w(f, b);
+    cv_text_flags(x, y, f, b, fg, bg, cut ? 9u : 8u);
+    return x;
+}
 
 /* ---------------------------------------------------------- keycaps --- */
 /* a pre-rendered pill (tools/gen_aa_keycaps.py): nibble 0 outside, 1..4 the edge over `under`, 5 the fill,

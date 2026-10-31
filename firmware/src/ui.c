@@ -58,6 +58,8 @@ static uint32_t pool_alloc(void);
 static uint32_t pool_alloc_after(uint32_t orig);   /* ((2.0, #34) a copy's number: bank.c) */
 static uint32_t pool_alloc_beside(uint32_t k, uint32_t e);   /* ((#14) NEW's) */
 static int pool_free(uint32_t id);
+static uint32_t pool_taken(void);                /* ((#62) the header's memory meter: bank.c) */
+static uint32_t pend_taken(void);
 static uint32_t bank_cur(uint32_t k);
 static uint32_t bank_gen(void);
 static void entry_ui(uint32_t e);
@@ -166,9 +168,9 @@ static const char *const RET_SAY[3] = {"BACK", "BACK OVER 1 BEAT", "BACK OVER 1 
  * at boot (main.c), bit 2 of CPU2_BYTE; clear: 360, as 1.3. clk320: what this boot did about it, kept across a soft reset
  * (which keeps the PLL), forgotten at power-on; CLK_WHY: FM1_CLK320_E*'s words (hal/fm1_clk320_probe.h) */
 #define CLK320_SET ((CPU2_BYTE >> 2) & 1u)
-/* MENU > AUDIO > MASTER START SAFE: at power-on the level at most MASTER_SAFE_POT's, rising from silence (master.c
- * master_rise; the SMK's K1 put there, smk_ui.c); bit 4 of CPU2_BYTE (bit 3 is PRESETS KNOB), clear (every older
- * setting): LAST, as before */
+/* (SMK-37) MENU > AUDIO > MASTER START SAFE: at power-on K1 at most MASTER_SAFE_POT (smk_ui.c), the level rising from
+ * silence (master.c master_rise); bit 4 of CPU2_BYTE (bit 3 is PRESETS KNOB), clear (every older setting): LAST, as
+ * before. The FM-1 ignores it: its MASTER is a pot, its level where it stands */
 #define MASTER_SAFE_SET ((CPU2_BYTE >> 4) & 1u)
 /* (#53) MENU > CONTROL > SHARED WARN OFF: a clear of a pattern that plays elsewhere too asks nothing (ui_layer.c
  * clear_asked); bit 5 of CPU2_BYTE, clear (every older setting): ON */
@@ -788,9 +790,11 @@ static uint32_t page_lane(void) { return *page_lane_p() % 8u; }
 /* transient message in the top bar, right of the transport and the BPM: a + b, for MSG_T frames (a second one,
  * ui.msg2, as long after it). (Skiff U1) 90 frames, about 1.5 s: 40 (0.6 s) went by unread while playing */
 #define MSG_T 90u
+static uint32_t msg_said_ms __attribute__((section(".pool")));   /* ((#62) a word newer than a dropout hides AUDIO DROP) */
 static void ui_say(const char *a, const char *b)
 {
     uint32_t n;
+    msg_said_ms = fm1_ms;
     str_cpy(ui.msg, a, sizeof ui.msg);
     n = str_len(ui.msg);
     str_cpy(ui.msg + n, b, sizeof ui.msg - n);

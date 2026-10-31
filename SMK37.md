@@ -120,8 +120,9 @@ loader 7,859 B (the limit: 7,936 B, below).
   header says `T1 LEVEL -6.0dB`, and SEQ REC records it. GLOBE + K2 stays the tempo; on the pages K2 turns them.
   With K4 as PAN and K3 the track, HOME is a small mixer for the selected track.
 - **MASTER on K1:** a virtual pot, 24 steps a detent. The header says its level while it turns (`MASTER 70%`), and
-  the settings keep it once it rests 1.5 s, so it comes back at power-on. MENU > AUDIO > MASTER START: LAST (the
-  default) as left; SAFE at most 20 %, the sound rising from silence over 1 s.
+  the settings keep it once it rests 1.5 s, so it comes back at power-on. MENU > AUDIO > MASTER START, for
+  headphones after a loud session: LAST (the default) as left; SAFE at most 20 %, the sound rising from silence over
+  1 s. (The FM-1 has no such row: its MASTER is a pot with end stops, the level where it stands.)
 - **The extra buttons:** KNOB BANK is SHIFT, as HOME held but on a button of its own: the map, + BT for TAKE, and
   + a layer's button to lock that layer, + K5 on SEQ › SONG to move the selected entry (past A: REMOVE, the entry
   unlinked when it is let go, its pattern kept in the pool; each one undo step; held for that, KNOB BANK is no UNDO tap). Held and let go, it does nothing (HOME still taps home, and held opens MENU).

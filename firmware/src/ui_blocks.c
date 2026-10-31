@@ -5,7 +5,8 @@
 /* the header: the transport left, the state right. Left: the play state (stop, play, the song's disc; counting in, play
  * in the accent) or, a track armed, the REC mark in its place (filled: the selected track; outlined: another); the
  * selected track's bar.beat (16 of its steps a bar, 4 a beat, as its step pages count them; stopped, 1.1 in MID: PLAY
- * starts there); the BPM (M, the accent while it is being changed) and "BPM" (S) on its baseline. Right: a message or
+ * starts there); the BPM (M, the accent while it is being changed) and "BPM" (S) on its baseline. Right: (#62) AUDIO
+ * DROP on a REC chip for a while after a dropout (head_drop_shown); else a message or
  * a layer's label from HB_MSG_X or past the BPM (the octave and the battery give way); else the octave or the song
  * row (head_group, shortened or dropped when the title leaves no room before the BPM: #70) and the battery. No
  * metronome, no BPM LOCK mark, no rolling digits. The selected track is
@@ -57,11 +58,12 @@ static void draw_head_blocks(void)
 {
     const track_t *t = TSEL;
     uint32_t rec = (song.rec >> song.sel) & 1u ? 2u : song.rec != 0u, id, sig;
-    int msg = ui.msg_t || ui.layer;
+    int msg = ui.msg_t || ui.layer, drop = head_drop_shown();
     char pos[12] = "1.1", b[8], pn[16], mk[16];      /* (stopped: PLAY starts from the top) */
     int32_t x, lx;
     uint16_t ic;
     int mark = head_mark(mk);                        /* ((Skiff phase 5) SONG ON, the pattern edited) */
+    mem_fill_t mem = mem_fill();
     project_cur_name(pn);                            /* (HOME's title) */
     if (song.playing) {                              /* (in time: REV, PING, RAND count up too) */
         fmt_int(pos, (int32_t)(seq_at(t) / 16u) + 1);
@@ -80,7 +82,8 @@ static void draw_head_blocks(void)
           (uint32_t)(song.octave + 8) * 11u +
           (uint32_t)batt_shown() * 7777u + 0xB10C5u +
           str_hash(9u + (uint32_t)ui.home, ui.shift ? "SHIFT" : ui.home ? pn : page_head()) +   /* (the title) */
-          (mark ? str_hash(3u + song.sel, mk) : 0u) + project_mark() * 104729u;
+          (mark ? str_hash(3u + song.sel, mk) : 0u) + project_mark() * 104729u + (uint32_t)drop * 0xD809u +
+          mem_meter_sig(mem);
     ui.roll_bpm = song.g[G_BPM];                      /* (no rolling digits: none left to finish in another style) */
     ui.roll[ROLL_BPM].from[0] = 0;
     if (!ui.force && sig == ui.head_sig)
@@ -114,7 +117,10 @@ static void draw_head_blocks(void)
     GFX_HOOK_ALIGN(0, 0, 0, HEAD_MY + AF_M.asc, AL_B, "BPM on its value's baseline");
     x = cv_text(x + 3, HEAD_MY + AF_M.asc - AF_S.asc, &AF_S, "BPM", T_MID);
     lx = x;                                            /* (where the transport's half ends) */
-    if (msg && !ui.msg_t) {                           /* a layer: its title at the right, as the mockup's PERFORM BAR, */
+    if (drop) {                                        /* ((#62) a dropout: over a message, a layer, the title) */
+        GFX_HOOK_ALIGN(0, 0, 0, H_HEAD, AL_V, "header text on its middle");
+        rec_chip_r(234, HEAD_SY, "AUDIO DROP");
+    } else if (msg && !ui.msg_t) {                    /* a layer: its title at the right, as the mockup's PERFORM BAR, */
         char h[24];                                    /* in words ([GLO] SET: GLO SET); PERFORM: when a switch comes */
         if (ui.layer == LAYER_PERF) {                  /* in (LAUNCH); locked: the lock before it */
             str_cpy(h, "PERFORM ", sizeof h);
@@ -139,12 +145,19 @@ static void draw_head_blocks(void)
     } else {                                           /* the page's title at the right, as the mockup's (HOME: the */
         int32_t r = HEAD_BAT_X - 4;                     /* project's name); the battery after it, at every level (#5), */
         char h[16];                                     /* the octave or the song row before it while they matter */
+        int32_t letter_box_w = project_mark() ? 14 + 8 : 0;
         draw_battery(HEAD_BAT_X);
+        if (mem_meter_shown(mem)) {
+            r -= MEM_W;
+            draw_mem_meter(r, mem);
+            r -= 6;
+        }
         str_cpy(h, ui.shift ? "SHIFT" : ui.home ? pn : page_head(), sizeof h);   /* ((U5) SHIFT's map) */
         x = r;
         if (h[0]) {
             GFX_HOOK_ALIGN(0, 0, 0, H_HEAD, AL_V, "header text on its middle");
-            x = cv_text_r(r, HEAD_SY, &AF_S, h, T_MID, T_BG) - 8;
+            x = cv_free_text_r(r, HEAD_SY, &AF_S, h, T_MID, T_BG, r - (lx + 8) - letter_box_w) - 8;   /* ((#62) a long
+                                                        * name before the memory meter: ellipsised, clear of the BPM) */
         }
         if ((id = project_mark()) != 0u) {            /* ((Skiff U3, A2) the project: its letter in a box before the
                                                         * title, a dot on its corner while it changed since saved or

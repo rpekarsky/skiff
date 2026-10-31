@@ -1723,7 +1723,7 @@ static int test_menu_tabs(void)
     bad += check("MENU tabs: DISPLAY CONTROL AUDIO SYSTEM MIDI ((1.3) MIDI appended), rows in a run, 6 shown fit the page; "
                  "tab gaps constant (S, LARGE)",
                  ok && MTAB_COUNT == 5u && str_eq(MTAB_NAME[0], "DISPLAY") && str_eq(MTAB_NAME[MTAB_MIDI], "MIDI") &&
-                 mtab_rows(MTAB_DISPLAY) == 9u && mtab_rows(MTAB_CONTROL) == 8u && mtab_rows(MTAB_AUDIO) == 7u &&   /* (#27, POPUP TIME, CLOSE; (2.0) RETURN; PRESETS KNOB; #32; #53) */
+                 mtab_rows(MTAB_DISPLAY) == 9u && mtab_rows(MTAB_CONTROL) == 8u && mtab_rows(MTAB_AUDIO) == 6u &&   /* (#27, POPUP TIME, CLOSE; (2.0) RETURN; PRESETS KNOB; #53) */
                  mtab_rows(MTAB_SYSTEM) == 6u + FELUCCA_CDC && mtab_rows(MTAB_MIDI) == 10u);   /* ((Skiff) SYSTEM: CPU
                                                          * CLOCK; (Skiff 2.0) USB SERIAL with the console only) */
 
@@ -7309,12 +7309,15 @@ static int test_click_menu(void)
     turn(EN_PRESET, 1); ok &= ui.menu_sel == MI_COUNTIN;
     turn(EN_K4, 1); ok &= cin_bars == 1u;
     turn(EN_K4, 1); ok &= cin_bars == 2u;
-    turn(EN_PRESET, 1); ok &= ui.menu_sel == MI_TUNE;     /* ((U3) TUNE) */
-    turn(EN_PRESET, 1); ok &= ui.menu_sel == MI_MSTART;   /* ((Skiff #32) MASTER START, AUDIO's last) */
+    turn(EN_PRESET, 1); ok &= ui.menu_sel == MI_TUNE;     /* ((U3) TUNE, AUDIO's last: (#62) no MASTER START, the
+                                                         * FM-1's MASTER is a pot) */
     turn(EN_PRESET, 1); ok &= ui.menu_sel == MI_LOWCUT;   /* (wraps within AUDIO) */
     press(B_HOME);
     ok &= !ui.menu;
-    bad += check("MENU > AUDIO: PRESETS to CLICK, CLICK LEVEL, COUNT-IN; knobs / OCT step them, applied at once", ok);
+    for (i = 0; i < MI_COUNT; i++)
+        ok &= !str_eq(MI_NAME[i], "MASTER START");
+    bad += check("MENU > AUDIO: PRESETS to CLICK, CLICK LEVEL, COUNT-IN, TUNE (no MASTER START on the FM-1); knobs / OCT "
+                 "step them, applied at once", ok);
     {
         sks_t p;
         persist_t q;                                    /* ((2.0) a record of before: PER3) */
@@ -8498,8 +8501,7 @@ static int test_u4(void)
     menu_put(MI_CLK, 1);
     ok &= CLK320_SET;
     menu_put(MI_PKNOB, 1);
-    menu_put(MI_MSTART, 1);
-    ok &= PRESETS_PAN_SET && MASTER_SAFE_SET;
+    ok &= PRESETS_PAN_SET;
     menu_put(MI_COLOR, UI_LCD_NIGHT_INDEX);
     SHARED_BYTE = REC_KNOBS_OFF;
     menu_put(MI_POPUP, 12);
@@ -8515,9 +8517,9 @@ static int test_u4(void)
     press(B_OCTUP);
     bad += check("U4 A3: HINTS OFF hides the layer's first-tap hint; RESET SETTINGS asks, then the MENU's defaults (TUNE 0, LEDS DIM HI, HINTS ON, "
                  "(Skiff) CPU CLOCK 360 MHZ, (wishlist #38) PRESETS KNOB PRESETS, (#29) THEME SKIFF, (#23) REC KNOBS ON, "
-                 "(#32) MASTER START LAST, (#27) POPUP TIME DEFAULT, POPUP CLOSE TIMER)",
+                 "(#27) POPUP TIME DEFAULT, POPUP CLOSE TIMER)",
                  ok && !ui_hints_off && song.g[G_TUNE] == 0 && settings_leds == LEDS_DIM && !CLK320_SET && msg_is("SETTINGS RESET") &&
-                 !PRESETS_PAN_SET && menu_get(MI_COLOR) == UI_SKIFF_INDEX && SHARED_BYTE == 0u && !MASTER_SAFE_SET &&
+                 !PRESETS_PAN_SET && menu_get(MI_COLOR) == UI_SKIFF_INDEX && SHARED_BYTE == 0u &&
                  !popup_time() && !ui.popup_on_input);
     ui_power_on();
     return bad;
@@ -9350,6 +9352,87 @@ static int test_scope_cpu(void)
     song.cpu_q8 = 0;
     return check("#57 the HOME scope's CPU readout, in the footer: CPU, its peak falling, DROP n / load inverted for 2 s "
                  "after a dropout", ok);
+}
+/* (#62) AUDIO DROP on every page's header, a REC chip at the right, for as long as the dropout is marked (#57's
+ * sampler): over a message said before it, not over a newer one, nor over a dialog */
+static int head_drop_in_header(void) { return px_in(150, 2, 236, H_HEAD - 3, T_REC); }
+static int dropout_now(void)
+{
+    felucca_dbg.late++;
+    frames(CPU_SAMPLE_MS + 16u);
+    return head_drop_shown() && head_drop_in_header();
+}
+static int test_head_drop(void)
+{
+    int ok;
+    ui_power_on();
+    go_title("ENV");
+    frame();
+    ok = !ui.home && !head_drop_shown() && !head_drop_in_header();
+    ok &= dropout_now();
+    frames(CPU_XRUN_MARK_MS + CPU_SAMPLE_MS);
+    ok &= !head_drop_shown() && !head_drop_in_header();
+    ui_message("SOUND INITIALIZED");
+    ok &= dropout_now();
+    frames(CPU_XRUN_MARK_MS + CPU_SAMPLE_MS);
+    ok &= dropout_now();
+    ui_message("SOUND INITIALIZED");
+    frame();
+    ok &= !head_drop_shown() && !head_drop_in_header();
+    frames(CPU_XRUN_MARK_MS + CPU_SAMPLE_MS);
+    ui.confirm = CF_CLEAR_SEQ;
+    ui.force = 1;
+    felucca_dbg.late++;
+    frames(CPU_SAMPLE_MS + 16u);
+    ok &= cpu_shown.xrun_marked && !head_drop_shown() && !head_drop_in_header();
+    ui.confirm = 0;
+    ui.force = 1;
+    frame();
+    ok &= head_drop_shown();
+    frames(CPU_XRUN_MARK_MS + CPU_SAMPLE_MS);
+    return check("#62 AUDIO DROP in the header on a page not HOME, gone 2 s on; over an older message, not a newer one, "
+                 "not over a dialog", ok);
+}
+/* (#62) the pattern memory's meter before the header's battery: shown over half the pool's ids or half the waiting
+ * slots taken, a row REC from 90 % of the ids / 5 of 6 slots */
+static void mem_fill_as(uint32_t ids, uint32_t waiting)
+{
+    uint32_t id, i;
+    for (id = 0; id < NPAT; id++)
+        bk.len[id] = (uint8_t)(id < ids ? 16u : 0u);
+    for (i = 0; i < PEND_N; i++)
+        pend_id[i] = (uint8_t)(i < waiting ? i : PAT_NONE);
+    frame();
+}
+static int32_t mem_x(void) { return HEAD_BAT_X - 4 - MEM_W; }
+static int mem_pool_row_is(uint16_t c) { return px_in(mem_x(), 8, mem_x() + MEM_W - 1, 10, c); }
+static int mem_wait_row_is(uint16_t c) { return px_in(mem_x(), 13, mem_x() + MEM_W - 1, 15, c); }
+static int mem_meter_drawn(void) { return mem_pool_row_is(T_LINE) || mem_pool_row_is(T_MID) || mem_pool_row_is(T_REC); }
+static int test_mem_meter(void)
+{
+    int ok;
+    ui_power_on();
+    settings.palette = UI_SKIFF_INDEX; palette_set(UI_SKIFF_INDEX);
+    ui.force = 1; frame();
+    mem_fill_as(NPAT / 2u, PEND_N / 2u);
+    ok = ui.home && !mem_meter_shown(mem_fill()) && !mem_meter_drawn();
+    mem_fill_as(NPAT / 2u + 1u, 0);
+    ok &= mem_meter_shown(mem_fill()) && mem_pool_row_is(T_MID) && !mem_pool_row_is(T_REC) &&
+          mem_wait_row_is(T_LINE) && !mem_wait_row_is(T_MID);
+    mem_fill_as(57, 0);
+    ok &= mem_pool_row_is(T_MID) && !mem_pool_row_is(T_REC);
+    mem_fill_as(58, 0);
+    ok &= mem_pool_row_is(T_REC) && !mem_wait_row_is(T_REC);
+    mem_fill_as(10, PEND_N / 2u + 1u);
+    ok &= mem_fill().ids == 10u && mem_fill().waiting == 4u && mem_wait_row_is(T_MID) && !mem_wait_row_is(T_REC) &&
+          mem_pool_row_is(T_MID) && !mem_pool_row_is(T_REC);
+    mem_fill_as(10, PEND_N - 1u);
+    ok &= mem_wait_row_is(T_REC) && mem_wait_row_is(T_LINE) && !mem_pool_row_is(T_REC);
+    mem_fill_as(0, PEND_N);
+    ok &= mem_fill().ids == PEND_N && mem_wait_row_is(T_REC) && !mem_wait_row_is(T_LINE);
+    ui_power_on();
+    return check("#62 the header's pattern memory meter: over half the pool or half the waiting slots, REC from 58 of "
+                 "64 ids / 5 of 6 slots", ok);
 }
 static int test_blocks(void)
 {
@@ -10756,6 +10839,8 @@ int main(void)
     bad += test_home_footer();
     bad += test_home_names();
     bad += test_scope_cpu();
+    bad += test_head_drop();
+    bad += test_mem_meter();
     bad += test_scope_master();
     bad += test_scope_track();
     bad += test_home_meters();

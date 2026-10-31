@@ -868,6 +868,7 @@ enum { S_HOME, S_HOME_IDLE, S_MESSAGE, S_MESSAGE_KEY, S_MESSAGE_NOFILE, S_PRESET
        S_HOME_METER, S_HOME_METER_FIT,      /* (#59) */
        S_HOME_SCOPE_TRACK,
        S_MENU_POPUP,
+       S_HEAD_MEMORY,                                                                         /* (#62) */
        S_MOCK_HOME, S_MOCK_PRESETS, S_MOCK_SEQ, S_MOCK_DRUM, S_MOCK_MIXER, S_MOCK_DIALOG, S_MOCK_MENU, S_COUNT };
 static const char *const S_NAME[S_COUNT] = {"home", "home_idle", "message", "message_key", "message_nofile", "presets", "presets_nofav", "user",
     "project", "lanes", "step", "pattern", "chance", "motion", "drum",
@@ -901,7 +902,7 @@ static const char *const S_NAME[S_COUNT] = {"home", "home_idle", "message", "mes
     "chorus_flanger", "chorus_phaser", "presets_bass", "song_rest", "song_rest_pick",
     "notes_range", "notes_pick", "feel_range", "notes_overlap", "momentary", "pool_empty", "pool_unused", "confirm_empty",
     "song_once", "song_new", "song_copyplus", "song_chain", "song_chain3", "notes_chain", "lane_mix", "lane_mix_dx",
-    "song_sound", "song_sounds", "song_chains", "song_chain_copy", "drum_kit_usr", "lanes_usr", "menu_presets_knob", "presets_knob_pan", "shift_pan", "pool_new", "home_lists", "home_fit16", "home_fit24", "home_fit32", "home_fit64", "home_fit_pats", "home_meter", "home_meter_fit", "home_scope_track", "menu_popup", "mock_home", "mock_presets", "mock_seq", "mock_drum", "mock_mixer", "mock_dialog", "mock_menu"};
+    "song_sound", "song_sounds", "song_chains", "song_chain_copy", "drum_kit_usr", "lanes_usr", "menu_presets_knob", "presets_knob_pan", "shift_pan", "pool_new", "home_lists", "home_fit16", "home_fit24", "home_fit32", "home_fit64", "home_fit_pats", "home_meter", "home_meter_fit", "home_scope_track", "menu_popup", "head_memory", "mock_home", "mock_presets", "mock_seq", "mock_drum", "mock_mixer", "mock_dialog", "mock_menu"};
 
 /* the scenes of the UI design screens: the state the UI-redesign
  * prototype drew them from (its setup(): two pattern tracks, the drum pattern on track 4, a synthetic scope),
@@ -1263,6 +1264,21 @@ static void setup(int s)
         felucca_dbg.late = 3;
         ui.home = 1;
         ui.home_scope = 1;
+        break;
+    case S_HEAD_MEMORY:                              /* (#62) the memory meter: 60 of 64 ids (REC), 4 of 6 slots waiting;
+                                                      * HOME's title the widest name, ellipsised clear of the BPM */
+        for (uint32_t id = 0; id < NPAT; id++)
+            bk.len[id] = (uint8_t)(id < 60u ? 16u : 0u);
+        for (uint32_t i = 0; i < PEND_N; i++)
+            pend_id[i] = (uint8_t)(i < 4u ? i : PAT_NONE);
+        song.playing = 0;
+        str_cpy(proj_name, "MWMWMWMWMWMW", sizeof proj_name);
+        project_save(1);
+        TSEL->p[P_LEVEL]--;
+        fm1_ms += 300u;
+        ui.msg_t = 0;
+        song.g[G_BPM] = 188;
+        ui.home = 1;
         break;
     case S_SHIFT_ENV:                                /* (Skiff U5, A1) HOME held: SHIFT's map of ENV, STEP, HOME */
     case S_SHIFT_STEP:

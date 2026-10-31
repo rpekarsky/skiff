@@ -451,6 +451,7 @@ _Static_assert(sizeof(motion_store_t) == 260u, "motion: a record is 4 bytes");
 typedef struct { uint8_t slot, repeat; } chain_row_t;
 /* (Skiff phase 5) the patterns: one pool (bank.c, ids 0..NPAT-1); each track's list of NENT entries names them */
 #define NPAT 64u
+#define PEND_N NTRK                    /* bank.c: patterns changed while playing wait in these till a stop (a track's one) */
 #define NENT 16u
 #define PAT_NONE 0xFFu                 /* no pattern (an entry stores id + 1, 0 = empty: ui.c lists) */
 #define PAT_REST (NPAT + 1u)           /* (#28) what an entry stores for a REST (no pattern: ent_pat says PAT_NONE) */
