@@ -516,15 +516,16 @@ static void tracks_edit(uint32_t slot, int32_t steps)
     ml_knob(t, (uint32_t)(vp - t->p));
 }
 
-/* (wishlist #38) MENU > PRESETS KNOB PAN: PRESETS is the selected track's PAN, as MIXER's KNOB 2 */
-static void pan_turn(int32_t s)
+/* the selected track's PAN ((wishlist #38) PRESETS KNOB PAN) or LEVEL ((wishlist #49) SELECT on HOME, BPM LOCK ON),
+ * as MIXER's knobs */
+static void track_value_turn(uint32_t id, uint32_t enc, const char *name, int32_t s)
 {
     track_t *t = TSEL;
-    const param_desc_t *d = &TP[P_PAN];
-    t->p[P_PAN] = (int16_t)clamp(t->p[P_PAN] + accel(EN_PRESET, s, d->max - d->min), d->min, d->max);
-    motion_capture(t, P_PAN, t->p[P_PAN]);
-    ml_knob(t, P_PAN);
-    say_track_value(song.sel, P_PAN, "PAN");
+    const param_desc_t *d = &TP[id];
+    t->p[id] = (int16_t)clamp(t->p[id] + accel(enc, s, d->max - d->min), d->min, d->max);
+    motion_capture(t, id, t->p[id]);
+    ml_knob(t, id);
+    say_track_value(song.sel, id, name);
 }
 
 /* SEQ > NOTES' piano roll (not the DRUM grid, whose white keys stay its steps): where step recording writes */
@@ -1866,7 +1867,7 @@ static void cursor_turn(int32_t s)
 static void sound_or_pan_turn(int32_t s)
 {
     if (PRESETS_PAN_SET)
-        pan_turn(s);
+        track_value_turn(P_PAN, EN_PRESET, "PAN", s);
     else
         preset_step(s);
 }
@@ -2157,7 +2158,6 @@ static void ui_input(void)
     uint32_t oct;
     uint32_t lay, combo = 0, lytap, lkeys, glo, kq = 0;
     int32_t s, sel = 0, ks[4] = {0, 0, 0, 0};
-    static uint32_t lock_ms;                            /* BPM LOCK: the last locked SELECT turn (fm1_ms | 1; 0 none) */
     static uint8_t home_long;                           /* Skiff: HOME held past 0.7 s, the menu closed: MENU when let go */
 #if BOARD_SMK37
     uint32_t knob_moved = panel_moved, bank_taps;       /* (a knob turned last frame: scr_input clears it) */
@@ -2590,11 +2590,8 @@ static void ui_input(void)
             home_long = 0;
         } else if (!ui.home) {
             select_turn(s);
-        } else {                                        /* MENU > BPM LOCK ON (#58), on HOME (no pages): only with GLO
-                                                         * held (and on GLO > GLOBAL, GLO's G4 TAP); says so once a burst */
-            if (!lock_ms || fm1_ms - lock_ms > 1000u)
-                ui_way("BPM LOCKED", "GLO + SELECT: TEMPO");   /* ((Skiff U4) and how) */
-            lock_ms = fm1_ms | 1u;
+        } else {                                        /* MENU > BPM LOCK ON (#58), on HOME (no pages) */
+            track_value_turn(P_LEVEL, EN_SELECT, "LEVEL", s);
         }
     }
     for (k = 0; k < 4u && !kq; k++) {

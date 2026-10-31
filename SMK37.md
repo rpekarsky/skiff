@@ -116,6 +116,9 @@ loader 7,859 B (the limit: 7,936 B, below).
   sound (HOME included; `T1 PAN +25%` in the header, as the PAN fader bank says it); SHIFT + K4 (PATCH or KNOB BANK
   held) loads the sound on every page but NOTES and FEEL. FADER BANK's PAN needs the bank switched and the fader
   picked up first.
+- **K2 on HOME:** with MENU > CONTROL > BPM LOCK ON (the default), the selected track's LEVEL, as MIXER's: the
+  header says `T1 LEVEL -6.0dB`, and SEQ REC records it. GLOBE + K2 stays the tempo; on the pages K2 turns them.
+  With K4 as PAN and K3 the track, HOME is a small mixer for the selected track.
 - **MASTER on K1:** a virtual pot, 24 steps a detent. The header says its level while it turns (`MASTER 70%`), and
   the settings keep it once it rests 1.5 s, so it comes back at power-on. MENU > AUDIO > MASTER START: LAST (the
   default) as left; SAFE at most 20 %, the sound rising from silence over 1 s.
