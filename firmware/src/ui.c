@@ -70,6 +70,8 @@ static void song_poll(void);                   /* (Skiff phase 5) the song: each
 static void song_top(void);
 static void song_oct(void);                    /* .. SEQ > SONG's OCT+ OCT- and its dialog (bank.c) */
 static void song_back(void);
+static int song_drag(int32_t s);               /* ((#13) .. SHIFT + KNOB 1: the entry dragged) */
+static void song_drag_poll(int held);
 static void song_clear(uint32_t e);
 static int song_clear_at(uint32_t k, uint32_t e);
 static uint32_t song_clear_text(uint32_t e, char l[3][32], int *gone);
