@@ -1830,6 +1830,14 @@ static void graph_bank(void)
 #define SG_TH (SG_SIX ? 15 : 18)
 #define SG_Y(r) (4 + (SG_SIX ? 22 : 27) * (int32_t)(r))   /* row r's band; the tile 2 px into it */
 #define SG_H (SG_SIX ? 20 : 24)
+/* the selected track's band: its ground and marks, an entry's tile on it, the entry playing's, a chain's box */
+typedef struct { uint16_t ground, mark, tile, tile_ink, on, on_ink, chain; } sg_band_t;
+static sg_band_t sg_band(uint16_t col)
+{
+    if (ux.h1n)   /* ((Skiff #29) an LCD: a ghost band, so the entry picked, an ink tile, reads on it, empty or not) */
+        return (sg_band_t){T_RAISE, T_TEXT, T_SURF, T_TEXT, T_MID, T_INK, T_BG};
+    return (sg_band_t){col, T_INK, ux_mix(col, T_INK, 35), T_INK, T_INK, col, ux_mix(T_BG, col, 35)};
+}
 static void graph_song(void)
 {
     uint16_t g0 = T_BG;
@@ -1839,13 +1847,15 @@ static void graph_song(void)
     for (pos = 0, k = 0; k < NTRK; pos++, k++) {        /* ((Skiff U3, N1) every track) */
         int32_t y = SG_Y(pos), ty = y + 2;
         int band = k == song.sel % NTRK, cb = band;
-        uint16_t col = T_TRK(k), g = cb ? col : g0;
+        uint16_t col = T_TRK(k);
+        sg_band_t bd = sg_band(col);
+        uint16_t g = cb ? bd.ground : g0, lit = cb ? bd.mark : col;
         uint32_t cur = bank_cur(k), nx = bank_next(k), first, last, rest = trk_pid[k] ? NENT : lists.cur[k] % NENT;
         uint32_t ce = sg.entry % NENT, cp = band && song_pick() == SPICK_COPYP ? ent_free_after(k, ce) : NENT, cn = 0,
                  b0 = 0, b1 = 0, cm = 0, cs = 0, c0, c1;
         uint8_t ci[NENT];                            /* ((2.0, #33) COPY+: where its copies go ((#44) a chain's, part by
                                                       * part), their numbers */
-        uint16_t st[2] = {col, ux_mix(col, NE_VIOLET, 70)}, bx = ux_mix(g0, col, 35);
+        uint16_t st[2] = {col, ux_mix(col, NE_VIOLET, 70)}, bx = cb ? bd.chain : ux_mix(g0, col, 35);
         char d[2] = {(char)('1' + k), 0};
         if (cp < NENT) {
             cn = copy_ids(k, ce, ci);
@@ -1861,11 +1871,11 @@ static void graph_song(void)
         if (cb && ux.neon)                           /* ((Skiff S1) NEON: the band its colour into violet) */
             ne_hgrad(0, y, SG_BAND_W, SG_H, st, 2);
         else if (cb)
-            cv_rect(0, y, SG_BAND_W, SG_H, col);
+            cv_rect(0, y, SG_BAND_W, SG_H, bd.ground);
         else if (band)
             cv_rrect(3, y, 234, SG_H, 3, T_RAISE, g0);
         GFX_HOOK_ALIGN(0, y, 0, y + SG_H, AL_V, "song track number on its row's middle");
-        cv_text_on(5, y + CAP_IN(M, SG_H), &AF_M, d, cb ? T_INK : col, g);
+        cv_text_on(5, y + CAP_IN(M, SG_H), &AF_M, d, lit, g);
         for (p = 0; p < NENT; p = c1 + 1u)           /* ((2.0, #44, the chain sheet's A) a chain: its tiles on a box of
                                                       * their own, the band's height and 2 px round them, the track's
                                                       * colour dimmed (on the band too); COPY+'s copies of one too */
@@ -1884,23 +1894,27 @@ static void graph_song(void)
             int32_t x = SG_X(p);
             int cpy = p >= cp && p < cp + cn,        /* ((2.0) COPY+'s copy here: of its chain's part p - cp) */
                 in = (int)((cm >> p) & 1u);          /* (on a chain's box: it the ground, the marks the track's colour) */
-            uint16_t gi = in ? bx : g, mk = cb && !in ? T_INK : col;
+            uint16_t gi = in ? bx : g, mk = in ? col : lit;
             uint32_t src = cpy ? b0 + p - cp : p, id = !cpy ? ent_pat(k, p) : ci[p - cp] ? ci[p - cp] - 1u : PAT_NONE,
                      reps = ent_reps(k, src);        /* ((2.0, #44) on CHAIN: once, no tick) */
             int pick = band && p == ce, rt = cpy ? !ci[p - cp] : ent_rest(k, p), on;
             uint16_t fill, ink;
             char s[3];
             if (id == PAT_NONE && !rt) {             /* empty: a dot; ((1.2.1, #12) a rest: a dash, lit while it plays, */
-                uint16_t dc = cb ? ux_mix(col, T_INK, 55) : T_DIM;   /* framed while staged, its repeats under it) */
+                int solid = pick && ux.h1n;          /* framed while staged, its repeats under it); picked: framed, an
+                                                      * ink tile on an LCD */
+                uint16_t dc = solid ? T_INK : cb ? ux_mix(bd.ground, bd.mark, 55) : T_DIM;
+                if (solid)
+                    cv_rect(x, ty, SG_W, SG_TH, T_TEXT);
                 if (p > first && p < last) {
-                    cv_rect(x + 3, ty + SG_TH / 2 - 1, SG_W - 6, 2, p == rest ? (cb ? T_INK : col) : dc);
+                    cv_rect(x + 3, ty + SG_TH / 2 - 1, SG_W - 6, 2, p == rest && !solid ? lit : dc);
                     if (p == nx)
-                        cv_frame(x - 1, ty - 1, SG_W + 2, SG_TH + 2, cb ? T_INK : col);
+                        cv_frame(x - 1, ty - 1, SG_W + 2, SG_TH + 2, lit);
                     for (r = 0; r + 1u < reps && r < 3u; r++)
-                        cv_rect(x + 1 + 3 * (int32_t)r, ty + SG_TH + 1, 2, 1, cb ? T_INK : col);
+                        cv_rect(x + 1 + 3 * (int32_t)r, ty + SG_TH + 1, 2, 1, lit);
                 } else
                     cv_rect(x + 5, ty + SG_TH / 2 - 1, 2, 2, dc);
-                if (pick)
+                if (pick && !solid)
                     cv_frame(x, ty, SG_W, SG_TH, T_TEXT);
                 continue;
             }
@@ -1908,9 +1922,9 @@ static void graph_song(void)
             if (pick)
                 fill = T_TEXT, ink = T_INK;
             else if (on)
-                fill = cb ? T_INK : col, ink = cb ? col : T_INK;
+                fill = cb ? bd.on : col, ink = cb ? bd.on_ink : T_INK;
             else if (cb)
-                fill = ux_mix(col, T_INK, 35), ink = T_INK;
+                fill = bd.tile, ink = bd.tile_ink;
             else
                 fill = T_SURF, ink = T_MID;
             if (ux.neon && !cb && on)                /* ((Skiff S1) NEON: the entry playing a lit tube; SURF ones glass, */
