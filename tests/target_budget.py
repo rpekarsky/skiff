@@ -43,7 +43,8 @@ FUNCS = ["analog_render", "digital_render", "digital_render_legacy", "digital_re
          "mix_spread", "esync_coef", "mod_depth",   # (Skiff 1.3) SPREAD (fx.c), ENV SYNC (voice.c), MOD DEPTH (mod.c)
          "smx_render",                           # (Skiff, #21) a user sample's sound with its own sends (fx.c)
          "lpan_render", "lpan_mix",              # (2.0, #36) a kit's lane panned: its voice, the mix (voice.c, fx.c)
-         "drum_smp"]                             # (2.0, #35) a user kit's lane (eng_drum.c)
+         "drum_smp",                             # (2.0, #35) a user kit's lane (eng_drum.c)
+         "mix_track", "scope_trk_tap"]           # (#59) a track's block and HOME's TRACK scope's tap (fx.c)
 # built only with FELUCCA_FM4=1 (DIGITAL, src/eng_digital.c; not in the default build, so not in BUDGET): absent,
 # they are skipped; present, checked against these (their budget lines until the engine was retired in 1.0)
 OPTIONAL = {"digital_render": 12, "digital_render_legacy": 333, "digital_render_custom": 558,

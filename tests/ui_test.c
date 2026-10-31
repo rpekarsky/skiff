@@ -1121,6 +1121,91 @@ static int test_scope_master(void)
     return check("#18 the scope at MASTER 10 % draws the music as at 100 % (HOME, LARGE's strip), not a flat line", ok);
 }
 
+/* (#59) HOME tapped on HOME: the lanes, the scope of the mix (MASTER), the selected track's (TRACK), the lanes again.
+ * Only while TRACK is up the audio taps a track, the selected one: its block after LEVEL, silence when it has none
+ * (another track sounding is not in it) */
+static uint32_t track_scope_blocks(uint32_t blocks, int16_t *loudest)
+{
+    int32_t o[2u * CTL];
+    uint32_t w0 = scope_trk_w, b, i;
+    *loudest = 0;
+    for (b = 0; b < blocks; b++)
+        mix_block(o, CTL);
+    for (i = 0; i < SCOPE_TRK_N; i++)
+        if (scope_trk_buf[i] > *loudest)
+            *loudest = scope_trk_buf[i];
+    return scope_trk_w - w0;
+}
+
+static int test_scope_track(void)
+{
+    uint32_t ok, taps, other = (song.sel + 1u) % NTRK, mq = song.master_q12;
+    int16_t loudest;
+    ui_power_on();
+    song.master_q12 = MASTER_FULL;
+    memset(scope_trk_buf, 0, sizeof scope_trk_buf);
+    press(B_HOME);
+    ok = ui.home_scope == HOME_SCOPE_MASTER && !scope_trk;
+    ok &= track_scope_blocks(4, &loudest) == 0u;
+    press(B_HOME);
+    ok &= ui.home_scope == HOME_SCOPE_TRACK && scope_trk == song.sel + 1u;
+    trk_note_on(&trk[other], 60, 110);
+    taps = track_scope_blocks(8, &loudest);
+    ok &= taps == 8u * CTL / 2u && loudest == 0;
+    trk_note_on(TSEL, 60, 110);
+    ok &= track_scope_blocks(8, &loudest) == 8u * CTL / 2u && loudest > 1000;
+    press(B_HOME);
+    ok &= ui.home && !ui.home_scope && !scope_trk && track_scope_blocks(4, &loudest) == 0u;
+    trk_all_off(TSEL);
+    trk_all_off(&trk[other]);
+    song.master_q12 = mq;
+    return check("#59 HOME on HOME: lanes -> MASTER -> TRACK -> lanes; TRACK taps the selected track only, while shown",
+                 ok);
+}
+
+/* (#59) HOME's level meters read each track's peak (fx.c t->peak) every ~50 ms, clear it, show it in 3/4 dB steps from
+ * -48 dB and fall 2 steps a tick; a sounding track lights its own lane only; the panel is redrawn for them at most a
+ * tick */
+static int test_home_meters(void)
+{
+    int32_t o[2u * CTL];
+    uint32_t ok, b, k, redraws = 0, sig, mq = song.master_q12;
+    ui_power_on();
+    song.master_q12 = MASTER_FULL;
+    for (k = 0; k < NTRK; k++)                          /* (what the tests before left sounding) */
+        for (b = 0; b < NVOICE; b++)
+            trk[k].v[b].active = 0;
+    frames(1600);                                       /* (the meters of the tests before at rest) */
+    trk[1].peak = 32768;
+    trk[3].peak = 256;
+    frames(48);
+    ok = hm_lv[1] == HM_STEPS && hm_lv[3] == 8u && !trk[1].peak && !trk[3].peak && !hm_lv[0];
+    frames(48);
+    ok &= hm_lv[1] == HM_STEPS - HM_FALL && hm_lv[3] == 8u - HM_FALL;
+    frames(1600);
+    for (k = 0; k < NTRK; k++)
+        ok &= hm_lv[k] == 0u;
+    sig = ui.graph_sig;
+    for (b = 0; b < 30u; b++) {
+        trk[1].peak = (int32_t)(1000u + 900u * (b % 3u));
+        frame();
+        redraws += ui.graph_sig != sig;
+        sig = ui.graph_sig;
+    }
+    ok &= redraws > 0u && redraws <= 30u * 16u / HM_TICK_MS + 1u;
+    frames(1600);
+    trk_note_on(&trk[2], 60, 110);
+    for (b = 0; b < 8u; b++)
+        mix_block(o, CTL);
+    frames(64);
+    for (k = 0; k < NTRK; k++)
+        ok &= (hm_lv[k] > 0u) == (k == 2u);
+    trk_all_off(&trk[2]);
+    song.master_q12 = mq;
+    return check("#59 HOME's meters: each track's peak every ~50 ms, in dB, falling; only the track sounding; redrawn a tick "
+                 "at most", ok);
+}
+
 /* (#22) HOME without its lanes (MENU > LARGE's tall cards; the scope, HOME tapped on HOME): the footer names the track's
  * engine and sound, as with HINTS OFF, not HOLD [HOME] SHIFT; with the lanes the hint stays */
 static int test_home_names(void)
@@ -10115,6 +10200,8 @@ int main(void)
     bad += test_home_names();
     bad += test_scope_cpu();
     bad += test_scope_master();
+    bad += test_scope_track();
+    bad += test_home_meters();
     bad += test_clock_wait();
     bad += test_grid_rows();
     bad += test_mixer_no_flash();

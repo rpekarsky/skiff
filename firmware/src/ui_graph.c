@@ -27,6 +27,26 @@ static int16_t scope_at_full_master(uint32_t i, int32_t unmaster_q8)
     return (int16_t)clamp((scope_buf[i & (SCOPE_N - 1u)] * unmaster_q8) >> 8, -32768, 32767);
 }
 
+/* (#59) HOME's scope tapped twice: the selected track as fx.c taps it, before MASTER (nothing to divide out) */
+static int scope_track_view(void) { return ui.home && ui.home_scope == HOME_SCOPE_TRACK; }
+
+/* the scope's last SCOPE_N samples, oldest first: the mix at MASTER full, or the selected track */
+static void scope_snapshot(int16_t *snap)
+{
+    uint32_t i, w;
+    int32_t unmaster;
+    if (scope_track_view()) {
+        w = scope_trk_w;
+        for (i = 0; i < SCOPE_N; i++)
+            snap[i] = scope_trk_buf[(w + i) & (SCOPE_TRK_N - 1u)];
+        return;
+    }
+    w = scope_w;
+    unmaster = scope_unmaster_q8();
+    for (i = 0; i < SCOPE_N; i++)
+        snap[i] = scope_at_full_master(w + i, unmaster);
+}
+
 #include "ui_h1n.c"                                   /* (Skiff #29) THEME LCD's segments, window and equalizer */
 #define GOY 11                                       /* graphs drawn on a 100 px scale sit at y 11..111 */
 /* the height ADSR and LFO are drawn on: 100 px, or (MENU > LARGE's strip: draw_graph) the strip's ~ 56 */
@@ -1607,8 +1627,12 @@ static uint32_t graph_signature(void)
     const page_t *pg = cur_page();
     const track_t *t = TSEL;
     uint32_t h = 2166136261u, i;
-    if (ui.home)                                     /* scope: redraw every other frame; Skiff's tracks: on a change */
-        return ui.home_scope || strip_kind() == SK_SCOPE ? h ^ (ui.frame / 2u) ^ cpu_shown_sig() : home_sig();
+    if (ui.home && (ui.home_scope || strip_kind() == SK_SCOPE))   /* scope: redraw every other frame */
+        return h ^ (ui.frame / 2u) ^ cpu_shown_sig();
+    if (ui.home) {                                   /* Skiff's tracks: on a change */
+        home_meters_tick();
+        return home_sig();
+    }
     h ^= (uint32_t)pg->graph * 131u + TSEL->eng_req + song.sel * 7777u + ui.page * 1291u;
     if (strip_kind() == SK_TITLE)                    /* MENU > LARGE: the page's title (its engine, its number) */
         return h ^ 0x5A17u;
@@ -2531,15 +2555,14 @@ static void qk_detector(int32_t cx, int32_t cy)
 static void graph_scope(uint16_t c)
 {
     static int16_t snap[SCOPE_N];
-    uint32_t w = scope_w, i, trig = 0;
+    uint32_t i, trig = 0;
     int32_t cy = (int32_t)cv_h / 2, py = cy, x, peak = 1500, a = cv_h >= H_GRAPH ? 46 : cy - 6;   /* (LARGE: the strip) */
-    int32_t unmaster = scope_unmaster_q8();
     if (ux.quark && cv_h >= H_GRAPH) {
         qk_detector(120, cy);
         return;
     }
+    scope_snapshot(snap);
     for (i = 0; i < SCOPE_N; i++) {
-        snap[i] = scope_at_full_master(w + i, unmaster);
         if (snap[i] > peak)
             peak = snap[i];
         else if (-snap[i] > peak)
@@ -2594,6 +2617,19 @@ static void graph_scope(uint16_t c)
     }
 }
 
+/* (#59) HOME's scope says what it shows: the mix in the theme's TEXT (not a track's colour), the track in its colour */
+static uint16_t home_scope_colour(void) { return scope_track_view() ? T_TRK(song.sel) : T_TEXT; }
+
+static void home_scope_caption(void)
+{
+    char track[8] = "TRACK 1";
+    const char *what = scope_track_view() ? track : "MASTER";
+    int32_t y = 4 + AF_S_CAP_Y;
+    track[6] = (char)('1' + song.sel);
+    cv_rect(PANEL_X0, y - 2, text_w(&AF_S, what) + 4, AF_S_CAP_H + 4, T_SURF);   /* (CRYPT's fire, NEON's ridge reach it) */
+    cv_text(PANEL_X0 + 2, 4, &AF_S, what, scope_track_view() ? home_scope_colour() : T_MID);
+}
+
 #include "ui_pgraph.c"                               /* (Skiff U5, V1) the pages' own graphs */
 
 static void draw_graph(void)
@@ -2631,7 +2667,7 @@ static void draw_graph(void)
         cv_oy = k == SK_ADSR || k == SK_LFO ? 3 : k == SK_SCOPE ? 0 : pad;
         graph_ht = (int32_t)graph_h() - 6;
         if (k == SK_SCOPE && ui.home && ux.h1n) hn_eq();   /* ((Skiff #29) LCD: the equalizer) */
-        else if (k == SK_SCOPE) graph_scope(c);
+        else if (k == SK_SCOPE) graph_scope(ui.home ? home_scope_colour() : c);
         else if (k == SK_ADSR) graph_adsr(t, c);
         else if (k == SK_LFO) graph_lfo(t, c);
         else if (k == SK_STEPS) graph_steps(t, c);
@@ -2639,12 +2675,15 @@ static void draw_graph(void)
         graph_ht = 100;
     } else if (ui.home) {
         cv_oy = 0;
-        if (ui.home_scope && ux.h1n)
-            hn_eq();                                 /* (Skiff #29) LCD: the equalizer */
-        else if (ui.home_scope)
-            graph_scope(c);
-        else
+        if (!ui.home_scope)
             graph_tracks();                          /* Skiff: the four tracks (ui_home.c) */
+        else {
+            if (ux.h1n)
+                hn_eq();                             /* (Skiff #29) LCD: the equalizer */
+            else
+                graph_scope(home_scope_colour());
+            home_scope_caption();
+        }
         if (scope_cpu_shown())
             scope_cpu_readout();
     } else {

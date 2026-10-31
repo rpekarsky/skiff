@@ -1164,6 +1164,29 @@ static void mix_part(track_t *t, uint32_t n SM_DECL)
         mod_end(t);                                     /* the stored values back */
 }
 
+/* (#59) HOME's scope, TRACK: the track the screen shows (scope_trk: its index + 1 while that view is up, else 0) as it
+ * enters the mix, after LEVEL and before PAN and MASTER, every other sample as audio.c's scope; from the block mix_part
+ * leaves in b (silence: track_render's cleared one; SPREAD, a panned kit: the mono sum). Out of line on purpose: the
+ * same tap inside mix_part or inlined into mix_block moves code into loops target_budget.py counts (+18 %, +397 %) */
+#define SCOPE_TRK_N 512u
+static volatile uint8_t scope_trk;
+static int16_t scope_trk_buf[SCOPE_TRK_N];
+static uint32_t scope_trk_w;
+static __attribute__((noinline)) void scope_trk_tap(const track_t *t, const int32_t *b, uint32_t n)
+{
+    int32_t lvl = LEVEL_Q12[t->p[P_LEVEL] & 127];
+    uint32_t i;
+    for (i = 1; i < n; i += 2u)
+        scope_trk_buf[scope_trk_w++ & (SCOPE_TRK_N - 1u)] = (int16_t)clamp(((b[i] >> 2) * lvl) >> 10, -32768, 32767);
+}
+static __attribute__((noinline)) void mix_track(track_t *t, uint32_t n SM_DECL)
+{
+    uint32_t shown = scope_trk;
+    mix_part(t, n SM_ARG(sm));
+    if (shown && t == &trk[shown - 1u])                 /* (not t - trk: a divide) */
+        scope_trk_tap(t, SM(b), n);
+}
+
 /* ---- (Skiff 1.3, as Felucca 1.6.1, after Jangada's, github.com/zednaked/jangada, GPL-3.0) the second core
  * (hal/fm1_cpu1.h) renders some of the tracks of each block into its own sums (mx[1]) while this core renders the
  * others; then this core adds them in and goes on (the LFOs' blocks, the buses, the FX layer, the master) as with one
@@ -1188,7 +1211,7 @@ static void c1_parts(uint32_t arg)                      /* arg: the tracks (bit 
         sm->l[i] = sm->r[i] = sm->c[i] = sm->d[i] = sm->v[i] = 0;
     for (i = 0; i < NPART; i++)
         if (arg >> i & 1u)
-            mix_part(&trk[i], n, sm);
+            mix_track(&trk[i], n, sm);
 }
 
 /* which tracks go to the second core: the split of the last block's costs that leaves the busier core the least; none
@@ -1254,7 +1277,7 @@ static void mix_block(int32_t *out, uint32_t n)
         c1_blocks += m != 0;
         for (i = 0; i < NPART; i++)
             if (!(m >> i & 1u))
-                mix_part(&trk[i], n, &mx[0]);
+                mix_track(&trk[i], n, &mx[0]);
         if (m) {
             const mixsum_t *sm = &mx[1];
             if (C1_WAIT())                              /* it stopped answering (held from now on): its tracks here */
@@ -1272,7 +1295,7 @@ static void mix_block(int32_t *out, uint32_t n)
     }
 #else
     for (i = 0; i < NPART; i++)
-        mix_part(&trk[i], n);
+        mix_track(&trk[i], n);
 #endif
     if (thr_on)
         throw_off();                                    /* (Skiff) .. and off: nothing else sees them */

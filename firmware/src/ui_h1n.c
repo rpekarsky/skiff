@@ -68,11 +68,11 @@ static void hn_fft(void)
 /* each band's level in segments (0 .. HN_ROWS) from the scope's last HN_FFT samples, Hann-windowed */
 static void hn_spectrum(uint8_t *lv)
 {
-    uint32_t w = scope_w, i, k;
-    int32_t peak = 1500, gain, unmaster = scope_unmaster_q8();
+    uint32_t i, k;
+    int32_t peak = 1500, gain;
+    scope_snapshot(hn_re);
     for (i = 0; i < HN_FFT; i++) {
-        int32_t v = scope_at_full_master(w + i, unmaster);
-        hn_re[i] = (int16_t)v;
+        int32_t v = hn_re[i];
         if (v < 0)
             v = -v;
         if (v > peak)
