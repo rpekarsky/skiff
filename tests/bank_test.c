@@ -1685,47 +1685,58 @@ static int song_move(void)
     {
         const uint32_t want[4] = {a, b, d, c};
         ok = order_is(0, want, 4) && lists.ent[0][3][1] == 2u && lists.snd[0][3][0] == 1u && !lists.snd[0][2][0] &&
-             lists.cur[0] == 3u && bank_cur(0) == 3u && sg.entry == 3u && msg_is("MOVE C TO D") && scene_slot(0, 0) == 3u &&
+             lists.cur[0] == 3u && bank_cur(0) == 3u && sg.entry == 3u && msg_is("MOVE 03 TO D") && scene_slot(0, 0) == 3u &&
              scene_slot(0, 4) == 0u;
     }
     drag(0, 3, -3);
     {
         const uint32_t want[4] = {c, a, b, d};
-        ok &= order_is(0, want, 4) && lists.cur[0] == 0u && sg.entry == 0u && msg_is("MOVE C TO A") &&
+        ok &= order_is(0, want, 4) && lists.cur[0] == 0u && sg.entry == 0u && msg_is("MOVE 03 TO A") &&
               scene_slot(0, 0) == 0u && trk[0].step[0].note[0] == 70u;
     }
     bad += check("(#13) SHIFT + KNOB 1: C dragged right (A B D C), then to A (C A B D): its REPS, sound, the track, a "
                  "scene follow", ok);
     drag(0, 0, -1);
-    ok = msg_is("REMOVE C") && str_eq(ui.msg2, "LET GO: UNLINK") && ent_pat(0, 0) == c;
+    ok = c == 2u && d == 3u && msg_is("REMOVE 03") && str_eq(ui.msg2, "LET GO: UNLINK") && ent_pat(0, 0) == c;
     drag(0, 0, 1);
-    ok &= msg_is("MOVE C TO A") && ent_pat(0, 0) == c;
+    ok &= msg_is("MOVE 03 TO A") && ent_pat(0, 0) == c;
     drag(0, 0, 1);
-    ok &= msg_is("MOVE C TO B") && ent_pat(0, 1) == c;
+    ok &= msg_is("MOVE 03 TO B") && ent_pat(0, 1) == c;
     drag(0, 1, -1);
-    ok &= msg_is("MOVE C TO A");
-    song_drag_poll(0);
-    ok &= !sdrag.on && msg_is("MOVED C TO A") && ent_pat(0, 0) == c && ent_on(0, 0);
+    ok &= msg_is("MOVE 03 TO A");
+    song_drag_poll(0, 1);
+    ok &= !sdrag.on && msg_is("MOVED 03 TO A") && ent_pat(0, 0) == c && ent_on(0, 0);
     bad += check("  past A: REMOVE; turned back while held: back in the list; let go: moved, nothing unlinked", ok);
     drag(0, 3, 20);                               /* D past P, let go: unlinked */
-    song_drag_poll(0);
+    song_drag_poll(0, 1);
     {
         const uint32_t want[3] = {c, a, b};
-        ok = order_is(0, want, 3) && !lists.ent[0][15][0] && !ent_on(0, 3) && pool_used(d) && msg_is("T1 D UNLINKED") &&
-             str_eq(ui.msg2 + 11, "STAYS") && ui.msg2[8] == '0' + (d + 1u) / 10u;
+        ok = order_is(0, want, 3) && !lists.ent[0][15][0] && !ent_on(0, 3) && pool_used(d) && msg_is("T1 04 UNLINKED") &&
+             str_eq(ui.msg2, "STAYS IN THE POOL");
     }
     bad += check("  D past P, let go: unlinked (the entries close up, P empty), its pattern still in the pool", ok);
     ok = song_put(0, 3, d + 1u) == 0 && ent_pat(0, 3) == d;
     bad += check("  .. picked again on KNOB 2 it is back", ok);
     drag(0, 0, 3);                                /* the track on C, C unlinked past A: it plays on, C named nowhere */
     drag(0, 3, -10);
-    song_drag_poll(0);
+    song_drag_poll(0, 1);
     ok = !ent_on(0, 0) && trk_pid[0] == c + 1u && bank_cur(0) == BK_NONE && pool_refs(c) == 1u && scene_slot(0, 0) == BK_NONE &&
          trk[0].step[0].note[0] == 70u && scene_slot(0, 4) == 0u;
     bad += check("  the entry the track is on unlinked: the track keeps its pattern (in use, unnamed), the scene drops it",
                  ok);
     ok = song_drag(1) == 1 && !sdrag.on && msg_is("T1 A EMPTY");
     bad += check("  an empty entry: nothing to drag (said), still a SHIFT combo", ok);
+    drag(0, 3, 20);                               /* D (04) past P, then SONG left with SHIFT still held */
+    song_drag_poll(1, 0);
+    ok = !sdrag.on && msg_is("REMOVE CANCELLED") && ent_pat(0, 15) == d && !ent_on(0, 3);
+    bad += check("  SONG left mid-REMOVE (SHIFT held): cancelled, the entry stays at P where it was dragged", ok);
+    lists.ent[0][4][0] = PAT_REST;                /* a REST: named so */
+    drag(0, 4, -1);
+    ok = msg_is("MOVE REST TO D") && ent_rest(0, 3);
+    drag(0, 3, -10);
+    song_drag_poll(0, 1);
+    ok &= msg_is("T1 REST UNLINKED") && !ui.msg2[0] && !ent_on(0, 0);
+    bad += check("  a REST: MOVE REST TO D; past A and let go: T1 REST UNLINKED", ok);
 
     fresh();                                      /* playing, SONG ON: A B C D, 2 steps each */
     ui_launch = LAUNCH_LOOP;
@@ -1750,7 +1761,7 @@ static int song_move(void)
     sg_steps(1);
     sg_frame();
     ok &= heard(0, 30) && lists.cur[0] == 0u;
-    song_drag_poll(0);
+    song_drag_poll(0, 1);
     bad += check("  playing: B dragged to D mid-pass plays on; the song's next staged again from the new order (A)", ok);
     lists.song = SONG_OFF;
     sg_steps(1);
@@ -1760,12 +1771,12 @@ static int song_move(void)
     sg_steps(1);
     sg_frame();
     ok &= heard(0, 90) && lists.cur[0] == 0u;
-    song_drag_poll(0);
+    song_drag_poll(0, 1);
     bad += check("  a launch staged follows its entry (D to A): it lands, the track on A", ok);
     w = ent_pat(0, 3);
     ok = bank_switch(0, 3) == 0 && bank_next(0) == 3u;
     drag(0, 3, 20);
-    song_drag_poll(0);
+    song_drag_poll(0, 1);
     ok &= !launch_q[0].armed && bank_next(0) == BK_NONE && pool_used(w);
     sg_steps(4);
     ok &= heard(0, 90) && lists.cur[0] == 0u;
