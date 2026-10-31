@@ -516,6 +516,17 @@ static void tracks_edit(uint32_t slot, int32_t steps)
     ml_knob(t, (uint32_t)(vp - t->p));
 }
 
+/* (wishlist #49) BPM LOCK ON, HOME: SELECT is the selected track's LEVEL, as MIXER's KNOB 1 */
+static void level_turn(int32_t s)
+{
+    track_t *t = TSEL;
+    const param_desc_t *d = &TP[P_LEVEL];
+    t->p[P_LEVEL] = (int16_t)clamp(t->p[P_LEVEL] + accel(EN_SELECT, s, d->max - d->min), d->min, d->max);
+    motion_capture(t, P_LEVEL, t->p[P_LEVEL]);
+    ml_knob(t, P_LEVEL);
+    say_track_value(song.sel, P_LEVEL, "LEVEL");
+}
+
 /* SEQ > NOTES' piano roll (not the DRUM grid, whose white keys stay its steps): where step recording writes */
 static int roll_on(void)
 {
@@ -2087,7 +2098,6 @@ static void ui_input(void)
     uint32_t oct;
     uint32_t lay, combo = 0, lytap, lkeys, glo, kq = 0;
     int32_t s, sel = 0, ks[4] = {0, 0, 0, 0};
-    static uint32_t lock_ms;                            /* BPM LOCK: the last locked SELECT turn (fm1_ms | 1; 0 none) */
     static uint8_t home_long;                           /* Skiff: HOME held past 0.7 s, the menu closed: MENU when let go */
     fm6_poll();                                         /* FM6: PTCH turned -> its patch */
     unit_g_poll();                                      /* ((Skiff U3, R8) the unit's CLOCK MIDI IN TUNE) */
@@ -2500,11 +2510,8 @@ static void ui_input(void)
             ;                                           /* (another layer held: not the page under it) */
         } else if (!ui.home) {
             select_turn(s);
-        } else {                                        /* MENU > BPM LOCK ON (#58), on HOME (no pages): only with GLO
-                                                         * held (and on GLO > GLOBAL, GLO's G4 TAP); says so once a burst */
-            if (!lock_ms || fm1_ms - lock_ms > 1000u)
-                ui_way("BPM LOCKED", "GLO + SELECT: TEMPO");   /* ((Skiff U4) and how) */
-            lock_ms = fm1_ms | 1u;
+        } else {                                        /* MENU > BPM LOCK ON (#58), on HOME (no pages) */
+            level_turn(s);
         }
     }
     for (k = 0; k < 4u && !kq; k++) {

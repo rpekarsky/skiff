@@ -112,6 +112,8 @@ loader 7,859 B (the limit: 7,936 B, below).
   625 scans a second (the FM-1 does about 909). SHIFT's map names the controls as the SMK prints them (K4, BT,
   SEQ REC, ...), and MENU > LARGE's knob pills say K5..K8. The play button is printed with a play sign, which the
   screen's fonts don't have, so the map calls it PLAY.
+- **K2 on HOME:** with MENU > CONTROL > BPM LOCK ON (the default), the selected track's LEVEL, as MIXER's: the
+  header says `T1 LEVEL -6.0dB`, and SEQ REC records it. GLOBE + K2 stays the tempo; on the pages K2 turns them.
 - **MASTER on K1:** a virtual pot, 24 steps a detent. The header says its level while it turns (`MASTER 70%`), and
   the settings keep it once it rests 1.5 s, so it comes back at power-on.
 - **The extra buttons:** KNOB BANK is SHIFT, as HOME held but on a button of its own: the map, + BT for TAKE, and

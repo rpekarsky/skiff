@@ -1418,8 +1418,8 @@ static void shift_map(smap_t *m)
     m[0] = (smap_t){"PRESETS", pj, (uint8_t)(pj != SND)};
     if (!(ui_prefs & PREF_BPM_LOCK) && !sh)
         m[1] = (smap_t){"SELECT", "TEMPO", 1};
-    else if (ui.home)
-        m[1] = (smap_t){"GLO + SELECT", "TEMPO", 0};
+    else if (ui.home)                                /* ((wishlist #49) BPM LOCK ON: the tempo is GLO + SELECT) */
+        m[1] = (smap_t){"SELECT", "LEVEL", 1};
     else
         m[1] = (smap_t){"SELECT", sh ? "ROWS" : "PAGE", (uint8_t)(sh != 0)};
     m[2] = (smap_t){"ALGO", "TRACK", 0};
@@ -1442,9 +1442,9 @@ static void shift_map(smap_t *m)
     {   /* (SMK-37 Pro, SMK37_UX.md question 10) the controls by the SMK's printed names: K2 SELECT, K3 ALGORITHM, K4
          * PRESETS, PARA EDIT, BT SAVE, SEQ REC REC, KNOB BANK SHIFT. PLAY stays PLAY: the SMK prints a play sign there,
          * which the screen's fonts don't have */
-        static const char *const FM[] = {"PRESETS", "SELECT", "GLO + SELECT", "ALGO", "EDIT + REC", "HOLD SAVE",
+        static const char *const FM[] = {"PRESETS", "SELECT", "ALGO", "EDIT + REC", "HOLD SAVE",
                                          "+ SAVE", "+ REC", "KEYS + REC", "+ PRESETS", "+ EDIT"};
-        static const char *const SMK[] = {"K4", "K2", "GLOBE + K2", "K3", "PARA + SEQ REC", "HOLD BT",
+        static const char *const SMK[] = {"K4", "K2", "K3", "PARA + SEQ REC", "HOLD BT",
                                           "+ BT", "+ SEQ REC", "KEYS + SEQ REC", "+ K4", "+ PARA"};
         uint32_t j;
         for (i = 0; i < 12u; i++)

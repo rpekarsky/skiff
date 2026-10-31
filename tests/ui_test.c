@@ -7151,19 +7151,22 @@ static int test_usb_serial(void)                       /* ((Skiff 2.0) a release
 #endif
 
 /* #58 MENU > BPM LOCK: OFF by default (and in every older setting): SELECT sets the tempo on every page. ON: SELECT
- * leaves it on the pages ("BPM LOCKED" once per turn burst); GLO > GLOBAL's BPM knob, GLO + SELECT (a combo: the map
- * opens, no GLO page; OCT- puts it back) and GLO's G4 TAP still set it; the menu never takes SELECT as the tempo */
+ * leaves it on the pages and (wishlist #49) on HOME turns the selected track's LEVEL; GLO > GLOBAL's BPM knob, GLO +
+ * SELECT (a combo: the map opens, no GLO page; OCT- puts it back) and GLO's G4 TAP still set it; the menu never takes
+ * SELECT as the tempo */
 static int test_bpm_lock(void)
 {
     int bad = 0, ok;
-    int16_t b0;
+    int16_t b0, level;
+    char val[8], said[24];
+    const char *unit = "";
     uint32_t i, page;
     ui_power_on();
     ui_prefs = 0;
     frame();
     b0 = song.g[G_BPM];
     turn(EN_SELECT, 2);
-    ok = song.g[G_BPM] == b0 + 2 && !msg_is("BPM LOCKED") && str_eq(menu_flag(MI_BPMLOCK)->name[0], "OFF");
+    ok = song.g[G_BPM] == b0 + 2 && !ui.msg_t && str_eq(menu_flag(MI_BPMLOCK)->name[0], "OFF");
     bad += check("#58 BPM LOCK OFF (the default): SELECT sets the tempo as before", ok);
 
     hold(B_HOME);
@@ -7181,20 +7184,35 @@ static int test_bpm_lock(void)
     press(B_HOME);
     bad += check("#58 MENU > BPM LOCK: KNOB 1 right / OCT+ ON, left / OCT- OFF; SELECT in the menu is no tempo", ok && !ui.menu);
 
-    /* ON: no tempo from SELECT; on HOME "BPM LOCKED" once per burst; (Skiff phase 8) on a page it turns the pages */
+    /* ON: no tempo from SELECT; (wishlist #49) on HOME it is the track's LEVEL, as MIXER's KNOB 1; (Skiff phase 8)
+     * on a page it turns the pages */
     frame();
-    ui.msg_t = 0; fm1_ms += 1200u;
-    b0 = song.g[G_BPM];
-    turn(EN_SELECT, 1);
-    ok = ui.home && song.g[G_BPM] == b0 && msg_is("BPM LOCKED") && !ui.bpm_t;
     ui.msg_t = 0;
-    turn(EN_SELECT, -4);                                              /* (the same burst: said once) */
-    ok &= song.g[G_BPM] == b0 && !ui.msg_t;
-    fm1_ms += 1200u;
-    turn(EN_SELECT, 1);
-    ok &= msg_is("BPM LOCKED");                                       /* (a new burst: said again) */
-    ok &= text_w(&AF_S, "BPM LOCKED") <= 236 - 106;                   /* (fits the header's message zone) */
-    bad += check("#58 BPM LOCK ON: SELECT leaves the tempo; on HOME \"BPM LOCKED\" once per turn burst", ok);
+    b0 = song.g[G_BPM];
+    level = TSEL->p[P_LEVEL];
+    turn(EN_SELECT, -1);
+    ok = ui.home && song.g[G_BPM] == b0 && !ui.bpm_t && TSEL->p[P_LEVEL] == level - 1;
+    param_format(&TP[P_LEVEL], TSEL->p[P_LEVEL], val, &unit);
+    str_cpy(said, "T1 LEVEL ", sizeof said);
+    str_cpy(said + str_len(said), val, sizeof said - str_len(said));
+    str_cpy(said + str_len(said), unit, sizeof said - str_len(said));
+    ok &= msg_is(said) && !ui.msg2[0] && motion_count(TSEL) == 0;
+    turn(EN_SELECT, 300);
+    ok &= TSEL->p[P_LEVEL] == TP[P_LEVEL].max && song.g[G_BPM] == b0;
+    bad += check("(wishlist #49) BPM LOCK ON, HOME: SELECT turns the track's LEVEL, said \"T1 LEVEL ..\", no tempo", ok);
+    song.rec = 1; seq_start();
+    turn(EN_SELECT, -2);
+    ok = motion_count(TSEL) == 1 && song.g[G_BPM] == b0;
+    stop_transport(); song.rec = 0;
+    bad += check("(wishlist #49)   REC on: the LEVEL turn recorded as automation", ok);
+    level = TSEL->p[P_LEVEL];
+    btn_down(B_GLO); frame();
+    turn(EN_SELECT, 2);
+    ok = song.g[G_BPM] == b0 + 2 && TSEL->p[P_LEVEL] == level;
+    btn_up(B_GLO); frame();
+    song.g[G_BPM] = b0;
+    ui.bpm_t = 0;
+    bad += check("(wishlist #49)   GLO + SELECT on HOME: still the tempo, the LEVEL stays", ok && ui.home);
     for (i = 0, ok = 1; i < 2u; i++) {                                /* (Skiff phase 8, rule 3) the pages instead */
         go_title(i ? "NOTES" : "ENV"); frame();
         ui.msg_t = 0; fm1_ms += 1200u;
@@ -7218,7 +7236,7 @@ static int test_bpm_lock(void)
     ui.msg_t = 0;
     btn_down(B_GLO); frame();
     turn(EN_SELECT, 3);
-    ok = song.g[G_BPM] == b0 + 3 && ui.bpm_t && !msg_is("BPM LOCKED") && ui.layer == LAYER_GLO;
+    ok = song.g[G_BPM] == b0 + 3 && ui.bpm_t && !ui.msg_t && ui.layer == LAYER_GLO;
     btn_up(B_GLO); frame();
     ok &= ui.page == page && !ui.home;                                /* (no tap: still ENV) */
     btn_down(B_GLO); frame();
@@ -8081,7 +8099,7 @@ static int test_u2(void)
 /* (Skiff U4, the review's words) */
 static int test_u4(void)
 {
-    static const char *const M[] = {"SAVE > PATTERNS: CLEAR", "AUTOMATION: DELETE ONE", "GLO + SELECT: TEMPO",
+    static const char *const M[] = {"SAVE > PATTERNS: CLEAR", "AUTOMATION: DELETE ONE",
         "UNDO NEEDS PATTERN 07", "DISARM REC FOR A TAKE", "PLAY ONE LOOP FIRST", "NOTHING BEFORE TO JOIN", "STOP TO RENAME",
         "TAP: CLOCK IS EXTERNAL", "RESTART: CLOCK EXTERNAL", "SLICES NOW MANUAL", "PICK A USR SAMPLE FIRST",
         "SAVED UNTIL POWER OFF", "RENAMED UNTIL POWER OFF", "ERASED UNTIL POWER OFF", "STORAGE ERROR", "KEYS RECORD LANES",
@@ -8494,7 +8512,7 @@ static int test_u2c(void)
 static int test_select_pages(void)
 {
     int bad = 0, ok;
-    int16_t b0;
+    int16_t b0, level;
     uint32_t cur;
     ui_power_on();
     ui_prefs = PREF_BPM_LOCK;
@@ -8539,9 +8557,10 @@ static int test_select_pages(void)
     ok &= str_eq(cur_page()->title, "NOTES") && ui.cursor == cur;
     bad += check("SELECT on the SEQ pages: NOTES, FEEL and back, the cursor kept", ok);
     go_home(); frame();
-    ui.msg_t = 0; fm1_ms += 1200u;
-    turn(EN_SELECT, 1);
-    bad += check("SELECT on HOME: no page (BPM LOCKED, as before)", ui.home && msg_is("BPM LOCKED") && song.g[G_BPM] == b0);
+    level = TSEL->p[P_LEVEL];
+    turn(EN_SELECT, -1);
+    bad += check("SELECT on HOME: no page ((wishlist #49) the track's LEVEL)",
+                 ui.home && TSEL->p[P_LEVEL] == level - 1 && song.g[G_BPM] == b0);
     go_title("ENV"); frame();
     btn_down(B_FX); frames(900);                                     /* (past the hold time: the map) */
     ok = ui.layer == LAYER_FX;

@@ -733,6 +733,20 @@ static void ui_say(const char *a, const char *b)
 }
 
 static void ui_message(const char *s) { ui_say(s, ""); }
+/* "T1 LEVEL -6.0dB": track k's value said (the SMK's faders; (wishlist #49) SELECT on HOME with BPM LOCK) */
+static void say_track_value(uint32_t k, uint32_t id, const char *name)
+{
+    char b[24], val[8];
+    const char *unit = "";
+    param_format(&TP[id], trk[k % NTRK].p[id], val, &unit);
+    b[0] = 'T';
+    b[1] = (char)('1' + k % NTRK);
+    b[2] = ' ';
+    str_cpy(b + 3, name, sizeof b - 3u);
+    str_cpy(b + str_len(b), " ", sizeof b - str_len(b));
+    str_cpy(b + str_len(b), val, sizeof b - str_len(b));
+    ui_say(b, unit ? unit : "");
+}
 /* (Skiff U4, the review's F4) MIDI IN into a track not selected: when (fm1_ms | 1; 0 never), HOME's lanes mark its
  * number for MIDI_MARK_MS (was a header message every 4 s per track, covering the title while a DAW played) */
 #define MIDI_MARK_MS 400u

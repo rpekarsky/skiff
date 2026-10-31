@@ -8,7 +8,7 @@
  * starts there); the BPM (M, the accent while it is being changed) and "BPM" (S) on its baseline. Right: a message or
  * a layer's label from HB_MSG_X or past the BPM (the octave and the battery give way); else the octave or the song
  * row (head_group, shortened or dropped when the title leaves no room before the BPM: #70) and the battery. No
- * metronome, no BPM LOCK mark (a turn says BPM LOCKED), no rolling digits. The selected track is
+ * metronome, no BPM LOCK mark, no rolling digits. The selected track is
  * the footer's (its cushion before the engine). Redrawn when a beat moves while playing. */
 #define HB_POS_X 22                                   /* bar.beat's pen */
 #define HB_BPM_X 52                                   /* the BPM's pen */
