@@ -37,6 +37,7 @@ static const uint8_t ED_MENU[][2] = {
     {MI_PADF, 22},                                     /* (SMK-37, wishlist #42) PAD FOLLOW, a row of DISPLAY */
     {MI_PADL, 23},                                     /* (SMK-37) PAD LIGHT, a row of DISPLAY */
 #endif
+    {MI_SHWARN, 24},                                   /* (#53) SHARED WARN, a row of CONTROL */
 };
 #define ED_MENU_N NELEM(ED_MENU)
 

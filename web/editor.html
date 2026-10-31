@@ -624,7 +624,8 @@ const MENU = [
   { id: 17, name: "SCREEN OFF", names: ["NEVER", "5 MIN", "15 MIN", "30 MIN", "60 MIN"], def: 3, tab: 0 },
   { id: 19, name: "PLAYHEAD", names: ["THEME", "LINE"], def: 0, tab: 0 },   /* ((Skiff #27) HOME's figure at the playhead, or the line) */
   { id: 20, name: "RETURN", names: ["SNAP", "1 BEAT", "1 BAR"], def: 2, tab: 1 },   /* ((2.0) how MOMENTARY, FX's macros, throws come back) */
-  { id: 21, name: "MASTER START", names: ["LAST", "SAFE"], def: 0, tab: 2 }];   /* ((Skiff #32) SAFE: quiet at power-on) */
+  { id: 21, name: "MASTER START", names: ["LAST", "SAFE"], def: 0, tab: 2 },   /* ((Skiff #32) SAFE: quiet at power-on) */
+  { id: 24, name: "SHARED WARN", names: ["ON", "OFF"], def: 0, tab: 1 }];   /* ((#53) a shared pattern's clear asks first) */
 /* (Skiff W1) a step's trig condition (core.h TC_NAME; INFO 43 01 says how many) */
 const TC_NAMES = ["--", "FILL", "!FILL", "1:2", "2:2", "1:3", "2:3", "3:3", "1:4", "2:4", "3:4", "4:4"];
 /* (Skiff W3) the DRUM-X kit: the factory's (drumx_voice.c DX_KIT_INIT: {mode, A, B}, A and B PITCH P MOD DECAY NOISE

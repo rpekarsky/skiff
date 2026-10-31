@@ -167,6 +167,9 @@ static const char *const RET_SAY[3] = {"BACK", "BACK OVER 1 BEAT", "BACK OVER 1 
  * master_rise; the SMK's K1 put there, smk_ui.c); bit 4 of CPU2_BYTE (bit 3 is PRESETS KNOB), clear (every older
  * setting): LAST, as before */
 #define MASTER_SAFE_SET ((CPU2_BYTE >> 4) & 1u)
+/* (#53) MENU > CONTROL > SHARED WARN OFF: a clear of a pattern that plays elsewhere too asks nothing (ui_layer.c
+ * clear_asked); bit 5 of CPU2_BYTE, clear (every older setting): ON */
+#define SHARED_WARN_OFF ((CPU2_BYTE >> 5) & 1u)
 enum { CLK_NONE, CLK_ARMED, CLK_ON, CLK_KEPT, CLK_REFUSED, CLK_TRIPPED };   /* (ARMED: switching; TRIPPED: a reset then, so
                                                         * no switch till power-off) */
 #define CLK320_MAGIC 0x434C4B32u                       /* "CLK2" */

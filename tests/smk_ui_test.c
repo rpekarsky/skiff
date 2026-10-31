@@ -584,7 +584,7 @@ static int test_pad_follow(void)
 
     bad += check("SMK MENU > PAD FOLLOW: a DISPLAY row after PAD LIGHT (ten with POPUP TIME, CLOSE), OFF PAGE ROW, PAGE by default",
                  MI_TAB[MI_PADF] == MTAB_DISPLAY && MI_PADF == MI_PADL + 1u && mtab_rows(MTAB_DISPLAY) == 10u &&
-                 mtab_rows(MTAB_CONTROL) == 8u && menu_n(MI_PADF) == SMK_PF_N && smk_pf_mode() == SMK_PF_PAGE &&
+                 mtab_rows(MTAB_CONTROL) == 9u && menu_n(MI_PADF) == SMK_PF_N && smk_pf_mode() == SMK_PF_PAGE &&
                  str_eq(MI_NAME[MI_PADF], "PAD FOLLOW") && str_eq(menu_vname(MI_PADF, menu_get(MI_PADF)), "PAGE"));
     sel_set(0);
     t = TSEL;
@@ -1307,6 +1307,18 @@ static int test_seq_edit_clear(void)
     press_id(SMK_BTN_KNOB_BANK);
     ok = step_on(&t->step[2]) && step_on(&t->step[9]) && ui.undo_w && take_box.kind == 1u && ui.take_t;
     bad += check("SMK KNOB BANK tap after SEQ + PARA: the clear undone, the undo box", ok);
+    trk_pid[song.sel] = 1;                        /* (on pattern 01, which T3's entry D plays too) */
+    lists.ent[2][3][0] = 1;
+    frames(400);
+    press_with(panel.btn[B_SEQ], panel.btn[B_EDIT]);
+    ok = ui.confirm == CF_CLEAR_SEQ && step_on(&t->step[2]);
+    press(B_OCTDN);
+    ok &= !ui.confirm && step_on(&t->step[2]);
+    menu_put(MI_SHWARN, 1);
+    press_with(panel.btn[B_SEQ], panel.btn[B_EDIT]);
+    ok &= !ui.confirm && seq_is_empty(t) && msg_is("PATTERN 01 CLEARED");
+    menu_put(MI_SHWARN, 0);
+    bad += check("SMK SEQ + PARA on a shared pattern: CLEAR PATTERN 01?, OCT- cancels; SHARED WARN OFF: at once", ok);
     return bad;
 }
 

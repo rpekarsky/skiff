@@ -349,10 +349,9 @@ Felucca) first, and lists what it converted.
   AUTOMATION lists them all to edit, move or delete
 - **SEQ TOOLS** (hold SEQ): CLEAR, REVERSE, SHIFT < / >, RANDOM, COOK, and (1.3) EUCLID (hits spread over the steps,
   rotated; OCT+ applies), DOUBLE and HALF (the length and the steps with it); on a drum track BEAT and each lane's
-  tools. (#53) SEQ held + EDIT is F3's CLEAR as a shortcut (PATTERN 05 CLEARED, one undo); it asks first
-  (CLEAR PATTERN 05?) when that pattern plays elsewhere too, in another entry or another saved project: patterns are
-  shared by every project, and the undo only lives in this session, so a project saved with the cleared pattern
-  can't be helped by it
+  tools. (#53) SEQ held + EDIT is F3's CLEAR as a shortcut (PATTERN 05 CLEARED, one undo). Patterns are shared by
+  every project and the undo lives only in this session, so F3, the shortcut and the REC layer's CLEAR ask first
+  (CLEAR PATTERN 05?) when another entry or another saved project plays that pattern too (MENU › SHARED WARN)
 - **MOMENTARY** (1.3): hold LFO and turn knobs on HOME, a sound page, an FX page or the MIXER: let go and the values
   come back (OCT+ keeps them), not recorded; (2.0) over a bar, or as MENU › CONTROL › RETURN says (SNAP, 1 BEAT,
   1 BAR), the same for FX's macros and PERFORM's throws
@@ -577,7 +576,7 @@ and BREAK 1.1's own break.
 ## Menu
 
 Hold **HOME** and let it go for the menu. It is in five tabs: **DISPLAY** (THEME, PLAYHEAD, LARGE, ANIM, LEDS,
-SCREEN OFF, HINTS, POPUP TIME, POPUP CLOSE), **CONTROL** (HOLD, KNOB ACCEL, BPM LOCK, PRESETS KNOB, SCALE LEDS, STEP PREVIEW, RETURN), **AUDIO** (SPEAKER EQ,
+SCREEN OFF, HINTS, POPUP TIME, POPUP CLOSE), **CONTROL** (HOLD, KNOB ACCEL, BPM LOCK, PRESETS KNOB, SCALE LEDS, STEP PREVIEW, RETURN, SHARED WARN), **AUDIO** (SPEAKER EQ,
 USB LEVEL, CLICK, CLICK LEVEL, COUNT-IN, TUNE, MASTER START), **SYSTEM** (RESTORE LAST, CPU, CPU CLOCK, HARDWARE CALIBRATION, RESET
 SETTINGS, ABOUT) and **MIDI** (CLOCK, MIDI IN, MIDI LEARN, LEARN CLEAR, T1–T6 CHANNEL); a tab of more than six rows
 scrolls. On the SMK-37 Pro, DISPLAY has PAD FOLLOW where LEDS is and CONTROL ends with KEY VELOCITY
@@ -639,6 +638,10 @@ every setting back as a new unit has it. The web editor's Settings tab reads and
   sounds the step it lands on, when stopped
 - **RETURN** (CONTROL, 2.0): SNAP, 1 BEAT or 1 BAR (default): how MOMENTARY's values (LFO held + a knob), the FX
   layer's macros and PERFORM's throws come back, at once or in a line over that time; OCT+ keeps them instead
+- **SHARED WARN** (CONTROL, #53): ON (default) or OFF. ON: clearing a track's pattern (SEQ TOOLS' F3 CLEAR, SEQ held +
+  EDIT, the REC layer's CLEAR) asks first (CLEAR PATTERN 05?, OCT+ / OCT-) when another entry or another saved project
+  plays that pattern too. OFF: it clears at once; SAVE held still undoes it in this session, but a project saved with
+  the cleared pattern can't be helped by that
 - **CPU** (SYSTEM): **1 CORE** (default) or **2 CORES (BETA)**, then how busy the audio is. 2 CORES takes effect
   at the next power-on: stop playing first (the row says STOP while the music plays, since settings are saved
   stopped), then restart when it says RESTART: the FM-1's second core renders some of the tracks of

@@ -1975,7 +1975,7 @@ static int layer_allowed(void);
 static uint32_t ly_bit(uint32_t l);
 static void layer_lock_input(uint32_t pressed);
 static uint32_t seq_edit_clear(uint32_t pressed);
-static void tools_clear(void);
+static void clear_confirmed(void);
 static void layer_shift_lock(uint32_t pressed, uint32_t now);
 static uint32_t layer_bits_all(void);
 static void layer_unlock(void);
@@ -2426,8 +2426,8 @@ static void ui_input(void)
                 ui_message("SETTINGS RESET");
             } else if (kind == CF_STORE_SCENE) {        /* (Skiff U2) PERFORM: SAVE + a white key over a scene */
                 scene_saved(ui.confirm_trk);
-            } else {                                    /* CF_CLEAR_SEQ: ((#53) SEQ + EDIT) SEQ TOOLS' F3 CLEAR */
-                tools_clear();
+            } else {                                    /* CF_CLEAR_SEQ: ((#53) a clear of a shared pattern) */
+                clear_confirmed();
             }
         } else if (oct & 1u) {
             ui.confirm = 0;

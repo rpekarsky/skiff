@@ -1580,7 +1580,7 @@ static int test_menu_tabs(void)
     bad += check("MENU tabs: DISPLAY CONTROL AUDIO SYSTEM MIDI ((1.3) MIDI appended), rows in a run, 6 shown fit the page; "
                  "tab gaps constant (S, LARGE)",
                  ok && MTAB_COUNT == 5u && str_eq(MTAB_NAME[0], "DISPLAY") && str_eq(MTAB_NAME[MTAB_MIDI], "MIDI") &&
-                 mtab_rows(MTAB_DISPLAY) == 9u && mtab_rows(MTAB_CONTROL) == 7u && mtab_rows(MTAB_AUDIO) == 7u &&   /* (#27, POPUP TIME, CLOSE; (2.0) RETURN; PRESETS KNOB; #32) */
+                 mtab_rows(MTAB_DISPLAY) == 9u && mtab_rows(MTAB_CONTROL) == 8u && mtab_rows(MTAB_AUDIO) == 7u &&   /* (#27, POPUP TIME, CLOSE; (2.0) RETURN; PRESETS KNOB; #32; #53) */
                  mtab_rows(MTAB_SYSTEM) == 6u + FELUCCA_CDC && mtab_rows(MTAB_MIDI) == 10u);   /* ((Skiff) SYSTEM: CPU
                                                          * CLOCK; (Skiff 2.0) USB SERIAL with the console only) */
 
@@ -8867,7 +8867,7 @@ static int f3_cleared(void)                             /* (tl_melody's: LEN 8, 
             return 0;
     return TSEL->step[20].note[0] == 72 && !tl_lock_at(3);
 }
-static int clear_asked(const char *detail)
+static int dialog_says(const char *detail)
 {
     char a[24], b[40];
     confirm_text(a, b);
@@ -8934,7 +8934,7 @@ static int test_seq_edit_clear(void)
 
     lists.ent[3][5][0] = (uint8_t)pid;                  /* T4's entry F plays it too */
     seq_edit();
-    ok = clear_asked("01 is used in other entries") && !memcmp(TSEL->step, ref, sizeof ref);
+    ok = dialog_says("01 is used in other entries") && !memcmp(TSEL->step, ref, sizeof ref);
     seq_let_go();
     oct_back();
     ok &= !ui.confirm && !memcmp(TSEL->step, ref, sizeof ref);
@@ -8956,17 +8956,67 @@ static int test_seq_edit_clear(void)
     hold(B_SAVE);
     proj_cur = PROJ_NO_SLOT;                            /* (the music another project: C's copy is someone else's) */
     seq_edit();
-    ok &= clear_asked("01 is used in other projects") && !memcmp(TSEL->step, ref, sizeof ref);
+    ok &= dialog_says("01 is used in other projects") && !memcmp(TSEL->step, ref, sizeof ref);
     seq_let_go();
     oct_back();
     ok &= !ui.confirm && !memcmp(TSEL->step, ref, sizeof ref);
     lists.ent[3][5][0] = (uint8_t)pid;
     seq_edit();
-    ok &= clear_asked("01 is used elsewhere");
+    ok &= dialog_says("01 is used elsewhere");
     seq_let_go();
     oct_back();
     bad += check("  a saved project plays it: 01 is used in other projects (the music's own save: no dialog); both: "
                  "elsewhere", ok);
+
+    btn_down(B_SEQ); frame(); tl_key(0);                /* F3 */
+    ok = dialog_says("01 is used elsewhere") && !memcmp(TSEL->step, ref, sizeof ref);
+    seq_let_go();
+    btn_down(B_OCTUP); frame(); btn_up(B_OCTUP); frame();
+    ok &= !ui.confirm && f3_cleared() && msg_is("PATTERN 01 CLEARED");
+    hold(B_SAVE);
+    ok &= !memcmp(TSEL->step, ref, sizeof ref);
+    bad += check("  F3 the same: asked, OCT+ clears steps 1..LEN, undoable", ok);
+    rec_open(); frame(); rec_clear_held();
+    ok = dialog_says("01 is used elsewhere") && !memcmp(TSEL->step, ref, sizeof ref);
+    oct_back();
+    ok &= !ui.confirm && !memcmp(TSEL->step, ref, sizeof ref);
+    rec_open(); frame(); rec_clear_held();
+    btn_down(B_OCTUP); frame(); btn_up(B_OCTUP); frame();
+    ok &= !ui.confirm && seq_is_empty(TSEL) && msg_is("SEQUENCE CLEARED");
+    hold(B_SAVE);
+    ok &= !memcmp(TSEL->step, ref, sizeof ref);
+    bad += check("  REC's CLEAR the same: asked, OCT- cancels, OCT+ clears all the steps (as ever), undoable", ok);
+
+    ok = str_eq(MI_NAME[MI_SHWARN], "SHARED WARN") && MI_TAB[MI_SHWARN] == MTAB_CONTROL && !menu_get(MI_SHWARN) &&
+         str_eq(menu_vname(MI_SHWARN, 0), "ON") && menu_step(MI_SHWARN, -1) == 1u;
+    menu_put(MI_SHWARN, 1);
+    ok &= SHARED_WARN_OFF && (CPU2_BYTE & 32u) && str_eq(menu_vname(MI_SHWARN, menu_get(MI_SHWARN)), "OFF") &&
+          menu_step(MI_SHWARN, 1) == 0u;
+    seq_edit();
+    ok &= !ui.confirm && f3_cleared();
+    seq_let_go();
+    hold(B_SAVE);
+    btn_down(B_SEQ); frame(); tl_key(0);
+    ok &= !ui.confirm && f3_cleared();
+    seq_let_go();
+    hold(B_SAVE);
+    rec_open(); frame(); rec_clear_held();
+    ok &= !ui.confirm && seq_is_empty(TSEL);
+    hold(B_SAVE);
+    ok &= !memcmp(TSEL->step, ref, sizeof ref);
+    bad += check("  MENU > CONTROL > SHARED WARN (ON, bit 5 of CPU2_BYTE set = OFF): OFF, all three clear at once, "
+                 "undoable", ok);
+    {
+        sks_t rec = {0};
+        rec.magic = SKS_MAGIC; rec.panel = panel;
+        settings_export(&rec);
+        rec.s.cpu &= (uint8_t)~32u;                     /* (a record from before: the bit never set) */
+        ok = settings_import(&rec, sizeof rec) && !SHARED_WARN_OFF;
+        menu_put(MI_SHWARN, 1);
+        settings_reset();
+        ok &= !SHARED_WARN_OFF;
+    }
+    bad += check("  SHARED WARN: ON from a record of before (its bit 0), RESET SETTINGS: ON", ok);
     ui_power_on();
     return bad;
 }
