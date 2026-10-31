@@ -29,8 +29,8 @@ static int tl_cell(const track_t *t, uint32_t p)
 }
 
 /* the undo copy of t as it is now (ui.c load_begin, but the automation is copied and stays): one action, named */
-static const char *const TL_UNDO[TL_N] = {"CLEAR", "REVERSE", "SHIFT", "SHIFT", "RANDOM", "COOK", "BEAT", "EUCLID",
-    "LANE CLEAR", "LANE REVERSE", "LANE FILL", "LANE RANDOM", "DOUBLE", "HALF"};   /* (Skiff: the undo box) */
+static const char *const TL_UNDO[TL_N] = {UNDO_PAT_CLEAR, "REVERSE", "SHIFT", "SHIFT", "RANDOM", "COOK", "BEAT",
+    "EUCLID", "LANE CLEAR", "LANE REVERSE", "LANE FILL", "LANE RANDOM", "DOUBLE", "HALF"};   /* (Skiff: the undo box) */
 static void tl_undo_take(track_t *t, const char *name)
 {
     uint32_t i = trk_index(t);
@@ -722,10 +722,16 @@ static const char *tl_do(track_t *t, uint32_t p, uint32_t l)
     }
     tl_undo_take(t, TL_UNDO[p % TL_N]);
     switch (p) {
-    case TL_CLEAR:
+    case TL_CLEAR:                                      /* ((#53) "PATTERN 05 CLEARED": its pattern, if it has one) */
         for (i = 0; i < len; i++)
             step_clear(&t->step[i]);
         msg = "SEQUENCE CLEARED";
+        if (trk_pat(trk_index(t)) < NPAT) {
+            str_cpy(b, "PATTERN 00 CLEARED", sizeof b);
+            pat_num(b + 8, trk_pat(trk_index(t)));
+            b[10] = ' ';
+            msg = b;
+        }
         break;
     case TL_REV: tl_reverse(t, len); msg = "REVERSED"; break;
     case TL_LEFT: tl_shift(t, len, len - 1u); msg = "SHIFTED LEFT"; break;

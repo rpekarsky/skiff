@@ -962,6 +962,20 @@ static uint32_t pat_refs(uint32_t id, uint32_t k, uint32_t e)
             n += (t != k || j != e) && lists.ent[t][j][0] == id + 1u;
     return n;
 }
+/* (#53) where else pattern id plays when track k's steps change: PAT_IN_ENTRIES the lists' entries but the one track k
+ * is on, PAT_IN_PROJECTS the saved projects but the one the music is (proj_cur); 0: nowhere else */
+static uint32_t pat_used_elsewhere(uint32_t k, uint32_t id)
+{
+    uint32_t own = bank_cur(k), t, j, sl, where = 0;
+    for (t = 0; t < NTRK; t++)
+        for (j = 0; j < NENT; j++)
+            if ((t != k || j != own) && lists.ent[t][j][0] == id + 1u)
+                where |= PAT_IN_ENTRIES;
+    for (sl = 0; sl < 4u; sl++)
+        if (sl != proj_cur && proj_slot_refs_in(sl, id))
+            where |= PAT_IN_PROJECTS;
+    return where;
+}
 /* SAVE > PATTERNS (stopped): track k's pattern into its entry e (that entry's pattern, else a new one; the track is
  * on it then); erase: the entry emptied, its pattern erased when nothing else names it; the track on that entry
  * emptied too (its steps and automation: else the next keep would make them a pattern there again). 0 done, 2 not

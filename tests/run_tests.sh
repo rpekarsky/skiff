@@ -344,7 +344,7 @@ if [ -f build/gen/felucca_tables.h ]; then
     run "editor: real C protocol, malformed transfers, queue recovery, MENU settings (writes build/host/menu.json)" \
         env MENU_JSON="$OUT/menu.json" "$OUT/editor_test"
     $CC -w -DFELUCCA_CDC=0 -Ibuild/gen -Ifirmware/src -o "$OUT/editor_test_rel" tests/editor_test.c -lm
-    run "editor as a release builds it (FELUCCA_CDC=0): MENU settings without USB SERIAL (18; id 11 refused)" "$OUT/editor_test_rel"
+    run "editor as a release builds it (FELUCCA_CDC=0): MENU settings without USB SERIAL (19; id 11 refused)" "$OUT/editor_test_rel"
     $CC -w -Ibuild/gen -Ifirmware/src -o "$OUT/robust_test" tests/robust_test.c -lm
     run "robustness: crafted sample slots, engine numbers, retained old projects, preset patterns, malformed requests" \
         "$OUT/robust_test"

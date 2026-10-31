@@ -1723,7 +1723,7 @@ static int test_menu_tabs(void)
     bad += check("MENU tabs: DISPLAY CONTROL AUDIO SYSTEM MIDI ((1.3) MIDI appended), rows in a run, 6 shown fit the page; "
                  "tab gaps constant (S, LARGE)",
                  ok && MTAB_COUNT == 5u && str_eq(MTAB_NAME[0], "DISPLAY") && str_eq(MTAB_NAME[MTAB_MIDI], "MIDI") &&
-                 mtab_rows(MTAB_DISPLAY) == 9u && mtab_rows(MTAB_CONTROL) == 7u && mtab_rows(MTAB_AUDIO) == 7u &&   /* (#27, POPUP TIME, CLOSE; (2.0) RETURN; PRESETS KNOB; #32) */
+                 mtab_rows(MTAB_DISPLAY) == 9u && mtab_rows(MTAB_CONTROL) == 8u && mtab_rows(MTAB_AUDIO) == 7u &&   /* (#27, POPUP TIME, CLOSE; (2.0) RETURN; PRESETS KNOB; #32; #53) */
                  mtab_rows(MTAB_SYSTEM) == 6u + FELUCCA_CDC && mtab_rows(MTAB_MIDI) == 10u);   /* ((Skiff) SYSTEM: CPU
                                                          * CLOCK; (Skiff 2.0) USB SERIAL with the console only) */
 
@@ -9028,6 +9028,175 @@ static int test_large(void)
 
 /* MENU (1.0.5: in tabs): every row reachable with ALGORITHM and PRESETS, each tab its own page; #46 MENU > ANIM: ON by
  * default (and in every older setting), OFF snaps the rolling digits, the piano roll and the menu's tabs */
+/* #53: EDIT pressed with SEQ held is F3's CLEAR (SEQ TOOLS: steps 1..LEN, the cleared steps' locks; LEN, DIV, the
+ * steps past LEN and the pattern stay), one undo (SAVE held, the undo box) or OCT- in the layer; a combo (no page when
+ * SEQ is let go), the map open at once; a locked SEQ TOOLS closes on EDIT instead (EDIT acts as always). Said by its
+ * pattern ("PATTERN 01 CLEARED", F3 too; on none yet "SEQUENCE CLEARED"); a pattern another entry or another saved
+ * project plays: asked first */
+static void seq_edit(void) { btn_down(B_SEQ); frame(); press(B_EDIT); }
+static void seq_let_go(void) { btn_up(B_SEQ); frame(); frames(400); }
+static int f3_cleared(void)                             /* (tl_melody's: LEN 8, a note on step 21, a lock on step 4) */
+{
+    uint32_t i;
+    for (i = 0; i < 8u; i++)
+        if (TSEL->step[i].time != ST_REST || TSEL->step[i].n)
+            return 0;
+    return TSEL->step[20].note[0] == 72 && !tl_lock_at(3);
+}
+static int dialog_says(const char *detail)
+{
+    char a[24], b[40];
+    confirm_text(a, b);
+    return ui.confirm == CF_CLEAR_SEQ && str_eq(a, "CLEAR PATTERN 01?") && str_eq(b, detail);
+}
+static int test_seq_edit_clear(void)
+{
+    int bad = 0, ok;
+    uint32_t pid, pg;
+    int16_t len, div;
+    step_t ref[NSTEP];
+    ui_power_on();
+    proj_cur = PROJ_NO_SLOT;
+    sel_set(1);
+    tl_melody();
+    TSEL->p[P_SDIV] = 3;
+    bank_put(song.sel, 0, 0);
+    pid = trk_pid[song.sel];
+    len = TSEL->p[P_SLEN];
+    div = TSEL->p[P_SDIV];
+    memcpy(ref, TSEL->step, sizeof ref);
+    go_page(GR_ROLL); frame();
+    pg = ui.page;
+    seq_edit();
+    ok = f3_cleared() && msg_is("PATTERN 01 CLEARED") && str_eq(ui.msg2, "HOLD [SAVE]: UNDO") &&
+         ui.layer == LAYER_SEQ && !ui.confirm && !gates();
+    bad += check("(#53) SEQ held + EDIT: F3's CLEAR (steps 1..LEN and their locks), PATTERN 01 CLEARED + the undo hint", ok);
+    ok = TSEL->p[P_SLEN] == len && TSEL->p[P_SDIV] == div && trk_pid[song.sel] == pid && pid == 1u && pool_used(0);
+    bad += check("  LEN, DIV, the track's pattern and its place in the pool stay", ok);
+    seq_let_go();
+    ok = !ui.layer && !ui.lock && ui.page == pg && !ui.home && !msg_is("ONE LAYER AT A TIME");
+    bad += check("  a combo: SEQ let go opens no page, no EDIT layer, no lock", ok);
+    hold(B_SAVE);
+    ok = !memcmp(TSEL->step, ref, sizeof ref) && tl_lock_at(3) && undo_is("UNDO T2 CLEAR PATTERN 01") && ui.undo_w;
+    bad += check("  SAVE held: one undo puts the steps and the lock back (the undo box: UNDO T2 CLEAR PATTERN 01)", ok);
+
+    btn_down(B_SEQ); frames(500);
+    press(B_EDIT);
+    ok = f3_cleared() && ui.layer == LAYER_SEQ;
+    oct_back();
+    ok &= !memcmp(TSEL->step, ref, sizeof ref) && msg_is("UNDONE: SEQUENCE") && song.octave == 0;
+    tl_key(0);
+    ok &= f3_cleared() && msg_is("PATTERN 01 CLEARED");
+    oct_back();
+    seq_let_go();
+    ok &= !ui.layer && ui.page == pg && !memcmp(TSEL->step, ref, sizeof ref);
+    bad += check("  the map open: EDIT clears, OCT- puts the track back; F3 the same (PATTERN 01 CLEARED)", ok);
+
+    shift_lock(B_SEQ);
+    ok = ui.lock == LAYER_SEQ;
+    press(B_EDIT); frames(400);
+    ok &= !ui.lock && ui.layer != LAYER_SEQ && !memcmp(TSEL->step, ref, sizeof ref);
+    bad += check("  SEQ TOOLS locked: EDIT closes it as another button does, nothing cleared", ok);
+
+    go_page(GR_ROLL); frame();
+    trk_pid[song.sel] = 0;                              /* (steps no pattern holds yet) */
+    seq_edit();
+    ok = f3_cleared() && msg_is("SEQUENCE CLEARED") && !ui.confirm;
+    seq_let_go();
+    hold(B_SAVE);
+    ok &= !memcmp(TSEL->step, ref, sizeof ref);
+    bad += check("  on no pattern yet: SEQUENCE CLEARED, no dialog, SAVE held undoes it", ok);
+    trk_pid[song.sel] = (uint8_t)pid;
+
+    lists.ent[3][5][0] = (uint8_t)pid;                  /* T4's entry F plays it too */
+    seq_edit();
+    ok = dialog_says("01 is used in other entries") && !memcmp(TSEL->step, ref, sizeof ref);
+    seq_let_go();
+    oct_back();
+    ok &= !ui.confirm && !memcmp(TSEL->step, ref, sizeof ref);
+    bad += check("  another entry plays its pattern: CLEAR PATTERN 01? / 01 is used in other entries; OCT- cancels", ok);
+    seq_edit();
+    seq_let_go();
+    btn_down(B_OCTUP); frame(); btn_up(B_OCTUP); frame();
+    ok = !ui.confirm && f3_cleared() && msg_is("PATTERN 01 CLEARED");
+    hold(B_SAVE);
+    ok &= !memcmp(TSEL->step, ref, sizeof ref);
+    bad += check("  OCT+ clears (PATTERN 01 CLEARED), SAVE held undoes it", ok);
+    lists.ent[3][5][0] = 0;
+
+    project_save(2);                                    /* (the music is project C now: its own copy asks nothing) */
+    frames(400);
+    seq_edit();
+    ok = !ui.confirm && f3_cleared();
+    seq_let_go();
+    hold(B_SAVE);
+    proj_cur = PROJ_NO_SLOT;                            /* (the music another project: C's copy is someone else's) */
+    seq_edit();
+    ok &= dialog_says("01 is used in other projects") && !memcmp(TSEL->step, ref, sizeof ref);
+    seq_let_go();
+    oct_back();
+    ok &= !ui.confirm && !memcmp(TSEL->step, ref, sizeof ref);
+    lists.ent[3][5][0] = (uint8_t)pid;
+    seq_edit();
+    ok &= dialog_says("01 is used elsewhere");
+    seq_let_go();
+    oct_back();
+    bad += check("  a saved project plays it: 01 is used in other projects (the music's own save: no dialog); both: "
+                 "elsewhere", ok);
+
+    btn_down(B_SEQ); frame(); tl_key(0);                /* F3 */
+    ok = dialog_says("01 is used elsewhere") && !memcmp(TSEL->step, ref, sizeof ref);
+    seq_let_go();
+    btn_down(B_OCTUP); frame(); btn_up(B_OCTUP); frame();
+    ok &= !ui.confirm && f3_cleared() && msg_is("PATTERN 01 CLEARED");
+    hold(B_SAVE);
+    ok &= !memcmp(TSEL->step, ref, sizeof ref);
+    bad += check("  F3 the same: asked, OCT+ clears steps 1..LEN, undoable", ok);
+    rec_open(); frame(); rec_clear_held();
+    ok = dialog_says("01 is used elsewhere") && !memcmp(TSEL->step, ref, sizeof ref);
+    oct_back();
+    ok &= !ui.confirm && !memcmp(TSEL->step, ref, sizeof ref);
+    rec_open(); frame(); rec_clear_held();
+    btn_down(B_OCTUP); frame(); btn_up(B_OCTUP); frame();
+    ok &= !ui.confirm && seq_is_empty(TSEL) && msg_is("SEQUENCE CLEARED");
+    hold(B_SAVE);
+    ok &= !memcmp(TSEL->step, ref, sizeof ref);
+    bad += check("  REC's CLEAR the same: asked, OCT- cancels, OCT+ clears all the steps (as ever), undoable", ok);
+
+    ok = str_eq(MI_NAME[MI_SHWARN], "SHARED WARN") && MI_TAB[MI_SHWARN] == MTAB_CONTROL && !menu_get(MI_SHWARN) &&
+         str_eq(menu_vname(MI_SHWARN, 0), "ON") && menu_step(MI_SHWARN, -1) == 1u;
+    menu_put(MI_SHWARN, 1);
+    ok &= SHARED_WARN_OFF && (CPU2_BYTE & 32u) && str_eq(menu_vname(MI_SHWARN, menu_get(MI_SHWARN)), "OFF") &&
+          menu_step(MI_SHWARN, 1) == 0u;
+    seq_edit();
+    ok &= !ui.confirm && f3_cleared();
+    seq_let_go();
+    hold(B_SAVE);
+    btn_down(B_SEQ); frame(); tl_key(0);
+    ok &= !ui.confirm && f3_cleared();
+    seq_let_go();
+    hold(B_SAVE);
+    rec_open(); frame(); rec_clear_held();
+    ok &= !ui.confirm && seq_is_empty(TSEL);
+    hold(B_SAVE);
+    ok &= !memcmp(TSEL->step, ref, sizeof ref);
+    bad += check("  MENU > CONTROL > SHARED WARN (ON, bit 5 of CPU2_BYTE set = OFF): OFF, all three clear at once, "
+                 "undoable", ok);
+    {
+        sks_t rec = {0};
+        rec.magic = SKS_MAGIC; rec.panel = panel;
+        settings_export(&rec);
+        rec.s.cpu &= (uint8_t)~32u;                     /* (a record from before: the bit never set) */
+        ok = settings_import(&rec, sizeof rec) && !SHARED_WARN_OFF;
+        menu_put(MI_SHWARN, 1);
+        settings_reset();
+        ok &= !SHARED_WARN_OFF;
+    }
+    bad += check("  SHARED WARN: ON from a record of before (its bit 0), RESET SETTINGS: ON", ok);
+    ui_power_on();
+    return bad;
+}
+
 static int test_menu_prefs(void)
 {
     int bad = 0, ok = 1;
@@ -10319,6 +10488,7 @@ int main(void)
     bad += test_layer_lock();
     bad += test_rec_layer();
     bad += test_seq_tools();
+    bad += test_seq_edit_clear();
     bad += test_menu_prefs();
     bad += test_style();
     bad += test_blocks();

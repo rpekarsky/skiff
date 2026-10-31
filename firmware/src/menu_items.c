@@ -36,18 +36,18 @@
 /* (SMK-37 Pro, SMK37_UX.md) KEY VELOCITY in CONTROL (question 8); no LEDS row (button LEDs A: on or off only): MI_LEDS
  * past MI_COUNT, so its setting stays and no tab shows it; (wishlist #5, #42) PAD LIGHT, PAD FOLLOW where FM-1's LEDS is */
 enum { MI_COLOR, MI_PHEAD, MI_LARGE, MI_ANIM, MI_PADL, MI_PADF, MI_SCROFF, MI_HINTS, MI_POPUP_IN MI_HOLD,
-       MI_ACCEL, MI_BPMLOCK, MI_PKNOB, MI_SCLLED, MI_PREVIEW, MI_RETURN, MI_KVEL, MI_LOWCUT, MI_USB, MI_CLICK, MI_CLKLVL,
-       MI_COUNTIN, MI_TUNE, MI_MSTART, MI_CLOCK, MI_ROUTE, MI_LEARN, MI_LCLEAR, MI_TCH1, MI_TCH2, MI_TCH3, MI_TCH4,
-       MI_TCH5, MI_TCH6, MI_SERIAL_IN MI_RESTORE, MI_CPU, MI_CLK,
+       MI_ACCEL, MI_BPMLOCK, MI_PKNOB, MI_SCLLED, MI_PREVIEW, MI_RETURN, MI_SHWARN, MI_KVEL, MI_LOWCUT, MI_USB,
+       MI_CLICK, MI_CLKLVL, MI_COUNTIN, MI_TUNE, MI_MSTART, MI_CLOCK, MI_ROUTE, MI_LEARN, MI_LCLEAR, MI_TCH1, MI_TCH2,
+       MI_TCH3, MI_TCH4, MI_TCH5, MI_TCH6, MI_SERIAL_IN MI_RESTORE, MI_CPU, MI_CLK,
        MI_PANEL, MI_RESET, MI_ABOUT, MI_COUNT, MI_LEDS MI_SERIAL_OUT MI_POPUP_OUT };
 static const char *const KVEL_N[SMK_KV_N] = {"DYNAMIC", "SOFT", "HARD", "FIXED 64", "FIXED 100", "FIXED 127"};
 static const char *const PADL_N[SMK_PADL_N] = {"25 %", "50 %", "75 %", "100 %"};   /* (right brighter: stored inverted) */
 static const char *const PADF_N[SMK_PF_N] = {"OFF", "PAGE", "ROW"};   /* (wishlist #42) */
 #else
 enum { MI_COLOR, MI_PHEAD, MI_LARGE, MI_ANIM, MI_LEDS, MI_SCROFF, MI_HINTS, MI_POPUP_IN MI_HOLD, MI_ACCEL,
-       MI_BPMLOCK, MI_PKNOB, MI_SCLLED, MI_PREVIEW, MI_RETURN, MI_LOWCUT, MI_USB, MI_CLICK, MI_CLKLVL, MI_COUNTIN, MI_TUNE,
-       MI_MSTART, MI_CLOCK, MI_ROUTE, MI_LEARN, MI_LCLEAR, MI_TCH1, MI_TCH2, MI_TCH3, MI_TCH4, MI_TCH5, MI_TCH6,
-       MI_SERIAL_IN MI_RESTORE, MI_CPU, MI_CLK,
+       MI_BPMLOCK, MI_PKNOB, MI_SCLLED, MI_PREVIEW, MI_RETURN, MI_SHWARN, MI_LOWCUT, MI_USB, MI_CLICK, MI_CLKLVL,
+       MI_COUNTIN, MI_TUNE, MI_MSTART, MI_CLOCK, MI_ROUTE, MI_LEARN, MI_LCLEAR, MI_TCH1, MI_TCH2, MI_TCH3, MI_TCH4,
+       MI_TCH5, MI_TCH6, MI_SERIAL_IN MI_RESTORE, MI_CPU, MI_CLK,
        MI_PANEL, MI_RESET, MI_ABOUT, MI_COUNT MI_SERIAL_OUT MI_POPUP_OUT };
 #endif   /* ((Skiff U4, A3) HINTS; RESET SETTINGS, a row with no value: its dialog) */   /* ((Skiff U3, R8, R2) CLOCK, MIDI IN, TUNE: the unit's, GLOBAL's and SYSTEM's before; CPU: read) */   /* (1.1: the metronome's rows in
                                                                                              * AUDIO; 1.2: RESTORE LAST in SYSTEM, SCALE LEDS
@@ -63,6 +63,7 @@ static const char *const MI_NAME[MI_COUNT] = {"THEME", "PLAYHEAD", "LARGE", "ANI
 #endif
                                               "SCREEN OFF", "HINTS", MI_POPUP_NAME "HOLD", "KNOB ACCEL",
                                               "BPM LOCK", "PRESETS KNOB", "SCALE LEDS", "STEP PREVIEW", "RETURN",
+                                              "SHARED WARN",
 #if BOARD_SMK37
                                               "KEY VELOCITY",
 #endif
@@ -96,6 +97,7 @@ static const uint8_t MI_TAB[MI_COUNT] = {
     MTAB_CONTROL,                                                           /* SCALE LEDS (1.2) */
     MTAB_CONTROL,                                                           /* (Skiff 1.3) STEP PREVIEW */
     MTAB_CONTROL,                                                           /* (2.0, D 2A) RETURN */
+    MTAB_CONTROL,                                                           /* (#53) SHARED WARN */
 #if BOARD_SMK37
     MTAB_CONTROL,                                                           /* (SMK-37) KEY VELOCITY */
 #endif
@@ -235,6 +237,7 @@ static uint32_t menu_get(uint32_t row)
     case MI_PADF: return smk_pf_mode();
 #endif
     case MI_MSTART: return MASTER_SAFE_SET;
+    case MI_SHWARN: return SHARED_WARN_OFF;
     case MI_LEDS:
         while (i + 1u < LEDS_COUNT && LEDS_MENU[i] != settings_leds)
             i++;
@@ -279,7 +282,7 @@ static const char *menu_vname(uint32_t row, uint32_t v)
     case MI_PADF: return PADF_N[v % SMK_PF_N];
 #endif
     case MI_MSTART: return MSTART_N[v & 1u];
-    case MI_HINTS: return v & 1u ? "OFF" : "ON";
+    case MI_HINTS: case MI_SHWARN: return v & 1u ? "OFF" : "ON";
     case MI_PREVIEW: return v & 1u ? "ON" : "OFF";
     case MI_RETURN: return RET_N[v % 3u];
     case MI_POPUP: {                                   /* "DEFAULT", "0.1 s" .. "2.7 s" (the menu draws its own unit) */
@@ -366,6 +369,7 @@ static void menu_put(uint32_t row, uint32_t v)
     case MI_PADF: smk_pf_put(v); break;
 #endif
     case MI_MSTART: CPU2_BYTE = (uint8_t)(v & 1u ? CPU2_BYTE | 16u : CPU2_BYTE & ~16u); break;   /* (the next power-on) */
+    case MI_SHWARN: CPU2_BYTE = (uint8_t)(v & 1u ? CPU2_BYTE | 32u : CPU2_BYTE & ~32u); break;
     case MI_HINTS: ui_hints_off = (uint8_t)(v & 1u); ui.force = 1; break;
     case MI_PREVIEW:                                   /* ((Skiff 1.3) a bit of CPU2_BYTE) */
         CPU2_BYTE = (uint8_t)(v & 1u ? CPU2_BYTE | 2u : CPU2_BYTE & ~2u);
@@ -407,6 +411,7 @@ static void settings_reset(void)
     menu_put(MI_PADF, SMK_PF_PAGE);
 #endif
     menu_put(MI_MSTART, 0);
+    menu_put(MI_SHWARN, 0);
     menu_put(MI_HOLD, HOLD_DEF);
     menu_put(MI_LOWCUT, 0);
     menu_put(MI_SCROFF, 3);                            /* (30 MIN) */
@@ -437,8 +442,8 @@ static uint32_t menu_step(uint32_t row, int32_t s)
 {
     const menu_flag_t *f = menu_flag(row);
     uint32_t v = menu_get(row), n = menu_n(row);
-    if ((f && str_eq(f->name[0], "ON")) || row == MI_HINTS)   /* (ANIM, USB SERIAL, RESTORE LAST, HINTS: ON is their
-                                                                * value 0) */
+    if ((f && str_eq(f->name[0], "ON")) || row == MI_HINTS || row == MI_SHWARN)   /* (ANIM, USB SERIAL, RESTORE LAST,
+                                                                * HINTS, SHARED WARN: ON is their value 0) */
         s = -s;
     if (s > 0)
         return v + 1u < n ? v + 1u : row == MI_COLOR ? 0u : v;

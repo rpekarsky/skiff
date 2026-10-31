@@ -1056,7 +1056,7 @@ is told: no list of settings is fixed in the editor. INFO advertises `4E 01 coun
   A tab may hold items with no value that are not offered (this firmware: SYSTEM also holds CALIBRATION and ABOUT).
   For a kind it does not know, an editor cannot find the tab (it does not know that kind's bytes).
 
-This firmware (count 19; tabs 0 DISPLAY, 1 CONTROL, 2 AUDIO, 3 SYSTEM; 1.0.5 had the first 12, 1.1 the first 15, 1.2
+This firmware (count 20; tabs 0 DISPLAY, 1 CONTROL, 2 AUDIO, 3 SYSTEM; 1.0.5 had the first 12, 1.1 the first 15, 1.2
 before SCALE LEDS the first 16, before SCREEN OFF the first 17; Skiff before #27 the first 16; the SMK-37 build has
 KEY VELOCITY, id 18, before PLAYHEAD and no LEDS, and after MASTER START (wishlist #42) PAD FOLLOW, id 22: 0 OFF,
 1 PAGE, 2 ROW, PAGE the default, and (wishlist #5) PAD LIGHT, id 23: 0 "25 %" .. 3 "100 %", 100 % the default, both
@@ -1085,6 +1085,7 @@ rc 1), and the indexes after them are lower than before:
 | 16 | 19 | PLAYHEAD | 0 | 0 THEME, 1 LINE (Skiff #27) | THEME | 0 DISPLAY |
 | 17 | 20 | RETURN | 0 | 0 SNAP, 1 "1 BEAT", 2 "1 BAR" (2.0) | 1 BAR | 1 CONTROL |
 | 18 | 21 | MASTER START | 0 | 0 LAST, 1 SAFE (wishlist #32: at power-on at most 20 %, rising from silence) | LAST | 2 AUDIO |
+| 19 | 24 | SHARED WARN | 0 | 0 ON, 1 OFF (wishlist #53: a clear of a pattern another entry or saved project plays asks first) | ON | 1 CONTROL |
 
 PLAYHEAD (id 19, Skiff #27): THEME draws the THEME's figure at the playhead on HOME's selected lane (CRYPT's torch,
 NEON's car, QUARK's collision), LINE the playhead's line only; SKIFF, HI-CON and PAPER draw no figure either way.

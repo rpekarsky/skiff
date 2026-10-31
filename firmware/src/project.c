@@ -1137,23 +1137,28 @@ static int proj_pack2(project_store_t *out, const project_t *q, const proj_fmt_t
     sum = proj_hash(b, f->size - 4u); memcpy(b + f->size - 4u, &sum, 4);
     return 1;
 }
-/* how many entries of the saved projects (the SKF2, SKF3 and SKF4 slots) name pattern id (bank.c pat_refs) */
+/* how many entries of the saved project in slot sl (an SKF2, SKF3 or SKF4 record) name pattern id */
+static uint32_t proj_slot_refs_in(uint32_t sl, uint32_t id)
+{
+    const uint8_t *b = proj_slot[sl].raw;
+    const proj_fmt_t *f = proj_fmt_of(b, sizeof proj_slot[sl]);
+    uint32_t i, n = 0, np = b[66], off, w;
+    if (f == &PROJ_SKF4)
+        off = PROJ_ENT4, w = 4u;
+    else if (!f || np < 8u || np > P_COUNT)
+        return 0;
+    else
+        off = 68u + f->nt * (np + 2u), w = 2u;
+    for (i = 0; i < f->nt * NENT; i++)
+        n += b[off + w * i] == id + 1u;
+    return n;
+}
+/* .. of all the saved projects (bank.c pat_refs) */
 static uint32_t proj_slot_refs(uint32_t id)
 {
-    uint32_t sl, i, n = 0, np, off, w;
-    for (sl = 0; sl < 4u; sl++) {
-        const uint8_t *b = proj_slot[sl].raw;
-        const proj_fmt_t *f = proj_fmt_of(b, sizeof proj_slot[sl]);
-        np = b[66];
-        if (f == &PROJ_SKF4)
-            off = PROJ_ENT4, w = 4u;
-        else if (!f || np < 8u || np > P_COUNT)
-            continue;
-        else
-            off = 68u + f->nt * (np + 2u), w = 2u;
-        for (i = 0; i < f->nt * NENT; i++)
-            n += b[off + w * i] == id + 1u;
-    }
+    uint32_t sl, n = 0;
+    for (sl = 0; sl < 4u; sl++)
+        n += proj_slot_refs_in(sl, id);
     return n;
 }
 /* an SKF2 or SKF3 record (format f) -> q (no steps, no motion: the patterns hold them); f->nt tracks, the rest as at
