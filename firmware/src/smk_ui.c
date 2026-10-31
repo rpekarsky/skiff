@@ -31,8 +31,8 @@ static int smk_pads_keys(void)                     /* 1: the pads are the white 
 #define SMK_PAD_OPTION (SMK_PAD_FULL / 2u)          /* (#43) a layer's options breathe up to half a lit pad: at full
                                                      * they read as the one chosen */
 /* (PO 31.10) a pad takes only the hue from the theme's track colour, the brightness from the logic: the colour scaled so
- * its brightest component is q /256 of full. A near-grey track colour (LCD's ink) has no hue to give: the track's SKIFF
- * colour instead, so the tracks stay apart */
+ * its brightest component is q /256 of full. A near-grey track colour has no hue to give, nor has the LCD look (every
+ * track its ink, navy since the H1n palette): the track's SKIFF colour instead, so the tracks stay apart */
 #define SMK_PAD_GREY 32u                            /* a colour's components this close: grey */
 static uint32_t smk_rgb(uint16_t c565, uint32_t q)  /* a screen colour as a pad's 0xRRGGBB */
 {
@@ -48,7 +48,7 @@ static uint32_t smk_trk_rgb(uint32_t k, uint32_t q)
     uint16_t c = T_TRK(k);
     uint32_t r = c >> 11 << 1, g = (c >> 5) & 63u, b = (c & 31u) << 1;
     uint32_t hi = r > g ? (r > b ? r : b) : (g > b ? g : b), lo = r < g ? (r < b ? r : b) : (g < b ? g : b);
-    if ((hi - lo) * 4u < SMK_PAD_GREY)                /* (6-bit components here: 255 / 63 ~ 4) */
+    if (ux.h1n || (hi - lo) * 4u < SMK_PAD_GREY)      /* (6-bit components here: 255 / 63 ~ 4) */
         c = UI_TRACKS[UI_SKIFF_INDEX][k % UI_NTRK];
     return smk_rgb(c, q);
 }

@@ -288,13 +288,13 @@ static void draw_head(void) { draw_head_blocks(); }   /* (U2: BLOCKS, the only l
 static void draw_frame(void)
 {
     uint32_t i, ch = card_h(), gy = graph_y(), gh = graph_h();   /* (MENU > LARGE: tall cards, a strip) */
-    lcd_fill(0, H_HEAD, 240, Y_LABEL - H_HEAD, T_BG);
-    lcd_fill(0, Y_LABEL + ch, 240, gy - Y_LABEL - ch, T_BG);
-    lcd_fill(0, gy + gh, 240, foot_y() - gy - gh, T_BG);
-    lcd_fill(0, Y_LABEL, (uint32_t)CARD_X(0), ch, T_BG);
+    cv_fill_bg(0, H_HEAD, 240, Y_LABEL - H_HEAD);
+    cv_fill_bg(0, Y_LABEL + ch, 240, gy - Y_LABEL - ch);
+    cv_fill_bg(0, gy + gh, 240, foot_y() - gy - gh);
+    cv_fill_bg(0, Y_LABEL, (uint32_t)CARD_X(0), ch);
     for (i = 0; i < 4u; i++)                            /* right of each card */
-        lcd_fill((uint32_t)(CARD_X(i) + CARD_W), Y_LABEL, i < 3u ? (uint32_t)(CARD_X(i + 1u) - CARD_X(i) - CARD_W) :
-                 240u - (uint32_t)(CARD_X(i) + CARD_W), ch, T_BG);
+        cv_fill_bg((uint32_t)(CARD_X(i) + CARD_W), Y_LABEL, i < 3u ? (uint32_t)(CARD_X(i + 1u) - CARD_X(i) - CARD_W) :
+                   240u - (uint32_t)(CARD_X(i) + CARD_W), ch);
 }
 
 /* MOTION on the cards (#63: values that move on their own): the selected track's motion-driven parameters
@@ -1219,6 +1219,7 @@ static void draw_splash(void)
 {
     int32_t h = SPL_PAD - AF_M_CAP_Y + SPL_PITCH + AF_M.h;     /* a band: its two lines, the descenders in */
     int32_t lb = h - SPL_PAD - AF_M_CAP_H - AF_M_CAP_Y;         /* the bottom band's last line: its top */
+    lcd_flat = 1;
     lcd_fill(0, 0, 240, 240, T_BG);
     lcd_fill(SPL_X0, SPL_X0, SPL_SQ, SPL_SQ, T_RAISE);
     splash_band(SPL_X0, (uint32_t)h, SPL_PAD - AF_M_CAP_Y, SPLASH_LINES, AL_V, SPL_PAD,
@@ -1268,6 +1269,7 @@ static void draw_splash(void)
         for (k = 0; k < NTRK; k++)
             lcd_fill(SPL_X0 + 18u + k * 24u, 108, 20, 20, T_TRK(k));
     }
+    lcd_flat = 0;
     lcd_sync();
 }
 
@@ -1279,7 +1281,7 @@ static void draw_uboot(void)
     if (!ui.force && shown == ui.uboot)
         return;
     shown = ui.uboot;
-    lcd_fill(0, H_HEAD, 240, 240 - H_HEAD, T_BG);
+    cv_fill_bg(0, H_HEAD, 240, 240 - H_HEAD);
     ui.head_sig = ~0u;
     draw_text_box(0, 76, 240, &AF_M, "UPDATE MODE IN", T_TEXT, 1);
     draw_text_box(0, 102, 240, &AF_L, d, T_THEME, 1);
@@ -1308,7 +1310,7 @@ static void draw_countin(void)
     if (!ui.force && shown == sig)
         return;
     shown = sig;
-    lcd_fill(0, H_HEAD, 240, 240 - H_HEAD, T_BG);
+    cv_fill_bg(0, H_HEAD, 240, 240 - H_HEAD);
     ui.head_sig = ~0u;
     draw_text_box(0, 44, 240, &AF_M, "COUNT-IN", T_TEXT, 1);
     if (total > 4u) {
@@ -1461,6 +1463,7 @@ static void ui_draw_page(uint32_t counting);
 static void ui_draw(void)
 {
     static uint8_t counting;
+    uint32_t full;
     ui.frame++;
     if (ui.take_t)                                      /* (Skiff: the TAKE box, ui_take.c) */
         ui.take_t--;
@@ -1476,7 +1479,10 @@ static void ui_draw(void)
     cpu_sample();                                       /* ((#57, #62) whatever is shown: the header marks a dropout) */
     if (!scr_frame())                                   /* MENU > SCREEN OFF: dark (or waking), nothing drawn */
         return;
+    full = ui.force;
     ui_draw_page(counting);
+    if (ux.h1n && !ui.uboot && (full || hn_rail_sel != song.sel))   /* ((#48) LCD: over the BG the fills left) */
+        hn_rail_paint();
     scr_shown();
 }
 static void ui_draw_page(uint32_t counting)

@@ -2,7 +2,8 @@
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
 /* Icons: 4-bit alpha cells of the Fukiai icon font (MIT), Huffman-coded (cv_alpha_hc), 12 px (parameters, lists) and 16 px
  * (header, dialogs, menu): web/fukiai.ttf -> build/gen/ui_icons.h
- * (tools/gen_aa_icons.py; names from assets/icons.json). Which icon a parameter gets is decided
+ * (tools/gen_aa_icons.py; names from assets/icons.json). (#52) The LCD looks draw the same cells in 1 bit (PX*,
+ * tools/pixel_icons.py): their four tones made jagged grey of the anti-aliased edges. Which icon a parameter gets is decided
  * here, by its label. FELUCCA_ICONS=0 turns the parameter icons off (labels get their full width back). */
 #include "ui_icons.h"
 #ifndef FELUCCA_ICONS
@@ -86,13 +87,21 @@ static void icon_ink(uint32_t size, uint32_t id, int32_t *b)
         return;
     }
     if (sz == 24u) {
-        v = AI24_INK[k];                            /* x0 y0 x1 y1: a byte each */
+        v = ux.h1n ? PX24_INK[k] : AI24_INK[k];     /* x0 y0 x1 y1: a byte each */
     } else {                                        /* 12 16: a nibble each, x1-1 y1-1: as the 24's */
-        v = sz == 16u ? AI16_INK[k] : AI12_INK[k];
+        v = sz == 16u ? (ux.h1n ? PX16_INK[k] : AI16_INK[k]) : ux.h1n ? PX12_INK[k] : AI12_INK[k];
         v = ((v & 15u) | (v & 0xF0u) << 4 | (v & 0xF00u) << 8 | (v & 0xF000u) << 12) + 0x01010000u;
     }
     for (i = 0; i < 4u; i++)
         b[i] = (int32_t)(v >> (8u * i) & 255u);
+}
+
+/* cell k of a size px icon: the LCD looks' 1-bit one (its ink box's bits, icon_ink), else the anti-aliased one */
+static const uint8_t *icon_data(uint32_t size, int32_t k)
+{
+    if (ux.h1n)
+        return size == 24u ? PX24_DATA + PX24_OFF[k] : size == 16u ? PX16_DATA + PX16_OFF[k] : PX12_DATA + PX12_OFF[k];
+    return size == 24u ? AI24_DATA + AI24_OFF[k] : size == 16u ? AI16_DATA + AI16_OFF[k] : AI12_DATA + AI12_OFF[k];
 }
 
 /* (Skiff phase 6) 1: the icons drawn now give the lint (ui_render.c) their ink, not their cell, as their box: a cell
@@ -107,8 +116,14 @@ static int32_t cv_icon_on(int32_t x, int32_t y, uint32_t size, uint32_t id, uint
         return cv_trk(x, y, size, id - ICON_TRK, fg, bg);
     if ((k = icon_cell(&size, id)) < 0)
         return 0;
-    cv_alpha_hc(x, y, size, size, size == 24u ? AI24_DATA + AI24_OFF[k] : size == 16u ? AI16_DATA + AI16_OFF[k] :
-                AI12_DATA + AI12_OFF[k], AI_HC, ramp(fg, bg));
+    if (ux.h1n) {
+        int32_t b[4];
+        icon_ink(size, id, b);
+        cv_bits(x + (cv_flip ? (int32_t)size - b[2] : b[0]), y + b[1], (uint32_t)(b[2] - b[0]), (uint32_t)(b[3] - b[1]),
+                icon_data(size, k), fg);
+    } else {
+        cv_alpha_hc(x, y, size, size, icon_data(size, k), AI_HC, ramp(fg, bg));
+    }
     GFX_HOOK_ICON(x, y, size, id);
     if (GFX_HOOKS && icon_lint_ink) {                /* ((Skiff phase 6) a cell with no room for its empty margins) */
         int32_t b[4];

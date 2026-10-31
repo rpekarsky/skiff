@@ -404,7 +404,7 @@ static int test_pad_colours(void)
     bad += check("SMK pad colours: SKIFF's T1 (a full component) as before", col == rgb_scaled(T_TRK(0), SMK_PAD_FULL));
     palette_set(UI_LCD_INDEX);
     frame();
-    bad += check("SMK pad colours, LCD (grey ink): a lit pad bright, the track's SKIFF hue, each track its own",
+    bad += check("SMK pad colours, LCD (ink, no colour): a lit pad bright, the track's SKIFF hue, each track its own",
                  host_pad[3] == rgb_of(0, SMK_PAD_FULL) && rgb_max(host_pad[3]) == 255u * SMK_PAD_FULL >> 8 &&
                  rgb_max(rgb_of(1, SMK_PAD_FULL)) == 255u * SMK_PAD_FULL >> 8 && rgb_of(1, SMK_PAD_FULL) != host_pad[3] &&
                  host_pad[0] == SMK_PAD_FAINT);

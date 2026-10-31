@@ -292,8 +292,17 @@ static void hk_icon(int32_t x, int32_t y, uint32_t size, uint32_t id)
     const uint8_t *c;
     uint8_t cell[24 * 24];
     if (!al_n || (k = icon_cell(&size, id)) < 0) return;
-    c = size == 24u ? AI24_DATA + AI24_OFF[k] : size == 16u ? AI16_DATA + AI16_OFF[k] : AI12_DATA + AI12_OFF[k];
-    icon_unpack(c, cell, size * size);
+    c = icon_data(size, k);
+    if (ux.h1n) {                                  /* ((#52) the LCD looks: the bits of the box icon_ink names) */
+        int32_t b[4], bx, by, n = 0;
+        icon_ink(size, id, b);
+        memset(cell, 0, sizeof cell);
+        for (by = b[1]; by < b[3]; by++)
+            for (bx = b[0]; bx < b[2]; bx++, n++)
+                cell[by * (int32_t)size + bx] = (uint8_t)(c[n >> 3] >> (7 - (n & 7)) & 1);
+    } else {
+        icon_unpack(c, cell, size * size);
+    }
     for (i = 0; i < size * size; i++)
         if (cell[i]) {
             int32_t px = (int32_t)(i % size), py = (int32_t)(i / size);
@@ -2392,7 +2401,8 @@ int main(int argc, char **argv)
     char path[600];
     uint32_t p, s;
     static const char *const SHOW[] = {"SKIFF", "HI-CON", "PAPER", "CRYPT", "NEON", "QUARK", "LCD",   /* ((Skiff, R1) THEME's) */
-                                       "LCD NIGHT", "GAMEBOY", "AMBER", "BLUE-STN"};               /* (wishlist #47) */
+                                       "LCD NIGHT", "GAMEBOY", "AMBER", "BLUE-STN",                /* (wishlist #47) */
+                                       "LCD GRAIN"};
     snprintf(path, sizeof path, "%s/report.txt", out);
     rep = fopen(path, "w");
     if (!rep) { fprintf(stderr, "cannot write %s\n", path); return 1; }

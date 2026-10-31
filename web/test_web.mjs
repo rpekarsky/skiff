@@ -156,11 +156,11 @@ async function editorMock() {
   const names = [];
   for (let e = 0; e < info.nengines; e++) names.push(E.parse[E.CMD.NAMES](await rq(E.req.names(e))).names);
   let prefs = await E.readDevicePreferences(rq, info, names);
-  ok(info.uiCaps === 25 && prefs.palettes.join() === "SKIFF,HI-CON,PAPER,CRYPT,NEON,QUARK,LCD,LCD NIGHT,GAMEBOY,AMBER,BLUE-STN",
+  ok(info.uiCaps === 25 && prefs.palettes.join() === "SKIFF,HI-CON,PAPER,CRYPT,NEON,QUARK,LCD,LCD NIGHT,GAMEBOY,AMBER,BLUE-STN,LCD GRAIN",
      "editor: preference capabilities (palette, favorites, (#27) COLORS) and palette names");
   const pal = E.parse[E.CMD.UI_SET](await rq(E.req.uiSet(0, 2)));
   ok(pal.rc === 0 && pal.palette === 2, "editor: display preference 0 (palette) round trip");
-  ok(E.parse[E.CMD.UI_SET](await rq(E.req.uiSet(0, 11))).rc === 1, "editor: out-of-range palette refused");   /* (10: BLUE-STN) */
+  ok(E.parse[E.CMD.UI_SET](await rq(E.req.uiSet(0, 12))).rc === 1, "editor: out-of-range palette refused");   /* (11: LCD GRAIN) */
   ok(E.parse[E.CMD.UI_SET](await rq(E.req.uiSet(1, 1))).rc === 2, "editor: the retired font weight answers not supported");
   ok(E.parse[E.CMD.FAV_SET](await rq(E.req.favSet(info.nengines, 31, true))).rc === 1, "editor: empty user slot cannot be favorited");
   await rq(E.req.favSet(0, 0, true));
@@ -208,26 +208,26 @@ async function editorMock() {
     ok(c.rc === 0 && c.stored && c.active && c.look === 4 && c.c.join() === set.join() && m.state.palette === 4,
        "editor: COLORS op 1 stores the set and uses it, in its look (NEON)");
     let pr = await E.readDevicePreferences(rq, info, names, prefs, true);
-    ok(pr.palettes.length === 12 && pr.palettes[11] === "CUSTOM" && pr.state.palette === 11 && pr.colors.stored && pr.colors.look === 4,
+    ok(pr.palettes.length === 13 && pr.palettes[12] === "CUSTOM" && pr.state.palette === 12 && pr.colors.stored && pr.colors.look === 4,
        "editor: THEME CUSTOM listed last, in use after a store");
     await rq(E.req.uiSet(0, 1));
     pr = await E.readDevicePreferences(rq, info, names, pr);
-    ok(pr.state.palette === 1 && pr.palettes.length === 12 && pr.colors.stored && !pr.colors.active,
+    ok(pr.state.palette === 1 && pr.palettes.length === 13 && pr.colors.stored && !pr.colors.active,
        "editor: another THEME keeps the set (CUSTOM still listed)");
-    ok(E.parse[E.CMD.UI_SET](await rq(E.req.uiSet(0, 11))).palette === 11 && m.state.palette === 4,
-       "editor: UI_SET 11 is CUSTOM again, in its look");
+    ok(E.parse[E.CMD.UI_SET](await rq(E.req.uiSet(0, 12))).palette === 12 && m.state.palette === 4,
+       "editor: UI_SET 12 is CUSTOM again, in its look");
     const long = E.req.colors(1, 0, set);
     long[1].push(0);                                        /* (a byte more) */
     ok(E.req.colors(1, 0, set)[1].length === 28 && E.parse[E.CMD.COLORS](await rq([E.CMD.COLORS, [1, 0, 3]])).rc === 1 &&
-       E.parse[E.CMD.COLORS](await rq(E.req.colors(1, 11, set))).rc === 1 &&
+       E.parse[E.CMD.COLORS](await rq(E.req.colors(1, 12, set))).rc === 1 &&
        E.parse[E.CMD.COLORS](await rq(long)).rc === 1 &&
        E.parse[E.CMD.COLORS](await rq([E.CMD.COLORS, [2, 0]])).rc === 1 && m.state.custom.flags === 3,
        "editor: a short or long COLORS, a look past the themes, op 2 with a byte more: rc 1, the set kept");
     c = E.parse[E.CMD.COLORS](await rq(E.req.colors(2)));
     pr = await E.readDevicePreferences(rq, info, names, pr, true);
-    ok(c.rc === 0 && !c.stored && pr.palettes.length === 11 && pr.state.palette === 4,
+    ok(c.rc === 0 && !c.stored && pr.palettes.length === 12 && pr.state.palette === 4,
        "editor: COLORS op 2 removes the set: CUSTOM gone, THEME the look's own");
-    ok(E.parse[E.CMD.UI_SET](await rq(E.req.uiSet(0, 11))).rc === 1, "editor: no set, no CUSTOM (UI_SET 11: rc 1)");
+    ok(E.parse[E.CMD.UI_SET](await rq(E.req.uiSet(0, 12))).rc === 1, "editor: no set, no CUSTOM (UI_SET 12: rc 1)");
     await rq(E.req.uiSet(0, prefs.state.palette));
     const hp = join(FW_ROOT, "build/gen/ui_palettes.h");   /* each theme's colours to start from == the firmware's */
     if (existsSync(hp)) {
@@ -269,8 +269,8 @@ async function editorMock() {
        "editor: MENU_SET round trip (LEDS INV)");
     const pal = m.state.palette;
     r = E.parse[E.CMD.MENU_SET](await rq(E.req.menuSet(0, 50)));
-    ok(r.rc === 0 && r.value === 10 && E.parse[E.CMD.UI_STATE](await rq(E.req.uiState())).palette === 10,
-       "editor: MENU_SET clamps (THEME 50 -> 10, BLUE-STN), the same setting as UI_SET 0");
+    ok(r.rc === 0 && r.value === 11 && E.parse[E.CMD.UI_STATE](await rq(E.req.uiState())).palette === 11,
+       "editor: MENU_SET clamps (THEME 50 -> 11, LCD GRAIN), the same setting as UI_SET 0");
     r = E.parse[E.CMD.MENU_SET](await rq(E.req.menuSet(17, 9)));
     ok(r.rc === 0 && r.id === 17 && r.value === 4, "editor: MENU_SET clamps (SCREEN OFF 9 -> 60 MIN)");
     await rq(E.req.menuSet(17, 3));

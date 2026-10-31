@@ -884,7 +884,7 @@ weight and no longer sets it), bit 2 reserved for a MIDI monitor, bit 3 favorite
 
 UI_SET ids: 0 palette (0..count-1, the order of UI_PALETTES: GREY GREEN AMBER ICE VIOLET ROSE PAPER
 HI-CON NIGHT MONO; 1.0.2: GREY is the MONO of 1.0.1, MONO a new black and white palette; Skiff: SKIFF HI-CON PAPER
-CRYPT NEON QUARK LCD LCD NIGHT, (wishlist #47) GAMEBOY AMBER BLUE-STN, and (#27) CUSTOM last while a set is stored), 1 font (retired: rc 2), 2 reserved, 3 preset filter (0 all, 1 favorites). Unsupported state
+CRYPT NEON QUARK LCD LCD NIGHT, (wishlist #47) GAMEBOY AMBER BLUE-STN, LCD GRAIN, and (#27) CUSTOM last while a set is stored), 1 font (retired: rc 2), 2 reserved, 3 preset filter (0 all, 1 favorites). Unsupported state
 fields are 127.
 Both u28 signatures are four least-significant-first 7-bit bytes; compare them
 to refresh changed favorites and user slots. Factory references use stable
@@ -990,7 +990,7 @@ command does both). A set is eleven colours: BG SURF TEXT THEME ACCENT, then the
 22 bytes low byte first as the device stores them and sent as pack7 (26 bytes; Felucca sends three 7-bit bytes a
 colour, which costs the FM-1 more code), and a look: the built-in THEME (0..10, the order of
 `UI_PALETTES`) whose faces and widgets it wears (CRYPT's pixel letters and skulls, NEON's chrome and sun, QUARK's
-brackets, LCD's (and LCD NIGHT's) four tones and segments; SKIFF, HI-CON, PAPER, GAMEBOY, AMBER and BLUE-STN: BLOCKS). The device derives the other tokens from the five as for its own palettes
+brackets, LCD's (and LCD NIGHT's, LCD GRAIN's) four tones and segments; SKIFF, HI-CON, PAPER, GAMEBOY, AMBER and BLUE-STN: BLOCKS). The device derives the other tokens from the five as for its own palettes
 (`firmware/src/gfx.c` `palette_set`); a look's art keeps its own colours (CRYPT's flame, NEON's sun bands). `uiCaps`
 bit 4 says the device has it; firmware without it answers no COLORS.
 
@@ -1068,7 +1068,7 @@ rc 1), and the indexes after them are lower than before:
 
 | index | id | name | kind | values (min 0) | default | tab |
 | --- | --- | --- | --- | --- | --- | --- |
-| 0 | 0 | THEME (Felucca's COLOR) | 0 | 0..10: SKIFF HI-CON PAPER CRYPT NEON QUARK LCD LCD NIGHT GAMEBOY AMBER BLUE-STN (the order of `UI_PALETTES`); (#27) 11 CUSTOM while a set is stored | SKIFF (a new unit) | 0 DISPLAY |
+| 0 | 0 | THEME (Felucca's COLOR) | 0 | 0..11: SKIFF HI-CON PAPER CRYPT NEON QUARK LCD LCD NIGHT GAMEBOY AMBER BLUE-STN LCD GRAIN (the order of `UI_PALETTES`); (#27) 12 CUSTOM while a set is stored | SKIFF (a new unit) | 0 DISPLAY |
 | 1 | 2 | LARGE | 0 | 0 OFF, 1 ON | OFF | 0 DISPLAY |
 | 2 | 3 | ANIM | 0 | 0 ON, 1 OFF | ON | 0 DISPLAY |
 | 3 | 4 | LEDS | 0 | 0 OFF, 1 DIM LO, 2 DIM HI, 3 INV (darkest first, as the menu steps them) | DIM HI | 0 DISPLAY |

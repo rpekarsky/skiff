@@ -1911,35 +1911,35 @@ static void graph_user(void)
  * patterns, 8 x 8, a kept one its number in a tile (BLOCKS: SURF on the black ground; FLAT, LINE: RAISE on the
  * panel): TEXT while something uses it, MID and outlined DIM while nothing does (it can be cleared: bank.c pool_refs);
  * the one KNOB 1 picked TEXT, INK on it (outlined TEXT when unused); an empty id a dot */
-#define PV_W 28                                      /* a tile 28 wide, 30 apart from x 1: 1 .. 238 */
 static void graph_bank(void)
 {
-    int32_t th = 15, py = 17;
+    int32_t th = 15, py = 17, pitch = ux.h1n ? 29 : 30, x0 = ux.h1n ? HN_RAIL_X1 : 1;   /* the tiles 2 narrower than their
+                                                     * pitch: x 1 .. 238; ((#48) LCD: right of the rail, 3 .. 233) */
     uint16_t tile = T_SURF;
     uint32_t id, n;
     cv_rect(0, 0, 240, (int32_t)cv_h, T_BG);         /* (over the panel: the tiles are on the ground) */
     cv_bg = T_BG;
     for (id = 0; id < NPAT; id++) {
-        int32_t x = 1 + 30 * (int32_t)(id % 8u), y = 2 + py * (int32_t)(id / 8u);
+        int32_t x = x0 + pitch * (int32_t)(id % 8u), y = 2 + py * (int32_t)(id / 8u), tw = pitch - 2;
         int pick = id == ui.bslot % NPAT;
         uint16_t fill = pick ? T_TEXT : tile;
         char s[3];
         if (!pool_used(id)) {
             cv_rect(x + 13, y + th / 2, 2, 2, T_DIM);
             if (pick)
-                cv_frame(x, y, PV_W, th, T_TEXT);
+                cv_frame(x, y, tw, th, T_TEXT);
             continue;
         }
         n = pool_refs(id);
         if (ux.neon && pick)                         /* ((Skiff S1) NEON: the pick a dusk; the others glass, CRYPT's */
-            ne_vgrad(x, y, PV_W, th, NE_HOT, 3);     /* stone (cv_rrect)) */
+            ne_vgrad(x, y, tw, th, NE_HOT, 3);       /* stone (cv_rrect)) */
         else
-            cv_rrect(x, y, PV_W, th, 0, fill, T_BG);
+            cv_rrect(x, y, tw, th, 0, fill, T_BG);
         if (!n)                                      /* nothing uses it: it can be cleared ((2.0, #46) lit while KNOB 4 */
-            cv_frame(x, y, PV_W, th, pick || ui.bact == BA_UNUSED ? T_TEXT : T_DIM);   /* is CLEAR UNUSED) */
+            cv_frame(x, y, tw, th, pick || ui.bact == BA_UNUSED ? T_TEXT : T_DIM);   /* is CLEAR UNUSED) */
         pat_num(s, id);
-        GFX_HOOK_ALIGN(x, y, x + PV_W, y + th, AL_HV, "pool tile number centred");
-        cv_text_in(x, y + CAP_IN(S, th), PV_W, &AF_S, s, pick ? T_INK : n || ui.bact == BA_UNUSED ? T_TEXT : T_MID, fill);
+        GFX_HOOK_ALIGN(x, y, x + tw, y + th, AL_HV, "pool tile number centred");
+        cv_text_in(x, y + CAP_IN(S, th), tw, &AF_S, s, pick ? T_INK : n || ui.bact == BA_UNUSED ? T_TEXT : T_MID, fill);
     }
 }
 /* (Skiff phase 5) SEQ > SONG, as the chosen mockup draws it (design/mock_p5.py): a row per track, as the PERFORM map's
@@ -2404,11 +2404,11 @@ static void draw_tracks(void)
         if (NTRK > 4u)                               /* the six strips are the panel's full height: only the gaps */
             for (c = 0, pos = 0; c <= NTRK; c++) {   /* between them, so a track change doesn't flash them (#15) */
                 int32_t r = c < NTRK ? MS_X(c) : 240;
-                lcd_fill(pos, graph_y(), (uint32_t)r - pos, graph_h(), T_BG);
+                cv_fill_bg(pos, graph_y(), (uint32_t)r - pos, graph_h());
                 pos = (uint32_t)(r + MS_W);
             }
         else
-            lcd_fill(0, graph_y(), 240, graph_h(), T_BG);
+            cv_fill_bg(0, graph_y(), 240, graph_h());
         for (c = 0; c < NTRK; c++)
             ts.meter[c] = 0;
     }

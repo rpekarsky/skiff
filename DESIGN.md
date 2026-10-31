@@ -412,20 +412,35 @@ The colours differ in lightness as well as hue, and always appear with the track
 **Defaults:** a new unit gets SKIFF. **THEME** (the review's R1; MENU > THEME, was COLOR; `tools/gen_ui_palettes.py`): SKIFF, HI-CON, PAPER, CRYPT, NEON, QUARK, LCD, LCD NIGHT, and (wishlist #47) the plain GAMEBOY, AMBER and BLUE-STN after the PO's LCD mockups, lightened or darkened to pass the generator's contrast checks; their tracks are THEME, as PAPER's. A unit on HI-CON or PAPER keeps it; on any other palette of before (GREY, GREEN, AMBER, ICE, VIOLET, ROSE, NIGHT, MONO, Felucca's twenty; the old AMBER is not the new one) it starts on SKIFF. CRYPT (`gfx.c` `ux.crypt`) brings its own font and widgets too (the theming phases C2-C4); NEON (`ux.neon`) CRYPT's
 font and its own widgets (N1-N8); QUARK (`ux.quark`) Skiff's Barlow faces and its own widgets (Q1-Q5).
 
-**LCD** (THEME, wishlist #29; the PO's pick H1N GREY of skiff-tasks/lcd-mockups.png; `ui_h1n.c`, `ux.h1n`): a reflective
-monochrome LCD, the Zoom H1n's. Four tones only: BG 178,186,166, the unlit segments' ghost (RAISE, 160,170,148), MID
-(BG to ink 60 %) and ink 28,32,26; no tiles (SURF is BG: an LCD has no boxes), every track ink (told apart by its
+**LCD** (THEME, wishlist #29; first the PO's H1N GREY of skiff-tasks/lcd-mockups.png, then the real Zoom H1n's backlit
+display; `ui_h1n.c`, `ux.h1n`): a monochrome LCD. Four tones only: BG 214,228,246 (blue-white), the unlit segments'
+ghost (RAISE, 150,190,240), MID 96,128,196 (both its own, `UI_LCD_GHOST` / `UI_LCD_MID`; THEME CUSTOM over the look
+derives them) and navy ink 18,30,84; no tiles (SURF is BG: an LCD has no boxes), every track ink (told apart by its
 number). `gfx.c` `lcd_tones` pins every derived token to a tone; `cv_lcd_rows`, at each blit, snaps every pixel to the
 nearest tone by luma (no anti-aliasing anywhere: text, curves, corners) and lays a ghost dot every 3 px of the screen on
-open BG (never inside a 1 px stroke, so the letters on an inverted band stay whole). CRYPT's pixel faces. Its widgets:
+open BG (never inside a 1 px stroke, so the letters on an inverted band stay whole), then the backlight's fall-off: BG
+and ghost pixels darker with the squared distance from the screen's centre, 11 % at the corners (`cv_lcd_vignette`,
+shades precomputed by `lcd_tones`; not on the splash). The pages' BG fills go through a canvas too (`cv_fill_bg`) so
+grid, rail and fall-off reach them. CRYPT's pixel faces. Its widgets:
 the cards' gauges in segments, unlit ones ghost; the header's printed MID rule; the dialog a double ink frame. HOME's
 scope (HOME tapped on HOME, MENU > LARGE's strip too) is an equalizer: 16 bands log-spaced 86 Hz to 11 kHz, 14
 segments 3 dB apart, from a 512-point fixed-point FFT of the scope's snapshot in the main loop (Hann window, the
 snapshot at MASTER full as the scope's, then scaled to its peak, so a quiet sound reaches the top too); a bar falls a segment a redraw, its peak held 16 redraws.
+The track rail (#48): on every screen but the splash and UPDATE MODE, columns 0..1 of the panel's rows (76..213) show
+HOME's six lanes in miniature at their HOME places and heights (the selected track's division ink and taller, the
+others ghost), column 2 BG, the pages from x 3 (SAVE > PATTERNS' tiles 29 apart from x 3 on LCD). Drawn into every
+canvas at its blit (`cv_lcd_rows` → `ui_h1n.c` `hn_rail_rows`) and straight to the screen after a full redraw or a
+track change (`hn_rail_paint`). Icons (#52): the same ids and sizes in 1 bit, no anti-aliasing to snap
+(`tools/pixel_icons.py`: the MENU tabs, header, battery and the cards' common parameters drawn by hand, the rest the
+Fukiai glyph shifted onto the grid and thresholded), each cell its ink box's bits (`gfx.c` `cv_bits`).
 THEME CUSTOM over the LCD look: the user's colours in the same four tones (theirs BG, SURF to TEXT 12 %, MID, TEXT).
 **LCD NIGHT** (the PO's pick of CUSTOM over LCD with tests/ui_render.c's dusk set, pinned as it shows): LCD's look
 (`ux.h1n`) inverted, navy and pale ink, without the dot grid on the ground (#29, PO: day LCD keeps it). BG 16,24,32, TEXT 242,232,216; SURF 28,40,54 only for its ghost (SURF to TEXT
 12 %); THEME and the tracks the MID tone 156,149,148 (where the dusk's orange and most tracks snapped), ACCENT the ink.
+**LCD GRAIN** (PO, after skiff-tasks/shots/lcd-grain-mock3.png "grid 50 %"; the twelfth palette, after BLUE-STN: ids
+stay): LCD's colours and look without the dot grid; over the finished frame the gaps between the LCD's cells, every
+third row and column of the screen half way to the backlight (BG 30 % toward white: never darker than the cells around
+it), as the last step of `cv_lcd_rows` (`cv_lcd_gaps`: a halving per channel and an add); the fall-off as LCD's.
 
 **THEME CUSTOM** (#27, @tradiuz; after Felucca 1.6's CUSTOM palette; design/mock_c27.py, mockups/c27_sheet.png): the
 user's eleven colours from the web editor (BG SURF TEXT THEME ACCENT and the six tracks'), in a look they pick: a

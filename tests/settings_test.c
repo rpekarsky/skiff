@@ -40,10 +40,10 @@ int main(void)
     assert(settings.palette == UI_SKIFF_INDEX && fx_lowcut && settings.zoom && panel.enc[0] == 3);
     assert(p.palette == palette_to_stored(UI_SKIFF_INDEX));       /* migrated in place */
     {   /* (Skiff, R1) THEME: SKIFF HI-CON PAPER CRYPT NEON QUARK, (#29) LCD LCD NIGHT, (wishlist #47) GAMEBOY AMBER
-         * BLUE-STN. Every old id maps to one (the eleven before THEME: PAL_TAG + index; Felucca's twenty: below 20; a
+         * BLUE-STN, LCD GRAIN. Every old id maps to one (the eleven before THEME: PAL_TAG + index; Felucca's twenty: below 20; a
          * palette gone: SKIFF, the old AMBERs too); THEME's ids round trip; anything else is SKIFF */
         persist_t q = original;
-        assert(NPALETTES == 11u && !strcmp(UI_PALETTES[0].name, "SKIFF") && !strcmp(UI_PALETTES[1].name, "HI-CON") &&
+        assert(NPALETTES == 12u && !strcmp(UI_PALETTES[0].name, "SKIFF") && !strcmp(UI_PALETTES[1].name, "HI-CON") &&
                !strcmp(UI_PALETTES[2].name, "PAPER") && !strcmp(UI_PALETTES[UI_CRYPT_INDEX].name, "CRYPT"));
         for (uint32_t i = 0; i < 20u; i++) assert(palette_from_stored(i) < NPALETTES);
         assert(palette_from_stored(13) == 2u && palette_from_stored(11) == 1u && palette_from_stored(19) == 1u &&

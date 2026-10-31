@@ -44,12 +44,13 @@ int main(int argc, char **argv)
     const aafont_t probe = {1, 1, 'A', 'A', 0, 0, pg, pd, 0, 0, 0};
     double worst = 100;
     /* (Skiff, R1) THEME: SKIFF the default, HI-CON and PAPER, CRYPT, NEON, QUARK and (#29) LCD, LCD NIGHT (their own
-     * widgets too); (wishlist #47) the plain GAMEBOY, AMBER and BLUE-STN */
-    static const uint8_t LIGHT[] = {0, 0, 1, 0, 0, 0, 1, 0, 1, 1, 0};
-    assert(NPALETTES == 11u && sizeof LIGHT == NPALETTES && !strcmp(UI_PALETTES[6].name, "LCD") && UI_LCD_INDEX == 6u &&
+     * widgets too); (wishlist #47) the plain GAMEBOY, AMBER and BLUE-STN; LCD GRAIN */
+    static const uint8_t LIGHT[] = {0, 0, 1, 0, 0, 0, 1, 0, 1, 1, 0, 1};
+    assert(NPALETTES == 12u && sizeof LIGHT == NPALETTES && !strcmp(UI_PALETTES[6].name, "LCD") && UI_LCD_INDEX == 6u &&
            !strcmp(UI_PALETTES[7].name, "LCD NIGHT") && UI_LCD_NIGHT_INDEX == 7u &&
            !strcmp(UI_PALETTES[8].name, "GAMEBOY") && !strcmp(UI_PALETTES[9].name, "AMBER") &&
            !strcmp(UI_PALETTES[10].name, "BLUE-STN") &&
+           !strcmp(UI_PALETTES[11].name, "LCD GRAIN") && UI_LCD_GRAIN_INDEX == 11u &&
            !strcmp(UI_PALETTES[5].name, "QUARK") && UI_QUARK_INDEX == 5u && !strcmp(UI_PALETTES[0].name, "SKIFF") && UI_SKIFF_INDEX == 0u &&
            !strcmp(UI_PALETTES[1].name, "HI-CON") && !strcmp(UI_PALETTES[2].name, "PAPER") &&
            !strcmp(UI_PALETTES[3].name, "CRYPT") && UI_CRYPT_INDEX == 3u &&
@@ -57,7 +58,7 @@ int main(int argc, char **argv)
     for (unsigned p = 0; p < NPALETTES; p++) {
         uint16_t *tok = &ux.bg;
         palette_set(p);
-        assert(ux.crypt == (p == UI_CRYPT_INDEX) && ux.h1n == (p == UI_LCD_INDEX || p == UI_LCD_NIGHT_INDEX));
+        assert(ux.crypt == (p == UI_CRYPT_INDEX) && ux.h1n == (p == UI_LCD_INDEX || p == UI_LCD_NIGHT_INDEX || p == UI_LCD_GRAIN_INDEX));
         /* text and the things read on the screen; the generator checks the same (tools/gen_ui_palettes.py) */
         struct { uint16_t fg, bg; double min; } c[] = {
             {T_TEXT, T_BG, 12.0}, {T_TEXT, T_SURF, 9.0}, {T_MID, T_BG, 5.0}, {T_MID, T_SURF, 4.0},
@@ -142,7 +143,7 @@ int main(int argc, char **argv)
                        T_SEL == ux_mix(T_BG, T_THEME, UI_SEL_PCT) && T_LANE == ux_mix(T_SURF, T_THEME, 10) &&
                        T_REC == UI_REC_LIGHT);
             assert(ux.crypt == (p == UI_CRYPT_INDEX) && ux.neon == (p == UI_NEON_INDEX) && ux.quark == (p == UI_QUARK_INDEX) &&
-                   ux.h1n == (p == UI_LCD_INDEX || p == UI_LCD_NIGHT_INDEX));
+                   ux.h1n == (p == UI_LCD_INDEX || p == UI_LCD_NIGHT_INDEX || p == UI_LCD_GRAIN_INDEX));
         }
         ux_cpal = 0;
         palette_set(UI_NEON_INDEX);

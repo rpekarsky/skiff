@@ -166,6 +166,18 @@ static uint32_t home_sig(void)
 #define HL_C_NAME_X 37                                /* when any track shows one) */
 #define HL_ROW_H 11                                   /* (#41) a cell on two rows: the selected lane's, the compact's */
 #define HL_C_ROW_H 5
+/* lane k's top in a panel panel_h tall with track sel selected, its height in *h: all at today's size where they fit,
+ * else the selected one at it and the others compact, the stack centred */
+static int32_t hl_lane_y(uint32_t k, uint32_t sel, int32_t panel_h, int32_t *h)
+{
+    int six = (int32_t)NTRK * (HL_H + 3) - 3 > panel_h;
+    int32_t y = six ? (panel_h - (HL_H + ((int32_t)NTRK - 1) * (HL_C_H + 3))) / 2 : 0;
+    uint32_t i;
+    for (i = 0; i < k; i++)
+        y += (i == sel || !six ? HL_H : HL_C_H) + 3;
+    *h = k == sel || !six ? HL_H : HL_C_H;
+    return y;
+}
 static void graph_tracks(void)
 {
     uint32_t k, i;
@@ -173,7 +185,7 @@ static void graph_tracks(void)
     int32_t ry = 0;                                   /* .. (Skiff N3) NEON: the car's, its row's middle */
     int32_t qx = -1, qy = 0;                          /* (Skiff Q3) QUARK: the collision's (the same) */
     int six = (int32_t)NTRK * (HL_H + 3) - 3 > (int32_t)graph_h();
-    int32_t y = six ? ((int32_t)graph_h() - (HL_H + ((int32_t)NTRK - 1) * (HL_C_H + 3))) / 2 : 0, name_x = HL_NAME_X;
+    int32_t name_x = HL_NAME_X;
     for (k = 0; k < NTRK; k++)                        /* ((#34) a pattern anywhere: the compact names make room for it) */
         if (trk_pat(k) != PAT_NONE)
             name_x = HL_C_NAME_X;
@@ -183,7 +195,7 @@ static void graph_tracks(void)
         const step_t *s = t->step;
         uint32_t len = hl_len(t), per_row = hl_per_row(len), cur = t->seq_idx % len;
         int sel = k == song.sel, muted = t->p[P_MUTE] != 0, big = sel || !six, two_rows = len > 16u;
-        int32_t h = big ? HL_H : HL_C_H, b[4], pb[4];
+        int32_t h, y = hl_lane_y(k, song.sel, (int32_t)graph_h(), &h), b[4], pb[4];
         int32_t ch = two_rows ? (big ? HL_ROW_H : HL_C_ROW_H) : big ? HL_CELL_H : HL_C_CELL_H;
         int32_t cw = per_row > 16u ? HL_NCELL_W : HL_CELL_W, top = y + (h - (two_rows ? 2 * ch + HL_ROW_GAP : ch)) / 2;
         int ib = sel && !ux.quark;                    /* (the selected lane a band, INK on it; (Skiff Q3) QUARK: a beam,
@@ -324,7 +336,6 @@ static void graph_tracks(void)
         if (hl_fader_bar(k, y, h, lane, ux.h1n && !ib ? T_MID : on, off, ink) && sel)
             tx = qx = -1;                             /* (no torch, car or collision over the bar) */
 #endif
-        y += h + 3;
     }
     if (ux.crypt && tx >= 0)                          /* (Skiff C3) CRYPT: a torch on it, flickering a step to the next */
         cr_torch(tx, ty, ui.frame / 6u, 2);
