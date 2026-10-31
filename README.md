@@ -473,7 +473,7 @@ by the keys, with what each key is in Skiff.
 
 - Tap a page button for its pages (again, or SELECT, for the next one); every family reopens the page you left
 - **HOME** goes home. **Held**, it is SHIFT: its map shows what every control does on the page; let go alone,
-  the MENU opens. Tapped on HOME: the scope (THEME LCD: the equalizer), with the audio's load bottom right:
+  the MENU opens. Tapped on HOME: the scope (THEME LCD: the equalizer), with the audio's load at the footer's right:
   **CPU 42/71 %** (as MENU › CPU shows it, then the busiest audio buffer lately, falling back slowly); for 2 s after a
   dropout (a click) the line turns red and reads **DROP 3 / 89%** (dropouts since power-on, the load); the figures change
   4 times a second

@@ -9311,45 +9311,45 @@ static int px_in(int32_t x0, int32_t y0, int32_t x1, int32_t y1, uint16_t c)   /
                 return 1;
     return 0;
 }
-/* (#57) the HOME scope's CPU readout (bottom right), sampled every CPU_SAMPLE_MS: MENU > CPU's load, the longest half's
- * share (falling CPU_PEAK_FALL a sample), the dropouts since power-on; a new one turns the line into
- * DROP n / load, in REC's colour, for CPU_XRUN_MARK_MS */
+/* (#57) the HOME scope's CPU readout (the footer's line, right, where a page's n/m goes), sampled every
+ * CPU_SAMPLE_MS: MENU > CPU's load, the longest half's share (falling CPU_PEAK_FALL a sample), the dropouts since
+ * power-on; a new one turns the line into DROP n / load, in REC's colour, for CPU_XRUN_MARK_MS */
 static int scope_corner_text_is(const char *want)
 {
     char line[CPU_TEXT];
     cpu_line_text(line);
     return str_eq(line, want);
 }
-static int xrun_marked_on_screen(int32_t band_y) { return px_in(180, band_y + 2, 228, band_y + 17, T_REC); }
+static int32_t foot_top(void) { return (int32_t)foot_y(); }
+static int32_t foot_bottom(void) { return (int32_t)(foot_y() + foot_h()) - 1; }
+static int xrun_marked_in_foot(void) { return px_in(150, foot_top(), 232, foot_bottom(), T_REC); }
 static int test_scope_cpu(void)
 {
-    static uint16_t first[240 * CPU_BAND_H];
-    int32_t band_y;
+    static uint16_t first[240 * H_FOOT];
+    int32_t scope_bottom;
     int ok;
     ui_power_on();
     felucca_dbg.late = 5;                               /* (dropouts of before: not counted) */
     song.cpu_q8 = 108;
     audio_max_us = (HALF_US * 71u + 99u) / 100u;
     press(B_HOME);
-    band_y = (int32_t)(graph_y() + graph_h()) - CPU_BAND_H;
-    memcpy(first, host_screen + band_y * 240, sizeof first);
-    ok = ui.home_scope && scope_corner_text_is("CPU 42/71 %") &&
-         px_in(150, band_y + 2, 228, band_y + 17, T_MID) && !xrun_marked_on_screen(band_y);
+    scope_bottom = (int32_t)(graph_y() + graph_h()) - 20;
+    memcpy(first, host_screen + foot_top() * 240, 240u * foot_h() * 2u);
+    ok = ui.home_scope && scope_corner_text_is("CPU 42/71 %") && px_in(150, foot_top(), 232, foot_bottom(), T_MID) &&
+         !xrun_marked_in_foot() && !px_in(150, scope_bottom + 2, 228, scope_bottom + 17, T_MID);
     song.cpu_q8 = 200;
     frame();
     ok &= scope_corner_text_is("CPU 42/71 %");   /* (until the next sample) */
     frames(CPU_SAMPLE_MS);
-    ok &= scope_corner_text_is("CPU 78/69 %") &&
-          memcmp(first, host_screen + band_y * 240, sizeof first) != 0;
+    ok &= scope_corner_text_is("CPU 78/69 %") && memcmp(first, host_screen + foot_top() * 240, 240u * foot_h() * 2u) != 0;
     felucca_dbg.late += 2;
     frames(CPU_SAMPLE_MS);
-    ok &= scope_corner_text_is("DROP 2 / 78%") && cpu_shown.xrun_marked && xrun_marked_on_screen(band_y);
+    ok &= scope_corner_text_is("DROP 2 / 78%") && cpu_shown.xrun_marked && xrun_marked_in_foot();
     frames(CPU_XRUN_MARK_MS + CPU_SAMPLE_MS);
-    ok &= scope_corner_text_is("CPU 78/51 %") && !cpu_shown.xrun_marked &&
-          !xrun_marked_on_screen(band_y);
+    ok &= scope_corner_text_is("CPU 78/51 %") && !cpu_shown.xrun_marked && !xrun_marked_in_foot();
     song.cpu_q8 = 0;
-    return check("#57 the HOME scope's CPU readout: CPU, its peak falling, DROP n / load inverted for 2 s after a dropout",
-                 ok);
+    return check("#57 the HOME scope's CPU readout, in the footer: CPU, its peak falling, DROP n / load inverted for 2 s "
+                 "after a dropout", ok);
 }
 static int test_blocks(void)
 {
