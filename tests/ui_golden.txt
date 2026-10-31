@@ -89,7 +89,7 @@ fbdf9e1911e430ce AMBER_global
 4e52b7162db70b10 AMBER_global_swing
 b56928b633b14a86 AMBER_head_beat_2
 b554d057720cdefa AMBER_head_bpm_lock
-a109d226a7064112 AMBER_head_bpm_locked
+125d910889039709 AMBER_head_bpm_lock_level
 7bfb8df05e591a81 AMBER_head_bpm_turn
 b56928b633b14a86 AMBER_head_downbeat
 92cadd870d6af57b AMBER_head_glo_turn
@@ -213,6 +213,7 @@ aa49d8080d288f0f AMBER_scl
 8dcbbc62569a1e3f AMBER_shift_env
 dedebb1c86fc2275 AMBER_shift_fm
 950c3ab009311887 AMBER_shift_home
+74c2ff10717a9fcb AMBER_shift_home_lock
 145ef4f135a23853 AMBER_shift_pan
 6881187b63860c24 AMBER_shift_step
 9c00df6c140cc18b AMBER_six_edit
@@ -348,7 +349,7 @@ df4c090258e9659b BLUE-STN_global
 7575d4761bd72d50 BLUE-STN_global_swing
 a5b4af7fd83dee77 BLUE-STN_head_beat_2
 c573c73408928d73 BLUE-STN_head_bpm_lock
-1d00b75388a7c20e BLUE-STN_head_bpm_locked
+c7316d0a961a4ea6 BLUE-STN_head_bpm_lock_level
 f02a7bba56cdcab8 BLUE-STN_head_bpm_turn
 a5b4af7fd83dee77 BLUE-STN_head_downbeat
 30562f75f8e59c66 BLUE-STN_head_glo_turn
@@ -472,6 +473,7 @@ e7267edd8262c879 BLUE-STN_roll_empty
 5600a1bc4f84d780 BLUE-STN_shift_env
 6e15d24947baa333 BLUE-STN_shift_fm
 b73668879059ee10 BLUE-STN_shift_home
+2b6c4e9a832d3e79 BLUE-STN_shift_home_lock
 a3a9feab3ec5af6d BLUE-STN_shift_pan
 08e8b589a8276673 BLUE-STN_shift_step
 2f2b3a1f86f9d1d2 BLUE-STN_six_edit
@@ -607,7 +609,7 @@ c0a84a8c73ca7462 CRYPT_fx
 1c46e0fc7c8cc809 CRYPT_global_swing
 e3a4824d76a2647a CRYPT_head_beat_2
 127e91aaf38896a5 CRYPT_head_bpm_lock
-0f91ce80bf656a4c CRYPT_head_bpm_locked
+18884d58a8fde440 CRYPT_head_bpm_lock_level
 95606341166befe9 CRYPT_head_bpm_turn
 e3a4824d76a2647a CRYPT_head_downbeat
 71abdf1098055982 CRYPT_head_glo_turn
@@ -731,6 +733,7 @@ eb333bb43e15a520 CRYPT_samples
 badc4be755b1e847 CRYPT_shift_env
 4b356fedbd9f50b5 CRYPT_shift_fm
 9516cc04f96f478d CRYPT_shift_home
+27a520c2d954d24c CRYPT_shift_home_lock
 e830cbf1c5fbffd8 CRYPT_shift_pan
 7c2f20c7bef27272 CRYPT_shift_step
 b6ba44eb5bcd5dc8 CRYPT_six_edit
@@ -864,7 +867,7 @@ a50e6b0306444f81 CUSTOM_CRYPT_fx_duck_off
 236ff4b2182a259a CUSTOM_CRYPT_global_swing
 f3c75386d655666a CUSTOM_CRYPT_head_beat_2
 63ef26037391c50d CUSTOM_CRYPT_head_bpm_lock
-0862d0161e9f6568 CUSTOM_CRYPT_head_bpm_locked
+63e436834bcac132 CUSTOM_CRYPT_head_bpm_lock_level
 10b804cfb6a5343b CUSTOM_CRYPT_head_bpm_turn
 f3c75386d655666a CUSTOM_CRYPT_head_downbeat
 d09ca06c26e46ca4 CUSTOM_CRYPT_head_glo_turn
@@ -988,6 +991,7 @@ b8d4a0ee64a7d682 CUSTOM_CRYPT_scl
 9069983b6abd0045 CUSTOM_CRYPT_shift_env
 e22217291b4bf3ee CUSTOM_CRYPT_shift_fm
 328ec6602c2dcc2e CUSTOM_CRYPT_shift_home
+4d4d9e09a816ca69 CUSTOM_CRYPT_shift_home_lock
 bf72ecb1cf1ce4f0 CUSTOM_CRYPT_shift_pan
 eafd05525e51ffa2 CUSTOM_CRYPT_shift_step
 f39891592b654834 CUSTOM_CRYPT_six_edit
@@ -1121,7 +1125,7 @@ f5f0b9d9df3a860a CUSTOM_LCD_global
 68795a23e7e85f65 CUSTOM_LCD_global_swing
 25bd199c99a7bece CUSTOM_LCD_head_beat_2
 d3b4e4be0f8fd0f9 CUSTOM_LCD_head_bpm_lock
-aa088688df2c7751 CUSTOM_LCD_head_bpm_locked
+d211530454935024 CUSTOM_LCD_head_bpm_lock_level
 fada1d604e911e5d CUSTOM_LCD_head_bpm_turn
 25bd199c99a7bece CUSTOM_LCD_head_downbeat
 a5195e39ed740307 CUSTOM_LCD_head_glo_turn
@@ -1245,6 +1249,7 @@ eb71a25b8ed7afdc CUSTOM_LCD_roll_wide
 719e4a6d185f5bc1 CUSTOM_LCD_shift_env
 888661d4e84a1b07 CUSTOM_LCD_shift_fm
 8880261d897503f5 CUSTOM_LCD_shift_home
+51ea2d558b889c1e CUSTOM_LCD_shift_home_lock
 8433523c6ac32c59 CUSTOM_LCD_shift_pan
 cc4da07dccc1e0c0 CUSTOM_LCD_shift_step
 97e375dcc3c06ffe CUSTOM_LCD_six_edit
@@ -1378,7 +1383,7 @@ c482a9766d2437c5 CUSTOM_NEON_fm_phase_fb
 468605d82a01ca73 CUSTOM_NEON_global_swing
 c58f2f0072c6958f CUSTOM_NEON_head_beat_2
 f6c07d14e06268be CUSTOM_NEON_head_bpm_lock
-ba052a958835e50b CUSTOM_NEON_head_bpm_locked
+9834c8351729211d CUSTOM_NEON_head_bpm_lock_level
 db97920b4abe7c28 CUSTOM_NEON_head_bpm_turn
 c58f2f0072c6958f CUSTOM_NEON_head_downbeat
 d221fac3127ee736 CUSTOM_NEON_head_glo_turn
@@ -1502,6 +1507,7 @@ df6eadb884c7cfad CUSTOM_NEON_roll_wide
 c1920bdd57fcc733 CUSTOM_NEON_shift_env
 1148de42eab7265b CUSTOM_NEON_shift_fm
 0bd75b3061826ce1 CUSTOM_NEON_shift_home
+ca907a2bfb2ef113 CUSTOM_NEON_shift_home_lock
 c2014746d056fb2d CUSTOM_NEON_shift_pan
 157a566f63f74e64 CUSTOM_NEON_shift_step
 1de6763ad860efe1 CUSTOM_NEON_six_edit
@@ -1635,7 +1641,7 @@ e66a3a12b5f0a34e CUSTOM_QUARK_fx
 f3f3737c73234f84 CUSTOM_QUARK_global_swing
 6cc344031128302b CUSTOM_QUARK_head_beat_2
 318e1c2055ea9ca8 CUSTOM_QUARK_head_bpm_lock
-4f6298670e4c07ae CUSTOM_QUARK_head_bpm_locked
+9ae566d7b996841c CUSTOM_QUARK_head_bpm_lock_level
 1acb6a2da071e67e CUSTOM_QUARK_head_bpm_turn
 6cc344031128302b CUSTOM_QUARK_head_downbeat
 3032e1fc540da4d1 CUSTOM_QUARK_head_glo_turn
@@ -1759,6 +1765,7 @@ d0f620ed0aaf0984 CUSTOM_QUARK_scl
 67d1f14057e7dcbf CUSTOM_QUARK_shift_env
 d06280fc592dbddd CUSTOM_QUARK_shift_fm
 2465657835291336 CUSTOM_QUARK_shift_home
+4959ff3c834efcc1 CUSTOM_QUARK_shift_home_lock
 7baf0fb239407b70 CUSTOM_QUARK_shift_pan
 d5ffecd73b3d5d04 CUSTOM_QUARK_shift_step
 b19d819a4fce0c09 CUSTOM_QUARK_six_edit
@@ -1892,7 +1899,7 @@ d4f8dc247268770f CUSTOM_SKIFF_global
 cf340805185aecb7 CUSTOM_SKIFF_global_swing
 a281b9ac862392b4 CUSTOM_SKIFF_head_beat_2
 6ea82fd2cb123c34 CUSTOM_SKIFF_head_bpm_lock
-98924f80a010676e CUSTOM_SKIFF_head_bpm_locked
+b499c2b16f532468 CUSTOM_SKIFF_head_bpm_lock_level
 83ca5648afbbb3de CUSTOM_SKIFF_head_bpm_turn
 a281b9ac862392b4 CUSTOM_SKIFF_head_downbeat
 72866b14bc842a03 CUSTOM_SKIFF_head_glo_turn
@@ -2016,6 +2023,7 @@ bc4bfd68b0ff47f2 CUSTOM_SKIFF_roll_wide
 e175fe052d1d97e3 CUSTOM_SKIFF_shift_env
 b002816f8f8f7489 CUSTOM_SKIFF_shift_fm
 817a0a38ee68784c CUSTOM_SKIFF_shift_home
+3cde5d808260b88b CUSTOM_SKIFF_shift_home_lock
 26cee17249085fc4 CUSTOM_SKIFF_shift_pan
 36043a2a89a7e654 CUSTOM_SKIFF_shift_step
 0cb656b2b03fcf09 CUSTOM_SKIFF_six_edit
@@ -2151,7 +2159,7 @@ f13a5d224fff493b GAMEBOY_fx_duck
 59392f731aa2b059 GAMEBOY_global_swing
 7634db029442809c GAMEBOY_head_beat_2
 c98530c33e37cf30 GAMEBOY_head_bpm_lock
-ec9ac2bfde04131a GAMEBOY_head_bpm_locked
+1d8bc3f4b328114e GAMEBOY_head_bpm_lock_level
 3336550e79c3b5bc GAMEBOY_head_bpm_turn
 7634db029442809c GAMEBOY_head_downbeat
 5d77b4df3d2aa446 GAMEBOY_head_glo_turn
@@ -2275,6 +2283,7 @@ c762a9ed855a4605 GAMEBOY_roll_ties
 ea3793d0f86c5dd4 GAMEBOY_shift_env
 c17f6d19fa609b63 GAMEBOY_shift_fm
 12fdd1e9931a7b6f GAMEBOY_shift_home
+97847b376beb9502 GAMEBOY_shift_home_lock
 f1fd42d88e5648c9 GAMEBOY_shift_pan
 a0ffbdcee14a499d GAMEBOY_shift_step
 7b614ad305f1e992 GAMEBOY_six_edit
@@ -2408,7 +2417,7 @@ f610f7e0f7aaa212 HI-CON_global
 78ca990fe904194e HI-CON_global_swing
 f227d9de6c1e8b47 HI-CON_head_beat_2
 f240ec93e06b9b5f HI-CON_head_bpm_lock
-55cacfcbc56cf648 HI-CON_head_bpm_locked
+693239fa4620005e HI-CON_head_bpm_lock_level
 acbd3b9d6cdb84c3 HI-CON_head_bpm_turn
 f227d9de6c1e8b47 HI-CON_head_downbeat
 66cbb4a296e1bbfd HI-CON_head_glo_turn
@@ -2532,6 +2541,7 @@ a51de9ba47a964d2 HI-CON_scl
 dd6f40b0baed09bd HI-CON_shift_env
 28fe06780caca018 HI-CON_shift_fm
 a63588a10ab7bead HI-CON_shift_home
+d8e656b69f985212 HI-CON_shift_home_lock
 021e5a41c6b3b303 HI-CON_shift_pan
 0b71d8964586f4e6 HI-CON_shift_step
 c1f26ec66bb6ec7f HI-CON_six_edit
@@ -2665,7 +2675,7 @@ bd20407774fd2284 LARGE_AMBER_fx_duck
 58832da43b97026c LARGE_AMBER_global_swing
 17047fda359f1c23 LARGE_AMBER_head_beat_2
 2acb03ff4cf4565f LARGE_AMBER_head_bpm_lock
-13d28e6594785087 LARGE_AMBER_head_bpm_locked
+8b359c75bea6d6f8 LARGE_AMBER_head_bpm_lock_level
 041dacda1e9f70c0 LARGE_AMBER_head_bpm_turn
 17047fda359f1c23 LARGE_AMBER_head_downbeat
 dd1d4af7b1d927c7 LARGE_AMBER_head_glo_turn
@@ -2789,6 +2799,7 @@ cdf2c0929f17b261 LARGE_AMBER_scl
 5a0b193d3352921c LARGE_AMBER_shift_env
 2f81a201393626ee LARGE_AMBER_shift_fm
 74c1a6f7d42eefa6 LARGE_AMBER_shift_home
+66ee1b34992dd03a LARGE_AMBER_shift_home_lock
 8a898e118e8aa12c LARGE_AMBER_shift_pan
 11389b16e70b7610 LARGE_AMBER_shift_step
 518324b497043436 LARGE_AMBER_six_edit
@@ -2922,7 +2933,7 @@ d0716f0fe2aebd01 LARGE_BLUE-STN_fx_duck
 d3ba0bce32dec017 LARGE_BLUE-STN_global_swing
 6240f2cdf4856e05 LARGE_BLUE-STN_head_beat_2
 03ea6ab9326f2f11 LARGE_BLUE-STN_head_bpm_lock
-ce0941e621511230 LARGE_BLUE-STN_head_bpm_locked
+33dac863bb248918 LARGE_BLUE-STN_head_bpm_lock_level
 fafe81e35c167e1a LARGE_BLUE-STN_head_bpm_turn
 6240f2cdf4856e05 LARGE_BLUE-STN_head_downbeat
 858b31f5f59eeb7a LARGE_BLUE-STN_head_glo_turn
@@ -3046,6 +3057,7 @@ cfab4d3558607a19 LARGE_BLUE-STN_scl
 fc3d00f96983302f LARGE_BLUE-STN_shift_env
 1bf3fd1760d36e0f LARGE_BLUE-STN_shift_fm
 199873b9d31b6dfa LARGE_BLUE-STN_shift_home
+795b7b0bce2c7a1b LARGE_BLUE-STN_shift_home_lock
 ab35bd5e6601f77e LARGE_BLUE-STN_shift_pan
 c5760293a6624796 LARGE_BLUE-STN_shift_step
 e444dfc773c05dfe LARGE_BLUE-STN_six_edit
@@ -3179,7 +3191,7 @@ dcecac91312e5367 LARGE_CRYPT_fx_duck
 1c7b20cd069370eb LARGE_CRYPT_global_swing
 95f525e2c43812ab LARGE_CRYPT_head_beat_2
 da30938cec273e6c LARGE_CRYPT_head_bpm_lock
-734ebbc508c55ddd LARGE_CRYPT_head_bpm_locked
+63c151cb666d7689 LARGE_CRYPT_head_bpm_lock_level
 ec730170c09ec348 LARGE_CRYPT_head_bpm_turn
 95f525e2c43812ab LARGE_CRYPT_head_downbeat
 7e01d504bd836466 LARGE_CRYPT_head_glo_turn
@@ -3303,6 +3315,7 @@ e7df8b1a46824792 LARGE_CRYPT_scl
 ce341ba978f703d3 LARGE_CRYPT_shift_env
 572f82594fafc173 LARGE_CRYPT_shift_fm
 f4f93273d0bf8dfb LARGE_CRYPT_shift_home
+fc6497d1c6382d4e LARGE_CRYPT_shift_home_lock
 22a20cfe16a85eec LARGE_CRYPT_shift_pan
 f54efb94b3672434 LARGE_CRYPT_shift_step
 5dc77129ed89b4db LARGE_CRYPT_six_edit
@@ -3436,7 +3449,7 @@ ee5322cff5fb358e LARGE_GAMEBOY_global
 aa03d728a1f36344 LARGE_GAMEBOY_global_swing
 b7fd627e8cd9f7f4 LARGE_GAMEBOY_head_beat_2
 f2b08861ea5703a8 LARGE_GAMEBOY_head_bpm_lock
-0d0d3831f08b5ada LARGE_GAMEBOY_head_bpm_locked
+a06ff6b8fd630c5e LARGE_GAMEBOY_head_bpm_lock_level
 c109bd0f5e0d2854 LARGE_GAMEBOY_head_bpm_turn
 b7fd627e8cd9f7f4 LARGE_GAMEBOY_head_downbeat
 5cb3b6060dfe6896 LARGE_GAMEBOY_head_glo_turn
@@ -3560,6 +3573,7 @@ ad104d181e23c772 LARGE_GAMEBOY_samples
 7e4f546a070393c7 LARGE_GAMEBOY_shift_env
 eb738e1606bc1667 LARGE_GAMEBOY_shift_fm
 414b5a8bbe3672c2 LARGE_GAMEBOY_shift_home
+36ce6e40d6d8a1ff LARGE_GAMEBOY_shift_home_lock
 5661c54a84177ae6 LARGE_GAMEBOY_shift_pan
 4b0c5a3afe2da308 LARGE_GAMEBOY_shift_step
 51635153b1276a36 LARGE_GAMEBOY_six_edit
@@ -3693,7 +3707,7 @@ a7c391990c8d4fa9 LARGE_LCD-NIGHT_global
 2211c854c0b93ab3 LARGE_LCD-NIGHT_global_swing
 3c2d595657cceff8 LARGE_LCD-NIGHT_head_beat_2
 8509772f75f8f1e3 LARGE_LCD-NIGHT_head_bpm_lock
-5fb2ddfe2905db13 LARGE_LCD-NIGHT_head_bpm_locked
+a80b4fdf1c477496 LARGE_LCD-NIGHT_head_bpm_lock_level
 3ba40dbe4a3a02b9 LARGE_LCD-NIGHT_head_bpm_turn
 d22fc1d0917e4e68 LARGE_LCD-NIGHT_head_downbeat
 1439b69d37a30907 LARGE_LCD-NIGHT_head_glo_turn
@@ -3817,6 +3831,7 @@ e4cfc24a362acb26 LARGE_LCD-NIGHT_scl
 303b7b2dc50e12b7 LARGE_LCD-NIGHT_shift_env
 87943173564a6d3b LARGE_LCD-NIGHT_shift_fm
 34dddd33e273be0e LARGE_LCD-NIGHT_shift_home
+f9fefd35e685b4e1 LARGE_LCD-NIGHT_shift_home_lock
 5805eeb9618ac9d7 LARGE_LCD-NIGHT_shift_pan
 513889545ff0a802 LARGE_LCD-NIGHT_shift_step
 68c7dbe56994547f LARGE_LCD-NIGHT_six_edit
@@ -3950,7 +3965,7 @@ a526324b199b4191 LARGE_LCD_fx_duck_off
 5d73a00c75bbaacd LARGE_LCD_global_swing
 fe9a51f25bbde627 LARGE_LCD_head_beat_2
 6d28a06373d8e15c LARGE_LCD_head_bpm_lock
-eb80a34ef52d5dc9 LARGE_LCD_head_bpm_locked
+3e4476e04189142a LARGE_LCD_head_bpm_lock_level
 ce6b292df4c89c80 LARGE_LCD_head_bpm_turn
 1bed9f43347eb825 LARGE_LCD_head_downbeat
 5b603e26d0c16ddf LARGE_LCD_head_glo_turn
@@ -4074,6 +4089,7 @@ c11b0d3fab3e70ec LARGE_LCD_scl
 286a379203632037 LARGE_LCD_shift_env
 ea5cd95806be31ed LARGE_LCD_shift_fm
 9ef7e8aad1769700 LARGE_LCD_shift_home
+0ebcb023bd987919 LARGE_LCD_shift_home_lock
 9445240f03d38e8f LARGE_LCD_shift_pan
 f0ce0d473cf2db37 LARGE_LCD_shift_step
 3386cbea4632543e LARGE_LCD_six_edit
@@ -4207,7 +4223,7 @@ ef9cbfb6e5b9fe99 LARGE_NEON_fm_phase_high
 4508852cdab9d3ef LARGE_NEON_global_swing
 75c8a6bc18fb64d0 LARGE_NEON_head_beat_2
 21b019a0833075bd LARGE_NEON_head_bpm_lock
-628aa74326a0e73f LARGE_NEON_head_bpm_locked
+dd50ce05bf93ecb4 LARGE_NEON_head_bpm_lock_level
 6d841e7c2db9c5d3 LARGE_NEON_head_bpm_turn
 75c8a6bc18fb64d0 LARGE_NEON_head_downbeat
 db8249bcac4494f5 LARGE_NEON_head_glo_turn
@@ -4331,6 +4347,7 @@ e02da5a978578d09 LARGE_NEON_roll_wide
 73aee6fce064876b LARGE_NEON_shift_env
 14c002452218c281 LARGE_NEON_shift_fm
 c82bad5bc848ac34 LARGE_NEON_shift_home
+e1634124e82dfaa8 LARGE_NEON_shift_home_lock
 afdd45653509863b LARGE_NEON_shift_pan
 745ffa575ac78bb9 LARGE_NEON_shift_step
 66a3a0645070775e LARGE_NEON_six_edit
@@ -4464,7 +4481,7 @@ d9d10dc24890df2c LARGE_QUARK_global
 845b1513850eaab8 LARGE_QUARK_global_swing
 d116a156ad214d67 LARGE_QUARK_head_beat_2
 997f6b42b8e77c94 LARGE_QUARK_head_bpm_lock
-1f687e63a04b1c51 LARGE_QUARK_head_bpm_locked
+364a40c30f71956c LARGE_QUARK_head_bpm_lock_level
 f83e43f3021f2da2 LARGE_QUARK_head_bpm_turn
 d116a156ad214d67 LARGE_QUARK_head_downbeat
 b636fa94d74350d2 LARGE_QUARK_head_glo_turn
@@ -4588,6 +4605,7 @@ f5279180cfbe785b LARGE_QUARK_scl
 500c312f0d22352d LARGE_QUARK_shift_env
 30e62cf699b066ab LARGE_QUARK_shift_fm
 48250122e48726fa LARGE_QUARK_shift_home
+950f31f975299695 LARGE_QUARK_shift_home_lock
 74008c75aec3e76e LARGE_QUARK_shift_pan
 b5adc19046f35257 LARGE_QUARK_shift_step
 6617dc1a6b298524 LARGE_QUARK_six_edit
@@ -4721,7 +4739,7 @@ c781bfa08d97577e LARGE_SKIFF_fx_duck_off
 72062eeabda6d69c LARGE_SKIFF_global_swing
 ce81410d58c41863 LARGE_SKIFF_head_beat_2
 b02becb143bb520f LARGE_SKIFF_head_bpm_lock
-4b5a175b8f0e1849 LARGE_SKIFF_head_bpm_locked
+15b170a415acd5c2 LARGE_SKIFF_head_bpm_lock_level
 74c83917895ba14a LARGE_SKIFF_head_bpm_turn
 ce81410d58c41863 LARGE_SKIFF_head_downbeat
 51d2f56068a3d9bc LARGE_SKIFF_head_glo_turn
@@ -4845,6 +4863,7 @@ d85e5e7836d6e7d4 LARGE_SKIFF_samples
 f2d6640f43af8998 LARGE_SKIFF_shift_env
 175686434fb1099b LARGE_SKIFF_shift_fm
 a0d82312fed5b1d2 LARGE_SKIFF_shift_home
+e27666fa93c99f17 LARGE_SKIFF_shift_home_lock
 6ef57ab8375e3f55 LARGE_SKIFF_shift_pan
 f25ddd9d03f09edf LARGE_SKIFF_shift_step
 b17188a85bb69571 LARGE_SKIFF_six_edit
@@ -4980,7 +4999,7 @@ a40e6737382e2d3a LCD-NIGHT_fx_duck
 654c095e42934d51 LCD-NIGHT_global_swing
 c599eb2b4e181d6a LCD-NIGHT_head_beat_2
 56f16bb110943e71 LCD-NIGHT_head_bpm_lock
-90ea5ce224b11af1 LCD-NIGHT_head_bpm_locked
+67065c4661e4b128 LCD-NIGHT_head_bpm_lock_level
 1a7f15f9da0d9e09 LCD-NIGHT_head_bpm_turn
 c599eb2b4e181d6a LCD-NIGHT_head_downbeat
 a1fcab46da3a718c LCD-NIGHT_head_glo_turn
@@ -5104,6 +5123,7 @@ cc93c217d2154f36 LCD-NIGHT_samples
 d56dccc400946f4d LCD-NIGHT_shift_env
 b13c998eee14316b LCD-NIGHT_shift_fm
 4dd09a7d386e72d1 LCD-NIGHT_shift_home
+3bc6c83cc0247ed2 LCD-NIGHT_shift_home_lock
 ec934c48a588f5c5 LCD-NIGHT_shift_pan
 270db7ce66db4ab4 LCD-NIGHT_shift_step
 71a89d0876204b16 LCD-NIGHT_six_edit
@@ -5239,7 +5259,7 @@ e06430f6f1a0d6d7 LCD_fx_duck
 44265091e4113384 LCD_global_swing
 6a507638ed7148a8 LCD_head_beat_2
 ba748441a313b515 LCD_head_bpm_lock
-451c00bfc962b99c LCD_head_bpm_locked
+b5b10c2fa8778797 LCD_head_bpm_lock_level
 9a94b055ccefc92b LCD_head_bpm_turn
 6a507638ed7148a8 LCD_head_downbeat
 0740ea1014ea201a LCD_head_glo_turn
@@ -5363,6 +5383,7 @@ c98ca9c920cbf2f9 LCD_roll_ties
 2b0f2e4a41761ac3 LCD_shift_env
 d5e8fc61d0ac5c11 LCD_shift_fm
 b54e88f74fbd12ba LCD_shift_home
+00ac2aa18af6bee3 LCD_shift_home_lock
 5f1c6868d666d8fb LCD_shift_pan
 39b119546945f30d LCD_shift_step
 7f77a1b24aa32f4d LCD_six_edit
@@ -5498,7 +5519,7 @@ ad48334503d56939 NEON_global
 bbe7d27316b3aa9b NEON_global_swing
 c13062a304a3b133 NEON_head_beat_2
 4f1f627a39e602a2 NEON_head_bpm_lock
-c30d580917dda9a0 NEON_head_bpm_locked
+a117c1a31d190bcf NEON_head_bpm_lock_level
 808676d2c63ecc8c NEON_head_bpm_turn
 c13062a304a3b133 NEON_head_downbeat
 e67162931ce96e81 NEON_head_glo_turn
@@ -5622,6 +5643,7 @@ f7fd7102c459d860 NEON_roll_locks
 8ca77888635eb795 NEON_shift_env
 591b8a5c37bb1ebd NEON_shift_fm
 06a118af072bacdb NEON_shift_home
+238b225e01ed27eb NEON_shift_home_lock
 2a3c3d94dba7c565 NEON_shift_pan
 18ed400261b518b1 NEON_shift_step
 2e8bb9726cafca47 NEON_six_edit
@@ -5755,7 +5777,7 @@ c4b07b3a9f2b4119 PAPER_fx_duck_off
 45c4e9ca27ced59e PAPER_global_swing
 3e073511a163d338 PAPER_head_beat_2
 065fa0bcc875f418 PAPER_head_bpm_lock
-36a01a7bd84fdc66 PAPER_head_bpm_locked
+12cf4d94f5161445 PAPER_head_bpm_lock_level
 727a7e8347ec8657 PAPER_head_bpm_turn
 3e073511a163d338 PAPER_head_downbeat
 5b7cafb8c1fa7ff1 PAPER_head_glo_turn
@@ -5879,6 +5901,7 @@ c01001b86b81230e PAPER_roll_wide
 8fe5394d5fa5dea0 PAPER_shift_env
 b8ef358cc114aa38 PAPER_shift_fm
 3a4cac81d224af7b PAPER_shift_home
+3b64f588f6ef3106 PAPER_shift_home_lock
 ffabbf3a13504793 PAPER_shift_pan
 385bb2b92611fd91 PAPER_shift_step
 9398d2560194e1d1 PAPER_six_edit
@@ -6020,7 +6043,7 @@ bccae5b3012fd7df QUARK_global
 05d7ec9be9e18149 QUARK_global_swing
 9bcaa773c7861ea1 QUARK_head_beat_2
 3f9f8e492acbece2 QUARK_head_bpm_lock
-2dd487be3ebc684b QUARK_head_bpm_locked
+09483035dda0413a QUARK_head_bpm_lock_level
 b89563c778a956e0 QUARK_head_bpm_turn
 9bcaa773c7861ea1 QUARK_head_downbeat
 dc5bedbef466a53e QUARK_head_glo_turn
@@ -6144,6 +6167,7 @@ e8c698e4a134ebb7 QUARK_scl
 1c5d2c749a04a5b4 QUARK_shift_env
 20019ea34320b097 QUARK_shift_fm
 979f56ddbd144c07 QUARK_shift_home
+2abf76ed11bc235c QUARK_shift_home_lock
 7524bed0beb12fb7 QUARK_shift_pan
 e39704dec79c764f QUARK_shift_step
 7ee9d8bdde3c6db8 QUARK_six_edit
@@ -6279,7 +6303,7 @@ dcf31d7059187d67 SKIFF_fx_duck_off
 b9884322f0a2773f SKIFF_global_swing
 be022f6d07961638 SKIFF_head_beat_2
 367d6a04fa0e16bc SKIFF_head_bpm_lock
-dc17d283634cae1e SKIFF_head_bpm_locked
+5c19426cc0da2e2d SKIFF_head_bpm_lock_level
 df677cebf5ac1f75 SKIFF_head_bpm_turn
 be022f6d07961638 SKIFF_head_downbeat
 20ceea1c4a0f1b60 SKIFF_head_glo_turn
@@ -6403,6 +6427,7 @@ c033b45b34344c55 SKIFF_samples
 153642e4e8d29d0b SKIFF_shift_env
 3191e13fbeb4b9ce SKIFF_shift_fm
 bcb9fef6a08a9bd3 SKIFF_shift_home
+2d0815c31ba4e316 SKIFF_shift_home_lock
 394c157d3a7042ca SKIFF_shift_pan
 1a572f0268951b07 SKIFF_shift_step
 480f03aff8e6dce5 SKIFF_six_edit

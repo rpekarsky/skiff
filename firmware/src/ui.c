@@ -790,7 +790,8 @@ static void ui_say(const char *a, const char *b)
 }
 
 static void ui_message(const char *s) { ui_say(s, ""); }
-/* "T1 PAN +25%": track k's value said (the SMK's faders; (wishlist #38) PRESETS KNOB PAN) */
+/* "T1 PAN +25%": track k's value said (the SMK's faders; (wishlist #38) PRESETS KNOB PAN, (wishlist #49) SELECT on
+ * HOME) */
 static void say_track_value(uint32_t k, uint32_t id, const char *name)
 {
     char b[24], val[8];

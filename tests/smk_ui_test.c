@@ -1068,6 +1068,12 @@ static int test_shift(void)
         for (ok = 0, i = 0; i < 12; i++)
             ok += str_eq(m[i].key, "K4") + str_eq(m[i].key, "K3") + str_eq(m[i].key, "+ BT") + str_eq(m[i].key, "PLAY");
         bad += check("SMK SHIFT's map: the SMK's printed names (K4, K3, + BT; PLAY as PLAY: the SMK prints a play sign)", ok == 4);
+        ui_prefs |= PREF_BPM_LOCK;
+        ui.home = 1;
+        shift_map(m);
+        bad += check("(wishlist #49) SMK SHIFT's map on HOME, BPM LOCK ON: K2 LEVEL, GLOBE + K2 TEMPO",
+                     str_eq(m[1].key, "K2") && str_eq(m[1].job, "LEVEL") && str_eq(m[5].key, "GLOBE + K2") &&
+                     str_eq(m[5].job, "TEMPO"));
     }
     fm1_in.buttons |= 1u << panel.btn[B_SAVE];
     host_pressed |= 1u << panel.btn[B_SAVE];

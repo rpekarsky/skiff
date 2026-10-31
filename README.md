@@ -466,7 +466,8 @@ by the keys, with what each key is in Skiff.
   F3 held clears the track's sequence, then CLICK, COUNT-IN, CLICK LEVEL, FEEL; C4 KNOBS OFF keeps knob turns out
   of REC's automation (they still change the sound, and TAKE still writes them)
 - **EDIT** opens the EDIT pages everywhere; on NOTES with REC armed it clears the cursor step
-- **SELECT** turns the pages of a family; **GLO + SELECT** sets the tempo (MENU › BPM LOCK, on by default)
+- **SELECT** turns the pages of a family, and on HOME the selected track's LEVEL; **GLO + SELECT** sets the tempo
+  (MENU › BPM LOCK, on by default)
 - **PRESETS** changes the sound (MENU › PRESETS KNOB PAN: the track's PAN, SHIFT + PRESETS the sound); on NOTES and FEEL
   it moves the step cursor, on PATTERN it turns the direction, on lists it picks. With SAVE › PRESETS' LIST on a type
   (BASS, PAD ..) it steps through that type only
@@ -614,8 +615,9 @@ every setting back as a new unit has it. The web editor's Settings tab reads and
 - **KNOB ACCEL:** OFF (one step per click) or ON: a fast, steady turn of a wide value moves 2 to 4 steps
   per click, up to 8 on values of more than 64 steps, the FX and GLO layers' knobs included; lists never
   jump. ON or OFF, every click of a fast turn counts
-- **BPM LOCK:** ON (default), SELECT turns the pages of a family; hold GLO and turn SELECT, tap G4 in the GLO
-  layer or use GLO › GLOBAL for the tempo. OFF, SELECT is the tempo everywhere, Felucca's way. Skiff turns it
+- **BPM LOCK:** ON (default), SELECT turns the pages of a family, and on HOME the selected track's LEVEL (as
+  MIXER's, recorded with REC on); hold GLO and turn SELECT, tap G4 in the GLO layer or use GLO › GLOBAL for the
+  tempo. OFF, SELECT is the tempo everywhere, Felucca's way. Skiff turns it
   ON once on a unit coming from Felucca; DRUM-X's SOUND sheet and FM6's OPERATOR and ALL OPS move their rows with
   SELECT either way
 - **SCALE LEDS:** OFF or ON: the keys show the selected track's scale all the time (the root a little

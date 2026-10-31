@@ -1439,7 +1439,7 @@ typedef struct {
 static void shift_map(smap_t *m)
 {
     uint32_t g = ui.home ? GR_NONE : cur_page()->graph, sel = !ui.home && (step_page(g) || g == GR_FEEL),
-             drum = drum_track(TSEL);
+             drum = drum_track(TSEL), home_level = ui.home && (ui_prefs & PREF_BPM_LOCK);
     static const char SND[] = "SOUND";              /* (PRESETS' job on most pages: not this page's own) */
     const sheet_t *sh = sheet_of(g);
     const char *pj = ui.home || g == GR_BROWSE ? SND : sel ? "STEP" : g == GR_STEPS ? "DIR" :
@@ -1455,14 +1455,17 @@ static void shift_map(smap_t *m)
         m[0].job = "PAN";
     if (!(ui_prefs & PREF_BPM_LOCK) && !sh)
         m[1] = (smap_t){"SELECT", "TEMPO", 1};
-    else if (ui.home)
-        m[1] = (smap_t){"GLO + SELECT", "TEMPO", 0};
+    else if (home_level)                             /* (wishlist #49) */
+        m[1] = (smap_t){"SELECT", "LEVEL", 1};
     else
         m[1] = (smap_t){"SELECT", sh ? "ROWS" : "PAGE", (uint8_t)(sh != 0)};
     m[2] = (smap_t){"ALGO", "TRACK", 0};
     m[3] = (smap_t){"KEYS", drum ? "DRUMS" : "NOTES", 0};
     m[4] = !ui.home && act_cols() ? (smap_t){"OCT+", "DO IT", 1} : (smap_t){"OCT- +", "OCTAVE", 0};
-    m[5] = (smap_t){"PLAY", song.playing ? "STOP" : "START", 0};   /* (what it would do now) */
+    if (home_level)                                  /* ((wishlist #49) PLAY's cell, obvious, makes room for the tempo; */
+        m[5] = (smap_t){"GLO + SELECT", "TEMPO", 0};   /* KEYS NOTES is the next such cell) */
+    else
+        m[5] = (smap_t){"PLAY", song.playing ? "STOP" : "START", 0};   /* (what it would do now) */
     if (step_page(g) && !drum) {                     /* ((2.0) NOTES: the keys pick, with REC write) */
         m[3] = (smap_t){"KEYS", "PICK", 1};
         m[4] = (smap_t){"KEYS + REC", "WRITE", 1};

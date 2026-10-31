@@ -839,7 +839,7 @@ enum { S_HOME, S_HOME_IDLE, S_MESSAGE, S_MESSAGE_KEY, S_MESSAGE_NOFILE, S_PRESET
        S_ROLL_EMPTY, S_ROLL_ACID, S_ROLL_CHORDS, S_ROLL_TIES, S_ROLL_LEN32, S_ROLL_HIGH, S_ROLL_LOW, S_ROLL_WIDE, S_ROLL_PLAYING,
        S_ROLL_LOCKS, S_ROLL_LOCK_HELD, S_DRUM_LOCKS, S_DRUM_LOCK_HELD, S_MOTION_LOCKS, S_AUTO_LIST, S_AUTO_LIST_ADD, S_AUTO_LIST_DRUM, S_AUTO_LIST_DEL, S_REC_LAYER, S_REC_LAYER_SET,
        S_COUNTIN, S_COUNTIN2, S_MENU_AUDIO, S_HEAD_PLAY_REC, S_HEAD_REC_OTHER, S_HEAD_BPM_TURN, S_HEAD_BPM_LOCK,
-       S_HEAD_BPM_LOCKED, S_HEAD_GLO_TURN, S_HEAD_DOWNBEAT, S_HEAD_BEAT_2, S_HEAD_PROJECT,
+       S_HEAD_BPM_LOCK_LEVEL, S_HEAD_GLO_TURN, S_HEAD_DOWNBEAT, S_HEAD_BEAT_2, S_HEAD_PROJECT,
        S_TAKE_BOX, S_TAKE_PARTIAL, S_TAKE_PASS, S_CONFIRM_INIT, S_UNDO_BOX, S_CHANCE_FLAM,
        S_PLAY_DIR, S_POOL, S_CONFIRM_POOL, S_PERF_LAYER, S_DUCK, S_DUCK_OFF, S_PLAY_GATE, S_PERF_SCENES, S_TILES, S_TILES_BAR2, S_TILES_DRUM,
        S_SONG, S_SONG_PLAYING, S_SONG_COPY, S_SONG_CLEAR, S_CONFIRM_ENTRY, S_CONFIRM_ENTRY_LAST, S_STEP_MARK,
@@ -848,7 +848,7 @@ enum { S_HOME, S_HOME_IDLE, S_MESSAGE, S_MESSAGE_KEY, S_MESSAGE_NOFILE, S_PRESET
        S_SIX_HOME, S_SIX_SONG, S_SIX_PERF, S_SIX_MIXER, S_SIX_GLO, S_SIX_FX,                  /* (Skiff phase 6) */
        S_SIX_EDIT, S_SIX_EDIT_SAID,
        S_MOD_GRID, S_VOICE2, S_VOICE2_UNI, S_ARP_ON, S_ARP2, S_EDIT_FLT, S_GLOBAL_SWING, S_VOICE_GLIDE,   /* (Skiff U5) */
-       S_SHIFT_ENV, S_SHIFT_STEP, S_SHIFT_HOME, S_LFO_RUN, S_HOME_SCOPE,
+       S_SHIFT_ENV, S_SHIFT_STEP, S_SHIFT_HOME, S_SHIFT_HOME_LOCK, S_LFO_RUN, S_HOME_SCOPE,
        S_FM_TONE, S_FM_ENV, S_FM_KEYS, S_FM_ALGO, S_FM_PITCH, S_FM_LFO, S_FM_INIT,   /* (FM6 LAB) */
        S_FM_PHASE_LOW, S_FM_PHASE_HIGH, S_FM_PHASE_FB, S_SHIFT_FM,                           /* (#20) */
        S_DRIVE_SOFT, S_DRIVE_HARD, S_DRIVE_FOLD, S_DRIVE_CRUSH, S_DRIVE_FUZZ, S_INS_FUZZ, S_INS_CRUSH, S_INS_FLANG,
@@ -887,7 +887,7 @@ static const char *const S_NAME[S_COUNT] = {"home", "home_idle", "message", "mes
     "roll_empty", "roll_acid", "roll_chords", "roll_ties", "roll_len32_p2", "roll_high", "roll_low", "roll_wide", "roll_playing",
     "roll_locks", "roll_lock_held", "drum_locks", "drum_lock_held", "motion_locks", "auto_list", "auto_list_add", "auto_list_drum", "auto_list_delete", "layer_rec", "layer_rec_set",
     "countin", "countin_2bars", "menu_audio", "head_play_rec", "head_rec_other", "head_bpm_turn", "head_bpm_lock",
-    "head_bpm_locked", "head_glo_turn", "head_downbeat", "head_beat_2", "head_project",
+    "head_bpm_lock_level", "head_glo_turn", "head_downbeat", "head_beat_2", "head_project",
     "take_box", "take_partial", "take_pass", "confirm_init", "undo_box", "chance_flam", "play_dir", "pool",
     "confirm_pool", "layer_perform", "fx_duck", "fx_duck_off", "play_gate", "layer_perform_scenes",
     "step_tiles", "step_tiles_bar2", "step_tiles_drum",
@@ -895,7 +895,7 @@ static const char *const S_NAME[S_COUNT] = {"home", "home_idle", "message", "mes
     "dx_sound", "dx_sound_2", "dx_sound_3", "confirm_init_dx",
     "six_home", "six_song", "six_perform", "six_mixer", "six_glo", "six_fx", "six_edit", "six_edit_said",
     "mod_grid", "voice_2", "voice_2_uni", "arp_on", "arp_2", "edit_flt", "global_swing", "voice_glide",
-    "shift_env", "shift_step", "shift_home", "lfo_run", "home_scope",
+    "shift_env", "shift_step", "shift_home", "shift_home_lock", "lfo_run", "home_scope",
     "fm_op_tone", "fm_op_env", "fm_op_keys", "fm_all_algo", "fm_all_pitch", "fm_all_lfo", "fm_init", "fm_phase_low",
     "fm_phase_high", "fm_phase_fb", "shift_fm",
     "drive_soft", "drive_hard", "drive_fold", "drive_crush", "drive_fuzz", "insert_fuzz", "insert_crush", "insert_flanger",
@@ -1160,14 +1160,15 @@ static void setup(int s)
     case S_COUNTIN2: song.playing = 0; song.rec = 1; cin_total = 8; cin_left = 8; go_page(GR_ROLL); break;
     case S_MENU_AUDIO: ui.menu = 1; ui.menu_sel = MI_CLICK; rp_put(RP_CLICK, 1u); rp_put(RP_COUNTIN, 1u); break;
     /* 1.2: the header's three slots (ui_draw.c draw_head): playing with the selected track armed; another track armed;
-     * the BPM being turned (the accent's); BPM LOCK ON (the lock right of the BPM), and its message after a turn;
-     * GLO with the tempo turned and BPM LOCK ON (the label right of the lock); the metronome on the bar's 1st beat
-     * (the accent's) and its 2nd (mirrored) */
+     * the BPM being turned (the accent's); BPM LOCK ON (the lock right of the BPM), and (wishlist #49) SELECT's LEVEL
+     * said after a turn; GLO with the tempo turned and BPM LOCK ON (the label right of the lock); the metronome on the
+     * bar's 1st beat (the accent's) and its 2nd (mirrored) */
     case S_HEAD_PLAY_REC: song.rec = 1u << song.sel; go_home(); break;
     case S_HEAD_REC_OTHER: song.rec = 1u << ((song.sel + 2u) % NTRK); go_home(); break;
     case S_HEAD_BPM_TURN: song.g[G_BPM] = 128; ui.roll_bpm = 128; ui.bpm_t = 40; go_home(); break;
     case S_HEAD_BPM_LOCK: ui_prefs |= PREF_BPM_LOCK; go_home(); break;
-    case S_HEAD_BPM_LOCKED: ui_prefs |= PREF_BPM_LOCK; go_home(); ui_message("BPM LOCKED"); break;
+    case S_HEAD_BPM_LOCK_LEVEL:
+        ui_prefs |= PREF_BPM_LOCK; go_home(); TSEL->p[P_LEVEL] = 92; say_track_value(song.sel, P_LEVEL, "LEVEL"); break;
     case S_HEAD_GLO_TURN: ui_prefs |= PREF_BPM_LOCK; go_home(); ui.layer = LAYER_GLO; ui.bpm_t = 40; break;
     case S_HEAD_DOWNBEAT: clk_step = 1; song.rec = 1u << song.sel; go_home(); break;
     case S_HEAD_BEAT_2: clk_step = 5; song.rec = 1u << song.sel; go_home(); break;
@@ -1275,6 +1276,8 @@ static void setup(int s)
         else ui.home = 1;
         ui.shift = 1;
         break;
+    case S_SHIFT_HOME_LOCK: ui_prefs |= PREF_BPM_LOCK; ui.home = 1; ui.shift = 1; break;   /* ((wishlist #49) SELECT
+                                                     * LEVEL, GLO + SELECT TEMPO) */
     case S_VOICE: go_title("VOICE"); break;
     case S_GLOBAL: go_title("GLOBAL"); break;
     case S_CHORUS: go_title("CHORUS"); break;   /* ((U3, N4) GLO's; SYSTEM gone, R2) */
