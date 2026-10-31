@@ -4576,7 +4576,7 @@ static int test_bughunt_ui2(void)
         bad += check("NAME: PLAY stops a running transport (never starts), REC ignored, then OCT+ saves", ok);
     }
     {   /* 6. the piano roll's lowest C name ("C-1") stays inside the panel: nothing drawn left of x 3 ((#29) LCD: but its
-         * dot grid) */
+         * dot grid; (#48) LCD: the track rail there instead) */
         uint32_t p, x, y, out = 0;
         uint16_t bg, dot;
         for (p = 0; p < NPALETTES; p++) {
@@ -4591,7 +4591,8 @@ static int test_bughunt_ui2(void)
             dot = ux.h1n ? swap16(T_RAISE) : bg;
             for (y = Y_GRAPH; y < Y_GRAPH + H_GRAPH; y++)
                 for (x = 0; x < 3u; x++)
-                    out += host_screen[y * 240u + x] != bg && host_screen[y * 240u + x] != dot;
+                    out += ux.h1n ? host_screen[y * 240u + x] != (x < HN_RAIL_W ? swap16(hn_rail_tone((int32_t)y)) : bg)
+                                  : host_screen[y * 240u + x] != bg && host_screen[y * 240u + x] != dot;
         }
         bad += check("piano roll: the C-1 label stays inside the panel (every palette)", !out);
     }

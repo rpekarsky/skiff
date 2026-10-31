@@ -19,6 +19,8 @@ Output: per size S in --sizes
   AI<S>_INK     each cell's ink box (the UI centres an icon by its ink: src/icons.c icon_ink)
   AI<S>_IDX[ICON_COUNT]  cell number of every icon at that size, 0xFF = not rasterised at that size
   (12 px: all legacy icons + SMALL_EXTRA; 16 px: only the --big set; 24 px: HUGE_DEFAULT)
+  PX<S>_DATA, PX<S>_OFF, PX<S>_INK  (Skiff #52) the same cells in 1 bit for the LCD looks (tools/pixel_icons.py):
+                each its ink box's bits row by row, the high bit first (gfx.c cv_bits), AI<S>_IDX numbering them too
 --list prints every Fukiai glyph name and its codepoint (what is available).
 --report prints the mapping, the unmapped legacy names and the byte cost.
 """
@@ -29,6 +31,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import aa_raster as ar  # noqa: E402
+import pixel_icons  # noqa: E402
 from gen_aa_font import huff_pack, huff_unpack  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -207,14 +210,22 @@ def fitted_font(font_path, out_dir, names):
     return str(p), fixed
 
 
-def ink_box(b, s):
-    """(x0, y0, x1, y1) of the nonzero nibbles of an s x s cell (2 px a byte, high nibble first), x1 y1 past them"""
+def ink_box(v, s):
+    """(x0, y0, x1, y1) of the nonzero values of an s x s cell, x1 y1 past them"""
     xs, ys = [], []
     for i in range(s * s):
-        if (b[i >> 1] >> (0 if i & 1 else 4)) & 15:
+        if v[i]:
             xs.append(i % s)
             ys.append(i // s)
     return min(xs), min(ys), max(xs) + 1, max(ys) + 1
+
+
+def ink_bits(v, s):
+    """the bits of an s x s cell's ink box, row by row, the high bit first"""
+    x0, y0, x1, y1 = ink_box(v, s)
+    bits = [1 if v[y * s + x] else 0 for y in range(y0, y1) for x in range(x0, x1)]
+    bits += [0] * (-len(bits) % 8)
+    return bytes(sum(b << (7 - i) for i, b in enumerate(bits[k:k + 8])) for k in range(0, len(bits), 8))
 
 
 def main():
@@ -264,42 +275,55 @@ def main():
                   [n for n in names if n in HUGE_DEFAULT] if s == 24 else [n for n in names if n in big])
         cells[s] = []
         for n in subset:
-            b, ink = ar.raster_icon(font if glyph_of[n] in mended else a.font, s, cps[glyph_of[n]], a.gamma)
+            src = font if glyph_of[n] in mended else a.font
+            b, ink = ar.raster_icon(src, s, cps[glyph_of[n]], a.gamma)
             assert ink, f"{n} is empty at {s}px"
-            cells[s].append((n, [v for i in range(s * s) for v in (b[i >> 1] >> (0 if i & 1 else 4) & 15,)], b))
+            px = pixel_icons.pixel_cell(n, s, src, cps[glyph_of[n]])
+            assert any(px), f"{n} is empty at {s}px in 1 bit"
+            cells[s].append((n, [v for i in range(s * s) for v in (b[i >> 1] >> (0 if i & 1 else 4) & 15,)], px))
     # one Huffman code for every cell of every size (one decoding table in RAM: gfx.c hc_lut)
     hc, packed = huff_pack([v for s in sizes for _, v, _ in cells[s]])
     packed = iter(packed)
     out.append("/* the cells' Huffman code (gen_aa_font.py huff_pack; gfx.c cv_alpha_hc) */")
     out.append(ar.c_array("AI_HC", "uint8_t", hc, 24))
     cost = {}
-    for s in sizes:
-        data, offs, idx, inks = bytearray(), [], [0xFF] * len(names), []
-        for n, v, b in cells[s]:
-            p = next(packed)
-            assert huff_unpack(hc, p, s * s) == v
-            idx[names.index(n)] = len(offs)
-            offs.append(len(data))
-            data += p
-            inks.append(ink_box(b, s))
-        data += bytes(2)                               # gfx.c cv_alpha_hc reads up to 2 bytes ahead
-        assert len(data) < 65536
-        out.append(f"#define AI{s}_N {len(offs)}")
-        out.append(ar.c_array(f"AI{s}_DATA", "uint8_t", list(data), 24, "0x{:02x}"))
-        out.append(ar.c_array(f"AI{s}_OFF", "uint16_t", offs, 16))
-        out.append(ar.c_array(f"AI{s}_IDX", "uint8_t", idx, 24))
-        if s <= 16:   # each cell's ink box (icons.c icon_ink: centring by ink): x0 y0 x1-1 y1-1, a nibble each
-            out.append(f"/* the cells' ink boxes: x0 | y0 << 4 | (x1 - 1) << 8 | (y1 - 1) << 12 */")
-            out.append(ar.c_array(f"AI{s}_INK", "uint16_t",
-                                  [x0 | y0 << 4 | (x1 - 1) << 8 | (y1 - 1) << 12 for x0, y0, x1, y1 in inks], 12))
-            ib = 2 * len(inks)
-        else:
-            out.append(f"/* the cells' ink boxes: x0 | y0 << 8 | x1 << 16 | y1 << 24 */")
-            out.append(ar.c_array(f"AI{s}_INK", "uint32_t",
-                                  [x0 | y0 << 8 | x1 << 16 | y1 << 24 for x0, y0, x1, y1 in inks], 8))
-            ib = 4 * len(inks)
-        out.append("")
-        cost[s] = (len(offs), len(data) + 2 * len(offs) + len(idx) + ib)
+    for prefix, pick in (("AI", 1), ("PX", 2)):
+        for s in sizes:
+            data, offs, idx, inks, at = bytearray(), [], [0xFF] * len(names), [], {}
+            for cell in cells[s]:
+                v = cell[pick]
+                if prefix == "AI":
+                    p = bytes(next(packed))
+                    assert huff_unpack(hc, p, s * s) == v
+                else:
+                    p = ink_bits(v, s)
+                idx[names.index(cell[0])] = len(offs)
+                if p not in at:                        # (two icons drawn alike share their bytes)
+                    at[p] = len(data)
+                    data += p
+                offs.append(at[p])
+                inks.append(ink_box(v, s))
+            if prefix == "AI":
+                data += bytes(2)                       # gfx.c cv_alpha_hc reads up to 2 bytes ahead
+            assert len(data) < 65536
+            out.append(f"#define {prefix}{s}_N {len(offs)}")
+            out.append(ar.c_array(f"{prefix}{s}_DATA", "uint8_t", list(data), 24, "0x{:02x}"))
+            out.append(ar.c_array(f"{prefix}{s}_OFF", "uint16_t", offs, 16))
+            if prefix == "AI":
+                out.append(ar.c_array(f"AI{s}_IDX", "uint8_t", idx, 24))
+            if s <= 16:   # each cell's ink box (icons.c icon_ink: centring by ink): x0 y0 x1-1 y1-1, a nibble each
+                out.append(f"/* the cells' ink boxes: x0 | y0 << 4 | (x1 - 1) << 8 | (y1 - 1) << 12 */")
+                out.append(ar.c_array(f"{prefix}{s}_INK", "uint16_t",
+                                      [x0 | y0 << 4 | (x1 - 1) << 8 | (y1 - 1) << 12 for x0, y0, x1, y1 in inks], 12))
+                ib = 2 * len(inks)
+            else:
+                out.append(f"/* the cells' ink boxes: x0 | y0 << 8 | x1 << 16 | y1 << 24 */")
+                out.append(ar.c_array(f"{prefix}{s}_INK", "uint32_t",
+                                      [x0 | y0 << 8 | x1 << 16 | y1 << 24 for x0, y0, x1, y1 in inks], 8))
+                ib = 4 * len(inks)
+            out.append("")
+            n0, b0 = cost.get(s, (0, 0))
+            cost[s] = (n0 + len(offs), b0 + len(data) + 2 * len(offs) + (len(idx) if prefix == "AI" else 0) + ib)
     cost[0] = (0, len(hc))
     Path(a.out).write_text("\n".join(out))
     tot = sum(c[1] for c in cost.values())

@@ -6,6 +6,56 @@
 
 #define HN_SEG 4                                      /* a segment and its gap */
 
+/* (#48) the rail at the screen's left edge, on every screen: HOME's lanes in miniature where they are on HOME, the
+ * selected track's division ink and taller, the others ghost; the track selected told by its place alone. Columns
+ * 0 .. HN_RAIL_X1 - 1 of the panel's rows are the rail's: its divisions, then a BG column; the pages start at x 3 */
+#define HN_RAIL_W 2
+#define HN_RAIL_X1 3
+#define HN_RAIL_H ((int32_t)(H_GRAPH + FOOT_LINE))    /* (HOME's panel, MENU > LARGE or not) */
+static int32_t hl_lane_y(uint32_t k, uint32_t sel, int32_t panel_h, int32_t *h);   /* (ui_home.c) */
+static uint8_t hn_rail_sel __attribute__((section(".pool")));   /* the track the rail on the screen shows */
+
+static uint16_t hn_rail_tone(int32_t sy)              /* screen row sy of the divisions' columns */
+{
+    uint32_t k;
+    for (k = 0; k < NTRK; k++) {
+        int32_t h, y = Y_GRAPH + hl_lane_y(k, song.sel, HN_RAIL_H, &h);
+        if (sy >= y && sy < y + h)
+            return k == song.sel ? T_TEXT : T_RAISE;
+    }
+    return T_BG;
+}
+
+/* the rail into the canvas about to go to the screen at (x, y), its rows r0.. (gfx.c cv_lcd_rows) */
+static void hn_rail_rows(uint32_t x, uint32_t y, uint32_t r0)
+{
+    uint32_t r, i;
+    if (x >= HN_RAIL_X1 || ui.uboot)
+        return;
+    for (r = r0; r < cv_h; r++) {
+        int32_t sy = (int32_t)(y + r);
+        uint16_t tone;
+        if (sy < Y_GRAPH || sy >= Y_GRAPH + HN_RAIL_H)
+            continue;
+        tone = swap16(hn_rail_tone(sy));
+        for (i = x; i < HN_RAIL_X1 && i - x < cv_w; i++)
+            cv_px[r * cv_w + i - x] = i < HN_RAIL_W ? tone : swap16(T_BG);
+    }
+}
+
+/* the rail straight to the screen: over the BG the page's fills leave (ui_draw.c ui_draw: a full redraw, a track
+ * selected) */
+static void hn_rail_paint(void)
+{
+    uint32_t k;
+    lcd_fill(0, Y_GRAPH, HN_RAIL_X1, (uint32_t)HN_RAIL_H, T_BG);
+    for (k = 0; k < NTRK; k++) {
+        int32_t h, y = Y_GRAPH + hl_lane_y(k, song.sel, HN_RAIL_H, &h);
+        lcd_fill(0, (uint32_t)y, HN_RAIL_W, (uint32_t)h, k == song.sel ? T_TEXT : T_RAISE);
+    }
+    hn_rail_sel = song.sel;
+}
+
 /* a horizontal bar of segments, lit up to ratio (0..1000; anything above 0 lights one), the rest unlit (off) */
 static void hn_meter(int32_t x, int32_t y, int32_t w, int32_t h, int32_t ratio, uint16_t on, uint16_t off)
 {

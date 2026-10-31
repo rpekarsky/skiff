@@ -281,12 +281,27 @@ static void cv_vhs_rows(uint32_t y, uint32_t r0)
                 cv_px[r * cv_w + i] = swap16(ux_mix(swap16(cv_px[r * cv_w + i]), ux.bg, 55));
 }
 
-/* (Skiff #29) THEME LCD: rows r0.. of the canvas in the LCD's four tones, and its dot grid: the ghost every 3 px of the
- * screen on open BG (not in a 1 px stroke of BG: the letters on an inverted band) */
+/* (Skiff #29) THEME LCD's dot grid: the ghost every 3 px of the screen on open BG (not in a 1 px stroke of BG: the
+ * letters on an inverted band) */
+static void cv_lcd_dots(uint32_t x, uint32_t y, uint32_t r0)
+{
+    uint32_t r, i;
+    uint16_t bg = swap16(ux.bg);
+    for (r = r0 + (3u - (y + r0) % 3u) % 3u; r < cv_h; r += 3u) {
+        uint16_t *p = cv_px + r * cv_w, *up = r > r0 ? p - cv_w : p, *dn = r + 1u < cv_h ? p + cv_w : p;
+        for (i = (3u - x % 3u) % 3u; i < cv_w; i += 3u)
+            if (p[i] == bg && up[i] == bg && dn[i] == bg && (!i || p[i - 1u] == bg) && (i + 1u == cv_w || p[i + 1u] == bg))
+                p[i] = swap16(ux.raise);
+    }
+}
+
+static void hn_rail_rows(uint32_t x, uint32_t y, uint32_t r0);   /* (ui_h1n.c) */
+/* (Skiff #29) THEME LCD: rows r0.. of the canvas in the LCD's four tones, the dot grid (LCD NIGHT: none), (#48) the
+ * track rail */
 static void cv_lcd_rows(uint32_t x, uint32_t y, uint32_t r0)
 {
-    uint32_t r, i, last = ~0u;
-    uint16_t out = 0, bg = swap16(ux.bg);
+    uint32_t i, last = ~0u;
+    uint16_t out = 0;
     if (!ux.h1n)
         return;
     for (i = r0 * cv_w; i < cv_h * cv_w; i++) {
@@ -296,14 +311,9 @@ static void cv_lcd_rows(uint32_t x, uint32_t y, uint32_t r0)
         }
         cv_px[i] = out;
     }
-    if (!ux.light)                                   /* (#29) LCD NIGHT: no dot grid */
-        return;
-    for (r = r0 + (3u - (y + r0) % 3u) % 3u; r < cv_h; r += 3u) {
-        uint16_t *p = cv_px + r * cv_w, *up = r > r0 ? p - cv_w : p, *dn = r + 1u < cv_h ? p + cv_w : p;
-        for (i = (3u - x % 3u) % 3u; i < cv_w; i += 3u)
-            if (p[i] == bg && up[i] == bg && dn[i] == bg && (!i || p[i - 1u] == bg) && (i + 1u == cv_w || p[i + 1u] == bg))
-                p[i] = swap16(ux.raise);
-    }
+    if (ux.light)
+        cv_lcd_dots(x, y, r0);
+    hn_rail_rows(x, y, r0);
 }
 
 static void cv_blit(uint32_t x, uint32_t y)
@@ -634,6 +644,24 @@ static void cv_alpha_hc(int32_t x, int32_t y, uint32_t w, uint32_t h, const uint
             }
             gx += n;
             run -= n;
+        }
+    }
+    GFX_HOOK_PIXELS(w * h);
+}
+
+/* (#52) a 1-bit bitmap at (x, y): w x h bits row by row, the high bit first, its ones in fg, the rest left as it is
+ * (mirrored with cv_flip, as cv_alpha_hc) */
+static void cv_bits(int32_t x, int32_t y, uint32_t w, uint32_t h, const uint8_t *d, uint16_t fg)
+{
+    uint32_t gx, gy, i = 0;
+    uint16_t c = swap16(fg);
+    y += cv_oy;
+    for (gy = 0; gy < h; gy++) {
+        int32_t py = y + (int32_t)gy;
+        for (gx = 0; gx < w; gx++, i++) {
+            int32_t px = cv_flip ? x + (int32_t)(w - 1u - gx) : x + (int32_t)gx;
+            if ((d[i >> 3] >> (7u - (i & 7u)) & 1u) && py >= cv_cy0 && py < cv_cy1 && (uint32_t)px < cv_w)
+                cv_px[(uint32_t)py * cv_w + (uint32_t)px] = c;
         }
     }
     GFX_HOOK_PIXELS(w * h);

@@ -422,6 +422,13 @@ the cards' gauges in segments, unlit ones ghost; the header's printed MID rule; 
 scope (HOME tapped on HOME, MENU > LARGE's strip too) is an equalizer: 16 bands log-spaced 86 Hz to 11 kHz, 14
 segments 3 dB apart, from a 512-point fixed-point FFT of the scope's snapshot in the main loop (Hann window, the
 snapshot at MASTER full as the scope's, then scaled to its peak, so a quiet sound reaches the top too); a bar falls a segment a redraw, its peak held 16 redraws.
+The track rail (#48): on every screen but the splash and UPDATE MODE, columns 0..1 of the panel's rows (76..213) show
+HOME's six lanes in miniature at their HOME places and heights (the selected track's division ink and taller, the
+others ghost), column 2 BG, the pages from x 3 (SAVE > PATTERNS' tiles 29 apart from x 3 on LCD). Drawn into every
+canvas at its blit (`cv_lcd_rows` → `ui_h1n.c` `hn_rail_rows`) and straight to the screen after a full redraw or a
+track change (`hn_rail_paint`). Icons (#52): the same ids and sizes in 1 bit, no anti-aliasing to snap
+(`tools/pixel_icons.py`: the MENU tabs, header, battery and the cards' common parameters drawn by hand, the rest the
+Fukiai glyph shifted onto the grid and thresholded), each cell its ink box's bits (`gfx.c` `cv_bits`).
 THEME CUSTOM over the LCD look: the user's colours in the same four tones (theirs BG, SURF to TEXT 12 %, MID, TEXT).
 **LCD NIGHT** (the PO's pick of CUSTOM over LCD with tests/ui_render.c's dusk set, pinned as it shows): LCD's look
 (`ux.h1n`) inverted, navy and pale ink, without the dot grid on the ground (#29, PO: day LCD keeps it). BG 16,24,32, TEXT 242,232,216; SURF 28,40,54 only for its ghost (SURF to TEXT

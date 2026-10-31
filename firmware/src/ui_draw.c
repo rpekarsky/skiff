@@ -1405,6 +1405,7 @@ static void ui_draw_page(uint32_t counting);
 static void ui_draw(void)
 {
     static uint8_t counting;
+    uint32_t full;
     ui.frame++;
     if (ui.take_t)                                      /* (Skiff: the TAKE box, ui_take.c) */
         ui.take_t--;
@@ -1419,7 +1420,10 @@ static void ui_draw(void)
     scope_trk = (uint8_t)(scope_track_view() ? song.sel + 1u : 0u);   /* ((#59) the audio taps the track while shown) */
     if (!scr_frame())                                   /* MENU > SCREEN OFF: dark (or waking), nothing drawn */
         return;
+    full = ui.force;
     ui_draw_page(counting);
+    if (ux.h1n && !ui.uboot && (full || hn_rail_sel != song.sel))   /* ((#48) LCD: over the BG the fills left) */
+        hn_rail_paint();
     scr_shown();
 }
 static void ui_draw_page(uint32_t counting)
