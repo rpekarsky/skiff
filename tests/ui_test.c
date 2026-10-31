@@ -9269,6 +9269,58 @@ static int test_song_page(void)
     return bad;
 }
 
+/* (#13) SEQ > SONG: SHIFT (HOME held) + KNOB 1 drags the entry, the header saying where (a SHIFT combo: the map closes,
+ * no HOME, no MENU when let go, even held past the MENU's hold); past P it says REMOVE, turned back it is in again;
+ * let go past it: unlinked, its pattern kept; SHIFT's map on SONG: + KNOB 1 MOVE; KNOB 1 alone still the entry */
+static int test_song_move(void)
+{
+    int bad = 0, ok;
+    uint32_t k, a, b, c;
+    smap_t m[12];
+    ui_power_on();
+    lists_clear();
+    k = song.sel;
+    fresh_pattern(k, 50);                            /* T1: A B C, the track on C */
+    bank_put(k, 0, 0);
+    fresh_pattern(k, 60);
+    bank_put(k, 1, 0);
+    fresh_pattern(k, 70);
+    bank_put(k, 2, 0);
+    a = ent_pat(k, 0), b = ent_pat(k, 1), c = ent_pat(k, 2);
+    go_page(GR_SONG);
+    frame();
+    turn(EN_K1, -16);
+    btn_down(B_HOME);
+    frames(400);
+    shift_map(m);
+    ok = ui.shift && str_eq(m[6].key, "+ KNOB 1") && str_eq(m[6].job, "MOVE") && m[6].kind == 2u;
+    turn(EN_K1, 2);                                  /* A to C: B C A, the track (on C) now on B */
+    frame();
+    ok &= !ui.shift && ent_pat(k, 0) == b && ent_pat(k, 1) == c && ent_pat(k, 2) == a && sg.entry == 2u &&
+          lists.cur[k] == 1u && msg_is("MOVE A TO C");
+    frames(800);
+    btn_up(B_HOME);
+    frame();
+    ok &= !ui.menu && !ui.home && cur_page()->graph == GR_SONG && msg_is("MOVED A TO C");
+    bad += check("(#13) SONG: SHIFT + KNOB 1 drags A to C (B C A), said; a SHIFT combo: the map goes, no MENU let go", ok);
+    btn_down(B_HOME);
+    frame();
+    turn(EN_K1, 20);                                 /* A (now on C) past P: REMOVE; back: in at P; past again */
+    ok = msg_is("REMOVE C") && ent_pat(k, 15) == a && ent_pat(k, 2) == PAT_NONE;
+    turn(EN_K1, -1);
+    ok &= msg_is("MOVE C TO P");
+    turn(EN_K1, 1);
+    btn_up(B_HOME);
+    frame();
+    ok &= !ent_on(k, 15) && pool_used(a) && ent_pat(k, 0) == b && ent_pat(k, 1) == c && !ui.menu && !ui.home &&
+          msg_is("T1 C UNLINKED");
+    turn(EN_K1, -1);
+    ok &= sg.entry == 14u && ent_pat(k, 0) == b;
+    bad += check("  past P: REMOVE (turned back: in at P); let go: A unlinked, 01 still kept; KNOB 1 alone the entry", ok);
+    lists.song = 0;
+    return bad;
+}
+
 /* (2.0, #44, the user's pick 3A and the join sheet's A) a chain on SONG and NOTES (playing it: tests/bank_test.c
  * song_chain): KNOB 3 has CHAIN below 1x on an entry with one after it, right again a number (SPLIT); NOTES' header
  * names the chain and the part (A-B · 02), its title and START count the steps on through it; stopped, PRESETS past
@@ -9633,6 +9685,7 @@ int main(void)
     bad += test_scenes();                             /* Skiff: scenes (the PERFORM layer's KEYS SCENE) */
     bad += test_song_page();                          /* Skiff phase 5: SEQ > SONG */
     bad += test_song_chain();                         /* (2.0, #44) a chain on SONG and NOTES */
+    bad += test_song_move();                          /* (#13) SONG: SHIFT + KNOB 1 drags an entry */
     bad += test_duck_page();                          /* Skiff: FX > DUCK */
     bad += test_p9_pages();                           /* (Skiff phase 9) FX > DRIVE, ENV 2 */
     bad += test_six_tracks();                         /* Skiff phase 6: six tracks on the layers */

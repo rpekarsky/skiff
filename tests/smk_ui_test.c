@@ -456,6 +456,16 @@ static int test_entries(void)
     press_id(SMK_BTN_LEFT);
     press_id(SMK_BTN_LEFT);
     bad += check("SMK < on A: FIRST ENTRY, nowhere", lists.cur[0] == 0u && msg_is("FIRST ENTRY"));
+    go_page(GR_SONG);                             /* (#13) KNOB BANK held + K5 on SONG: A dragged to B (B A C) */
+    sg.entry = 0;
+    fm1_in.buttons |= 1u << SMK_BTN_KNOB_BANK;
+    frame();
+    host_enc[panel.enc[EN_K1]] += panel.dir[EN_K1];
+    frame();
+    fm1_in.buttons &= ~(1u << SMK_BTN_KNOB_BANK);
+    frame();
+    bad += check("SMK KNOB BANK + K5 on SONG: the entry dragged (A to B), no MENU",
+                 trk_pat(0) == ent_pat(0, 1) && lists.cur[0] == 1u && sg.entry == 1u && msg_is("MOVED A TO B") && !ui.menu);
     return bad;
 }
 

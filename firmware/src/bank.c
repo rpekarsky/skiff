@@ -1940,6 +1940,149 @@ static int song_clear_at(uint32_t k, uint32_t e)
 }
 static void song_clear(uint32_t e) { (void)song_clear_at(song.sel % NTRK, e); }
 
+/* ---- (#13) SEQ > SONG, SHIFT + KNOB 1: the selected entry dragged along its track's list, the entries between shifting
+ * a place, as clips reorder; dragged past A or P and SHIFT let go, it is unlinked: the entry empties, its pattern stays
+ * in the pool (KNOB 2 picks it again). No undo step, as no list edit has one. The audio ISR never reads an entry index
+ * (launch_q carries the staged steps themselves), so the indices are remapped without a critical section; a song's
+ * next staged from the old order is staged again by song_poll (its list changed) ---- */
+static void scene_entry_put(uint32_t s, uint32_t k, uint32_t code)   /* code: scene_trk's, 0 none, 1..16 */
+{
+    uint32_t at = k < 4u ? 3u * s : 50u + 2u * s, n = k < 4u ? 3u : 2u, sh = 5u * (k < 4u ? k : k - 4u), v = 0, i;
+    for (i = 0; i < n; i++)
+        v |= (uint32_t)SCENE_MEM(at + i) << 8u * i;
+    v = (v & ~(31u << sh)) | code << sh;
+    for (i = 0; i < n; i++)
+        SCENE_MEM(at + i) = (uint8_t)(v >> 8u * i);
+}
+static uint32_t index_after_move(uint32_t x, uint32_t from, uint32_t to)
+{
+    if (x == from)
+        return to;
+    if (from < to && x > from && x <= to)
+        return x - 1u;
+    if (to < from && x >= to && x < from)
+        return x + 1u;
+    return x;
+}
+static void rows_move(uint8_t rows[][2], uint32_t from, uint32_t to)   /* (no memmove in libc.c) */
+{
+    uint8_t held[2] = {rows[from][0], rows[from][1]};
+    uint32_t e;
+    for (e = from; e < to; e++)
+        memcpy(rows[e], rows[e + 1u], 2);
+    for (e = from; e > to; e--)
+        memcpy(rows[e], rows[e - 1u], 2);
+    memcpy(rows[to], held, 2);
+}
+static void ent_move(uint32_t k, uint32_t from, uint32_t to)
+{
+    uint32_t s, e;
+    rows_move(lists.ent[k], from, to);
+    rows_move(lists.snd[k], from, to);
+    lists.cur[k] = (uint8_t)index_after_move(lists.cur[k], from, to);
+    launch_q[k].slot = (uint8_t)index_after_move(launch_q[k].slot % NENT, from, to);
+    if (chain_go[k])
+        chain_go[k] = (uint8_t)(index_after_move(chain_go[k] - 1u, from, to) + 1u);
+    for (s = 0; s < SCENES; s++)
+        if (scene_used(s) && (e = scene_slot(s, k)) != BK_NONE)
+            scene_entry_put(s, k, index_after_move(e, from, to) + 1u);
+    bk.gen++;
+}
+/* .. the track on it plays on, on a pattern no entry names (pool_refs keeps it from CLEAR UNUSED) */
+static void ent_unlink(uint32_t k, uint32_t e)
+{
+    launch_t *q = &launch_q[k];
+    uint32_t s;
+    memset(lists.ent[k][e], 0, 2);
+    memset(lists.snd[k][e], 0, 2);
+    if (q->armed && !q->adv && q->slot == e) {
+        q->armed = 0;
+        RING_PUBLISH();
+    }
+    if (chain_go[k] == e + 1u)
+        chain_go[k] = 0;
+    for (s = 0; s < SCENES; s++)
+        if (scene_used(s) && scene_slot(s, k) == e)
+            scene_entry_put(s, k, 0);
+    bk.gen++;
+}
+/* pos: where the knob has taken the entry, -1 past A and NENT past P (REMOVE) */
+static struct { uint8_t on, k, from; int8_t pos; } sdrag __attribute__((section(".pool")));
+static uint32_t drag_at(void) { return (uint32_t)clamp(sdrag.pos, 0, NENT - 1); }
+static int drag_out(void) { return sdrag.pos < 0 || sdrag.pos >= (int32_t)NENT; }
+static void drag_say(void)
+{
+    char b[16] = "MOVE C TO E";
+    b[5] = (char)('A' + sdrag.from);
+    if (drag_out()) {
+        str_cpy(b, "REMOVE ", sizeof b);
+        b[7] = (char)('A' + sdrag.from);
+        b[8] = 0;
+        ui_way(b, "LET GO: UNLINK");
+        return;
+    }
+    if (drag_at() == sdrag.from)
+        b[6] = 0;
+    else
+        b[10] = (char)('A' + drag_at());
+    ui_message(b);
+}
+/* KNOB 1 turned s with SHIFT held on SONG: 1 taken (a SHIFT combo, an empty entry's too: nothing to drag) */
+static int song_drag(int32_t s)
+{
+    uint32_t k = song.sel % NTRK, was;
+    char b[16];
+    if (!sdrag.on) {
+        if (!ent_on(k, sg.entry)) {
+            song_tag(b, k, sg.entry);
+            ui_say(b, " EMPTY");
+            return 1;
+        }
+        sdrag.on = 1;
+        sdrag.k = (uint8_t)k;
+        sdrag.from = sg.entry % NENT;
+        sdrag.pos = (int8_t)sdrag.from;
+        sg.pick = 0;
+    }
+    was = drag_at();
+    sdrag.pos = (int8_t)clamp(sdrag.pos + s, -1, NENT);
+    if (drag_at() != was)
+        ent_move(k, was, drag_at());
+    sg.entry = (uint8_t)drag_at();
+    drag_say();
+    return 1;
+}
+/* each frame (ui_input): the drag goes on while held (SHIFT on SONG, its track selected); else it ends there, a
+ * REMOVE unlinking the entry */
+static void song_drag_poll(int held)
+{
+    uint32_t k = sdrag.k, id;
+    char b[24];
+    if (!sdrag.on || (held && song.sel % NTRK == k))
+        return;
+    sdrag.on = 0;
+    if (!drag_out()) {
+        if (drag_at() != sdrag.from) {
+            str_cpy(b, "MOVED C TO E", sizeof b);
+            b[6] = (char)('A' + sdrag.from);
+            b[11] = (char)('A' + drag_at());
+            ui_message(b);
+        }
+        return;
+    }
+    id = ent_pat(k, drag_at());
+    ent_unlink(k, drag_at());
+    song_tag(b, k, sdrag.from);
+    str_cpy(b + 4, " UNLINKED", sizeof b - 4u);
+    ui_message(b);
+    if (id != PAT_NONE) {
+        str_cpy(ui.msg2, "PATTERN 00 STAYS", sizeof ui.msg2);
+        pat_num(ui.msg2 + 8, id);
+        ui.msg2[10] = ' ';
+    }
+    ui.force = 1;
+}
+
 /* ---- the editor's backup (editor_backup.c): each chunk an object, ids 16..31 ---- */
 /* chunk c, read into bk_buf: *len BK_LEN, 0 when every pattern in it is empty (or never saved) */
 static const uint8_t *bank_chunk(uint32_t c, uint32_t *len)

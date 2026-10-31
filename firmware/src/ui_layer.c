@@ -1438,14 +1438,16 @@ static void shift_map(smap_t *m)
         m[6 + i] = ALL[i < 3u && sel ? 6u + i : i];
     if (sel)                                         /* ((2.0) there SHIFT + EDIT deletes, ui_input.c sel_delete) */
         m[11] = (smap_t){"+ EDIT", "DELETE", 2};
+    if (g == GR_SONG)                                /* ((#13) bank.c song_drag) */
+        m[6] = (smap_t){"+ KNOB 1", "MOVE", 2};
 #if BOARD_SMK37
     {   /* (SMK-37 Pro, SMK37_UX.md question 10) the controls by the SMK's printed names: K2 SELECT, K3 ALGORITHM, K4
          * PRESETS, PARA EDIT, BT SAVE, SEQ REC REC, KNOB BANK SHIFT. PLAY stays PLAY: the SMK prints a play sign there,
          * which the screen's fonts don't have */
         static const char *const FM[] = {"PRESETS", "SELECT", "GLO + SELECT", "ALGO", "EDIT + REC", "HOLD SAVE",
-                                         "+ SAVE", "+ REC", "KEYS + REC", "+ PRESETS", "+ EDIT"};
+                                         "+ SAVE", "+ REC", "KEYS + REC", "+ PRESETS", "+ EDIT", "+ KNOB 1"};
         static const char *const SMK[] = {"K4", "K2", "GLOBE + K2", "K3", "PARA + SEQ REC", "HOLD BT",
-                                          "+ BT", "+ SEQ REC", "KEYS + SEQ REC", "+ K4", "+ PARA"};
+                                          "+ BT", "+ SEQ REC", "KEYS + SEQ REC", "+ K4", "+ PARA", "+ K5"};
         uint32_t j;
         for (i = 0; i < 12u; i++)
             for (j = 0; j < NELEM(FM); j++)

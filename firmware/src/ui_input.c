@@ -2154,6 +2154,7 @@ static void ui_input(void)
         take_commit(song.sel);
     }
 #endif
+    song_drag_poll(shift_held() && !ui.home && !ui.menu && !ui.confirm && cur_page()->graph == GR_SONG);
     rec_own = ui.lock == LAYER_REC;                     /* (its press closes the REC layer: no arming) */
     if (shift_held() && ((pressed >> panel.btn[B_EDIT]) & 1u) && !ui.menu && !ui.confirm && !name_on() &&
         song.seq_mode && !ui.home && (step_page(cur_page()->graph) || cur_page()->graph == GR_FEEL)) {
@@ -2540,6 +2541,9 @@ static void ui_input(void)
             *vp = (int16_t)param_turn(d, *vp, accel(EN_K1 + k, s, d->fmt == F_ENUM ? 0 : d->max - d->min));
             motion_capture(TSEL, (uint32_t)(vp - TSEL->p), *vp);
             ml_knob(TSEL, (uint32_t)(vp - TSEL->p));
+        } else if (k == 0u && pg->graph == GR_SONG && shift_held() && song_drag(s)) {   /* ((#13) SHIFT + KNOB 1 on */
+            shift_mark();                                                              /* SONG: the entry dragged) */
+            home_long = 0;
         } else {
             edit_param(k, s);
         }
