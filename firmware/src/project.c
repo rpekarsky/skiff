@@ -1573,6 +1573,7 @@ static int project_restore_runtime(const project_t *input)
     ui.force = 1;
     ui_message("LOADED");
     memset(snd_said, 0, sizeof snd_said);               /* a missing sample is said again, after LOADED */
+    sg.last = 0;                                        /* ((#54) SONG's last pick: may name another project's pattern */
     return 0;
 }
 static void project_load(uint32_t slot)
@@ -1913,6 +1914,7 @@ static void project_new(void)
     ui.force = 1;
     ui_message("NEW PROJECT");
     memset(snd_said, 0, sizeof snd_said);
+    sg.last = 0;
 }
 
 /* nothing going on that an erase (the audio stopped ~40 ms) would be heard in, or would race */

@@ -421,7 +421,10 @@ The notes live in **patterns**, and a project says which ones each track plays:
   what): REST, a kept pattern, **NEW** (2.0: a new empty pattern, numbered beside the list's patterns as a copy
   is), **COPY** (a copy of the entry's pattern), **COPY+** (2.0: the copy into the first empty entry after it, this
   entry left as it is), CLEAR, then (2.0) **SOUND** (the track's sound now onto the entry: SET SOUND STRINGS) and
-  **NO SOUND**; KNOB 3 the REPS (CHAIN, 1x–16x); KNOB 4 SONG (OFF, ON, ONCE).
+  **NO SOUND**; KNOB 3 the REPS (CHAIN, 1x–16x); KNOB 4 SONG (OFF, ON, ONCE). On an **empty entry** KNOB 2 starts
+  at the last REST, NEW or pattern OCT+ put in, so OCT+ alone fills entry after entry the same way (OCT− drops it:
+  `--`); on an entry with a pattern or a REST it starts at its own, so a stray OCT+ never overwrites it. COPY, COPY+,
+  CLEAR, SOUND and NO SOUND are not remembered (they need a used entry). Forgotten at power-on and at a project load.
 - **An entry's sound** (2.0): when the track comes onto it, the entry loads its sound, as PRESETS or USER would (a
   program change): all but the track's own settings (LEVEL, PAN, MUTE, ARP, SCALE, the pattern's, the SLICER, the
   ducking). Playing, it switches on the entry's first step, with its pattern; stopped, at once. An entry without one

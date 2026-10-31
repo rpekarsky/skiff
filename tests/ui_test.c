@@ -9387,6 +9387,10 @@ static int test_song_page(void)
     song.playing = 0;
     bad += check("  STEP's header: the entry, the pattern, the entries naming it (B 01 2x); SONG, playing: SONG ON", ok);
     turn(EN_K1, 4);                                  /* (#28) E: empty, after D (the list's last) */
+    ok = sg.entry == 4u && song_pick() == a + 1u && str_eq(song_act_name(), "SET 01") && act_ready();
+    press(B_OCTDN);
+    ok &= !song_pick() && msg_is("CANCELLED");
+    bad += check("  (#54) an empty entry offers the last pick put in (C's SET 01, ready for OCT+); OCT- drops it", ok);
     turn(EN_K2, 1);                                  /* --, then ((2.0) NEW: an empty entry's first), REST */
     ok = sg.entry == 4u && song_pick() == SPICK_NEW;
     turn(EN_K2, 1);
@@ -9802,6 +9806,68 @@ static int test_playhead_line(void)
     return bad;
 }
 
+/* (#54) SONG's KNOB 2 on an empty entry starts at the last pick OCT+ put in (REST, NEW, a pattern); an entry with a
+ * pattern or a REST at its own; the commands for a used entry are not kept; power-on, a load, NEW PROJECT: none */
+static int test_song_pick_memory(void)
+{
+    int bad = 0, ok;
+    uint32_t a;
+    ui_power_on();
+    fresh_pattern(song.sel, 50);                     /* T1: A (01), C empty, D empty, E (01) */
+    bank_put(song.sel, 0, 0);
+    a = ent_pat(song.sel, 0);
+    lists.ent[song.sel][4][0] = (uint8_t)(a + 1u);
+    go_page(GR_SONG);
+    turn(EN_K1, 2);
+    ok = sg.entry == 2u && !song_pick() && str_eq(song_act_name(), "PLAY");
+    bad += check("(#54) SONG, power-on: an empty entry's KNOB 2 at -- (OCT+ plays it)", ok);
+    turn(EN_K2, 2);                                  /* --, NEW, REST */
+    press(B_OCTUP);
+    turn(EN_K1, 1);
+    ok = ent_rest(song.sel, 2) && sg.entry == 3u && song_pick() == PAT_REST && str_eq(song_act_name(), "SET REST");
+    press(B_OCTUP);
+    ok &= ent_rest(song.sel, 3) && msg_is("T1 D SET REST") && !song_pick();
+    bad += check("  REST on C; D, empty, starts at REST: OCT+ makes it a REST too", ok);
+    turn(EN_K1, 1);
+    ok = !song_pick() && str_eq(song_act_name(), "PLAY");
+    turn(EN_K1, -1);
+    ok &= !song_pick();
+    turn(EN_K1, -3);
+    ok &= sg.entry == 0u && !song_pick();
+    bad += check("  an entry with a pattern (E, A) or a REST (D) starts at its own: OCT+ plays it", ok);
+    turn(EN_K2, 1);                                  /* 01 -> NEW -> COPY: not kept */
+    turn(EN_K2, 1);
+    ok = song_pick() == SPICK_COPY;
+    press(B_OCTUP);
+    turn(EN_K1, 5);
+    ok &= ent_pat(song.sel, 0) != a && sg.entry == 5u && song_pick() == PAT_REST;
+    bad += check("  COPY is not kept: F, empty, still starts at REST", ok);
+    turn(EN_K2, 1 + (int32_t)a + 1);                 /* REST -> 01 .. A's copy */
+    ok = song_pick() == ent_pat(song.sel, 0) + 1u;
+    press(B_OCTUP);
+    turn(EN_K1, 1);
+    ok &= sg.entry == 6u && song_pick() == ent_pat(song.sel, 0) + 1u;
+    press(B_OCTUP);
+    ok &= ent_pat(song.sel, 6) == ent_pat(song.sel, 0);
+    bad += check("  a pattern number is kept: G, empty, starts at F's, OCT+ puts it in", ok);
+    turn(EN_K1, 1);
+    press(B_OCTDN);
+    ok = msg_is("CANCELLED") && !song_pick();
+    turn(EN_K2, 1);
+    ok &= song_pick() == SPICK_NEW;
+    turn(EN_K1, 1);
+    ok &= sg.entry == 8u && song_pick() == ent_pat(song.sel, 0) + 1u;
+    bad += check("  OCT- drops it on H (KNOB 2 from --: NEW); I still offers it", ok);
+    project_save(1);
+    project_load(1);
+    ok = !sg.last && !song_pick();
+    sg.last = (uint8_t)PAT_REST;
+    project_new();
+    ok &= !sg.last;
+    bad += check("  a project loaded, NEW PROJECT: no pick kept", ok);
+    return bad;
+}
+
 /* (#29) THEME LCD, LCD NIGHT: SONG's entry picked past the recorded ones (empty) stands out of its track's band */
 static int test_h1n_song_pick(void)
 {
@@ -10027,6 +10093,7 @@ int main(void)
     bad += test_scenes();                             /* Skiff: scenes (the PERFORM layer's KEYS SCENE) */
     bad += test_song_page();                          /* Skiff phase 5: SEQ > SONG */
     bad += test_song_chain();                         /* (2.0, #44) a chain on SONG and NOTES */
+    bad += test_song_pick_memory();                   /* (#54) KNOB 2 on an empty entry: the last pick */
     bad += test_duck_page();                          /* Skiff: FX > DUCK */
     bad += test_p9_pages();                           /* (Skiff phase 9) FX > DRIVE, ENV 2 */
     bad += test_six_tracks();                         /* Skiff phase 6: six tracks on the layers */

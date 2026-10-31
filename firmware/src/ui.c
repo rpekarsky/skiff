@@ -414,14 +414,16 @@ static void confirm_open(uint32_t kind, uint32_t trk)
 }
 /* (Skiff phase 5) SEQ > SONG (ui_input.c song_*, ui_graph.c graph_song): the entry KNOB 1 picked (A..P), KNOB 2's pick
  * for it (a pattern id + 1, (#28) PAT_REST, SPICK_COPY: a copy of the entry's; 0 none: OCT+ plays the entry) and where
- * it was made (1 + the track x 16 + the entry: another track or entry since, none) */
+ * it was made (1 + the track x 16 + the entry: another track or entry since, none); ((#54) last: the last pick OCT+
+ * put in that can fill an empty entry (REST, NEW, a pattern), offered on each empty entry where no pick was made, so
+ * pick 0 made there (OCT-, OCT+, KNOB 2 back to --) keeps it off that entry; RAM only) */
 #define SPICK_NEW (NPAT + 2u)                  /* ((2.0, #32) a new empty pattern for it) */
 #define SPICK_COPY (NPAT + 3u)
 #define SPICK_COPYP (NPAT + 4u)                /* ((2.0, #33) COPY+: a copy into the first empty entry after it) */
 #define SPICK_CLEAR (NPAT + 5u)                /* ((Skiff U2) the entry cleared: its dialog, was EDIT) */
 #define SPICK_SOUND (NPAT + 6u)                /* ((2.0, #30, the user's pick 2A) the track's sound now onto the entry, */
 #define SPICK_NOSND (NPAT + 7u)                /* its sound taken off: bank.c song_snd) */
-static struct { uint8_t entry, pick, pick_at; } sg __attribute__((section(".pool")));
+static struct { uint8_t entry, pick, pick_at, last; } sg __attribute__((section(".pool")));
 
 /* MENU > DISPLAY > SCREEN OFF (1.1.5): after a while with no input on the panel the screen and its backlight go off
  * (a picture held for hours can stay faintly on the panel); the sound, the sequencer, MIDI and USB go on, the LEDs
@@ -2357,10 +2359,16 @@ static void pat_num(char *b, uint32_t id)
     b[1] = (char)('0' + (id + 1u) % 10u);
     b[2] = 0;
 }
-/* .. KNOB 2's pick for the entry picked, while it is that track's and entry's (0: none) */
+static int song_pick_ok(uint32_t v, uint32_t own);    /* (ui_input.c) */
+static uint32_t song_here(void) { return 1u + (song.sel % NTRK) * 16u + sg.entry % NENT; }
+/* .. KNOB 2's pick for the entry picked, while it is that track's and entry's; none made there, ((#54) an empty
+ * entry's: the last one put in, so OCT+ repeats it; an entry with a pattern or a REST never, so a stray OCT+ can't
+ * overwrite it) (0: none) */
 static uint32_t song_pick(void)
 {
-    return sg.pick && sg.pick_at == 1u + (song.sel % NTRK) * 16u + sg.entry % NENT ? sg.pick : 0u;
+    if (sg.pick_at == song_here())
+        return sg.pick;
+    return !lists.ent[song.sel % NTRK][sg.entry % NENT][0] && song_pick_ok(sg.last, 0u) ? sg.last : 0u;
 }
 /* .. what OCT+ does there: the entry played ("PLAY"), the pick put into it ("SET 07", "SET REST"), a copy of its
  * pattern made for it ("COPY 06 TO 17"), ((2.0) a new one, "NEW 22"; COPY+'s after it, "COPY 06 TO 22 AT F"; (#30) the

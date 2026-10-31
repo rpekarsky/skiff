@@ -1494,7 +1494,7 @@ static void song_knob(uint32_t slot, int32_t steps)
         }
         v = spick_val(v);
         sg.pick = (uint8_t)(v == own ? 0u : v);
-        sg.pick_at = (uint8_t)(1u + k * 16u + e);
+        sg.pick_at = (uint8_t)song_here();
     } else if (slot == 2u) {                              /* ((1.2.1, #12) an empty entry's too: a rest's length; (2.0,
                                                          * #44) CHAIN below 1x on an entry with one after it) */
         int32_t r = lists.ent[k][e][1] == REPS_CHAIN ? -1 : (int32_t)lists.ent[k][e][1];
