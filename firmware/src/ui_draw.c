@@ -1494,7 +1494,8 @@ static void ui_draw(void)
         counting = (uint8_t)seq_counting();
         ui.force = 1;
     }
-    scope_trk = (uint8_t)(scope_track_view() ? song.sel + 1u : 0u);   /* ((#59) the audio taps the track while shown) */
+    scope_trk = (uint8_t)(scope_track_view() ? song.sel + 1u : 0u);   /* ((#59) the audio taps the track for HOME's
+                                                                       * TRACK view, (#59b) on every page) */
     cpu_sample();                                       /* ((#57, #62) whatever is shown: the header marks a dropout) */
     if (!scr_frame())                                   /* MENU > SCREEN OFF: dark (or waking), nothing drawn */
         return;

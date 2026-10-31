@@ -562,8 +562,11 @@ static void tracks_edit(uint32_t slot, int32_t steps)
     ml_knob(t, (uint32_t)(vp - t->p));
 }
 
-/* the selected track's PAN ((wishlist #38) PRESETS KNOB PAN), LEVEL ((wishlist #49) SELECT on HOME, BPM LOCK ON) or
- * channel strip ((wishlist #60) SHIFT + KNOB 1..4), as MIXER's knobs */
+#if BOARD_SMK37
+static void smk_bars_show(uint32_t id);                 /* (smk_ui.c) */
+#endif
+/* the selected track's LEVEL ((wishlist #38, #10b) PRESETS KNOB LEVEL), PAN ((#49, #10b) SELECT on HOME, BPM LOCK ON) or
+ * channel strip ((wishlist #60) SHIFT + KNOB 1..4), as MIXER's knobs; (#56b) on the SMK HOME shows it as a fader's */
 static void track_value_turn(uint32_t id, uint32_t enc, const char *name, int32_t s)
 {
     track_t *t = TSEL;
@@ -572,6 +575,9 @@ static void track_value_turn(uint32_t id, uint32_t enc, const char *name, int32_
     motion_capture(t, id, t->p[id]);
     ml_knob(t, id);
     say_track_value(song.sel, id, name);
+#if BOARD_SMK37
+    smk_bars_show(id);
+#endif
 }
 
 /* SEQ > NOTES' piano roll (not the DRUM grid, whose white keys stay its steps): where step recording writes */
@@ -1913,10 +1919,10 @@ static void cursor_turn(int32_t s)
     cursor_set(c);
 }
 
-static void sound_or_pan_turn(int32_t s)
+static void sound_or_level_turn(int32_t s)
 {
-    if (PRESETS_PAN_SET)
-        track_value_turn(P_PAN, EN_PRESET, "PAN", s);
+    if (PRESETS_LEVEL_SET)
+        track_value_turn(P_LEVEL, EN_PRESET, "LEVEL", s);
     else
         preset_step(s);
 }
@@ -1929,13 +1935,13 @@ static void sound_or_pan_turn(int32_t s)
  *   PRESETS: the selected track's sound, one list over every engine, then the used user presets (preset_step). A sound
  *     load keeps the steps (SAVE held undoes it)
  *   HOME and every other page (EDIT, ENV, LFO, FX, SCL, ARP, MIXER, GLOBAL, ...): the sound as on PRESETS (up to 1.0.3
- *     HOME's only); (wishlist #38) MENU > PRESETS KNOB PAN: the track's PAN, the sound with SHIFT held */
+ *     HOME's only); (wishlist #38, #10b) MENU > PRESETS KNOB LEVEL: the track's LEVEL, the sound with SHIFT held */
 static void presets_turn(int32_t s)
 {
     const page_t *pg = cur_page();
     uint32_t g = pg->graph;
     if (ui.home) {
-        sound_or_pan_turn(s);
+        sound_or_level_turn(s);
     } else if (g == GR_BROWSE) {
         preset_step(s);
     } else if (step_page(g) || g == GR_FEEL) {
@@ -1962,7 +1968,7 @@ static void presets_turn(int32_t s)
             slice_knob(0, s);
 #endif
     } else {
-        sound_or_pan_turn(s);
+        sound_or_level_turn(s);
     }
 }
 
@@ -2809,7 +2815,7 @@ static void ui_input(void)
         if (shift_held() && sel_shift(s)) {             /* ((2.0) SHIFT + PRESETS on NOTES, FEEL: the selection, a */
             shift_mark();                               /* SHIFT combo) */
             home_long = 0;
-        } else if (shift_held() && PRESETS_PAN_SET) {   /* ((wishlist #38) PRESETS KNOB PAN: elsewhere the sound) */
+        } else if (shift_held() && PRESETS_LEVEL_SET) { /* ((wishlist #38) PRESETS KNOB LEVEL: elsewhere the sound) */
             shift_mark();
             home_long = 0;
             preset_step(s);
@@ -2833,8 +2839,9 @@ static void ui_input(void)
             home_long = 0;
         } else if (!ui.home) {
             select_turn(s);
-        } else {                                        /* MENU > BPM LOCK ON (#58), on HOME (no pages) */
-            track_value_turn(P_LEVEL, EN_SELECT, "LEVEL", s);
+        } else {                                        /* MENU > BPM LOCK ON (#58), on HOME (no pages): (#10b) PAN,
+                                                         * above PRESETS' LEVEL as on a mixer */
+            track_value_turn(P_PAN, EN_SELECT, "PAN", s);
         }
     }
     for (k = 0; k < 4u && !kq; k++) {

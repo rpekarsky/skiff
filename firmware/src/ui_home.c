@@ -91,7 +91,8 @@ static void home_meters_tick(void)
 #if BOARD_SMK37
 /* (#56) a fader moving: over every lane's steps a bar filled to the bank's parameter (PAN from the centre). A fader's
  * track: the fader's place a tick in a gap, apart from the fill's end until it takes over (smk_ui.c smk_faders); the two
- * tracks without one: a thin bar in DIM on RAISE */
+ * tracks without one: a thin bar in DIM on RAISE. (#56b) A knob's LEVEL or PAN the same, the tick only where the
+ * faders' bank is that parameter */
 static int smk_fader_bars(uint32_t *id);              /* (smk_ui.c) */
 static int smk_fader_place(uint32_t k, uint32_t *place);
 #define HL_BAR_W 132                                  /* under the 16 cells */
@@ -107,7 +108,7 @@ static uint32_t hl_fader_sig(uint32_t k)
 }
 static int hl_fader_bar(uint32_t k, int32_t y, int32_t h, uint16_t lane, uint16_t fill, uint16_t groove, uint16_t tick)
 {
-    uint32_t id, place;
+    uint32_t id, place = 255u;
     int has_fader;
     int32_t bh, by, from, to, tick_x;
     if (!smk_fader_bars(&id))
@@ -126,7 +127,7 @@ static int hl_fader_bar(uint32_t k, int32_t y, int32_t h, uint16_t lane, uint16_
     cv_rect(from < to ? from : to, by, from < to ? to - from : from - to, bh, fill);
     if (id == P_PAN)
         cv_rect(from, by - 1, 1, bh + 2, fill);
-    if (!has_fader)
+    if (!has_fader || place > 127u)
         return 1;
     tick_x = clamp(hl_bar_x((int32_t)place), HL_STEP_X + 1, HL_STEP_X + HL_BAR_W - 1);
     cv_rect(tick_x - 2, by - 3, 4, bh + 6, lane);

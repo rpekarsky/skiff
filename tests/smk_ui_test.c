@@ -6,7 +6,8 @@
  *            PAD FOLLOW (OFF PAGE ROW: the steps shown while playing, a tap's step, held).
  *   FADERS   the four tracks shown, taking over once they reach the value, SHIFT + FADER BANK (its LED), the window;
  *            (#56) HOME's bars: one fader moved, all four fader lanes (the fill and the fader's tick apart, together
- *            once taken over), the other two thin; gone 0.5 s after.
+ *            once taken over), the other two thin; gone 0.5 s after; (#56b) K2's PAN, K4's LEVEL and SHIFT's strip
+ *            the same bars, the ticks only on the faders' own bank.
  *   TAPS     (#39) KNOB BANK's tap UNDO, FADER BANK's REDO; a hold, a combo, a pad meanwhile, the MENU: none.
  *   ENTRIES  > and < the selected track's entry after and before, the first's end said; in PERFORM and GLO (held or
  *            locked) the same, a combo (no tap, the lock kept); in another layer nothing; (#50) an empty one
@@ -542,18 +543,18 @@ static int test_settings_bits(void)
     CPU2_BYTE = 0;
     ui.popup_on_input = 0;
     settings_import(&p, (int)sizeof p);
-    ok &= (SHARED_BYTE & REC_KNOBS_OFF) && smk_padl() == 3u && popup_time() == POPUP_TIMES - 1u && PRESETS_PAN_SET &&
+    ok &= (SHARED_BYTE & REC_KNOBS_OFF) && smk_padl() == 3u && popup_time() == POPUP_TIMES - 1u && PRESETS_LEVEL_SET &&
           !MASTER_SAFE_SET && !ui.popup_on_input;
     bad += check("(integration) [15][17]: REC KNOBS, PAD LIGHT, POPUP TIME side by side, saved and read back; PRESETS KNOB "
                  "and MASTER START on bits 3 and 4 of CPU2_BYTE; POPUP CLOSE not saved", ok);
     menu_put(MI_MSTART, 1);
-    ok = MASTER_SAFE_SET && PRESETS_PAN_SET && CPU2_BYTE == 0x18u;
+    ok = MASTER_SAFE_SET && PRESETS_LEVEL_SET && CPU2_BYTE == 0x18u;
     menu_put(MI_PKNOB, 0);
-    ok &= MASTER_SAFE_SET && !PRESETS_PAN_SET;
+    ok &= MASTER_SAFE_SET && !PRESETS_LEVEL_SET;
     p.s.shared = 0;
     p.s.cpu = 0;
     settings_import(&p, (int)sizeof p);
-    ok &= !SHARED_BYTE && !rec_knobs_off && smk_padl() == 0u && popup_time() == 0u && !MASTER_SAFE_SET && !PRESETS_PAN_SET;
+    ok &= !SHARED_BYTE && !rec_knobs_off && smk_padl() == 0u && popup_time() == 0u && !MASTER_SAFE_SET && !PRESETS_LEVEL_SET;
     bad += check("(integration) an older record (0 in both bytes): KNOBS ON, PAD LIGHT 100 %, POPUP DEFAULT, LAST, "
                  "PRESETS", ok);
     SHARED_BYTE = 0xFF;
@@ -565,7 +566,7 @@ static int test_settings_bits(void)
     bad += check("(integration) RESET SETTINGS: every wishlist setting its default (KNOBS ON, PAD LIGHT 100 %, PAD FOLLOW "
                  "PAGE, POPUP DEFAULT and TIMER, MASTER START LAST, PRESETS KNOB PRESETS)",
                  !SHARED_BYTE && smk_pf_mode() == SMK_PF_PAGE && !ui.popup_on_input && !MASTER_SAFE_SET &&
-                 !PRESETS_PAN_SET);
+                 !PRESETS_LEVEL_SET);
     return bad;
 }
 /* (wishlist #42) MENU > PAD FOLLOW: the rows' first steps in every mode and direction, the wraps, a LEN not of 8 or 16,
@@ -933,6 +934,49 @@ static int test_fader_bar(void)
     return bad;
 }
 
+static void knob_turn(uint32_t enc)
+{
+    host_enc[panel.enc[enc]] += panel.dir[enc];
+    frame();
+}
+/* (#56b) a knob's LEVEL or PAN on HOME: the faders' bars, that parameter; the faders' ticks only on their own bank */
+static int test_knob_bars(void)
+{
+    static uint16_t was[HL_C_H * 240];
+    int bad = 0, ok;
+    uint32_t id, place;
+    int16_t pan;
+    smk_power_on();
+    ui_prefs |= PREF_BPM_LOCK;
+    sel_set(1);
+    fm1_in.fader[0] = 30;
+    frames(600);
+    lane_copy(0, was);
+    pan = TSEL->p[P_PAN];
+    knob_turn(EN_SELECT);
+    place = 255u;
+    ok = TSEL->p[P_PAN] > pan && smk_fader_bars(&id) && id == P_PAN && smk_fader_place(0, &place) && place == 255u;
+    ok &= !lane_is(0, was) && !lane_thin(0, hl_bar_x(40), hl_bar_x(100));
+    bad += check("SMK knob bars (#56b): K2 on HOME, the PAN bars on every lane, no tick (the faders on LEVEL)", ok);
+    frames(520);
+    bad += check("SMK knob bars: gone 0.5 s after", !smk_fader_bars(&id) && lane_is(0, was));
+    menu_put(MI_PKNOB, 1);
+    knob_turn(EN_PRESET);
+    ok = smk_fader_bars(&id) && id == P_LEVEL && smk_fader_place(0, &place) && place == 30u;
+    frame();
+    ok &= screen_at(hl_bar_x(30), lane_mid(0)) == T_TEXT;
+    menu_put(MI_PKNOB, 0);
+    bad += check("SMK knob bars: K4 as LEVEL, the LEVEL bars, the faders' ticks (their bank)", ok);
+    frames(520);
+    fm1_in.buttons |= 1u << SMK_BTN_KNOB_BANK;
+    frame();
+    knob_turn(EN_K1 + 2u);
+    fm1_in.buttons &= ~(1u << SMK_BTN_KNOB_BANK);
+    frame();
+    bad += check("SMK knob bars: SHIFT + K7 (the strip's REVERB), the REVERB bars", smk_fader_bars(&id) && id == P_REV);
+    return bad;
+}
+
 static int test_entries(void)
 {
     int bad = 0;
@@ -1279,8 +1323,8 @@ static int test_shift(void)
         ui_prefs |= PREF_BPM_LOCK;
         ui.home = 1;
         shift_map(m);
-        bad += check("(wishlist #49) SMK SHIFT's map on HOME, BPM LOCK ON: K2 LEVEL, GLOBE + K2 TEMPO",
-                     str_eq(m[1].key, "K2") && str_eq(m[1].job, "LEVEL") && str_eq(m[5].key, "GLOBE + K2") &&
+        bad += check("(wishlist #49, #10b) SMK SHIFT's map on HOME, BPM LOCK ON: K2 PAN, GLOBE + K2 TEMPO",
+                     str_eq(m[1].key, "K2") && str_eq(m[1].job, "PAN") && str_eq(m[5].key, "GLOBE + K2") &&
                      str_eq(m[5].job, "TEMPO"));
     }
     fm1_in.buttons |= 1u << panel.btn[B_SAVE];
@@ -1296,12 +1340,12 @@ static int test_shift(void)
 }
 
 /* (#20 with #38, #39) KNOB BANK held and let go within a tap's time with a K4 turn between, on OPERATOR: 1 if it
- * undid (a tap's UNDO), WAVE toggled, the MENU opened, or (PRESETS KNOB PAN) no sound was loaded */
-static int kb_k4_goes_wrong(uint32_t pan_mode)
+ * undid (a tap's UNDO), WAVE toggled, the MENU opened, or (PRESETS KNOB LEVEL) no sound was loaded */
+static int kb_k4_goes_wrong(uint32_t level_mode)
 {
     uint32_t kb = 1u << SMK_BTN_KNOB_BANK, phase, preset;
     int undid;
-    menu_put(MI_PKNOB, pan_mode);
+    menu_put(MI_PKNOB, level_mode);
     set_engine_of(TSEL, ENGI_FM6);
     go_page(GR_FMOP);
     frames((UNDO_WIN + 1u) * 16u);                    /* (an undo window still open would read as a tap's) */
@@ -1316,7 +1360,7 @@ static int kb_k4_goes_wrong(uint32_t pan_mode)
     undid = ui.undo_w || msg_is("NOTHING TO UNDO");
     frames(100);
     menu_put(MI_PKNOB, 0);
-    return undid || fm_wave != phase || ui.menu || (pan_mode && TSEL->preset == preset);
+    return undid || fm_wave != phase || ui.menu || (level_mode && TSEL->preset == preset);
 }
 
 /* (#20w) SHIFT + K2 on an FM6 sheet: its panel WAVE (right), the envelopes (left); (#39) a KNOB BANK tap there is
@@ -1366,7 +1410,7 @@ static int test_phase(void)
     bad += check("SMK KNOB BANK + K2 left: the envelopes, no UNDO", fm_wave == 0u && cur_page()->graph == GR_FMOP &&
                  !ui.undo_w);
     bad += check("SMK KNOB BANK + K4 at once: no tap, no UNDO (PRESETS KNOB PRESETS: the sheet's K4)", !kb_k4_goes_wrong(0));
-    bad += check("SMK KNOB BANK + K4 at once: no tap, no UNDO (PRESETS KNOB PAN: the sound loaded, kept)",
+    bad += check("SMK KNOB BANK + K4 at once: no tap, no UNDO (PRESETS KNOB LEVEL: the sound loaded, kept)",
                  !kb_k4_goes_wrong(1));
     return bad;
 }
@@ -1600,6 +1644,7 @@ int main(void)
     bad += test_settings_bits();
     bad += test_faders();
     bad += test_fader_bar();
+    bad += test_knob_bars();
     bad += test_entries();
     bad += test_layer_arrows();
     bad += test_outer_keys();

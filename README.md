@@ -502,9 +502,9 @@ by the keys, with what each key is in Skiff.
   F3 held clears the track's sequence, then CLICK, COUNT-IN, CLICK LEVEL, FEEL; C4 KNOBS OFF keeps knob turns out
   of REC's automation (they still change the sound, and TAKE still writes them)
 - **EDIT** opens the EDIT pages everywhere; on NOTES with REC armed it clears the cursor step
-- **SELECT** turns the pages of a family, and on HOME the selected track's LEVEL; **GLO + SELECT** sets the tempo
+- **SELECT** turns the pages of a family, and on HOME the selected track's PAN; **GLO + SELECT** sets the tempo
   (MENU › BPM LOCK, on by default)
-- **PRESETS** changes the sound (MENU › PRESETS KNOB PAN: the track's PAN, SHIFT + PRESETS the sound); on NOTES and FEEL
+- **PRESETS** changes the sound (MENU › PRESETS KNOB LEVEL: the track's LEVEL, SHIFT + PRESETS the sound); on NOTES and FEEL
   it moves the step cursor, on PATTERN it turns the direction, on lists it picks. With SAVE › PRESETS' LIST on a type
   (BASS, PAD ..) it steps through that type only
 - On NOTES and FEEL, **SHIFT + PRESETS** stretches the selection over a range of steps, **SHIFT + OCT− / OCT+** copy
@@ -651,8 +651,8 @@ every setting back as a new unit has it. The web editor's Settings tab reads and
 - **KNOB ACCEL:** OFF (one step per click) or ON: a fast, steady turn of a wide value moves 2 to 4 steps
   per click, up to 8 on values of more than 64 steps, the FX and GLO layers' knobs included; lists never
   jump. ON or OFF, every click of a fast turn counts
-- **BPM LOCK:** ON (default), SELECT turns the pages of a family, and on HOME the selected track's LEVEL (as
-  MIXER's, recorded with REC on); hold GLO and turn SELECT, tap G4 in the GLO layer or use GLO › GLOBAL for the
+- **BPM LOCK:** ON (default), SELECT turns the pages of a family, and on HOME the selected track's PAN (as
+  MIXER's, recorded with REC on; PAN above PRESETS KNOB's LEVEL, as on a mixer); hold GLO and turn SELECT, tap G4 in the GLO layer or use GLO › GLOBAL for the
   tempo. OFF, SELECT is the tempo everywhere, Felucca's way. Skiff turns it
   ON once on a unit coming from Felucca; DRUM-X's SOUND sheet and FM6's OPERATOR and ALL OPS move their rows with
   SELECT either way
@@ -668,8 +668,8 @@ every setting back as a new unit has it. The web editor's Settings tab reads and
   parameter of that track. Turn the next knob for another; OCT− clears the picked one's CC, OCT+ is done. Up to 10 CCs,
   on any channel MIDI IN hears; a CC learned no longer reaches the standard map (CC7 LEVEL, CC74 the brightness ..).
   CC1, 6, 11, 32, 38, 64, 96–101 and 120–127 are never learned. **LEARN CLEAR** forgets them all
-- **PRESETS KNOB** (CONTROL): PRESETS (default) or PAN. PAN: where PRESETS would change the sound (HOME, EDIT, ENV, FX,
-  MIXER ..) it turns the selected track's PAN instead, as MIXER's KNOB 2 (said in the header, recorded with REC on);
+- **PRESETS KNOB** (CONTROL): PRESETS (default) or LEVEL. LEVEL: where PRESETS would change the sound (HOME, EDIT, ENV,
+  FX, MIXER ..) it turns the selected track's LEVEL instead, as MIXER's KNOB 1 (said in the header, recorded with REC on);
   SHIFT + PRESETS changes the sound on every page but NOTES and FEEL (there it is the range). SAVE › PRESETS, NOTES,
   FEEL, PATTERN and the lists keep their own PRESETS
 - **STEP PREVIEW** (CONTROL, 1.3): ON, a move of the cursor on NOTES or the drum grid (PRESETS, the grid's page keys)

@@ -847,7 +847,7 @@ enum { S_HOME, S_HOME_IDLE, S_MESSAGE, S_MESSAGE_KEY, S_MESSAGE_NOFILE, S_PRESET
        S_ROLL_EMPTY, S_ROLL_ACID, S_ROLL_CHORDS, S_ROLL_TIES, S_ROLL_LEN32, S_ROLL_HIGH, S_ROLL_LOW, S_ROLL_WIDE, S_ROLL_PLAYING,
        S_ROLL_LOCKS, S_ROLL_LOCK_HELD, S_DRUM_LOCKS, S_DRUM_LOCK_HELD, S_MOTION_LOCKS, S_AUTO_LIST, S_AUTO_LIST_ADD, S_AUTO_LIST_DRUM, S_AUTO_LIST_DEL, S_REC_LAYER, S_REC_LAYER_SET,
        S_COUNTIN, S_COUNTIN2, S_MENU_AUDIO, S_HEAD_PLAY_REC, S_HEAD_REC_OTHER, S_HEAD_BPM_TURN, S_HEAD_BPM_LOCK,
-       S_HEAD_BPM_LOCK_LEVEL, S_HEAD_GLO_TURN, S_HEAD_DOWNBEAT, S_HEAD_BEAT_2, S_HEAD_PROJECT,
+       S_HEAD_BPM_LOCK_PAN, S_HEAD_GLO_TURN, S_HEAD_DOWNBEAT, S_HEAD_BEAT_2, S_HEAD_PROJECT,
        S_TAKE_BOX, S_TAKE_PARTIAL, S_CONFIRM_INIT, S_UNDO_BOX, S_CHANCE_FLAM,
        S_PLAY_DIR, S_POOL, S_CONFIRM_POOL, S_PERF_LAYER, S_DUCK, S_DUCK_OFF, S_PLAY_GATE, S_PERF_SCENES, S_TILES, S_TILES_BAR2, S_TILES_DRUM,
        S_SONG, S_SONG_PLAYING, S_SONG_COPY, S_SONG_CLEAR, S_CONFIRM_ENTRY, S_CONFIRM_ENTRY_LAST, S_STEP_MARK,
@@ -870,14 +870,14 @@ enum { S_HOME, S_HOME_IDLE, S_MESSAGE, S_MESSAGE_KEY, S_MESSAGE_NOFILE, S_PRESET
        S_LANE_MIX, S_LANE_MIX_DX, S_SONG_SOUND, S_SONG_SOUNDS,                               /* (2.0, #36, #30) */
        S_SONG_CHAINS, S_SONG_CHAIN_COPY,                                                      /* (2.0, #44's box) */
        S_DRUM_KIT_USR, S_LANES_USR,                                                           /* (2.0, #35) */
-       S_MENU_PKNOB, S_PKNOB_PAN, S_SHIFT_PAN,                                               /* (wishlist #38) */
+       S_MENU_PKNOB, S_PKNOB_LEVEL, S_SHIFT_LEVEL,                                           /* (wishlist #38) */
        S_SHIFT_STRIP,                                                                         /* (wishlist #60) */
        S_POOL_NEW,                                                                            /* (#14) */
        S_HOME_LISTS,                                                                          /* (#34) */
        S_HOME_FIT16, S_HOME_FIT24, S_HOME_FIT32, S_HOME_FIT64,                                /* (#41) */
        S_HOME_FIT_PATS,                                                                       /* (#34 with #41) */
        S_HOME_METER, S_HOME_METER_FIT,      /* (#59) */
-       S_HOME_SCOPE_TRACK,
+       S_HOME_SCOPE_TRACK, S_PAGE_SCOPE_TRACK,                                                /* (#59b) */
        S_MENU_POPUP,
        S_HEAD_MEMORY,                                                                         /* (#62) */
        S_MOCK_HOME, S_MOCK_PRESETS, S_MOCK_SEQ, S_MOCK_DRUM, S_MOCK_MIXER, S_MOCK_DIALOG, S_MOCK_MENU, S_COUNT };
@@ -897,7 +897,7 @@ static const char *const S_NAME[S_COUNT] = {"home", "home_idle", "message", "mes
     "roll_empty", "roll_acid", "roll_chords", "roll_ties", "roll_len32_p2", "roll_high", "roll_low", "roll_wide", "roll_playing",
     "roll_locks", "roll_lock_held", "drum_locks", "drum_lock_held", "motion_locks", "auto_list", "auto_list_add", "auto_list_drum", "auto_list_delete", "layer_rec", "layer_rec_set",
     "countin", "countin_2bars", "menu_audio", "head_play_rec", "head_rec_other", "head_bpm_turn", "head_bpm_lock",
-    "head_bpm_lock_level", "head_glo_turn", "head_downbeat", "head_beat_2", "head_project",
+    "head_bpm_lock_pan", "head_glo_turn", "head_downbeat", "head_beat_2", "head_project",
     "take_box", "take_partial", "confirm_init", "undo_box", "chance_flam", "play_dir", "pool",
     "confirm_pool", "layer_perform", "fx_duck", "fx_duck_off", "play_gate", "layer_perform_scenes",
     "step_tiles", "step_tiles_bar2", "step_tiles_drum",
@@ -913,7 +913,7 @@ static const char *const S_NAME[S_COUNT] = {"home", "home_idle", "message", "mes
     "chorus_flanger", "chorus_phaser", "presets_bass", "song_rest", "song_rest_pick",
     "notes_range", "notes_pick", "feel_range", "notes_overlap", "momentary", "pool_empty", "pool_unused", "confirm_empty",
     "song_once", "song_new", "song_copyplus", "song_chain", "song_chain3", "notes_chain", "lane_mix", "lane_mix_dx",
-    "song_sound", "song_sounds", "song_chains", "song_chain_copy", "drum_kit_usr", "lanes_usr", "menu_presets_knob", "presets_knob_pan", "shift_pan", "shift_strip", "pool_new", "home_lists", "home_fit16", "home_fit24", "home_fit32", "home_fit64", "home_fit_pats", "home_meter", "home_meter_fit", "home_scope_track", "menu_popup", "head_memory", "mock_home", "mock_presets", "mock_seq", "mock_drum", "mock_mixer", "mock_dialog", "mock_menu"};
+    "song_sound", "song_sounds", "song_chains", "song_chain_copy", "drum_kit_usr", "lanes_usr", "menu_presets_knob", "presets_knob_level", "shift_level", "shift_strip", "pool_new", "home_lists", "home_fit16", "home_fit24", "home_fit32", "home_fit64", "home_fit_pats", "home_meter", "home_meter_fit", "home_scope_track", "page_scope_track", "menu_popup", "head_memory", "mock_home", "mock_presets", "mock_seq", "mock_drum", "mock_mixer", "mock_dialog", "mock_menu"};
 
 /* the scenes of the UI design screens: the state the UI-redesign
  * prototype drew them from (its setup(): two pattern tracks, the drum pattern on track 4, a synthetic scope),
@@ -1090,11 +1090,16 @@ static void setup(int s)
     }
     case S_HOME_METER: home_meters(0); break;
     case S_HOME_METER_FIT: home_meters(1); break;
-    case S_HOME_SCOPE_TRACK:                        /* ((#59) HOME tapped twice: the selected track, a note of it) */
+    case S_HOME_SCOPE_TRACK:                        /* ((#59) HOME tapped twice: the selected track, a note of it; */
+    case S_PAGE_SCOPE_TRACK:                        /* (#59b) a page's scope: always the track) */
         for (uint32_t i = 0; i < SCOPE_TRK_N; i++)
             scope_trk_buf[i] = (int16_t)(9000.0 * sin(6.2831853 * i / 100.0) + 3000.0 * sin(6.2831853 * i / 33.3));
         scope_trk_w = 0;
         sel_set(2);
+        if (s == S_PAGE_SCOPE_TRACK) {
+            go_title("EDIT 1");
+            break;
+        }
         ui.home = 1;
         ui.home_scope = HOME_SCOPE_TRACK;
         break;
@@ -1169,15 +1174,15 @@ static void setup(int s)
     case S_COUNTIN2: song.playing = 0; song.rec = 1; cin_total = 8; cin_left = 8; go_page(GR_ROLL); break;
     case S_MENU_AUDIO: ui.menu = 1; ui.menu_sel = MI_CLICK; rp_put(RP_CLICK, 1u); rp_put(RP_COUNTIN, 1u); break;
     /* 1.2: the header's three slots (ui_draw.c draw_head): playing with the selected track armed; another track armed;
-     * the BPM being turned (the accent's); BPM LOCK ON (the lock right of the BPM), and (wishlist #49) SELECT's LEVEL
+     * the BPM being turned (the accent's); BPM LOCK ON (the lock right of the BPM), and (wishlist #49, #10b) SELECT's PAN
      * said after a turn; GLO with the tempo turned and BPM LOCK ON (the label right of the lock); the metronome on the
      * bar's 1st beat (the accent's) and its 2nd (mirrored) */
     case S_HEAD_PLAY_REC: song.rec = 1u << song.sel; go_home(); break;
     case S_HEAD_REC_OTHER: song.rec = 1u << ((song.sel + 2u) % NTRK); go_home(); break;
     case S_HEAD_BPM_TURN: song.g[G_BPM] = 128; ui.roll_bpm = 128; ui.bpm_t = 40; go_home(); break;
     case S_HEAD_BPM_LOCK: ui_prefs |= PREF_BPM_LOCK; go_home(); break;
-    case S_HEAD_BPM_LOCK_LEVEL:
-        ui_prefs |= PREF_BPM_LOCK; go_home(); TSEL->p[P_LEVEL] = 92; say_track_value(song.sel, P_LEVEL, "LEVEL"); break;
+    case S_HEAD_BPM_LOCK_PAN:
+        ui_prefs |= PREF_BPM_LOCK; go_home(); TSEL->p[P_PAN] = 20; say_track_value(song.sel, P_PAN, "PAN"); break;
     case S_HEAD_GLO_TURN: ui_prefs |= PREF_BPM_LOCK; go_home(); ui.layer = LAYER_GLO; ui.bpm_t = 40; break;
     case S_HEAD_DOWNBEAT: clk_step = 1; song.rec = 1u << song.sel; go_home(); break;
     case S_HEAD_BEAT_2: clk_step = 5; song.rec = 1u << song.sel; go_home(); break;
@@ -1253,9 +1258,9 @@ static void setup(int s)
             go_title("ARP");
         break;
     case S_EDIT_FLT: TSEL->p[P_E5] = 100; go_title("EDIT 2"); ui.hot_col = 1; ui.hot_t = 30; break;
-    case S_MENU_PKNOB: menu_put(MI_PKNOB, 1); ui.menu = 1; ui.menu_sel = MI_PKNOB; break;   /* (wishlist #38) PAN, */
-    case S_PKNOB_PAN: menu_put(MI_PKNOB, 1); go_title("EDIT 2"); presets_turn(1); break;     /* PRESETS on EDIT, */
-    case S_SHIFT_PAN: menu_put(MI_PKNOB, 1); go_title("ENV"); ui.shift = shift_channel = 1; break;          /* SHIFT's map */
+    case S_MENU_PKNOB: menu_put(MI_PKNOB, 1); ui.menu = 1; ui.menu_sel = MI_PKNOB; break;   /* (wishlist #38, #10b) LEVEL, */
+    case S_PKNOB_LEVEL: menu_put(MI_PKNOB, 1); go_title("EDIT 2"); presets_turn(1); break;   /* PRESETS on EDIT, */
+    case S_SHIFT_LEVEL: menu_put(MI_PKNOB, 1); go_title("ENV"); ui.shift = shift_channel = 1; break;        /* SHIFT's map */
     case S_SHIFT_STRIP:                              /* (wishlist #60) SHIFT + KNOB 3 on ENV: the map gone, the cards the
                                                       * track's strip, REVERB just turned */
         go_title("ENV");

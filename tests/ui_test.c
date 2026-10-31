@@ -1137,7 +1137,7 @@ static int test_scope_master(void)
 
 /* (#59) HOME tapped on HOME: the lanes, the scope of the mix (MASTER), the selected track's (TRACK), the lanes again.
  * Only while TRACK is up the audio taps a track, the selected one: its block after LEVEL, silence when it has none
- * (another track sounding is not in it) */
+ * (another track sounding is not in it); (#59b) on a page it always does */
 static uint32_t track_scope_blocks(uint32_t blocks, int16_t *loudest)
 {
     int32_t o[2u * CTL];
@@ -1170,11 +1170,17 @@ static int test_scope_track(void)
     ok &= track_scope_blocks(8, &loudest) == 8u * CTL / 2u && loudest > 1000;
     press(B_HOME);
     ok &= ui.home && !ui.home_scope && !scope_trk && track_scope_blocks(4, &loudest) == 0u;
+    go_title("EDIT 1");
+    frame();
+    ok &= scope_trk == song.sel + 1u && track_scope_blocks(8, &loudest) == 8u * CTL / 2u && loudest > 1000;
+    press(B_HOME);
+    press(B_HOME);
+    ok &= ui.home && ui.home_scope == HOME_SCOPE_MASTER && !scope_trk;
     trk_all_off(TSEL);
     trk_all_off(&trk[other]);
     song.master_q12 = mq;
-    return check("#59 HOME on HOME: lanes -> MASTER -> TRACK -> lanes; TRACK taps the selected track only, while shown",
-                 ok);
+    return check("#59 HOME on HOME: lanes -> MASTER -> TRACK -> lanes; TRACK taps the selected track only, while shown; "
+                 "(#59b) a page: always the track, back on HOME the cycle as it was", ok);
 }
 
 /* (#59) HOME's level meters read each track's peak (fx.c t->peak) every ~50 ms, clear it, show it in 3/4 dB steps from
@@ -2295,12 +2301,12 @@ static int test_presets_knob(void)
     return bad;
 }
 
-enum { K4_LOADS = 1, K4_PANS = 2 };
-static uint32_t presets_turn_does(uint32_t page, uint32_t pan_mode)
+enum { K4_LOADS = 1, K4_LEVELS = 2 };
+static uint32_t presets_turn_does(uint32_t page, uint32_t level_mode)
 {
     track_t before;
     ui_power_on();
-    menu_put(MI_PKNOB, pan_mode);
+    menu_put(MI_PKNOB, level_mode);
     sel_set(0);
     my_steps(TSEL);
     ui.home = 0; ui.page = (uint8_t)page; page_entered();
@@ -2309,25 +2315,25 @@ static uint32_t presets_turn_does(uint32_t page, uint32_t pan_mode)
     turn(EN_PRESET, 1);
     return (TSEL->preset != before.preset || TSEL->eng_req != before.eng_req ||
             memcmp(TSEL->step, before.step, sizeof before.step) ? K4_LOADS : 0u) |
-           (TSEL->p[P_PAN] > before.p[P_PAN] ? K4_PANS : 0u);
+           (TSEL->p[P_LEVEL] > before.p[P_LEVEL] ? K4_LEVELS : 0u);
 }
-static int pan_said(void) { return ui.msg_t && !memcmp(ui.msg, "T1 PAN ", 7); }
+static int level_said(void) { return ui.msg_t && !memcmp(ui.msg, "T1 LEVEL ", 9); }
 static int glo_presets_ignored(void)
 {
     track_t before = *TSEL;
     btn_down(B_GLO); frame();
     turn(EN_PRESET, 1);
     btn_up(B_GLO); frames(100);
-    return TSEL->preset == before.preset && TSEL->eng_req == before.eng_req && TSEL->p[P_PAN] == before.p[P_PAN];
+    return TSEL->preset == before.preset && TSEL->eng_req == before.eng_req && TSEL->p[P_LEVEL] == before.p[P_LEVEL];
 }
-/* (wishlist #38) MENU > PRESETS KNOB PAN: where PRESETS loads a sound (HOME, EDIT, ENV, FX, MIXER, ...) it turns the
- * selected track's PAN, said and recorded as MIXER's; SAVE > PRESETS and the pages with a PRESETS of their own keep it;
- * SHIFT held + PRESETS: the sound; GLO held + PRESETS: nothing, as in PRESETS mode */
-static int test_presets_knob_pan(void)
+/* (wishlist #38) MENU > PRESETS KNOB LEVEL: where PRESETS loads a sound (HOME, EDIT, ENV, FX, MIXER, ...) it turns the
+ * selected track's LEVEL ((#10b) PAN before), said and recorded as MIXER's; SAVE > PRESETS and the pages with a
+ * PRESETS of their own keep it; SHIFT held + PRESETS: the sound; GLO held + PRESETS: nothing, as in PRESETS mode */
+static int test_presets_knob_level(void)
 {
-    int bad = 0, panned = 1, kept = 1, browse_ok = 0, home_ok, glo_ok, shift_ok, rec_ok;
-    uint32_t i, n_panned = 0, preset;
-    int16_t pan;
+    int bad = 0, levelled = 1, kept = 1, browse_ok = 0, home_ok, glo_ok, shift_ok, rec_ok;
+    uint32_t i, n_levelled = 0, preset;
+    int16_t level;
     for (i = 0; i < NPAGES; i++) {
         uint32_t g = PAGES[i].graph, loads;
         if (!page_visible(i))
@@ -2336,22 +2342,22 @@ static int test_presets_knob_pan(void)
         if (g == GR_BROWSE) {
             browse_ok = presets_turn_does(i, 1) == K4_LOADS;
         } else if (loads) {
-            panned &= presets_turn_does(i, 1) == K4_PANS && pan_said() && ui.page == i && !ui.home;
-            n_panned++;
+            levelled &= presets_turn_does(i, 1) == K4_LEVELS && level_said() && ui.page == i && !ui.home;
+            n_levelled++;
         } else {
             kept &= !presets_turn_does(i, 1);
         }
     }
     ui_power_on();
     bad += check("(wishlist #38) a new unit: PRESETS KNOB PRESETS", menu_get(MI_PKNOB) == 0u &&
-                 str_eq(menu_vname(MI_PKNOB, 0), "PRESETS") && str_eq(menu_vname(MI_PKNOB, 1), "PAN"));
+                 str_eq(menu_vname(MI_PKNOB, 0), "PRESETS") && str_eq(menu_vname(MI_PKNOB, 1), "LEVEL"));
     menu_put(MI_PKNOB, 1);
     sel_set(0);
     preset = TSEL->preset;
-    pan = TSEL->p[P_PAN];
+    level = TSEL->p[P_LEVEL];
     turn(EN_PRESET, 1);
-    home_ok = ui.home && TSEL->preset == preset && TSEL->p[P_PAN] > pan && pan_said();
-    pan = TSEL->p[P_PAN];
+    home_ok = ui.home && TSEL->preset == preset && TSEL->p[P_LEVEL] > level && level_said();
+    level = TSEL->p[P_LEVEL];
     glo_ok = glo_presets_ignored();
     go_title("EDIT 2");
     preset = TSEL->preset;
@@ -2359,20 +2365,20 @@ static int test_presets_knob_pan(void)
     turn(EN_PRESET, 1);
     btn_up(B_HOME); frames(100);
     shift_ok = !ui.home && !ui.menu && str_eq(cur_page()->title, "EDIT 2") && TSEL->preset != preset &&
-               TSEL->p[P_PAN] == pan;
+               TSEL->p[P_LEVEL] == level;
     menu_put(MI_PKNOB, 0);
     glo_ok &= glo_presets_ignored();
     ui_power_on(); menu_put(MI_PKNOB, 1); song.rec = 1; seq_start(); go_home();
     turn(EN_PRESET, 1);
     rec_ok = motion_count(TSEL) == 1;
     stop_transport();
-    bad += check("(wishlist #38) PRESETS KNOB PAN: HOME, EDIT, ENV, FX, MIXER, ...: the track's PAN, said, no sound loaded",
-                 home_ok && panned && n_panned >= 15u);
+    bad += check("(wishlist #38) PRESETS KNOB LEVEL: HOME, EDIT, ENV, FX, MIXER, ...: the track's LEVEL, said, no sound loaded",
+                 home_ok && levelled && n_levelled >= 15u);
     bad += check("(wishlist #38)   SAVE > PRESETS still loads; NOTES, FEEL, PATTERN, the lists, sheets: their own",
                  browse_ok && kept);
     bad += check("(wishlist #38)   SHIFT + PRESETS: the sound, no page, no MENU", shift_ok);
-    bad += check("(wishlist #38)   GLO + PRESETS: nothing, in PAN mode as in PRESETS", glo_ok);
-    bad += check("(wishlist #38)   REC on: the PAN turn recorded as automation", rec_ok);
+    bad += check("(wishlist #38)   GLO + PRESETS: nothing, in LEVEL mode as in PRESETS", glo_ok);
+    bad += check("(wishlist #38)   REC on: the LEVEL turn recorded as automation", rec_ok);
     return bad;
 }
 
@@ -7612,13 +7618,13 @@ static int test_usb_serial(void)                       /* ((Skiff 2.0) a release
 #endif
 
 /* #58 MENU > BPM LOCK: OFF by default (and in every older setting): SELECT sets the tempo on every page. ON: SELECT
- * leaves it on the pages and (wishlist #49) on HOME turns the selected track's LEVEL; GLO > GLOBAL's BPM knob, GLO +
- * SELECT (a combo: the map opens, no GLO page; OCT- puts it back) and GLO's G4 TAP still set it; the menu never takes
- * SELECT as the tempo */
+ * leaves it on the pages and (wishlist #49) on HOME turns the selected track's PAN ((#10b) LEVEL before); GLO >
+ * GLOBAL's BPM knob, GLO + SELECT (a combo: the map opens, no GLO page; OCT- puts it back) and GLO's G4 TAP still set
+ * it; the menu never takes SELECT as the tempo */
 static int test_bpm_lock(void)
 {
     int bad = 0, ok;
-    int16_t b0, level;
+    int16_t b0, pan;
     char val[8], said[24];
     const char *unit = "";
     uint32_t i, page;
@@ -7645,35 +7651,35 @@ static int test_bpm_lock(void)
     press(B_HOME);
     bad += check("#58 MENU > BPM LOCK: KNOB 1 right / OCT+ ON, left / OCT- OFF; SELECT in the menu is no tempo", ok && !ui.menu);
 
-    /* ON: no tempo from SELECT; (wishlist #49) on HOME it is the track's LEVEL, as MIXER's KNOB 1; (Skiff phase 8)
+    /* ON: no tempo from SELECT; (wishlist #49) on HOME it is the track's PAN, as MIXER's KNOB 2 (#10b); (Skiff phase 8)
      * on a page it turns the pages */
     frame();
     ui.msg_t = 0;
     b0 = song.g[G_BPM];
-    level = TSEL->p[P_LEVEL];
+    pan = TSEL->p[P_PAN];
     turn(EN_SELECT, -1);
-    ok = ui.home && song.g[G_BPM] == b0 && !ui.bpm_t && TSEL->p[P_LEVEL] == level - 1;
-    param_format(&TP[P_LEVEL], TSEL->p[P_LEVEL], val, &unit);
-    str_cpy(said, "T1 LEVEL ", sizeof said);
+    ok = ui.home && song.g[G_BPM] == b0 && !ui.bpm_t && TSEL->p[P_PAN] == pan - 1;
+    param_format(&TP[P_PAN], TSEL->p[P_PAN], val, &unit);
+    str_cpy(said, "T1 PAN ", sizeof said);
     str_cpy(said + str_len(said), val, sizeof said - str_len(said));
     str_cpy(said + str_len(said), unit, sizeof said - str_len(said));
     ok &= msg_is(said) && !ui.msg2[0] && motion_count(TSEL) == 0;
     turn(EN_SELECT, 300);
-    ok &= TSEL->p[P_LEVEL] == TP[P_LEVEL].max && song.g[G_BPM] == b0;
-    bad += check("(wishlist #49) BPM LOCK ON, HOME: SELECT turns the track's LEVEL, said \"T1 LEVEL ..\", no tempo", ok);
+    ok &= TSEL->p[P_PAN] == TP[P_PAN].max && song.g[G_BPM] == b0;
+    bad += check("(wishlist #49) BPM LOCK ON, HOME: SELECT turns the track's PAN, said \"T1 PAN ..\", no tempo", ok);
     song.rec = 1; seq_start();
     turn(EN_SELECT, -2);
     ok = motion_count(TSEL) == 1 && song.g[G_BPM] == b0;
     stop_transport(); song.rec = 0;
-    bad += check("(wishlist #49)   REC on: the LEVEL turn recorded as automation", ok);
-    level = TSEL->p[P_LEVEL];
+    bad += check("(wishlist #49)   REC on: the PAN turn recorded as automation", ok);
+    pan = TSEL->p[P_PAN];
     btn_down(B_GLO); frame();
     turn(EN_SELECT, 2);
-    ok = song.g[G_BPM] == b0 + 2 && TSEL->p[P_LEVEL] == level;
+    ok = song.g[G_BPM] == b0 + 2 && TSEL->p[P_PAN] == pan;
     btn_up(B_GLO); frame();
     song.g[G_BPM] = b0;
     ui.bpm_t = 0;
-    bad += check("(wishlist #49)   GLO + SELECT on HOME: still the tempo, the LEVEL stays", ok && ui.home);
+    bad += check("(wishlist #49)   GLO + SELECT on HOME: still the tempo, the PAN stays", ok && ui.home);
     for (i = 0, ok = 1; i < 2u; i++) {                                /* (Skiff phase 8, rule 3) the pages instead */
         go_title(i ? "NOTES" : "ENV"); frame();
         ui.msg_t = 0; fm1_ms += 1200u;
@@ -8643,7 +8649,7 @@ static int test_u4(void)
     menu_put(MI_CLK, 1);
     ok &= CLK320_SET;
     menu_put(MI_PKNOB, 1);
-    ok &= PRESETS_PAN_SET;
+    ok &= PRESETS_LEVEL_SET;
     menu_put(MI_COLOR, UI_LCD_NIGHT_INDEX);
     SHARED_BYTE = REC_KNOBS_OFF;
     menu_put(MI_POPUP, 12);
@@ -8661,7 +8667,7 @@ static int test_u4(void)
                  "(Skiff) CPU CLOCK 360 MHZ, (wishlist #38) PRESETS KNOB PRESETS, (#29) THEME SKIFF, (#23) REC KNOBS ON, "
                  "(#27) POPUP TIME DEFAULT, POPUP CLOSE TIMER)",
                  ok && !ui_hints_off && song.g[G_TUNE] == 0 && settings_leds == LEDS_DIM && !CLK320_SET && msg_is("SETTINGS RESET") &&
-                 !PRESETS_PAN_SET && menu_get(MI_COLOR) == UI_SKIFF_INDEX && SHARED_BYTE == 0u &&
+                 !PRESETS_LEVEL_SET && menu_get(MI_COLOR) == UI_SKIFF_INDEX && SHARED_BYTE == 0u &&
                  !popup_time() && !ui.popup_on_input);
     ui_power_on();
     return bad;
@@ -8748,7 +8754,7 @@ static int test_u5(void)
     go_home();
     ui_prefs |= PREF_BPM_LOCK;
     shift_map(m);
-    ok = str_eq(m[1].key, "SELECT") && str_eq(m[1].job, "LEVEL") && str_eq(m[5].key, "GLO + SELECT") &&
+    ok = str_eq(m[1].key, "SELECT") && str_eq(m[1].job, "PAN") && str_eq(m[5].key, "GLO + SELECT") &&
          str_eq(m[5].job, "TEMPO");
     ui_prefs &= (uint8_t)~PREF_BPM_LOCK;
     shift_map(m);
@@ -8757,7 +8763,7 @@ static int test_u5(void)
     ui_prefs |= PREF_BPM_LOCK;
     shift_map(m);
     ok &= str_eq(m[1].job, "PAGE") && str_eq(m[5].key, "PLAY");
-    bad += check("(wishlist #49) SHIFT's map on HOME: BPM LOCK ON, SELECT LEVEL and GLO + SELECT TEMPO in PLAY's cell; "
+    bad += check("(wishlist #49, #10b) SHIFT's map on HOME: BPM LOCK ON, SELECT PAN and GLO + SELECT TEMPO in PLAY's cell; "
                  "OFF, SELECT TEMPO and PLAY; on a page PLAY stays", ok);
     ui_hints_off = 0;
     ui_power_on();
@@ -8997,7 +9003,7 @@ static int test_u2c(void)
 static int test_select_pages(void)
 {
     int bad = 0, ok;
-    int16_t b0, level;
+    int16_t b0, pan;
     uint32_t cur;
     ui_power_on();
     ui_prefs = PREF_BPM_LOCK;
@@ -9042,10 +9048,10 @@ static int test_select_pages(void)
     ok &= str_eq(cur_page()->title, "NOTES") && ui.cursor == cur;
     bad += check("SELECT on the SEQ pages: NOTES, FEEL and back, the cursor kept", ok);
     go_home(); frame();
-    level = TSEL->p[P_LEVEL];
+    pan = TSEL->p[P_PAN];
     turn(EN_SELECT, -1);
-    bad += check("SELECT on HOME: no page ((wishlist #49) the track's LEVEL)",
-                 ui.home && TSEL->p[P_LEVEL] == level - 1 && song.g[G_BPM] == b0);
+    bad += check("SELECT on HOME: no page ((wishlist #49, #10b) the track's PAN)",
+                 ui.home && TSEL->p[P_PAN] == pan - 1 && song.g[G_BPM] == b0);
     go_title("ENV"); frame();
     btn_down(B_FX); frames(900);                                     /* (past the hold time: the map) */
     ok = ui.layer == LAYER_FX;
@@ -11234,7 +11240,7 @@ int main(void)
     bad += test_step_rec();
     bad += test_step_rec();
     bad += test_presets_knob();
-    bad += test_presets_knob_pan();
+    bad += test_presets_knob_level();
     bad += test_midi();
     bad += test_save();
     bad += test_actions();

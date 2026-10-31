@@ -1163,10 +1163,11 @@ static void mix_part(track_t *t, uint32_t n SM_DECL)
         mod_end(t);                                     /* the stored values back */
 }
 
-/* (#59) HOME's scope, TRACK: the track the screen shows (scope_trk: its index + 1 while that view is up, else 0) as it
- * enters the mix, after LEVEL and before PAN and MASTER, every other sample as audio.c's scope; from the block mix_part
- * leaves in b (silence: track_render's cleared one; SPREAD, a panned kit: the mono sum). Out of line on purpose: the
- * same tap inside mix_part or inlined into mix_block moves code into loops target_budget.py counts (+18 %, +397 %) */
+/* (#59) HOME's scope, TRACK, (#59b) a page's: the track the screen shows (scope_trk: its index + 1 while HOME's TRACK
+ * view or a page is up, else 0) as it enters the mix, after LEVEL and before PAN and MASTER, every other sample as
+ * audio.c's scope; from the block mix_part leaves in b (silence: track_render's cleared one; SPREAD, a panned kit: the
+ * mono sum). Out of line on purpose: the same tap inside mix_part or inlined into mix_block moves code into loops
+ * target_budget.py counts (+18 %, +397 %) */
 #define SCOPE_TRK_N 512u
 static volatile uint8_t scope_trk;
 static int16_t scope_trk_buf[SCOPE_TRK_N];
