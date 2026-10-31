@@ -7,8 +7,8 @@
  *   colours A as the screen's step tiles: empty faint white, a step in the track's colour (a tie half), the edited step
  *            white, the one playing brighter (half way to white: a pad is one LED, it has no ring);
  *   faders A the LEVEL of the four tracks the screen shows, SHIFT + FADER BANK stepping LEVEL PAN REVERB DELAY,
- *            each fader taking over once it reaches the value; (#56) on HOME a bar over its track's lane while it
- *            moves (ui_home.c hl_fader_bar);
+ *            each fader taking over once it reaches the value; (#56) on HOME, while one moves, a bar over each
+ *            lane (ui_home.c hl_fader_bar);
  *   wheels A, the pedal: as MIDI in on the selected track's channel (bend, CC1: the MOD matrix's MODW; CC64 sustain);
  *            the pedal holds the track's keys too (seq.c);
  *   < >      the selected track's entry before and after (as PERFORM's keys: at once stopped, at LAUNCH playing);
@@ -209,7 +209,8 @@ static void smk_pads(void)
 static const uint8_t SMK_FB_P[4] = {P_LEVEL, P_PAN, P_REV, P_DLY};
 static const char *const SMK_FB_N[4] = {"LEVEL", "PAN", "REVERB", "DELAY"};
 static uint8_t smk_fbank;                            /* FADER BANK: SMK_FB_P's */
-static struct { uint8_t tgt, last, picked; int16_t wrote; uint32_t moved_ms; } smk_fd[4] = {{0xFF}, {0xFF}, {0xFF}, {0xFF}};
+static struct { uint8_t tgt, last, picked; int16_t wrote; } smk_fd[4] = {{0xFF}, {0xFF}, {0xFF}, {0xFF}};
+static uint32_t smk_fd_moved_ms;                     /* (#56) any fader's last move; 0: none since a track or bank change */
 static void smk_faders(void)
 {
     uint32_t top = trk_top(), j;
@@ -223,12 +224,12 @@ static void smk_faders(void)
             smk_fd[j].tgt = (uint8_t)tgt;
             smk_fd[j].picked = 0;
             smk_fd[j].last = (uint8_t)v;
-            smk_fd[j].moved_ms = 0;
+            smk_fd_moved_ms = 0;
             continue;
         }
         if (v == smk_fd[j].last)
             continue;
-        smk_fd[j].moved_ms = fm1_ms | 1u;            /* (0: not moved since the track or bank changed) */
+        smk_fd_moved_ms = fm1_ms | 1u;
         popup_input(0, 0, 1);                        /* (POPUP CLOSE ON INPUT: a move, even short of the value, as a turn) */
         if (smk_fd[j].picked && t->p[id] != smk_fd[j].wrote)
             smk_fd[j].picked = 0;                    /* (set elsewhere since: reach it again) */
@@ -246,14 +247,20 @@ static void smk_faders(void)
         ui.force = 1;
     }
 }
-/* (#56) HOME's bar (ui_home.c): track k's fader moved within SMK_FD_SHOW_MS, its parameter and place (0..127) */
-#define SMK_FD_SHOW_MS 1000u
-static int smk_fader_shown(uint32_t k, uint32_t *id, uint32_t *place)
+/* (#56) HOME's bars (ui_home.c): up while any fader moved within SMK_FD_SHOW_MS, the bank's parameter */
+#define SMK_FD_SHOW_MS 500u
+static int smk_fader_bars(uint32_t *id)
 {
-    uint32_t j = k - trk_top();
-    if (j >= 4u || !smk_fd[j].moved_ms || fm1_ms - smk_fd[j].moved_ms >= SMK_FD_SHOW_MS)
+    if (!smk_fd_moved_ms || fm1_ms - smk_fd_moved_ms >= SMK_FD_SHOW_MS)
         return 0;
     *id = SMK_FB_P[smk_fbank % 4u];
+    return 1;
+}
+static int smk_fader_place(uint32_t k, uint32_t *place)   /* track k has a fader: where it stands, 0..127 */
+{
+    uint32_t j = k - trk_top();
+    if (j >= 4u)
+        return 0;
     *place = smk_fd[j].last;
     return 1;
 }

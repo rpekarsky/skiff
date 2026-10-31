@@ -39,32 +39,46 @@ static void hl_pat(uint32_t k, char *b)
 }
 
 #if BOARD_SMK37
-/* (#56) a fader moving: over its track's steps a bar, filled to the parameter's value (PAN from the centre), the
- * fader's place a tick in a gap, apart from the fill's end until the fader takes over (smk_ui.c smk_faders) */
-static int smk_fader_shown(uint32_t k, uint32_t *id, uint32_t *place);   /* (smk_ui.c) */
+/* (#56) a fader moving: over every lane's steps a bar filled to the bank's parameter (PAN from the centre). A fader's
+ * track: the fader's place a tick in a gap, apart from the fill's end until it takes over (smk_ui.c smk_faders); the two
+ * tracks without one: a thin bar in DIM on RAISE */
+static int smk_fader_bars(uint32_t *id);              /* (smk_ui.c) */
+static int smk_fader_place(uint32_t k, uint32_t *place);
 #define HL_BAR_W 132                                  /* under the 16 cells */
+#define HL_THIN_H 3
 static int32_t hl_bar_x(int32_t v) { return HL_STEP_X + v * HL_BAR_W / 127; }
 static uint32_t hl_fader_sig(uint32_t k)
 {
-    uint32_t id, place;
-    if (!smk_fader_shown(k, &id, &place))
+    uint32_t id, place = 255u;                       /* (255: a lane without a fader) */
+    if (!smk_fader_bars(&id))
         return 0;
+    smk_fader_place(k, &place);
     return 1u + id * 3u + place * 389u + (uint32_t)trk[k].p[id] * 52511u;
 }
 static int hl_fader_bar(uint32_t k, int32_t y, int32_t h, uint16_t lane, uint16_t fill, uint16_t groove, uint16_t tick)
 {
     uint32_t id, place;
-    int32_t bh = h / 3, by = y + (h - bh) / 2, from, to, tick_x;
-    if (!smk_fader_shown(k, &id, &place))
+    int has_fader;
+    int32_t bh, by, from, to, tick_x;
+    if (!smk_fader_bars(&id))
         return 0;
+    has_fader = smk_fader_place(k, &place);
+    if (!has_fader) {
+        fill = T_DIM;
+        groove = T_RAISE;
+    }
+    bh = has_fader ? h / 3 : HL_THIN_H;
+    by = y + (h - bh) / 2;
     from = hl_bar_x(id == P_PAN ? -TP[id].min : 0);
     to = hl_bar_x(trk[k].p[id] - TP[id].min);
-    tick_x = clamp(hl_bar_x((int32_t)place), HL_STEP_X + 1, HL_STEP_X + HL_BAR_W - 1);
     cv_rect(HL_STEP_X - 3, y + 1, HL_BAR_W + 6, h - 2, lane);
     cv_rect(HL_STEP_X, by, HL_BAR_W, bh, groove);
     cv_rect(from < to ? from : to, by, from < to ? to - from : from - to, bh, fill);
     if (id == P_PAN)
         cv_rect(from, by - 1, 1, bh + 2, fill);
+    if (!has_fader)
+        return 1;
+    tick_x = clamp(hl_bar_x((int32_t)place), HL_STEP_X + 1, HL_STEP_X + HL_BAR_W - 1);
     cv_rect(tick_x - 2, by - 3, 4, bh + 6, lane);
     cv_rect(tick_x - 1, by - 3, 2, bh + 6, tick);
     return 1;
