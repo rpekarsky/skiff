@@ -861,6 +861,7 @@ enum { S_HOME, S_HOME_IDLE, S_MESSAGE, S_MESSAGE_KEY, S_MESSAGE_NOFILE, S_PRESET
        S_SONG_CHAINS, S_SONG_CHAIN_COPY,                                                      /* (2.0, #44's box) */
        S_DRUM_KIT_USR, S_LANES_USR,                                                           /* (2.0, #35) */
        S_MENU_PKNOB, S_PKNOB_PAN, S_SHIFT_PAN,                                               /* (wishlist #38) */
+       S_SHIFT_STRIP,                                                                         /* (wishlist #60) */
        S_POOL_NEW,                                                                            /* (#14) */
        S_HOME_LISTS,                                                                          /* (#34) */
        S_HOME_FIT16, S_HOME_FIT24, S_HOME_FIT32, S_HOME_FIT64,                                /* (#41) */
@@ -902,7 +903,7 @@ static const char *const S_NAME[S_COUNT] = {"home", "home_idle", "message", "mes
     "chorus_flanger", "chorus_phaser", "presets_bass", "song_rest", "song_rest_pick",
     "notes_range", "notes_pick", "feel_range", "notes_overlap", "momentary", "pool_empty", "pool_unused", "confirm_empty",
     "song_once", "song_new", "song_copyplus", "song_chain", "song_chain3", "notes_chain", "lane_mix", "lane_mix_dx",
-    "song_sound", "song_sounds", "song_chains", "song_chain_copy", "drum_kit_usr", "lanes_usr", "menu_presets_knob", "presets_knob_pan", "shift_pan", "pool_new", "home_lists", "home_fit16", "home_fit24", "home_fit32", "home_fit64", "home_fit_pats", "home_meter", "home_meter_fit", "home_scope_track", "menu_popup", "head_memory", "mock_home", "mock_presets", "mock_seq", "mock_drum", "mock_mixer", "mock_dialog", "mock_menu"};
+    "song_sound", "song_sounds", "song_chains", "song_chain_copy", "drum_kit_usr", "lanes_usr", "menu_presets_knob", "presets_knob_pan", "shift_pan", "shift_strip", "pool_new", "home_lists", "home_fit16", "home_fit24", "home_fit32", "home_fit64", "home_fit_pats", "home_meter", "home_meter_fit", "home_scope_track", "menu_popup", "head_memory", "mock_home", "mock_presets", "mock_seq", "mock_drum", "mock_mixer", "mock_dialog", "mock_menu"};
 
 /* the scenes of the UI design screens: the state the UI-redesign
  * prototype drew them from (its setup(): two pattern tracks, the drum pattern on track 4, a synthetic scope),
@@ -1243,7 +1244,16 @@ static void setup(int s)
     case S_EDIT_FLT: TSEL->p[P_E5] = 100; go_title("EDIT 2"); ui.hot_col = 1; ui.hot_t = 30; break;
     case S_MENU_PKNOB: menu_put(MI_PKNOB, 1); ui.menu = 1; ui.menu_sel = MI_PKNOB; break;   /* (wishlist #38) PAN, */
     case S_PKNOB_PAN: menu_put(MI_PKNOB, 1); go_title("EDIT 2"); presets_turn(1); break;     /* PRESETS on EDIT, */
-    case S_SHIFT_PAN: menu_put(MI_PKNOB, 1); go_title("ENV"); ui.shift = 1; break;          /* SHIFT's map */
+    case S_SHIFT_PAN: menu_put(MI_PKNOB, 1); go_title("ENV"); ui.shift = shift_channel = 1; break;          /* SHIFT's map */
+    case S_SHIFT_STRIP:                              /* (wishlist #60) SHIFT + KNOB 3 on ENV: the map gone, the cards the
+                                                      * track's strip, REVERB just turned */
+        go_title("ENV");
+        TSEL->p[P_REV] = 38;
+        shift_channel = 1;
+        say_track_value(song.sel, P_REV, "REVERB");
+        ui.hot_col = 2;
+        ui.hot_t = 30;
+        break;
     case S_GLOBAL_SWING: song.g[G_SWING] = 60; go_title("GLOBAL"); ui.hot_col = 1; ui.hot_t = 30; break;
     case S_VOICE_GLIDE: TSEL->p[P_GLIDE] = 60; go_title("VOICE"); ui.hot_col = 1; ui.hot_t = 30; break;
     case S_LFO_RUN:                                  /* (Skiff) the LFO 1.4 s after a note: FADE's rise, RATE's cycles */
@@ -1286,9 +1296,9 @@ static void setup(int s)
         if (s == S_SHIFT_ENV) go_title("ENV");
         else if (s == S_SHIFT_STEP) go_page(GR_ROLL);
         else ui.home = 1;
-        ui.shift = 1;
+        ui.shift = shift_channel = 1;
         break;
-    case S_SHIFT_HOME_LOCK: ui_prefs |= PREF_BPM_LOCK; ui.home = 1; ui.shift = 1; break;   /* ((wishlist #49) SELECT
+    case S_SHIFT_HOME_LOCK: ui_prefs |= PREF_BPM_LOCK; ui.home = 1; ui.shift = shift_channel = 1; break;   /* ((wishlist #49) SELECT
                                                      * LEVEL, GLO + SELECT TEMPO) */
     case S_VOICE: go_title("VOICE"); break;
     case S_GLOBAL: go_title("GLOBAL"); break;
@@ -1570,7 +1580,7 @@ static void setup(int s)
     case S_SHIFT_FM:                                /* (#20) SHIFT's map on OPERATOR: + SELECT, PHASE */
         eng(ENGI_FM6);
         go_title("OPERATOR");
-        ui.shift = 1;
+        ui.shift = shift_channel = 1;
         break;
     case S_FM_PHASE_LOW:                            /* (#20) PHASE: INIT's OP1 under OP2 a little (MOD LVL -24), OP1 */
     case S_FM_PHASE_HIGH:                           /* picked on TONE; OP2 deep at x3, picked, on ALL OPS; ALG 1's */

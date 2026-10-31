@@ -820,12 +820,45 @@ static void engine_columns(void)
     draw_column(2, "FAV", preset_favorite() ? "ON" : "OFF", "", VR_LIVE, -1, ICON_X_STAR);
     draw_column(3, "", "", "", VR_THEME, -1, ICON_NONE);
 }
+/* (#13) SHIFT + KNOB 1 on SONG drags the entry (bank.c song_drag): the page's own combo, over the channel strip's */
+static int song_move_knob(uint32_t k)
+{
+    return k == 0u && !ui.home && cur_page()->graph == GR_SONG;
+}
+/* (wishlist #60) SHIFT held: KNOB 1..4 are the selected track's LEVEL PAN REVERB DELAY (ui_input.c), as MIXER's cards */
+static void channel_columns(void)
+{
+    const track_t *t = TSEL;
+    uint32_t c;
+    for (c = 0; c < 4u; c++) {
+        uint32_t id = CHANNEL_P[c];
+        const param_desc_t *d = &TP[id];
+        int16_t v = t->p[id];
+        char val[12];
+        const char *unit;
+        if (song_move_knob(c)) {
+            val[0] = (char)('A' + sg.entry % NENT);
+            val[1] = 0;
+            draw_column(c, "MOVE", val, "", VR_LIVE, -1, ICON_AUTO);
+            continue;
+        }
+        param_format(d, v, val, &unit);
+        card_mot_of(&t->p[id]);
+        card_span_of(d);
+        draw_column(c, CHANNEL_N[c], val, unit, id == P_LEVEL && t->p[P_MUTE] ? VR_DIM : VR_LIVE,
+                    RATIO(d, v), param_icon(d, v));
+    }
+}
 static void draw_columns(void)
 {
     uint32_t c;
     char val[12];
     const char *unit;
     (void)motion_mask(song.sel, card_mot_mask);       /* (PLAY OFF: no scan) */
+    if (shift_channel) {
+        channel_columns();
+        return;
+    }
     if (ui.home) {
         for (c = 0; c < 4u; c++) {
             int16_t *vp;

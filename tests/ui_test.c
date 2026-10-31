@@ -141,6 +141,7 @@ static void ui_power_on(void)
     memset(trk, 0, sizeof trk);
     memset(&song, 0, sizeof song); sel_set(0);
     memset(&ui, 0, sizeof ui);
+    shift_channel = 0;
     memset(&nsel, 0, sizeof nsel);                /* ((Skiff 2.0) no selection, FEEL's tiles on CHANCE) */
     clip.n = 0;                                   /* (.. nothing copied) */
     cin_left = cin_total = 0;                     /* (no count-in) */
@@ -10245,6 +10246,101 @@ static int test_song_move(void)
     return bad;
 }
 
+/* knob card c drawn with this label (ui_draw.c draw_column's cache key: "LABEL|value|unit..") */
+static int card_is(uint32_t c, const char *label)
+{
+    uint32_t n = str_len(label);
+    return !memcmp(ui.col[c], label, n) && ui.col[c][n] == '|';
+}
+/* "T1 REVERB 30%": what a channel strip turn says (ui.c say_track_value) */
+static int said_value(uint32_t id, const char *name)
+{
+    char val[8], said[24];
+    const char *unit = "";
+    param_format(&TP[id], TSEL->p[id], val, &unit);
+    str_cpy(said, "T1 ", sizeof said);
+    str_cpy(said + 3, name, sizeof said - 3u);
+    str_cpy(said + str_len(said), " ", sizeof said - str_len(said));
+    str_cpy(said + str_len(said), val, sizeof said - str_len(said));
+    str_cpy(said + str_len(said), unit, sizeof said - str_len(said));
+    return msg_is(said);
+}
+/* (wishlist #60) SHIFT (HOME held) + KNOB 1..4 on every page: the selected track's LEVEL PAN REVERB DELAY, as MIXER's
+ * knobs (said, recorded with REC), the cards showing them while SHIFT is held, the page's back when let go; a SHIFT
+ * combo (no HOME, no MENU); SONG keeps its KNOB 1 MOVE */
+static int test_shift_channel(void)
+{
+    static const uint8_t ID[4] = {P_LEVEL, P_PAN, P_REV, P_DLY};
+    static const char *const NAME[4] = {"LEVEL", "PAN", "REVERB", "DELAY"};
+    int bad = 0, ok;
+    uint32_t k;
+    int16_t was[4];
+    ui_power_on();
+    go_title("ENV");
+    frame();
+    ok = card_is(0, "ATTACK");
+    btn_down(B_HOME);
+    frame();
+    ok &= !shift_channel && card_is(0, "ATTACK");
+    frames(400);
+    ok &= ui.shift && card_is(0, "LEVEL") && card_is(1, "PAN") && card_is(2, "REVERB") && card_is(3, "DELAY");
+    bad += check("(wishlist #60) SHIFT held on ENV: the cards are the track's LEVEL PAN REVERB DELAY (not at once)", ok);
+    for (k = 0, ok = 1; k < 4u; k++) {
+        was[k] = TSEL->p[ID[k]];
+        turn(EN_K1 + k, k == 0u ? -2 : 2);
+        ok &= TSEL->p[ID[k]] == was[k] + (k == 0u ? -2 : 2) && said_value(ID[k], NAME[k]);
+    }
+    ok &= !ui.shift && shift_channel && card_is(0, "LEVEL") && card_is(3, "DELAY") && motion_count(TSEL) == 0;
+    bad += check("(wishlist #60)   KNOB 1..4: LEVEL PAN REVERB DELAY turned and said (\"T1 REVERB ..\"); the map goes, "
+                 "the cards stay", ok);
+    frames(800);
+    btn_up(B_HOME);
+    frame();
+    ok = !ui.menu && !ui.home && str_eq(cur_page()->title, "ENV") && !shift_channel && card_is(0, "ATTACK");
+    for (k = 0; k < 4u; k++)
+        ok &= TSEL->p[ID[k]] == was[k] + (k == 0u ? -2 : 2);
+    bad += check("(wishlist #60)   let go: no MENU, no HOME, ENV's cards back", ok);
+    turn(EN_K1, 1);
+    ok = TSEL->p[P_LEVEL] == was[0] - 2;
+    bad += check("(wishlist #60)   KNOB 1 alone: the page's (ENV), not LEVEL", ok);
+
+    song.rec = 1; seq_start();
+    btn_down(B_HOME);
+    frame();
+    turn(EN_K3, 3);
+    ok = motion_count(TSEL) == 1 && motion.event[0].id == P_REV;
+    btn_up(B_HOME);
+    frame();
+    stop_transport(); song.rec = 0;
+    bad += check("(wishlist #60)   REC on: SHIFT + KNOB 3 recorded as REVERB automation", ok);
+
+    go_home();
+    frame();
+    was[0] = TSEL->p[P_LEVEL];
+    btn_down(B_HOME);
+    frame();
+    turn(EN_K1, 1);
+    ok = TSEL->p[P_LEVEL] == was[0] + 1 && card_is(0, "LEVEL");
+    btn_up(B_HOME);
+    frame();
+    ok &= ui.home && !ui.menu && TSEL->p[P_LEVEL] == was[0] + 1;
+    bad += check("(wishlist #60)   on HOME too, at once (a turn before the map): LEVEL, no HOME tap", ok);
+
+    go_page(GR_SONG);
+    frame();
+    btn_down(B_HOME);
+    frames(400);
+    ok = card_is(0, "MOVE") && card_is(1, "PAN") && card_is(2, "REVERB") && card_is(3, "DELAY");
+    was[1] = TSEL->p[P_PAN];
+    turn(EN_K2, 1);
+    ok &= TSEL->p[P_PAN] == was[1] + 1;
+    btn_up(B_HOME);
+    frame();
+    ok &= card_is(0, "ENTRY") && !ui.menu;
+    bad += check("(wishlist #60)   SONG: KNOB 1's card MOVE (its own combo, test_song_move), KNOB 2..4 the strip", ok);
+    return bad;
+}
+
 /* (2.0, #44, the user's pick 3A and the join sheet's A) a chain on SONG and NOTES (playing it: tests/bank_test.c
  * song_chain): KNOB 3 has CHAIN below 1x on an entry with one after it, right again a number (SPLIT); NOTES' header
  * names the chain and the part (A-B · 02), its title and START count the steps on through it; stopped, PRESETS past
@@ -10876,6 +10972,7 @@ int main(void)
     bad += test_song_page();                          /* Skiff phase 5: SEQ > SONG */
     bad += test_song_chain();                         /* (2.0, #44) a chain on SONG and NOTES */
     bad += test_song_move();                          /* (#13) SONG: SHIFT + KNOB 1 drags an entry */
+    bad += test_shift_channel();                      /* (wishlist #60) SHIFT + KNOB 1..4: the channel strip */
     bad += test_song_pick_memory();                   /* (#54) KNOB 2 on an empty entry: the last pick */
     bad += test_duck_page();                          /* Skiff: FX > DUCK */
     bad += test_p9_pages();                           /* (Skiff phase 9) FX > DRIVE, ENV 2 */

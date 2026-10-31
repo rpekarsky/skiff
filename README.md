@@ -482,6 +482,9 @@ by the keys, with what each key is in Skiff.
   before the battery: the top row the pattern numbers taken (of 64), the bottom row's six segments the patterns changed
   while playing that wait for STOP to be saved (all six taken: PATTERNS FULL / STOP TO SAVE). A row turns red near full
   (58 numbers, 5 waiting)
+- **SHIFT + KNOB 1..4**, on every page: the selected track's **LEVEL, PAN, REVERB, DELAY** (the header says
+  `T1 REVERB 30%`, REC records it). While SHIFT is held the four cards show them; let go, the page's come back. On
+  SEQ › SONG, SHIFT + KNOB 1 stays MOVE
 - Hold FX, GLO, SEL, EDIT, ARP or SEQ for its layer; **SHIFT + the button** (or the button held, then HOME) keeps it open (the header says
   LOCKED), the button closes it. A locked FX layer latches its effects
 - **SAVE** tapped: its pages (PRESETS, USER, PATTERNS, PROJECT); **held**: undo. **SHIFT + SAVE**: TAKE
