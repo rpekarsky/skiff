@@ -2234,7 +2234,7 @@ static void ui_input(void)
     }
     bank_taps = smk_bank_taps(pressed, notes, knob_moved, now);
 #endif
-    song_drag_poll(shift_held() && !ui.home && !ui.menu && !ui.confirm && cur_page()->graph == GR_SONG);
+    song_drag_poll(shift_held(), !ui.home && !ui.menu && !ui.confirm && cur_page()->graph == GR_SONG);
     rec_own = ui.lock == LAYER_REC;                     /* (its press closes the REC layer: no arming) */
     if (shift_held() && ((pressed >> panel.btn[B_EDIT]) & 1u) && !ui.menu && !ui.confirm && !name_on() &&
         song.seq_mode && !ui.home && (step_page(cur_page()->graph) || cur_page()->graph == GR_FEEL)) {

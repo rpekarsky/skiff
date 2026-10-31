@@ -9486,7 +9486,8 @@ static int test_song_page(void)
 
 /* (#13) SEQ > SONG: SHIFT (HOME held) + KNOB 1 drags the entry, the header saying where (a SHIFT combo: the map closes,
  * no HOME, no MENU when let go, even held past the MENU's hold); past P it says REMOVE, turned back it is in again;
- * let go past it: unlinked, its pattern kept; SHIFT's map on SONG: + KNOB 1 MOVE; KNOB 1 alone still the entry */
+ * let go past it: unlinked, its pattern kept; another track while held cancels the REMOVE; SHIFT's map on SONG:
+ * + KNOB 1 MOVE; KNOB 1 alone still the entry */
 static int test_song_move(void)
 {
     int bad = 0, ok;
@@ -9512,26 +9513,37 @@ static int test_song_move(void)
     turn(EN_K1, 2);                                  /* A to C: B C A, the track (on C) now on B */
     frame();
     ok &= !ui.shift && ent_pat(k, 0) == b && ent_pat(k, 1) == c && ent_pat(k, 2) == a && sg.entry == 2u &&
-          lists.cur[k] == 1u && msg_is("MOVE A TO C");
+          lists.cur[k] == 1u && msg_is("MOVE 01 TO C");
     frames(800);
     btn_up(B_HOME);
     frame();
-    ok &= !ui.menu && !ui.home && cur_page()->graph == GR_SONG && msg_is("MOVED A TO C");
+    ok &= !ui.menu && !ui.home && cur_page()->graph == GR_SONG && msg_is("MOVED 01 TO C");
     bad += check("(#13) SONG: SHIFT + KNOB 1 drags A to C (B C A), said; a SHIFT combo: the map goes, no MENU let go", ok);
     btn_down(B_HOME);
     frame();
     turn(EN_K1, 20);                                 /* A (now on C) past P: REMOVE; back: in at P; past again */
-    ok = msg_is("REMOVE C") && ent_pat(k, 15) == a && ent_pat(k, 2) == PAT_NONE;
+    ok = a == 0u && msg_is("REMOVE 01") && ent_pat(k, 15) == a && ent_pat(k, 2) == PAT_NONE;
     turn(EN_K1, -1);
-    ok &= msg_is("MOVE C TO P");
+    ok &= msg_is("MOVE 01 TO P");
     turn(EN_K1, 1);
     btn_up(B_HOME);
     frame();
     ok &= !ent_on(k, 15) && pool_used(a) && ent_pat(k, 0) == b && ent_pat(k, 1) == c && !ui.menu && !ui.home &&
-          msg_is("T1 C UNLINKED");
+          msg_is("T1 01 UNLINKED");
     turn(EN_K1, -1);
     ok &= sg.entry == 14u && ent_pat(k, 0) == b;
     bad += check("  past P: REMOVE (turned back: in at P); let go: A unlinked, 01 still kept; KNOB 1 alone the entry", ok);
+    turn(EN_K1, -15);                                /* B (02) past A, then ALGO to T2 with HOME still held */
+    btn_down(B_HOME);
+    frame();
+    turn(EN_K1, -1);
+    ok = msg_is("REMOVE 02");
+    turn(EN_ALGO, 1);
+    frame();
+    btn_up(B_HOME);
+    frame();
+    ok &= msg_is("REMOVE CANCELLED") && ent_pat(k, 0) == b && !ui.menu;
+    bad += check("  REMOVE, then another track while held: cancelled, the entry stays (let go after: nothing)", ok);
     lists.song = 0;
     return bad;
 }

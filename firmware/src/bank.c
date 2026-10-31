@@ -2052,21 +2052,25 @@ static void ent_unlink(uint32_t k, uint32_t e)
 static struct { uint8_t on, k, from; int8_t pos; } sdrag __attribute__((section(".pool")));
 static uint32_t drag_at(void) { return (uint32_t)clamp(sdrag.pos, 0, NENT - 1); }
 static int drag_out(void) { return sdrag.pos < 0 || sdrag.pos >= (int32_t)NENT; }
-static void drag_say(void)
+static void drag_name(char *b)                     /* the dragged entry's pattern ("02") or REST (b: 5 bytes) */
 {
-    char b[16] = "MOVE C TO E";
-    b[5] = (char)('A' + sdrag.from);
-    if (drag_out()) {
-        str_cpy(b, "REMOVE ", sizeof b);
-        b[7] = (char)('A' + sdrag.from);
-        b[8] = 0;
-        ui_way(b, "LET GO: UNLINK");
-        return;
-    }
-    if (drag_at() == sdrag.from)
-        b[6] = 0;
+    uint32_t id = ent_pat(sdrag.k, drag_at());
+    if (id == PAT_NONE)
+        str_cpy(b, "REST", 5);
     else
-        b[10] = (char)('A' + drag_at());
+        pat_num(b, id);
+}
+static void drag_say(const char *verb)             /* "MOVE 02 TO D", "MOVED REST TO D"; back at its start "MOVE 02" */
+{
+    char b[24], n[5];
+    drag_name(n);
+    str_cpy(b, verb, sizeof b);
+    str_cpy(b + str_len(b), n, sizeof b - str_len(b));
+    if (drag_at() != sdrag.from) {
+        uint32_t e = str_len(b);
+        str_cpy(b + e, " TO X", sizeof b - e);
+        b[e + 4] = (char)('A' + drag_at());
+    }
     ui_message(b);
 }
 /* KNOB 1 turned s with SHIFT held on SONG: 1 taken (a SHIFT combo, an empty entry's too: nothing to drag) */
@@ -2091,37 +2095,45 @@ static int song_drag(int32_t s)
     if (drag_at() != was)
         ent_move(k, was, drag_at());
     sg.entry = (uint8_t)drag_at();
-    drag_say();
+    if (!drag_out()) {
+        drag_say("MOVE ");
+        return 1;
+    }
+    drag_name(b);
+    ui_say("REMOVE ", b);
+    str_cpy(ui.msg2, "LET GO: UNLINK", sizeof ui.msg2);
     return 1;
 }
-/* each frame (ui_input): the drag goes on while held (SHIFT on SONG, its track selected); else it ends there, a
- * REMOVE unlinking the entry */
-static void song_drag_poll(int held)
+/* each frame (ui_input): the drag goes on while SHIFT is held on SONG, its track selected. SHIFT let go ends it, a
+ * REMOVE unlinking the entry; SONG or the track left while held ends it too, a REMOVE cancelled (the entry stays at
+ * the end it was dragged to) */
+static void song_drag_poll(int shift, int on_song)
 {
     uint32_t k = sdrag.k, id;
-    char b[24];
-    if (!sdrag.on || (held && song.sel % NTRK == k))
+    char b[24], n[5];
+    if (!sdrag.on || (shift && on_song && song.sel % NTRK == k))
         return;
     sdrag.on = 0;
     if (!drag_out()) {
-        if (drag_at() != sdrag.from) {
-            str_cpy(b, "MOVED C TO E", sizeof b);
-            b[6] = (char)('A' + sdrag.from);
-            b[11] = (char)('A' + drag_at());
-            ui_message(b);
-        }
+        if (drag_at() != sdrag.from)
+            drag_say("MOVED ");
+        return;
+    }
+    if (shift) {
+        ui_message("REMOVE CANCELLED");
         return;
     }
     id = ent_pat(k, drag_at());
+    drag_name(n);
     ent_unlink(k, drag_at());
-    song_tag(b, k, sdrag.from);
-    str_cpy(b + 4, " UNLINKED", sizeof b - 4u);
+    b[0] = 'T';
+    b[1] = (char)('1' + k);
+    b[2] = ' ';
+    str_cpy(b + 3, n, sizeof b - 3u);
+    str_cpy(b + str_len(b), " UNLINKED", sizeof b - str_len(b));
     ui_message(b);
-    if (id != PAT_NONE) {
-        str_cpy(ui.msg2, "PATTERN 00 STAYS", sizeof ui.msg2);
-        pat_num(ui.msg2 + 8, id);
-        ui.msg2[10] = ' ';
-    }
+    if (id != PAT_NONE)
+        str_cpy(ui.msg2, "STAYS IN THE POOL", sizeof ui.msg2);
     ui.force = 1;
 }
 
