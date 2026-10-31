@@ -5,7 +5,8 @@
 /* the header: the transport left, the state right. Left: the play state (stop, play, the song's disc; counting in, play
  * in the accent) or, a track armed, the REC mark in its place (filled: the selected track; outlined: another); the
  * selected track's bar.beat (16 of its steps a bar, 4 a beat, as its step pages count them; stopped, 1.1 in MID: PLAY
- * starts there); the BPM (M, the accent while it is being changed) and "BPM" (S) on its baseline. Right: a message or
+ * starts there); the BPM (M, the accent while it is being changed) and "BPM" (S) on its baseline. Right: (#62) AUDIO
+ * DROP on a REC chip for a while after a dropout (head_drop_shown); else a message or
  * a layer's label from HB_MSG_X or past the BPM (the octave and the battery give way); else the octave or the song
  * row (head_group, shortened or dropped when the title leaves no room before the BPM: #70) and the battery. No
  * metronome, no BPM LOCK mark, no rolling digits. The selected track is
@@ -57,7 +58,7 @@ static void draw_head_blocks(void)
 {
     const track_t *t = TSEL;
     uint32_t rec = (song.rec >> song.sel) & 1u ? 2u : song.rec != 0u, id, sig;
-    int msg = ui.msg_t || ui.layer;
+    int msg = ui.msg_t || ui.layer, drop = head_drop_shown();
     char pos[12] = "1.1", b[8], pn[16], mk[16];      /* (stopped: PLAY starts from the top) */
     int32_t x, lx;
     uint16_t ic;
@@ -80,7 +81,7 @@ static void draw_head_blocks(void)
           (uint32_t)(song.octave + 8) * 11u +
           (uint32_t)batt_shown() * 7777u + 0xB10C5u +
           str_hash(9u + (uint32_t)ui.home, ui.shift ? "SHIFT" : ui.home ? pn : page_head()) +   /* (the title) */
-          (mark ? str_hash(3u + song.sel, mk) : 0u) + project_mark() * 104729u;
+          (mark ? str_hash(3u + song.sel, mk) : 0u) + project_mark() * 104729u + (uint32_t)drop * 0xD809u;
     ui.roll_bpm = song.g[G_BPM];                      /* (no rolling digits: none left to finish in another style) */
     ui.roll[ROLL_BPM].from[0] = 0;
     if (!ui.force && sig == ui.head_sig)
@@ -114,7 +115,10 @@ static void draw_head_blocks(void)
     GFX_HOOK_ALIGN(0, 0, 0, HEAD_MY + AF_M.asc, AL_B, "BPM on its value's baseline");
     x = cv_text(x + 3, HEAD_MY + AF_M.asc - AF_S.asc, &AF_S, "BPM", T_MID);
     lx = x;                                            /* (where the transport's half ends) */
-    if (msg && !ui.msg_t) {                           /* a layer: its title at the right, as the mockup's PERFORM BAR, */
+    if (drop) {                                        /* ((#62) a dropout: over a message, a layer, the title) */
+        GFX_HOOK_ALIGN(0, 0, 0, H_HEAD, AL_V, "header text on its middle");
+        rec_chip_r(234, HEAD_SY, "AUDIO DROP");
+    } else if (msg && !ui.msg_t) {                    /* a layer: its title at the right, as the mockup's PERFORM BAR, */
         char h[24];                                    /* in words ([GLO] SET: GLO SET); PERFORM: when a switch comes */
         if (ui.layer == LAYER_PERF) {                  /* in (LAUNCH); locked: the lock before it */
             str_cpy(h, "PERFORM ", sizeof h);

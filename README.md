@@ -477,6 +477,8 @@ by the keys, with what each key is in Skiff.
   **CPU 42/71 %** (as MENU › CPU shows it, then the busiest audio buffer lately, falling back slowly); for 2 s after a
   dropout (a click) the line turns red and reads **DROP 3 / 89%** (dropouts since power-on, the load); the figures change
   4 times a second
+- **The header**, on every page: for 2 s after a dropout it says **AUDIO DROP** in red at the right (over a message said
+  before it, not over a newer one or a dialog)
 - Hold FX, GLO, SEL, EDIT, ARP or SEQ for its layer; **SHIFT + the button** (or the button held, then HOME) keeps it open (the header says
   LOCKED), the button closes it. A locked FX layer latches its effects
 - **SAVE** tapped: its pages (PRESETS, USER, PATTERNS, PROJECT); **held**: undo. **SHIFT + SAVE**: TAKE

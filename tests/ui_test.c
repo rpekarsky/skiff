@@ -9351,6 +9351,46 @@ static int test_scope_cpu(void)
     return check("#57 the HOME scope's CPU readout, in the footer: CPU, its peak falling, DROP n / load inverted for 2 s "
                  "after a dropout", ok);
 }
+/* (#62) AUDIO DROP on every page's header, a REC chip at the right, for as long as the dropout is marked (#57's
+ * sampler): over a message said before it, not over a newer one, nor over a dialog */
+static int head_drop_in_header(void) { return px_in(150, 2, 236, H_HEAD - 3, T_REC); }
+static int dropout_now(void)
+{
+    felucca_dbg.late++;
+    frames(CPU_SAMPLE_MS + 16u);
+    return head_drop_shown() && head_drop_in_header();
+}
+static int test_head_drop(void)
+{
+    int ok;
+    ui_power_on();
+    go_title("ENV");
+    frame();
+    ok = !ui.home && !head_drop_shown() && !head_drop_in_header();
+    ok &= dropout_now();
+    frames(CPU_XRUN_MARK_MS + CPU_SAMPLE_MS);
+    ok &= !head_drop_shown() && !head_drop_in_header();
+    ui_message("SOUND INITIALIZED");
+    ok &= dropout_now();
+    frames(CPU_XRUN_MARK_MS + CPU_SAMPLE_MS);
+    ok &= dropout_now();
+    ui_message("SOUND INITIALIZED");
+    frame();
+    ok &= !head_drop_shown() && !head_drop_in_header();
+    frames(CPU_XRUN_MARK_MS + CPU_SAMPLE_MS);
+    ui.confirm = CF_CLEAR_SEQ;
+    ui.force = 1;
+    felucca_dbg.late++;
+    frames(CPU_SAMPLE_MS + 16u);
+    ok &= cpu_shown.xrun_marked && !head_drop_shown() && !head_drop_in_header();
+    ui.confirm = 0;
+    ui.force = 1;
+    frame();
+    ok &= head_drop_shown();
+    frames(CPU_XRUN_MARK_MS + CPU_SAMPLE_MS);
+    return check("#62 AUDIO DROP in the header on a page not HOME, gone 2 s on; over an older message, not a newer one, "
+                 "not over a dialog", ok);
+}
 static int test_blocks(void)
 {
     int bad = 0, ok;
@@ -10756,6 +10796,7 @@ int main(void)
     bad += test_home_footer();
     bad += test_home_names();
     bad += test_scope_cpu();
+    bad += test_head_drop();
     bad += test_scope_master();
     bad += test_scope_track();
     bad += test_home_meters();

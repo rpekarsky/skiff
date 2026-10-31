@@ -1417,6 +1417,7 @@ static void ui_draw(void)
         ui.force = 1;
     }
     scope_trk = (uint8_t)(scope_track_view() ? song.sel + 1u : 0u);   /* ((#59) the audio taps the track while shown) */
+    cpu_sample();                                       /* ((#57, #62) whatever is shown: the header marks a dropout) */
     if (!scr_frame())                                   /* MENU > SCREEN OFF: dark (or waking), nothing drawn */
         return;
     ui_draw_page(counting);

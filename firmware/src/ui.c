@@ -788,9 +788,11 @@ static uint32_t page_lane(void) { return *page_lane_p() % 8u; }
 /* transient message in the top bar, right of the transport and the BPM: a + b, for MSG_T frames (a second one,
  * ui.msg2, as long after it). (Skiff U1) 90 frames, about 1.5 s: 40 (0.6 s) went by unread while playing */
 #define MSG_T 90u
+static uint32_t msg_said_ms __attribute__((section(".pool")));   /* ((#62) a word newer than a dropout hides AUDIO DROP) */
 static void ui_say(const char *a, const char *b)
 {
     uint32_t n;
+    msg_said_ms = fm1_ms;
     str_cpy(ui.msg, a, sizeof ui.msg);
     n = str_len(ui.msg);
     str_cpy(ui.msg + n, b, sizeof ui.msg - n);

@@ -1605,21 +1605,30 @@ static void cpu_line_text(char *b)
     str_cpy(b + str_len(b), " %", CPU_TEXT - str_len(b));
 }
 static int scope_cpu_shown(void) { return ui.home && ui.home_scope && strip_kind() == SK_NONE; }
+/* s (S) right-aligned at r, inverted on a REC chip. -> the chip's left edge */
+static int32_t rec_chip_r(int32_t r, int32_t y, const char *s)
+{
+    int32_t w = text_w(&AF_S, s);
+    cv_rect(r - w - 3, y + AF_S_CAP_Y - 3, w + 6, AF_S_CAP_H + 6, T_REC);
+    cv_text_r(r, y, &AF_S, s, T_INK, T_REC);
+    return r - w - 3;
+}
 /* (ui_draw.c draw_foot) on the footer's line, right-aligned at r, where a page's n/m goes; after a dropout inverted, in
  * REC's colour. -> its left edge */
 static int32_t foot_cpu_readout(int32_t r, int32_t y)
 {
     char line[CPU_TEXT];
-    int32_t w;
     cpu_line_text(line);
-    w = text_w(&AF_S, line);
-    if (!cpu_shown.xrun_marked) {
-        cv_text_r(r, y, &AF_S, line, T_MID, T_BG);
-        return r - w;
-    }
-    cv_rect(r - w - 3, y + AF_S_CAP_Y - 3, w + 6, AF_S_CAP_H + 6, T_REC);
-    cv_text_r(r, y, &AF_S, line, T_SURF, T_REC);
-    return r - w - 3;
+    if (cpu_shown.xrun_marked)
+        return rec_chip_r(r, y, line);
+    return cv_text_r(r, y, &AF_S, line, T_MID, T_BG);
+}
+/* (#62) AUDIO DROP in every page's header while a dropout is marked: over a message said before it, not over one said
+ * after (the newer word wins), never over a dialog */
+static int head_drop_shown(void)
+{
+    int newer_word = ui.msg_t && (int32_t)(msg_said_ms - cpu_shown.xrun_ms) >= 0;
+    return cpu_shown.xrun_marked && !ui.confirm && !newer_word;
 }
 
 /* (Skiff U5) an EDIT page of ANALOG (its own graphs: ui_pgraph.c graph_osc, graph_flt) */
@@ -2661,7 +2670,6 @@ static void draw_graph(void)
     uint32_t sig;
     int32_t pad = graph_pad();                       /* (Skiff) BLOCKS: the panel 16 px taller (ui.c foot_less): ADSR and
                                                       * LFO grow into it, the fixed layouts sit centred, pad lower */
-    cpu_sample();
     if (!ui.home && pg->graph == GR_TRK) {
         draw_tracks();
         return;
