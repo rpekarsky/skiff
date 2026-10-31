@@ -1633,7 +1633,7 @@ static void setup(int s)
         fm_wave_t0 = fm1_ms - 300u - 170u * i;      /* (the bars a moment in) */
         fm_ops(&fm_panel_sim, TSEL);                /* (rendered whole now; the UI does a few slices a frame) */
         fm_wf_begin(&fm_panel_sim, fm_wf_key(&fm_panel_sim, TSEL));
-        while (fm_wf.done < FM_WF_NS)
+        while (fm_wf.done < fm_wf_cfg()->slices)
             fm_wf_render(&fm_panel_sim, TSEL);
         break;
     }
