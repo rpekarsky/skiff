@@ -346,6 +346,8 @@ Felucca) first, and lists what it converted.
 - **Undo:** SAVE held, 8 levels across the tracks (sound loads, takes, clears, tools, recording passes,
   automation edits); OCT− and OCT+ step through them while the undo box shows. Overdubbing, each loop pass that
   recorded something is its own undo (UNDO PASS 3, then PASS 2, …, RECORDING); undo while recording stops REC first
+  (#58) An undo of a pattern the track has left (a launch, the song, a chain moved on) goes into that pattern where
+  it is kept, in the background: the track plays on, the box says PATTERN 21 RESTORED; REDO swaps back
 - **Parameter locks and automation:** hold a step and turn a knob to lock it; knob moves recorded live; SEQ ›
   AUTOMATION lists them all to edit, move or delete
 - **SEQ TOOLS** (hold SEQ): CLEAR, REVERSE, SHIFT < / >, RANDOM, COOK, and (1.3) EUCLID (hits spread over the steps,

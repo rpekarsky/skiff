@@ -825,24 +825,24 @@ static int keep_poll(void)
     return pat_flush_one() ? 2 : 1;
 }
 
+static step_t pat_st[NSTEP];                       /* a pattern decoded (pat_load, undo_pool_swap, stage_refresh) */
+static motion_store_t pat_ms;
 /* pattern id into track t now (stopped: its steps, LEN DIV SWING GATE DIR, its automation and locks). No undo copy:
  * what the track had is kept. 0 loaded, 1 nothing there (or a record no firmware wrote), 2 loaded, its automation not
  * (AUTOMATION FULL: the pattern keeps it, motion_lost) */
 static int pat_load(track_t *t, uint32_t id)
 {
-    static step_t st[NSTEP];
-    static motion_store_t ms;
     uint32_t k = trk_index(t), i, full;
     int16_t v[5];
-    if (pat_decode(t, id, st, v, &ms))
+    if (pat_decode(t, id, pat_st, v, &pat_ms))
         return 1;
     motion_restore(t);
     fm1_irq_off();                                 /* the audio ISR must not see half a pattern */
-    memcpy(t->step, st, sizeof st);
+    memcpy(t->step, pat_st, sizeof pat_st);
     for (i = 0; i < 5u; i++)
         t->p[BK_TIME[i]] = v[i];
     fm1_irq_on();
-    full = motion_replace_track(t, &ms) != 0;
+    full = motion_replace_track(t, &pat_ms) != 0;
     if (full)
         motion_clear(t);                           /* (what it had goes with it, as at a launch: none) */
     motion_lost = (uint8_t)((motion_lost & ~(1u << k)) | (full ? 1u << k : 0u));
@@ -1118,6 +1118,22 @@ static uint32_t list_sig(uint32_t k)
 {
     return proj_hash(lists.ent[k], sizeof lists.ent[k]) * 31u + proj_hash(lists.snd[k], sizeof lists.snd[k]);
 }
+/* pattern id staged for track k: no room for its automation beside the other tracks' */
+static int staged_motion_full(uint32_t k, const motion_store_t *ms)
+{
+    return motion.count - motion_count(&trk[k]) + ms->count > MOTION_MAX;
+}
+/* .. the track's sig once it is in, as trk_keep packs it then (full: it came without its automation, which the
+ * pattern keeps); 0 none */
+static uint32_t staged_sig(uint32_t k, uint32_t id, const step_t *st, const int16_t *tv, const motion_store_t *ms,
+                           uint32_t full)
+{
+    if (!bk_pack_raw(bk_rec, k, st, tv, ms, (ms->on >> k) & 1u))
+        return 0;
+    if (full)
+        rec_motion_of(bk_rec, id);
+    return proj_hash(bk_rec, BK_REC);
+}
 /* playing, nothing staged for track k (q not armed): entry e staged, launch mode m; a song's (adv) after reps passes of
  * the one playing. 0 staged, 1 an empty entry, 2 .. without its automation (AUTOMATION FULL), 4 PATTERNS FULL (new
  * steps there and no id for them; what went out at its last swap still waiting in q, bank_poll_trk). (#29) No waiting
@@ -1145,16 +1161,11 @@ static int stage_entry(uint32_t k, uint32_t e, uint32_t m, uint32_t adv, uint32_
         return 1;
     same = id != PAT_NONE && id == trk_pat(k);     /* ((2.0.3, #71) the pattern the track is on: it goes on as the
                                                     * track has it, edits made before or after this copy (launch_swap) */
-    if (!same && motion.count - motion_count(t) + q->motion.count > MOTION_MAX) {
+    if (!same && staged_motion_full(k, &q->motion)) {
         q->motion.count = 0;                       /* (no room: the steps come in, not the automation) */
         full = 1;
     }
-    q_sig[k] = 0;                                  /* (the track's sig once it is in: as trk_keep packs it then) */
-    if (bk_pack_raw(bk_rec, k, q->step, q->time, &q->motion, (q->motion.on >> k) & 1u)) {
-        if (full)
-            rec_motion_of(bk_rec, id);
-        q_sig[k] = proj_hash(bk_rec, BK_REC);
-    }
+    q_sig[k] = staged_sig(k, id, q->step, q->time, &q->motion, full);
     q->slot = (uint8_t)e;
     q->id = (uint8_t)id;
     q->mlost = (uint8_t)full;
@@ -1171,6 +1182,79 @@ static int stage_entry(uint32_t k, uint32_t e, uint32_t m, uint32_t adv, uint32_
     q->armed = 1;
     bk.gen++;
     return full ? 2 : 0;
+}
+/* (#58) pattern id changed in the pool (undo_pool_swap): a launch of it staged before takes it as it is now. Swapped
+ * under the ISR's feet only whole (it reads the staged steps while armed: launch_next) */
+static void stage_refresh(uint32_t id)
+{
+    uint32_t k, full, sig;
+    int16_t tv[5];
+    for (k = 0; k < NTRK; k++) {
+        launch_t *q = &launch_q[k];
+        if (!q->armed || q->done || q->same || q->id != id || pat_decode(&trk[k], id, pat_st, tv, &pat_ms))
+            continue;
+        full = staged_motion_full(k, &pat_ms);
+        if (full)
+            pat_ms.count = 0;
+        sig = staged_sig(k, id, pat_st, tv, &pat_ms, full);
+        fm1_irq_off();
+        if (q->armed) {
+            memcpy(q->step, pat_st, sizeof q->step);
+            memcpy(q->time, tv, sizeof q->time);
+            q->motion = pat_ms;
+            q->mlost = (uint8_t)full;
+            q_sig[k] = sig;
+        }
+        fm1_irq_on();
+    }
+}
+/* (#58, ui.c undo_swap) copy c was taken on pattern c->pid - 1, its track is on another one now: the copy's pattern part
+ * and that pattern in the pool change places, so the same swap is the undo and the redo. The pattern part is what the
+ * pool keeps of a pattern: steps, LEN DIV SWING GATE DIR and its automation (an automation copy, UNDO_MOT: only that);
+ * the track plays on as it was. It waits to be written as any kept pattern (pat_keep_now) and every read sees it: a
+ * launch of it staged before takes it (stage_refresh), a track sitting on it plays its own copy until it loads it
+ * again (that copy, edited and kept, goes over it as any edit would). 0: not, said (the copy stays as it was) */
+static int undo_pool_swap(undo_t *c)
+{
+    uint32_t k = (c->trk - 1u) % NTRK, id = c->pid - 1u, i, motion_only = !(c->what & UNDO_PAT);
+    int16_t copy_time[5], pool_time[5];
+    int pool_empty;
+    if (!c->pid || !BK_ON) {
+        undo_other_pattern(c->pid);
+        return 0;
+    }
+    for (i = 0; i < 5u; i++)
+        copy_time[i] = c->p[BK_TIME[i]];
+    pool_empty = pat_decode(&trk[k], id, pat_st, pool_time, &pat_ms) != 0;
+    if (pool_empty) {
+        for (i = 0; i < NSTEP; i++)
+            step_clear(&pat_st[i]);
+        memcpy(pool_time, copy_time, sizeof copy_time);
+        memset(&pat_ms, 0, sizeof pat_ms);
+    }
+    if (c->pat_empty) {
+        memset(bk_rec, 0, BK_REC);
+    } else if (!bk_pack_raw(bk_rec, k, motion_only ? pat_st : c->step, motion_only ? pool_time : copy_time,
+                            &c->motion_backup, (c->motion_backup.on >> k) & 1u)) {
+        undo_other_pattern(c->pid);                /* (a step no format holds, none the UI makes: refused as before) */
+        return 0;
+    }
+    if (pat_keep_now(id, bk_rec)) {
+        if (transport_busy())
+            ui_way("PATTERNS FULL", "STOP TO UNDO");   /* (the waiting ones are written stopped) */
+        else
+            ui_message("STORAGE ERROR");
+        return 0;
+    }
+    if (!motion_only) {
+        memcpy(c->step, pat_st, sizeof c->step);
+        for (i = 0; i < 5u; i++)
+            c->p[BK_TIME[i]] = pool_time[i];
+    }
+    c->motion_backup = pat_ms;
+    c->pat_empty = (uint8_t)pool_empty;
+    stage_refresh(id);
+    return 1;
 }
 /* (2.0, #44) a LOOP launch of entry e for track k, playing: on a chain's part before its last, it waits for the chain's
  * end as for a pattern's (song_poll stages it on the last part), one of the user's staged before dropped, the chain's
