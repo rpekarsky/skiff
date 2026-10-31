@@ -222,7 +222,9 @@ static void smk_pads(void)
 }
 
 /* ----------------------------------------------------------------------------------------------- faders --- */
-static uint8_t smk_fbank;                            /* FADER BANK: CHANNEL_P's */
+static uint8_t smk_fbank;                            /* FADER BANK: CHANNEL_P's, then SMK_FBANK_WAVE */
+#define SMK_FBANK_WAVE 4u                            /* (#20 WAVE) the faders tune FM6's waterfall (ui_fm6.c) */
+static void fm_wf_fader(uint32_t j, uint32_t v);
 static struct { uint8_t tgt, last, picked; int16_t wrote; } smk_fd[4] = {{0xFF}, {0xFF}, {0xFF}, {0xFF}};
 static uint32_t smk_fd_moved_ms;                     /* (#56) any fader's last move; 0: none since a track or bank change */
 static uint8_t smk_bars_id __attribute__((section(".pool")));   /* (#56b) the bars' parameter: the bank's, or a knob's */
@@ -232,6 +234,16 @@ static void smk_faders(void)
     uint32_t top = trk_top(), j;
     if (fm1_in.frames < 300u)                        /* (the first readings settle) */
         return;
+    if (smk_fbank == SMK_FBANK_WAVE) {
+        for (j = 0; j < 4u; j++)
+            if (fm1_in.fader[j] != smk_fd[j].last) {
+                smk_fd[j].last = (uint8_t)fm1_in.fader[j];
+                smk_fd[j].tgt = 0xFF;                /* (back on a track bank: picked up again) */
+                fm_wf_fader(j, fm1_in.fader[j]);
+                ui.force = 1;
+            }
+        return;
+    }
     for (j = 0; j < 4u; j++) {
         uint32_t k = top + j, id = CHANNEL_P[smk_fbank % 4u], v = fm1_in.fader[j], tgt = k | smk_fbank << 4;
         track_t *t = &trk[k % NTRK];
@@ -290,14 +302,14 @@ static int smk_fader_place(uint32_t k, uint32_t *place)
         return 0;
     if (smk_bars_knob)
         *place = (uint32_t)(trk[k].p[smk_bars_id] - TP[smk_bars_id].min);
-    else if (smk_bars_id == CHANNEL_P[smk_fbank % 4u])
+    else if (smk_fbank < SMK_FBANK_WAVE && smk_bars_id == CHANNEL_P[smk_fbank])
         *place = smk_fd[j].last;
     return 1;
 }
 static void smk_fader_bank_next(void)                /* (#39) SHIFT + FADER BANK (ui_input.c) */
 {
-    smk_fbank = (uint8_t)((smk_fbank + 1u) % 4u);
-    ui_say("FADERS ", CHANNEL_N[smk_fbank]);
+    smk_fbank = (uint8_t)((smk_fbank + 1u) % (SMK_FBANK_WAVE + 1u));
+    ui_say("FADERS ", smk_fbank == SMK_FBANK_WAVE ? "WAVE" : CHANNEL_N[smk_fbank]);
 }
 
 /* ------------------------------------------------------------------------------------- wheels, pedal --- */

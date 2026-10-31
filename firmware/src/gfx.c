@@ -425,6 +425,21 @@ static void cv_rect(int32_t x, int32_t y, int32_t w, int32_t h, uint16_t c)
             cv_px[(uint32_t)y * cv_w + (uint32_t)i] = sc;
 }
 
+/* (#20 WAVE) column x, rows y0 .. y1 - 1: what is drawn there pct % of the way to bg (bg itself left alone) */
+static void cv_veil(int32_t x, int32_t y0, int32_t y1, uint16_t bg, int32_t pct)
+{
+    uint16_t sb = swap16(bg);
+    y0 += cv_oy;
+    y1 += cv_oy;
+    if ((uint32_t)x >= cv_w)
+        return;
+    for (y0 = y0 < 0 ? 0 : y0; y0 < y1 && y0 < (int32_t)cv_h; y0++) {
+        uint16_t *p = &cv_px[(uint32_t)y0 * cv_w + (uint32_t)x];
+        if (*p != sb)
+            *p = swap16(ux_mix(swap16(*p), bg, pct));
+    }
+}
+
 
 /* a 1 px outline */
 static void cv_frame(int32_t x, int32_t y, int32_t w, int32_t h, uint16_t c)
