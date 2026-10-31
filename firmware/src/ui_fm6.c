@@ -48,14 +48,17 @@ static const char *const FM_WAVE[6] = {"TRI", "SAW DN", "SAW UP", "SQUARE", "SIN
 static const char *const FM_HZ[4] = {"1", "10", "100", "1K"};          /* a fixed operator's range (FC & 3) */
 
 static uint8_t fm_wave __attribute__((section(".pool")));       /* (#20w) the panel WAVE, not the envelopes; not saved */
+static uint32_t fm_wave_t0 __attribute__((section(".pool")));   /* (fm1_ms) WAVE's operator bars' clock from 0 */
 #define FM_WF_NS 18                                     /* WAVE's slices: the held note's 12, then its release's */
 #define FM_WF_NH 12
-#define FM_WF_NP 48                                     /* a slice's points: one period */
+#define FM_WF_NP 64                                     /* a slice's points: one period */
+#define FM_WF_BAR_MS 40u                                /* the operator bars move every 40 ms */
 typedef struct {
     fm6_env_t env[6];                                   /* (FM6_ALG's order) the note's envelopes at block b */
     fm6_penv_t penv;
     int32_t b, held, tail;                              /* blocks: the envelopes'; the key up's; the release drawn */
     int32_t peak;                                       /* the carriers at their loudest, summed (Q24): full height */
+    int32_t top[6];                                     /* each operator's loudest level (Q16 log2): its bar's reach */
     uint32_t key;                                       /* what the slices show (fm_wf_key); 0: none */
     uint8_t note, vel, done, played;                    /* the key and velocity; the slices rendered; 0: the default */
 } fm_wf_t;
@@ -274,7 +277,7 @@ static uint32_t fm_sig(void)
 {
     return (fm6_pgen[fm_tr()] + 1u) * 2246822519u ^ (fm_ui[0] + fm_ui[1] * 7u + fm_ui[2] * 49u) * 40503u ^
            (ui.hot_t ? ui.hot_col + 1u : 0u) * 65537u ^
-           (fm_wave ? (fm_wf_note_sig() + fm_wf.done + 1u) * 2654435761u : 0u);
+           (fm_wave ? (fm_wf_note_sig() + fm_wf.done + fm1_ms / FM_WF_BAR_MS + 1u) * 2654435761u : 0u);
 }
 /* (#20w) SHIFT + SELECT on an FM6 sheet: its panel WAVE (on) or the envelopes (0). 0: not on one */
 static int fm_wave_set(int on)
@@ -282,6 +285,8 @@ static int fm_wave_set(int on)
     uint32_t g = cur_page()->graph;
     if (ui.home || (g != GR_FMOP && g != GR_FMALL) || TSEL->eng_req % NENGINES != ENGI_FM6)
         return 0;
+    if (on && !fm_wave)
+        fm_wave_t0 = fm1_ms;
     fm_wave = (uint8_t)(on != 0);
     return 1;
 }
@@ -1042,8 +1047,8 @@ static int32_t fm_wf_at(uint32_t j)                     /* slice j's block */
         return fm_wf_unwarp(fm_wf.held, (int32_t)j + 1, FM_WF_NH);
     return fm_wf.held + fm_wf_unwarp(fm_wf.tail, (int32_t)j - FM_WF_NH + 1, FM_WF_NS - FM_WF_NH);
 }
-/* the note-on: the envelopes at block 0, the key up, the full height (what a carrier's envelope can reach: its stages'
- * targets as fm6_env_advance sets them) */
+/* the note-on: the envelopes at block 0, the key up; each operator's loudest level (its stages' targets as
+ * fm6_env_advance sets them, MOD LVL on the modulators), the carriers' summed: the full height */
 static void fm_wf_begin(const fm_sim_t *s, uint32_t key)
 {
     const fm6_last_t *l = &fm6_last[fm_tr()];
@@ -1062,11 +1067,11 @@ static void fm_wf_begin(const fm_sim_t *s, uint32_t key)
         const uint8_t *op = s->q + i * FP_OP;
         int32_t top = 16;
         fm6_op_env_init(&fm_wf.env[i], op, note, fm_wf.vel);
-        if (!(car >> i & 1u) || !op[FP_OL])
-            continue;
         for (j = 0; j < 4u; j++)
             top = clamp(((fm6_scaleout(op[FP_L1 + j]) >> 1) << 6) + fm_wf.env[i].outlevel - 4256, top, 1 << 12);
-        fm_wf.peak += fm6_exp2((top << 16) - (14 << 24));
+        fm_wf.top[i] = op[FP_OL] ? (top << 8) + ((car >> i & 1u) ? 0 : s->modlvl) : 0;
+        if ((car >> i & 1u) && op[FP_OL])
+            fm_wf.peak += fm6_exp2((top << 16) - (14 << 24));
     }
     fm6_penv_init(&fm_wf.penv, s->q);
 }
@@ -1185,19 +1190,57 @@ static void fm_wf_draw_slice(const int8_t *v, uint32_t j, uint16_t c)
             fm_seg(xa, ya, xb, yb, 2, c, 0, 0);
     }
 }
-/* slice j's ink: the track's colour fading into the panel with depth; (#29) an LCD's tones, ink to ghost */
+/* slice j's ink: the track's colour fading into the panel with depth, the release dimmer (the key up reads from it);
+ * (#29) an LCD's ink, the release MID */
 static uint16_t fm_wf_ink(uint32_t j, uint16_t c)
 {
     if (ux.h1n)
-        return j < FM_WF_NS / 3u ? T_TEXT : j < FM_WF_NS * 2u / 3u ? T_MID : T_RAISE;
-    return ux_mix(T_SURF, c, 100 - 70 * (int32_t)j / (FM_WF_NS - 1));
+        return j < FM_WF_NH ? T_TEXT : T_MID;
+    return ux_mix(T_SURF, c, (100 - 70 * (int32_t)j / (FM_WF_NS - 1)) * (j >= FM_WF_NH ? 3 : 5) / 5);
 }
-/* the time axis under the slices' left ends, a tick where the key goes up */
-static void fm_wf_axis(void)
+static void fm_wf_axis(void)                            /* (under the slices' left ends) */
 {
-    int32_t foot = FM_WF_Y0 + FM_WF_AMP + 2, x = FM_WF_X0 + (FM_WF_NH - 1) * FM_WF_DX, y = foot - (FM_WF_NH - 1) * FM_WF_DY;
+    int32_t foot = FM_WF_Y0 + FM_WF_AMP + 2;
     cv_line(FM_WF_X0 - 2, foot, FM_WF_X0 - 2 + (FM_WF_NS - 1) * FM_WF_DX, foot - (FM_WF_NS - 1) * FM_WF_DY, FM_GUIDE);
-    cv_line(x - 2, y - 3, x - 2, y + 3, T_MID);
+}
+/* the carrier the bars show: the picked operator, else the first one it feeds */
+static uint32_t fm_wf_carrier(const fm_sim_t *s)
+{
+    uint32_t sel = fm_ui[0] % 6u, k;
+    if (s->car >> sel & 1u)
+        return sel;
+    for (k = 0; k < 6u; k++)
+        if ((s->car >> k & 1u) && (fm_feeders(s->alg, k) >> sel & 1u))
+            return k;
+    return 0;
+}
+#define FM_WF_BX 16                                     /* the bars: the first at x 16, 10 px apart, middle y 43 */
+#define FM_WF_BY 43
+#define FM_WF_BH 13                                     /* a bar's reach either way */
+/* the sounding operators of that carrier's chain, one bar each (OP1 first): the height of a point on its circle, in
+ * slowed time (the note's pitch a turn a second, each at its own speed: RATIO, FINE, DETUNE), as far as its loudest
+ * level reaches (60 dB) */
+static void fm_wf_bars(const fm_sim_t *s, const track_t *t)
+{
+    uint32_t c = fm_wf_carrier(s), chain = ((1u << c) | fm_feeders(s->alg, c)) & s->live, k, n = 0;
+    int32_t dt[6], lf = fm6_note_logfreq(fm_wf_engine_note(s) * 16, 0), f0 = fm6_freq(lf);
+    fm6_spread(s->alg, t->p[P_E6], dt);
+    for (k = 0; k < 6u; k++) {
+        uint32_t i = 5u - k;
+        const uint8_t *op = s->q + i * FP_OP;
+        int32_t base = fm6_osc_base(op, fm_wf_engine_note(s), 0), x = FM_WF_BX + (int32_t)n * 10, reach, y;
+        uint64_t speed;
+        char b[2] = {(char)('1' + k), 0};
+        if (!(chain >> k & 1u))
+            continue;
+        n++;
+        speed = ((uint64_t)(uint32_t)fm6_freq(op[FP_MODE] ? base : lf + base + dt[i]) << 16) / (uint32_t)(f0 ? f0 : 1);
+        reach = FM_WF_BH * clamp(fm_wf.top[i] - (FM_TOP - FM_SPAN), 0, FM_SPAN) / FM_SPAN;
+        y = (fm6_sin((int32_t)(uint32_t)(speed * (fm1_ms - fm_wave_t0) * 256u / 1000u)) * reach) >> 15;
+        cv_rect(x, FM_WF_BY - FM_WF_BH, 4, 2 * FM_WF_BH + 1, T_RAISE);
+        cv_rect(x, y > 0 ? FM_WF_BY - y : FM_WF_BY, 4, (y > 0 ? y : -y) + 1, ux.h1n ? T_TEXT : T_TRK(k));
+        cv_text_in(x - 2, FM_WF_BY + FM_WF_BH + 2 + CAP_IN(S, 10), 9, &AF_S, b, T_DIM, T_SURF);
+    }
 }
 static void fm_wf_caption(void)
 {
@@ -1223,6 +1266,7 @@ static void fm_wave_panel(fm_sim_t *s, const track_t *t, uint16_t c)
     for (j = fm_wf.done; j-- > 0;)
         fm_wf_draw_slice(s->wave[j], j, fm_wf_ink(j, c));
     fm_wf_axis();
+    fm_wf_bars(s, t);
     fm_wf_caption();
 }
 
