@@ -894,7 +894,7 @@ static int usb_burst(void)
 }
 
 /* ---- MENU_DESC / MENU_SET (72, 73): the menu's settings over the editor ---- */
-typedef struct { uint32_t index, id, kind, nnames, tab, rest; int32_t value, min, max; char name[16], names[12][12], tabname[16]; } menu_item_t;
+typedef struct { uint32_t index, id, kind, nnames, tab, rest; int32_t value, min, max; char name[16], names[16][12], tabname[16]; } menu_item_t;
 static uint32_t menu_desc(uint32_t index, menu_item_t *it)   /* the reply's payload length; it parsed */
 {
     uint8_t a[1] = {(uint8_t)index};
@@ -907,7 +907,7 @@ static uint32_t menu_desc(uint32_t index, menu_item_t *it)   /* the reply's payl
     it->value = ed_rv(host_wire + 8); it->min = ed_rv(host_wire + 10); it->max = ed_rv(host_wire + 12);
     for (k = 0; p < n - 1u && host_wire[p] && k < 15u; ) it->name[k++] = (char)host_wire[p++];
     p++;
-    while (p < n - 1u && it->nnames < 12u && (int32_t)it->nnames < it->max - it->min + 1) {   /* (kind 0: max - min + 1) */
+    while (p < n - 1u && it->nnames < 16u && (int32_t)it->nnames < it->max - it->min + 1) {   /* (kind 0: max - min + 1) */
         for (k = 0; p < n - 1u && host_wire[p] && k < 11u; ) it->names[it->nnames][k++] = (char)host_wire[p++];
         p++; it->nnames++;
     }
@@ -1552,6 +1552,9 @@ static int tokens_builtin(uint32_t p)                       /* palette p's own *
     c[0] = UI_PALETTES[p].bg; c[1] = UI_PALETTES[p].surf; c[2] = UI_PALETTES[p].text; c[3] = UI_PALETTES[p].theme;
     c[4] = UI_PALETTES[p].accent;
     for (k = 0; k < UI_NTRK; k++) c[5 + k] = UI_TRACKS[p][k];
+    if (ux.h1n)                                             /* (an LCD look: its tokens pinned to four tones, gfx.c lcd_tones) */
+        return T_BG == c[0] && T_TEXT == c[2] && T_THEME == c[3] && T_ACCENT == c[4] &&
+               (p == UI_LCD_INDEX || p == UI_LCD_NIGHT_INDEX || p == UI_LCD_GRAIN_INDEX);
     return tokens_are(c) && ux.crypt == (p == UI_CRYPT_INDEX) && ux.neon == (p == UI_NEON_INDEX) && ux.quark == (p == UI_QUARK_INDEX);
 }
 static uint32_t palettes_listed(void)                       /* UI_PALETTES: the count; the last name CUSTOM or not */

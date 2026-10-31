@@ -437,6 +437,10 @@ THEME CUSTOM over the LCD look: the user's colours in the same four tones (their
 **LCD NIGHT** (the PO's pick of CUSTOM over LCD with tests/ui_render.c's dusk set, pinned as it shows): LCD's look
 (`ux.h1n`) inverted, navy and pale ink, without the dot grid on the ground (#29, PO: day LCD keeps it). BG 16,24,32, TEXT 242,232,216; SURF 28,40,54 only for its ghost (SURF to TEXT
 12 %); THEME and the tracks the MID tone 156,149,148 (where the dusk's orange and most tracks snapped), ACCENT the ink.
+**LCD GRAIN** (PO, after skiff-tasks/shots/lcd-grain-mock3.png "grid 50 %"; the twelfth palette, after BLUE-STN: ids
+stay): LCD's colours and look without the dot grid; over the finished frame the gaps between the LCD's cells, every
+third row and column of the screen half way to the backlight (BG 30 % toward white: never darker than the cells around
+it), as the last step of `cv_lcd_rows` (`cv_lcd_gaps`: a halving per channel and an add); the fall-off as LCD's.
 
 **THEME CUSTOM** (#27, @tradiuz; after Felucca 1.6's CUSTOM palette; design/mock_c27.py, mockups/c27_sheet.png): the
 user's eleven colours from the web editor (BG SURF TEXT THEME ACCENT and the six tracks'), in a look they pick: a

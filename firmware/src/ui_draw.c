@@ -1163,7 +1163,7 @@ static void draw_splash(void)
 {
     int32_t h = SPL_PAD - AF_M_CAP_Y + SPL_PITCH + AF_M.h;     /* a band: its two lines, the descenders in */
     int32_t lb = h - SPL_PAD - AF_M_CAP_H - AF_M_CAP_Y;         /* the bottom band's last line: its top */
-    lcd_vig_off = 1;
+    lcd_flat = 1;
     lcd_fill(0, 0, 240, 240, T_BG);
     lcd_fill(SPL_X0, SPL_X0, SPL_SQ, SPL_SQ, T_RAISE);
     splash_band(SPL_X0, (uint32_t)h, SPL_PAD - AF_M_CAP_Y, SPLASH_LINES, AL_V, SPL_PAD,
@@ -1213,7 +1213,7 @@ static void draw_splash(void)
         for (k = 0; k < NTRK; k++)
             lcd_fill(SPL_X0 + 18u + k * 24u, 108, 20, 20, T_TRK(k));
     }
-    lcd_vig_off = 0;
+    lcd_flat = 0;
     lcd_sync();
 }
 

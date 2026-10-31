@@ -128,13 +128,17 @@ static volatile uint32_t audio_max_us;
 #include "../firmware/src/bank.c"
 #include "phrases.h"                              /* (test material: the phrases the firmware no longer ships) */
 
-/* (#48) LCD: px, swapped, is the rail's tone there, or (BG, the ghost) one of its backlight shades (gfx.c lcd_vig) */
+/* (#48) LCD: px, swapped, is the rail's tone there, or (BG, the ghost) one of its backlight shades (gfx.c lcd_vig);
+ * LCD GRAIN: either, or it under a cell gap (gfx.c cv_lcd_gaps) */
 static int rail_px_ok(uint16_t px, uint16_t tone)
 {
+    uint16_t light = (uint16_t)LCD_GAP_HALF(ux_mix(ux.bg, 0xFFFFu, 30));
     uint32_t i;
-    for (i = 0; i <= LCD_VIG; i++)
-        if (px == (tone == T_RAISE ? lcd_vig[1][i] : tone == T_BG ? lcd_vig[0][i] : swap16(tone)))
+    for (i = 0; i <= LCD_VIG; i++) {
+        uint16_t c = tone == T_RAISE ? lcd_vig[1][i] : tone == T_BG ? lcd_vig[0][i] : swap16(tone);
+        if (px == c || (ux.grain && px == swap16(LCD_GAP_HALF(swap16(c)) + light)))
             return 1;
+    }
     return 0;
 }
 static int check(const char *what, int ok)
@@ -1651,8 +1655,8 @@ static int test_display_preferences(void)
                  settings.palette == 2 && T_BG == UI_PALETTES[2].bg && ux.light && ui.menu == 1 && !song.octave &&
                  memcmp(before, host_screen, sizeof before) && !memcmp(sounds, trk, sizeof sounds));
     bad += check("THEME KNOB 1 steps on to CRYPT, NEON (both the pixel faces), QUARK (Barlow), LCD, LCD NIGHT (pixel), the "
-                 "plain GAMEBOY, AMBER and BLUE-STN, then wraps to SKIFF (R1: SKIFF HI-CON PAPER CRYPT NEON QUARK, #29 LCD "
-                 "LCD NIGHT, wishlist #47)",
+                 "plain GAMEBOY, AMBER and BLUE-STN, LCD GRAIN (pixel), then wraps to SKIFF (R1: SKIFF HI-CON PAPER CRYPT NEON "
+                 "QUARK, #29 LCD LCD NIGHT, wishlist #47)",
                  str_eq(MI_NAME[MI_COLOR], "THEME") && (turn(EN_K1, 1), settings.palette == UI_CRYPT_INDEX) && ux.crypt &&
                  str_eq(UI_PALETTES[UI_CRYPT_INDEX].name, "CRYPT") && &AF_S == &AF_S_PX &&
                  (turn(EN_K1, 1), settings.palette == UI_NEON_INDEX) && ux.neon && !ux.crypt && &AF_S == &AF_S_PX &&
@@ -1663,8 +1667,10 @@ static int test_display_preferences(void)
                  str_eq(UI_PALETTES[UI_LCD_INDEX].name, "LCD") &&
                  (turn(EN_K1, 1), settings.palette == UI_LCD_NIGHT_INDEX) && ux.h1n && &AF_S == &AF_S_PX &&
                  str_eq(UI_PALETTES[UI_LCD_NIGHT_INDEX].name, "LCD NIGHT") &&
-                 (turn(EN_K1, 1), turn(EN_K1, 1), turn(EN_K1, 1), settings.palette == NPALETTES - 1u) &&
-                 !ux.h1n && &AF_S != &AF_S_PX && str_eq(UI_PALETTES[NPALETTES - 1u].name, "BLUE-STN") &&
+                 (turn(EN_K1, 1), turn(EN_K1, 1), turn(EN_K1, 1), settings.palette == NPALETTES - 2u) &&
+                 !ux.h1n && &AF_S != &AF_S_PX && str_eq(UI_PALETTES[NPALETTES - 2u].name, "BLUE-STN") &&
+                 (turn(EN_K1, 1), settings.palette == UI_LCD_GRAIN_INDEX) && ux.h1n && ux.grain && &AF_S == &AF_S_PX &&
+                 str_eq(UI_PALETTES[UI_LCD_GRAIN_INDEX].name, "LCD GRAIN") &&
                  (turn(EN_K1, 1), settings.palette == UI_SKIFF_INDEX) && !ux.h1n && !ux.crypt && !ux.neon && &AF_S != &AF_S_PX &&
                  str_eq(UI_PALETTES[UI_SKIFF_INDEX].name, "SKIFF"));
     settings.lowcut = 2;

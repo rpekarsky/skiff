@@ -22,7 +22,8 @@ Outside the palette: REC, a fixed red; the QR code's fixed black and white; the 
 (Skiff, the review's R1) The palettes are the MENU's THEME: SKIFF (the default), HI-CON and PAPER (for reading in
 bright or dim light), CRYPT and NEON (their own font and widgets besides: src/gfx.c ux.crypt, ux.neon), QUARK (its own
 widgets: ux.quark), (#29) LCD and LCD NIGHT (four tones, CRYPT's font, their own widgets: ux.h1n), then the plain
-GAMEBOY, AMBER and BLUE-STN (wishlist #47: old handhelds' and synths' LCDs). Saved settings name them by a tagged id
+GAMEBOY, AMBER and BLUE-STN (wishlist #47: old handhelds' and synths' LCDs), then LCD GRAIN (LCD's look with the cells'
+gaps instead of the dot grid). Saved settings name them by a tagged id
 (THEME_TAG + index). Earlier ids are migrated: PAL_TAG + an index into the eleven palettes before THEME
 (UI_PALETTE_MIGRATE11), and below 20 Felucca's oldest twenty (UI_PALETTE_MIGRATE20); a palette that is gone is SKIFF.
 --report prints the WCAG contrast of every pairing. The tool fails (exit 1) on any miss.
@@ -62,12 +63,15 @@ PALETTES = [
     ("GAMEBOY", (196, 232, 72), (178, 216, 64),  (9, 32, 9),       (36, 74, 36),    (9, 32, 9)),
     ("AMBER",  (255, 212, 100), (240, 194, 84),  (40, 20, 4),      (92, 54, 8),     (40, 20, 4)),
     ("BLUE-STN", (22, 32, 92),  (31, 45, 115),   (232, 238, 255), (150, 170, 240), (255, 255, 255)),
+    # (PO, 31.10) LCD GRAIN: LCD's colours and look, the dot grid replaced by the gaps between the LCD's cells, the
+    # backlight showing through every third row and column (src/gfx.c cv_lcd_gaps); after the others: ids stay
+    ("LCD GRAIN", (214, 228, 246), (214, 228, 246), (18, 30, 84), (18, 30, 84),  (18, 30, 84)),
 ]
-SKIFF, CRYPT, NEON, QUARK, LCD, LCD_NIGHT = "SKIFF", "CRYPT", "NEON", "QUARK", "LCD", "LCD NIGHT"
-LCD_LOOKS = (LCD, LCD_NIGHT)       # src/gfx.c ux.h1n: four tones, CRYPT's font, ui_h1n.c's widgets
+SKIFF, CRYPT, NEON, QUARK, LCD, LCD_NIGHT, LCD_GRAIN = "SKIFF", "CRYPT", "NEON", "QUARK", "LCD", "LCD NIGHT", "LCD GRAIN"
+LCD_LOOKS = (LCD, LCD_NIGHT, LCD_GRAIN)   # src/gfx.c ux.h1n: four tones, CRYPT's font, ui_h1n.c's widgets
 # LCD's ghost and MID as the backlit H1n shows them: blue, off the line from BG to ink that the derived ones lie on
 # (src/gfx.c lcd_tones; THEME CUSTOM over the look derives its own)
-LCD_OWN_TONES = {LCD: ((150, 190, 240), (96, 128, 196))}
+LCD_OWN_TONES = {LCD: ((150, 190, 240), (96, 128, 196)), LCD_GRAIN: ((150, 190, 240), (96, 128, 196))}
 # the six tracks' colours (src/gfx.c T_TRK; (Skiff phase 6) T5, T6 too): a palette not named here gives every track
 # its THEME. Told apart by lightness as well as hue, and always drawn with the track's number (never the colour alone)
 TRACKS = {"SKIFF": [(255, 90, 54), (34, 195, 180), (255, 191, 0), (149, 128, 255),    # vermilion teal amber violet
@@ -223,6 +227,7 @@ def main():
                 f"#define UI_QUARK_INDEX {names.index(QUARK)}u          /* QUARK: Skiff's font, its own widgets */",
                 f"#define UI_LCD_INDEX {names.index(LCD)}u          /* LCD: four tones, CRYPT's font, its own widgets */",
                 f"#define UI_LCD_NIGHT_INDEX {names.index(LCD_NIGHT)}u          /* LCD NIGHT: LCD's look, its own colours */",
+                f"#define UI_LCD_GRAIN_INDEX {names.index(LCD_GRAIN)}u          /* LCD GRAIN: LCD, the cells' gaps for the dots */",
                 f"#define UI_THEME_TAG {THEME_TAG}u          /* stored id = UI_THEME_TAG + index */",
                 f"#define UI_PAL_TAG {PAL_TAG}u          /* before THEME: UI_PAL_TAG + an index into the eleven; below 20: "
                 "Felucca's oldest */"]
