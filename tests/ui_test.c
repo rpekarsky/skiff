@@ -8416,7 +8416,7 @@ static int test_u2(void)
 static int test_u4(void)
 {
     static const char *const M[] = {"SAVE > PATTERNS: CLEAR", "AUTOMATION: DELETE ONE",
-        "UNDO NEEDS PATTERN 07", "UNDONE IN PATTERN 21", "REDONE IN PATTERN 21", "STOP TO UNDO",
+        "UNDO NEEDS PATTERN 07", "UNDO: PATT 21 RESTORED", "REDO: PATT 21 RESTORED", "STOP TO UNDO",
         "DISARM REC FOR A TAKE", "PLAY ONE LOOP FIRST", "NOTHING BEFORE TO JOIN", "STOP TO RENAME",
         "TAP: CLOCK IS EXTERNAL", "RESTART: CLOCK EXTERNAL", "SLICES NOW MANUAL", "PICK A USR SAMPLE FIRST",
         "SAVED UNTIL POWER OFF", "RENAMED UNTIL POWER OFF", "ERASED UNTIL POWER OFF", "STORAGE ERROR", "KEYS RECORD LANES",
@@ -9638,11 +9638,12 @@ static int pool_holds(uint32_t id, uint32_t step, uint32_t note)   /* pattern id
 {
     return pool_read(id) && ub_st[step].n && ub_st[step].note[0] == note;
 }
-static int restored_said(const char *verb, const char *num)   /* box "PATTERN 01 RESTORED, ..", or "UNDONE IN PATTERN 01" */
+static int restored_said(const char *verb, const char *num)   /* box "PATTERN 01 RESTORED, ..", or "UNDO: PATT 01 RESTORED" */
 {
     char line[24], head[32];
     str_cpy(line, "pattern ", sizeof line); str_cpy(line + 8, num, 3u); str_cpy(line + 10, " restored", 10u);
-    str_cpy(head, verb, sizeof head); str_cpy(head + 4, "NE IN PATTERN ", 15u); str_cpy(head + 18, num, 3u);
+    str_cpy(head, verb, sizeof head); str_cpy(head + 4, ": PATT ", 8u); str_cpy(head + 11, num, 3u);
+    str_cpy(head + 13, " RESTORED", 10u);
     lower_words(take_box.line);
     return (ui.take_t && take_box.kind && !memcmp(take_box.title, verb, 4) && !memcmp(take_box.line, line, 19)) ||
            str_eq(ui.msg, head);

@@ -1947,8 +1947,11 @@ static void undo_step(int redo)
         undo_pattern_words(pool_pattern, c->pid);
     if (take_box_fits()) {
         take_box_undo(redo, (uint32_t)c->trk - 1u, name, pool_pattern);
-    } else if (pool_pattern[0]) {                 /* "UNDONE IN PATTERN 21" (the box's RESTORED: too wide), the keys */
-        ui_say(redo ? "REDONE IN " : "UNDONE IN ", pool_pattern);
+    } else if (pool_pattern[0]) {                 /* "UNDO: PATT 21 RESTORED", the keys */
+        str_cpy(b, redo ? "REDO: PATT " : "UNDO: PATT ", sizeof b);
+        str_cpy(b + 11, pool_pattern + 8, 3);
+        str_cpy(b + 13, " RESTORED", sizeof b - 13);
+        ui_say(b, "");
         str_cpy(ui.msg2, UNDO_KEYS, sizeof ui.msg2);
     } else {                                      /* "UNDO T1 TAKE", then the keys */
         str_cpy(b, redo ? "REDO T1 " : "UNDO T1 ", sizeof b);
