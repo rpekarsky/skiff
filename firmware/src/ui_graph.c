@@ -2422,6 +2422,21 @@ static void qk_detector(int32_t cx, int32_t cy)
     qk_disc(cx, cy, newest < 150u ? 3 : 2, T_ACCENT);
 }
 
+/* (#18) the scope shows the mix as at MASTER full. audio.c takes it after MASTER (no extra work in the audio ISR),
+ * so the main loop divides MASTER back out. Below the floor (the knob's ~6 %) it stops: the picture shrinks again
+ * rather than blowing a few quantisation steps up to full height. Q8; at the floor 65536, |sample * it| fits int32 */
+#define SCOPE_MASTER_FLOOR 16u
+static int32_t scope_unmaster_q8(void)
+{
+    uint32_t m = song.master_q12 > SCOPE_MASTER_FLOOR ? song.master_q12 : SCOPE_MASTER_FLOOR;
+    return (int32_t)(((uint32_t)MASTER_FULL << 8) / m);
+}
+
+static int16_t scope_at_full_master(uint32_t i, int32_t unmaster_q8)
+{
+    return (int16_t)clamp((scope_buf[i & (SCOPE_N - 1u)] * unmaster_q8) >> 8, -32768, 32767);
+}
+
 /* oscilloscope of the output, triggered on a rising zero crossing: a RAISE centre line, the trace 2 px (in silence
  * a flat line on it; MENU > SCREEN OFF keeps it from staying on the panel for hours) */
 static void graph_scope(uint16_t c)
@@ -2429,12 +2444,13 @@ static void graph_scope(uint16_t c)
     static int16_t snap[SCOPE_N];
     uint32_t w = scope_w, i, trig = 0;
     int32_t cy = (int32_t)cv_h / 2, py = cy, x, peak = 1500, a = cv_h >= H_GRAPH ? 46 : cy - 6;   /* (LARGE: the strip) */
+    int32_t unmaster = scope_unmaster_q8();
     if (ux.quark && cv_h >= H_GRAPH) {
         qk_detector(120, cy);
         return;
     }
     for (i = 0; i < SCOPE_N; i++) {
-        snap[i] = scope_buf[(w + i) & (SCOPE_N - 1u)];
+        snap[i] = scope_at_full_master(w + i, unmaster);
         if (snap[i] > peak)
             peak = snap[i];
         else if (-snap[i] > peak)
