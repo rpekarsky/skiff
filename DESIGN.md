@@ -412,7 +412,7 @@ open BG (never inside a 1 px stroke, so the letters on an inverted band stay who
 the cards' gauges in segments, unlit ones ghost; the header's printed MID rule; the dialog a double ink frame. HOME's
 scope (HOME tapped on HOME, MENU > LARGE's strip too) is an equalizer: 16 bands log-spaced 86 Hz to 11 kHz, 14
 segments 3 dB apart, from a 512-point fixed-point FFT of the scope's snapshot in the main loop (Hann window, the
-snapshot scaled to its peak, so MASTER doesn't shrink it); a bar falls a segment a redraw, its peak held 16 redraws.
+snapshot at MASTER full as the scope's, then scaled to its peak, so a quiet sound reaches the top too); a bar falls a segment a redraw, its peak held 16 redraws.
 THEME CUSTOM over the LCD look: the user's colours in the same four tones (theirs BG, SURF to TEXT 12 %, MID, TEXT).
 **LCD NIGHT** (the PO's pick of CUSTOM over LCD with tests/ui_render.c's dusk set, pinned as it shows): LCD's look
 (`ux.h1n`) inverted, navy and pale ink. BG 16,24,32, TEXT 242,232,216; SURF 28,40,54 only for its ghost (SURF to TEXT

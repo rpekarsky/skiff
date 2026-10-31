@@ -9883,8 +9883,10 @@ static int test_h1n_eq(void)
     static const uint16_t BIN[3] = {2, 23, 200};      /* 86 Hz, 990 Hz, 8.6 kHz */
     static const uint8_t BAND[3] = {0, 8, 15};
     uint8_t lv[HN_BANDS];
-    uint32_t t, i, k;
+    uint8_t at_full[HN_BANDS];
+    uint32_t t, i, k, mq = song.master_q12;
     int bad = 0, ok = 1;
+    song.master_q12 = MASTER_FULL;
     for (t = 0; t < 6u; t++) {
         for (i = 0; i < SCOPE_N; i++)
             scope_buf[i] = (int16_t)((t < 3u ? 20000.0 : 4000.0) * sin(6.2831853 * BIN[t % 3u] * i / SCOPE_N));
@@ -9899,6 +9901,20 @@ static int test_h1n_eq(void)
     for (k = 0; k < HN_BANDS; k++)
         ok &= !lv[k];
     bad += check("(#29) LCD EQ: a tone in its band at the top (loud or quiet), its far bands low, silence dark", ok);
+    for (t = 0; t < 2u; t++) {                        /* (fx.c mix_block's MASTER on the music, as audio.c takes it) */
+        uint32_t master = master_of_pot(t ? 102u : 1023u);
+        for (i = 0; i < SCOPE_N; i++) {
+            int32_t mix = (int32_t)(12000.0 * sin(6.2831853 * 23 * i / SCOPE_N) + 3000.0 * sin(6.2831853 * 200 * i / SCOPE_N));
+            scope_buf[i] = (int16_t)(((mix >> 2) * (int32_t)master) >> 10);
+        }
+        song.master_q12 = master;
+        hn_spectrum(t ? lv : at_full);
+    }
+    ok = 1;
+    for (k = 0; k < HN_BANDS; k++)
+        ok &= lv[k] + 1u >= at_full[k] && lv[k] <= at_full[k] + 1u;
+    song.master_q12 = MASTER_FULL;
+    bad += check("(#18) LCD EQ: the music at MASTER 10 % lights the bands as at 100 %, to a segment", ok);
     for (i = 0; i < SCOPE_N; i++)
         scope_buf[i] = (int16_t)(20000.0 * sin(6.2831853 * 23 * i / SCOPE_N));
     cv_begin(240, H_GRAPH, T_BG);
@@ -9914,6 +9930,7 @@ static int test_h1n_eq(void)
     hn_eq();
     ok &= hn_peak[8] == HN_ROWS - 1;
     bad += check("(#29) LCD EQ: the bar falls a segment a redraw, its peak held HN_HOLD redraws, then falling", ok);
+    song.master_q12 = mq;
     return bad;
 }
 /* MENU > DISPLAY > POPUP TIME: DEFAULT (each box its own, stored 0), 0.1 .. 2.7 s for the TAKE box and the undo box;

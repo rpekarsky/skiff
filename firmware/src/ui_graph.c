@@ -12,6 +12,21 @@
 #include "ui_quark.c"                                 /* (Skiff Q2) THEME QUARK's cells, nuclei, tracks, the hazard sign */
 #define PANEL_X0 10                                  /* the graphs' inner area: x 10..230 */
 #define PANEL_W 220
+/* (#18) the scope shows the mix as at MASTER full. audio.c takes it after MASTER (no extra work in the audio ISR),
+ * so the main loop divides MASTER back out. Below the floor (the knob's ~6 %) it stops: the picture shrinks again
+ * rather than blowing a few quantisation steps up to full height. Q8; at the floor 65536, |sample * it| fits int32 */
+#define SCOPE_MASTER_FLOOR 16u
+static int32_t scope_unmaster_q8(void)
+{
+    uint32_t m = song.master_q12 > SCOPE_MASTER_FLOOR ? song.master_q12 : SCOPE_MASTER_FLOOR;
+    return (int32_t)(((uint32_t)MASTER_FULL << 8) / m);
+}
+
+static int16_t scope_at_full_master(uint32_t i, int32_t unmaster_q8)
+{
+    return (int16_t)clamp((scope_buf[i & (SCOPE_N - 1u)] * unmaster_q8) >> 8, -32768, 32767);
+}
+
 #include "ui_h1n.c"                                   /* (Skiff #29) THEME LCD's segments, window and equalizer */
 #define GOY 11                                       /* graphs drawn on a 100 px scale sit at y 11..111 */
 /* the height ADSR and LFO are drawn on: 100 px, or (MENU > LARGE's strip: draw_graph) the strip's ~ 56 */
@@ -2435,21 +2450,6 @@ static void qk_detector(int32_t cx, int32_t cy)
         }
     qk_disc(cx, cy, newest < 150u ? 4 : 3, ux_mix(T_ACCENT, T_SURF, 60));
     qk_disc(cx, cy, newest < 150u ? 3 : 2, T_ACCENT);
-}
-
-/* (#18) the scope shows the mix as at MASTER full. audio.c takes it after MASTER (no extra work in the audio ISR),
- * so the main loop divides MASTER back out. Below the floor (the knob's ~6 %) it stops: the picture shrinks again
- * rather than blowing a few quantisation steps up to full height. Q8; at the floor 65536, |sample * it| fits int32 */
-#define SCOPE_MASTER_FLOOR 16u
-static int32_t scope_unmaster_q8(void)
-{
-    uint32_t m = song.master_q12 > SCOPE_MASTER_FLOOR ? song.master_q12 : SCOPE_MASTER_FLOOR;
-    return (int32_t)(((uint32_t)MASTER_FULL << 8) / m);
-}
-
-static int16_t scope_at_full_master(uint32_t i, int32_t unmaster_q8)
-{
-    return (int16_t)clamp((scope_buf[i & (SCOPE_N - 1u)] * unmaster_q8) >> 8, -32768, 32767);
 }
 
 /* oscilloscope of the output, triggered on a rising zero crossing: a RAISE centre line, the trace 2 px (in silence
