@@ -9757,6 +9757,25 @@ static int test_playhead_line(void)
     return bad;
 }
 
+/* (#29) THEME LCD, LCD NIGHT: SONG's entry picked past the recorded ones (empty) stands out of its track's band */
+static int test_h1n_song_pick(void)
+{
+    static const uint32_t LCD[2] = {UI_LCD_INDEX, UI_LCD_NIGHT_INDEX};
+    uint32_t i, e = 5, ok = 1;
+    for (i = 0; i < 2u; i++) {
+        uint32_t x, ty;
+        ui_power_on();
+        fresh_pattern(song.sel, 50);
+        bank_put(song.sel, 0, 0);
+        settings.palette = (uint8_t)LCD[i]; palette_set(LCD[i]);
+        go_page(GR_SONG); sg.entry = (uint8_t)e; ui.force = 1; frame(); frame();
+        x = (uint32_t)SG_X(e) + 1u;
+        ty = Y_GRAPH + (uint32_t)SG_Y(song.sel % NTRK);
+        ok &= ent_pat(song.sel, e) == PAT_NONE && px_at(x, ty + 3u) != px_at(x, ty);   /* the tile's inside, the band */
+    }
+    return check("(#29) LCD: SONG's picked empty entry differs from its row's band (LCD, LCD NIGHT)", ok);
+}
+
 /* (#29) THEME LCD's equalizer: a tone lights its band to the top whatever its level, the bands not next to it stay low,
  * silence none; a bar falls a segment a redraw, its peak held HN_HOLD redraws */
 static int test_h1n_eq(void)
@@ -9899,6 +9918,7 @@ int main(void)
     bad += test_screen_off();
     bad += test_playhead_line();
     bad += test_h1n_eq();
+    bad += test_h1n_song_pick();
     bad += test_fm6_charts();
 #if FELUCCA_FM4
     bad += test_fm_charts();                        /* (DIGITAL's charts: built with FELUCCA_FM4=1 only) */
