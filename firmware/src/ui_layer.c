@@ -17,8 +17,8 @@
  *   SEQ  SET   ((Skiff U2) on every page; up to U1 only on the SEQ pages that show the pattern, SEQ held elsewhere
  *              opening SONG) TOOLS: the white keys from F3 the sequence tools (ui_tools.c: CLEAR,
  *              REVERSE, SHIFT < >, RANDOM, COOK; on a DRUM track BEAT and the lane's CLEAR REVERSE FILL RANDOM), black
- *              keys 1..8 the lane (DRUM); KNOB 1..4 the PATTERN page's LEN DIV SWING GATE. Each action one undo (SAVE
- *              held), OCT- the track as the layer opened (tl_put_back)
+ *              keys 1..8 the lane (DRUM); KNOB 1..4 the PATTERN page's LEN DIV SWING GATE; (#53) EDIT, SEQ held (not
+ *              locked), REC's CLEAR. Each action one undo (SAVE held), OCT- the track as the layer opened (tl_put_back)
  *   REC  SET   (1.1.5; (Skiff U2) REC is a transport button again, arming on its press: the layer opens locked by
  *              SHIFT + REC only) the white keys from F3: CLEAR (held for the hold time: the selected track's steps and
  *              automation, no dialog: one undo, SAVE held), CLICK (OFF REC ON), COUNT-IN (OFF 1 BAR
@@ -57,7 +57,7 @@ static const layer_t LAYERS[LAYER_N] = {
     {B_GLO, LK_SET, FAM_HOME, "[GLO] SET", {{KC_PLAY, "RESTART"}, {KC_OCTDN, "UNDO"}, {KC_GLO, "DONE"}}},
     {B_SCL, LK_SET, FAM_SCL, "[SEL] SET", {{KC_KEYS, "ROOT"}, {KC_OCTDN, "UNDO"}, {KC_SCL, "DONE"}}},
     {B_EDIT, LK_SET, FAM_HOME, "[EDIT] SET", {{KC_KEYS, "ENGINE"}, {KC_OCTDN, "UNDO"}, {KC_EDIT, "DONE"}}},
-    {B_SEQ, LK_SET, FAM_SEQ, "[SEQ] TOOLS", {{KC_KEYS, "TOOLS"}, {KC_OCTDN, "UNDO"}, {KC_SEQ, "DONE"}}},
+    {B_SEQ, LK_SET, FAM_SEQ, "[SEQ] TOOLS", {{KC_KEYS, "TOOLS"}, {KC_EDIT, "CLEAR"}, {KC_OCTDN, "UNDO"}}},   /* (#53) */
     {B_REC, LK_SET, FAM_HOME, "[REC] SET", {{KC_KEYS, "RECORDING"}, {KC_OCTDN, "UNDO"}, {KC_REC, "DONE"}}},
     {B_ARP, LK_SET, FAM_HOME, "[ARP] PERFORM", {{KC_SELECT, "LAUNCH"}, {KC_PRESETS, "KEYS"}, {KC_OCTDN, "CANCEL"}}},   /* (Skiff;
                                                      * the footer drawn as the B mockup's: draw_layer; BLOCKS' header too:
@@ -77,6 +77,8 @@ typedef char ly_init_fits[LY_INIT < 16u ? 1 : -1];   /* (a white key: F3 .. G5) 
 #define layer_seen (favorites.factory[15][31])   /* bit l: layer l opened once (a byte no engine uses) */
 static const khint_t FX_LATCH_FOOT[3] = {{KC_WHITE, "ON / OFF"}, {KC_BLACK, "MUTE"}, {KC_OCTDN, "ALL OFF"}};
 static const khint_t GLO_LOCK_FOOT[3] = {{KC_OCTDN, "UNDO"}, {KC_GLO, "DONE"}, {0, 0}};   /* (locked: PLAY plays) */
+static const khint_t SEQ_LOCK_FOOT[3] = {{KC_KEYS, "TOOLS"}, {KC_OCTDN, "UNDO"}, {KC_SEQ, "DONE"}};   /* (locked: EDIT
+                                                     * closes it, no clear) */
 static const khint_t EU_FOOT[3] = {{KC_OCTUP, "APPLY"}, {KC_OCTDN, "CANCEL"}, {0, 0}};   /* ((1.3) SEQ TOOLS' EUCLID open) */
 
 static struct {
@@ -426,9 +428,10 @@ static void tools_key(uint32_t p)
     ui.force = 1;
 }
 
-/* REC: CLEAR, the selected track's steps and automation (and ARP's latched chord): one undo (SAVE held), no dialog,
- * as SEQ TOOLS' CLEAR (up to 1.1.4 REC held on SEQ asked first, CF_CLEAR_SEQ). Its own undo copy (not a sound load's) */
-static void rec_clear(void)
+/* REC's CLEAR and (#53) SEQ held + EDIT: all 64 steps of the selected track and its automation (and ARP's latched
+ * chord), one undo (SAVE held), no dialog (up to 1.1.4 REC held on SEQ asked first, CF_CLEAR_SEQ). Its own undo copy
+ * (not a sound load's); LEN, DIV, the sound and the pattern's place in the pool stay */
+static void track_clear(const char *said)
 {
     track_t *t = TSEL;
     if (seq_is_empty(t) && !motion_count(t)) {
@@ -442,7 +445,7 @@ static void rec_clear(void)
     load_end(t);
     t->nheld = 0;
     t->arp_phys = 0;
-    ui_message("SEQUENCE CLEARED");
+    ui_message(said);
     if (!lys.loaded)                                    /* (the first one: how to take it back) */
         str_cpy(ui.msg2, "HOLD [SAVE]: UNDO", sizeof ui.msg2);
     lys.loaded = 1;
@@ -459,8 +462,27 @@ static void rec_clear_poll(void)
     }
     if (fm1_ms - (lys.clr_t & ~1u) >= HOLD_MS[settings_hold % 4u]) {
         lys.clr_t = 0;
-        rec_clear();
+        track_clear("SEQUENCE CLEARED");
     }
+}
+/* (#53) EDIT (the SMK's PARA) pressed with SEQ held: REC's CLEAR. A combo: the map opens now, so OCT-'s snapshot is
+ * taken before the clear and letting SEQ go is no tap. Locked SEQ TOOLS never gets here: layer_lock_input has closed
+ * it on EDIT. -> pressed, without EDIT if it cleared */
+static uint32_t seq_edit_clear(uint32_t pressed)
+{
+    uint32_t edit = 1u << panel.btn[B_EDIT];
+    char said[] = "T1 CLEARED";
+    if (!(pressed & edit) || ui.ly != LAYER_SEQ || (ui.ly_t0 & LY_DEAD) || !layer_held())
+        return pressed;
+    if (!(ui.ly_t0 & LY_OPEN)) {
+        ui.ly_t0 |= LY_OPEN | LY_COMBO;
+        layer_opened(LAYER_SEQ);
+    }
+    if (eu.on)                                          /* (an open EUCLID applied first, as another tool does) */
+        eu_close(TSEL, 1);
+    said[1] = (char)('1' + song.sel);
+    track_clear(said);
+    return pressed & ~edit;
 }
 #define RL_KNOBS 4u                                     /* (Skiff #23) C4: KNOBS ON / OFF */
 #define RL_ROWS 5u
@@ -1421,7 +1443,8 @@ static void draw_layer(void)
         } else {
             const khint_t *ft = l == LAYER_FX && perf_latch_on ? FX_LATCH_FOOT
                               : l == LAYER_GLO && ui.lock == LAYER_GLO ? GLO_LOCK_FOOT
-                              : l == LAYER_SEQ && eu.on ? EU_FOOT : LAYERS[l].foot;
+                              : l == LAYER_SEQ && eu.on ? EU_FOOT
+                              : l == LAYER_SEQ && ui.lock == LAYER_SEQ ? SEQ_LOCK_FOOT : LAYERS[l].foot;
             cv_key_row(8, 232, foot_line_y() - KC_TY, ft, ft[2].act ? 3u : 2u, 7u, T_BG);
         }
         cv_blit(0, foot_y());

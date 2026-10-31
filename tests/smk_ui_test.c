@@ -1283,6 +1283,33 @@ static int test_clock_out(void)
     return bad;
 }
 
+/* #53: SEQ held + PARA (EDIT) clears the selected track's steps (LEN stays), a combo (no page when SEQ is let go);
+ * KNOB BANK's tap undoes it with the undo box */
+static int test_seq_edit_clear(void)
+{
+    int bad = 0, ok;
+    uint32_t pg;
+    track_t *t;
+    smk_power_on();
+    t = TSEL;
+    track_defaults_steps(t);
+    t->p[P_SLEN] = 16;
+    t->step[2] = (step_t){{60}, 1, ST_NOTE, 0, 90};
+    t->step[9] = (step_t){{64}, 1, ST_NOTE, 0, 90};
+    go_page(GR_ROLL);
+    frame();
+    pg = ui.page;
+    press_with(panel.btn[B_SEQ], panel.btn[B_EDIT]);
+    ok = seq_is_empty(t) && t->p[P_SLEN] == 16 && msg_is("T1 CLEARED");
+    frames(400);
+    ok &= !ui.layer && ui.page == pg && !ui.home;
+    bad += check("SMK SEQ + PARA: T1 CLEARED, the steps gone, LEN kept; SEQ let go: no page", ok);
+    press_id(SMK_BTN_KNOB_BANK);
+    ok = step_on(&t->step[2]) && step_on(&t->step[9]) && ui.undo_w && take_box.kind == 1u && ui.take_t;
+    bad += check("SMK KNOB BANK tap after SEQ + PARA: the clear undone, the undo box", ok);
+    return bad;
+}
+
 int main(void)
 {
     int bad = 0;
@@ -1304,6 +1331,7 @@ int main(void)
     bad += test_shift();
     bad += test_phase();
     bad += test_bank_taps();
+    bad += test_seq_edit_clear();
     bad += test_master();
     bad += test_clock_out();
     printf("%s\n", bad ? "SMK UI TEST FAILED" : "smk ui test passed");

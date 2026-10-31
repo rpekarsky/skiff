@@ -1974,6 +1974,7 @@ static void layer_oct_open(uint32_t pressed);
 static int layer_allowed(void);
 static uint32_t ly_bit(uint32_t l);
 static void layer_lock_input(uint32_t pressed);
+static uint32_t seq_edit_clear(uint32_t pressed);
 static void layer_shift_lock(uint32_t pressed, uint32_t now);
 static uint32_t layer_bits_all(void);
 static void layer_unlock(void);
@@ -2258,6 +2259,7 @@ static void ui_input(void)
     }
 #endif
     layer_lock_input(pressed);                          /* (a button closes a locked layer) */
+    pressed = seq_edit_clear(pressed);                  /* (#53) SEQ held + EDIT: the track cleared, no second layer */
     layer_arm(pressed, now);
     layer_oct_open(pressed);                            /* (OCT± with a SET layer's button down: it opens now) */
     oct = oct_taps(pressed, ui.menu || ui.confirm || act_cols() || name_on() || layer_set_open() || ui.ml.on);

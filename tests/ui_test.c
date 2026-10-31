@@ -8852,6 +8852,62 @@ static int test_large(void)
 
 /* MENU (1.0.5: in tabs): every row reachable with ALGORITHM and PRESETS, each tab its own page; #46 MENU > ANIM: ON by
  * default (and in every older setting), OFF snaps the rolling digits, the piano roll and the menu's tabs */
+/* #53: EDIT pressed with SEQ held clears the selected track as REC's CLEAR does (steps, automation; LEN, DIV and the
+ * pattern stay), one undo (SAVE held, the undo box) or OCT- in the layer; a combo (no page when SEQ is let go), the map
+ * open at once; a locked SEQ TOOLS closes on EDIT instead (EDIT acts as always) */
+static int test_seq_edit_clear(void)
+{
+    int bad = 0, ok;
+    uint32_t pid, pg;
+    int16_t len, div;
+    step_t ref[NSTEP];
+    ui_power_on();
+    sel_set(1);
+    tl_melody();
+    TSEL->p[P_SDIV] = 3;
+    bank_put(song.sel, 0, 0);
+    pid = trk_pid[song.sel];
+    len = TSEL->p[P_SLEN];
+    div = TSEL->p[P_SDIV];
+    memcpy(ref, TSEL->step, sizeof ref);
+    go_page(GR_ROLL); frame();
+    pg = ui.page;
+    btn_down(B_SEQ); frame();
+    press(B_EDIT);
+    ok = seq_is_empty(TSEL) && !motion_count(TSEL) && msg_is("T2 CLEARED") && str_eq(ui.msg2, "HOLD [SAVE]: UNDO") &&
+         ui.layer == LAYER_SEQ && !ui.confirm && !gates();
+    bad += check("(#53) SEQ held + EDIT: T2's steps and automation cleared, T2 CLEARED + the undo hint, no dialog", ok);
+    ok = TSEL->p[P_SLEN] == len && TSEL->p[P_SDIV] == div && trk_pid[song.sel] == pid && pid && pool_used(pid - 1u);
+    bad += check("  LEN, DIV, the track's pattern and its place in the pool stay", ok);
+    btn_up(B_SEQ); frame(); frames(400);
+    ok = !ui.layer && !ui.lock && ui.page == pg && !ui.home && !msg_is("ONE LAYER AT A TIME");
+    bad += check("  a combo: SEQ let go opens no page, no EDIT layer, no lock", ok);
+    hold(B_SAVE);
+    ok = !memcmp(TSEL->step, ref, sizeof ref) && tl_lock_at(3) && undo_is("UNDO T2 CLEAR") && ui.undo_w;
+    bad += check("  SAVE held: one undo puts the steps and the lock back (the undo box: UNDO T2 CLEAR)", ok);
+
+    btn_down(B_SEQ); frames(500);
+    press(B_EDIT);
+    ok = seq_is_empty(TSEL) && ui.layer == LAYER_SEQ;
+    oct_back();
+    ok &= !memcmp(TSEL->step, ref, sizeof ref) && msg_is("UNDONE: SEQUENCE") && song.octave == 0;
+    press(B_EDIT);
+    press(B_EDIT);
+    ok &= msg_is("NOTHING TO CLEAR");
+    btn_up(B_SEQ); frame(); frames(400);
+    ok &= !ui.layer && ui.page == pg;
+    bad += check("  the map open: EDIT clears, OCT- puts the track back; empty: NOTHING TO CLEAR", ok);
+
+    memcpy(TSEL->step, ref, sizeof ref);
+    shift_lock(B_SEQ);
+    ok = ui.lock == LAYER_SEQ;
+    press(B_EDIT); frames(400);
+    ok &= !ui.lock && ui.layer != LAYER_SEQ && !memcmp(TSEL->step, ref, sizeof ref);
+    bad += check("  SEQ TOOLS locked: EDIT closes it as another button does, nothing cleared", ok);
+    ui_power_on();
+    return bad;
+}
+
 static int test_menu_prefs(void)
 {
     int bad = 0, ok = 1;
@@ -10018,6 +10074,7 @@ int main(void)
     bad += test_layer_lock();
     bad += test_rec_layer();
     bad += test_seq_tools();
+    bad += test_seq_edit_clear();
     bad += test_menu_prefs();
     bad += test_style();
     bad += test_blocks();
