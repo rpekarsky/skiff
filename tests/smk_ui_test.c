@@ -6,7 +6,8 @@
  *            PAD FOLLOW (OFF PAGE ROW: the steps shown while playing, a tap's step, held).
  *   FADERS   the four tracks shown, taking over once they reach the value, SHIFT + FADER BANK (its LED), the window;
  *            (#56) HOME's bars: one fader moved, all four fader lanes (the fill and the fader's tick apart, together
- *            once taken over), the other two thin; gone 0.5 s after.
+ *            once taken over), the other two thin; gone 0.5 s after; (#56b) K2's PAN, K4's LEVEL and SHIFT's strip
+ *            the same bars, the ticks only on the faders' own bank.
  *   TAPS     (#39) KNOB BANK's tap UNDO, FADER BANK's REDO; a hold, a combo, a pad meanwhile, the MENU: none.
  *   ENTRIES  > and < the selected track's entry after and before, the first's end said; in PERFORM and GLO (held or
  *            locked) the same, a combo (no tap, the lock kept); in another layer nothing; (#50) an empty one
@@ -930,6 +931,49 @@ static int test_fader_bar(void)
     return bad;
 }
 
+static void knob_turn(uint32_t enc)
+{
+    host_enc[panel.enc[enc]] += panel.dir[enc];
+    frame();
+}
+/* (#56b) a knob's LEVEL or PAN on HOME: the faders' bars, that parameter; the faders' ticks only on their own bank */
+static int test_knob_bars(void)
+{
+    static uint16_t was[HL_C_H * 240];
+    int bad = 0, ok;
+    uint32_t id, place;
+    int16_t pan;
+    smk_power_on();
+    ui_prefs |= PREF_BPM_LOCK;
+    sel_set(1);
+    fm1_in.fader[0] = 30;
+    frames(600);
+    lane_copy(0, was);
+    pan = TSEL->p[P_PAN];
+    knob_turn(EN_SELECT);
+    place = 255u;
+    ok = TSEL->p[P_PAN] > pan && smk_fader_bars(&id) && id == P_PAN && smk_fader_place(0, &place) && place == 255u;
+    ok &= !lane_is(0, was) && !lane_thin(0, hl_bar_x(40), hl_bar_x(100));
+    bad += check("SMK knob bars (#56b): K2 on HOME, the PAN bars on every lane, no tick (the faders on LEVEL)", ok);
+    frames(520);
+    bad += check("SMK knob bars: gone 0.5 s after", !smk_fader_bars(&id) && lane_is(0, was));
+    menu_put(MI_PKNOB, 1);
+    knob_turn(EN_PRESET);
+    ok = smk_fader_bars(&id) && id == P_LEVEL && smk_fader_place(0, &place) && place == 30u;
+    frame();
+    ok &= screen_at(hl_bar_x(30), lane_mid(0)) == T_TEXT;
+    menu_put(MI_PKNOB, 0);
+    bad += check("SMK knob bars: K4 as LEVEL, the LEVEL bars, the faders' ticks (their bank)", ok);
+    frames(520);
+    fm1_in.buttons |= 1u << SMK_BTN_KNOB_BANK;
+    frame();
+    knob_turn(EN_K1 + 2u);
+    fm1_in.buttons &= ~(1u << SMK_BTN_KNOB_BANK);
+    frame();
+    bad += check("SMK knob bars: SHIFT + K7 (the strip's REVERB), the REVERB bars", smk_fader_bars(&id) && id == P_REV);
+    return bad;
+}
+
 static int test_entries(void)
 {
     int bad = 0;
@@ -1597,6 +1641,7 @@ int main(void)
     bad += test_settings_bits();
     bad += test_faders();
     bad += test_fader_bar();
+    bad += test_knob_bars();
     bad += test_entries();
     bad += test_layer_arrows();
     bad += test_outer_keys();

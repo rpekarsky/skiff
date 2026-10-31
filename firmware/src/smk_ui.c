@@ -225,6 +225,7 @@ static void smk_pads(void)
 static uint8_t smk_fbank;                            /* FADER BANK: CHANNEL_P's */
 static struct { uint8_t tgt, last, picked; int16_t wrote; } smk_fd[4] = {{0xFF}, {0xFF}, {0xFF}, {0xFF}};
 static uint32_t smk_fd_moved_ms;                     /* (#56) any fader's last move; 0: none since a track or bank change */
+static uint8_t smk_bars_id __attribute__((section(".pool")));   /* (#56b) the bars' parameter: the bank's, or a knob's */
 static void smk_faders(void)
 {
     uint32_t top = trk_top(), j;
@@ -244,6 +245,7 @@ static void smk_faders(void)
         if (v == smk_fd[j].last)
             continue;
         smk_fd_moved_ms = fm1_ms | 1u;
+        smk_bars_id = (uint8_t)id;
         popup_input(0, 0, 1);                        /* (POPUP CLOSE ON INPUT: a move, even short of the value, as a turn) */
         if (smk_fd[j].picked && t->p[id] != smk_fd[j].wrote)
             smk_fd[j].picked = 0;                    /* (set elsewhere since: reach it again) */
@@ -261,21 +263,29 @@ static void smk_faders(void)
         ui.force = 1;
     }
 }
-/* (#56) HOME's bars (ui_home.c): up while any fader moved within SMK_FD_SHOW_MS, the bank's parameter */
+/* (#56) HOME's bars (ui_home.c): up while any fader moved within SMK_FD_SHOW_MS, the bank's parameter; (#56b) or a
+ * knob turned the selected track's LEVEL, PAN .. (ui_input.c track_value_turn), that parameter */
 #define SMK_FD_SHOW_MS 500u
 static int smk_fader_bars(uint32_t *id)
 {
     if (!smk_fd_moved_ms || fm1_ms - smk_fd_moved_ms >= SMK_FD_SHOW_MS)
         return 0;
-    *id = CHANNEL_P[smk_fbank % 4u];
+    *id = smk_bars_id;
     return 1;
 }
-static int smk_fader_place(uint32_t k, uint32_t *place)   /* track k has a fader: where it stands, 0..127 */
+static void smk_bars_show(uint32_t id)
+{
+    smk_fd_moved_ms = fm1_ms | 1u;
+    smk_bars_id = (uint8_t)id;
+}
+/* track k has a fader: where it stands, 0..127, while the bars are its bank's (a knob's other parameter: left as is) */
+static int smk_fader_place(uint32_t k, uint32_t *place)
 {
     uint32_t j = k - trk_top();
     if (j >= 4u)
         return 0;
-    *place = smk_fd[j].last;
+    if (smk_bars_id == CHANNEL_P[smk_fbank % 4u])
+        *place = smk_fd[j].last;
     return 1;
 }
 static void smk_fader_bank_next(void)                /* (#39) SHIFT + FADER BANK (ui_input.c) */

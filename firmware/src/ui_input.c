@@ -516,8 +516,11 @@ static void tracks_edit(uint32_t slot, int32_t steps)
     ml_knob(t, (uint32_t)(vp - t->p));
 }
 
+#if BOARD_SMK37
+static void smk_bars_show(uint32_t id);                 /* (smk_ui.c) */
+#endif
 /* the selected track's LEVEL ((wishlist #38, #10b) PRESETS KNOB LEVEL), PAN ((#49, #10b) SELECT on HOME, BPM LOCK ON) or
- * channel strip ((wishlist #60) SHIFT + KNOB 1..4), as MIXER's knobs */
+ * channel strip ((wishlist #60) SHIFT + KNOB 1..4), as MIXER's knobs; (#56b) on the SMK HOME shows it as a fader's */
 static void track_value_turn(uint32_t id, uint32_t enc, const char *name, int32_t s)
 {
     track_t *t = TSEL;
@@ -526,6 +529,9 @@ static void track_value_turn(uint32_t id, uint32_t enc, const char *name, int32_
     motion_capture(t, id, t->p[id]);
     ml_knob(t, id);
     say_track_value(song.sel, id, name);
+#if BOARD_SMK37
+    smk_bars_show(id);
+#endif
 }
 
 /* SEQ > NOTES' piano roll (not the DRUM grid, whose white keys stay its steps): where step recording writes */

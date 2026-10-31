@@ -166,7 +166,9 @@ loader 7,859 B (the limit: 7,936 B, below).
   give way to a bar filled to the bank's parameter (PAN from the centre). On the four faders' lanes the fader's place is
   a tick: short of the value it stands apart from the fill's end and the value stays; once the fader takes over the
   tick sits on the fill's end and they move together. The two lanes without a fader get a thin grey bar, their value
-  only. The header says the value too, on every screen.
+  only. The header says the value too, on every screen. A knob turning the selected track's LEVEL or PAN (K2 and K4
+  on HOME, SHIFT + K5..K8's strip, REVERB and DELAY included) brings up the same bars for its parameter; the faders'
+  ticks show only when their bank is that parameter.
 - **Wheels and pedal:** as MIDI in on the selected track's channel: a pitch bend (2 semitones, or what RPN set), the
   mod wheel as CC1 (the MOD matrix's MODW), the pedal as CC64 sustain. The pedal holds the keys too: while it is
   down, a note played on the keys keeps sounding after its key is let go, until the pedal goes up or the key is
