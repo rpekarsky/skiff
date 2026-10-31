@@ -28,8 +28,8 @@ static int smk_pads_keys(void)                     /* 1: the pads are the white 
 #define SMK_PAD_FULL 120u                           /* a lit pad: /256 of the LED's full (they glare) */
 #define SMK_PAD_WHITE 90u                           /* the edited step's white, per channel */
 #define SMK_PAD_FAINT 0x0A0A0Au                     /* an empty step */
-#define SMK_PAD_PERF_OPTION (SMK_PAD_FULL / 2u)     /* (#43) [ARP] PERFORM's other patterns breathe up to half a lit
-                                                     * pad: at full they read as the one playing */
+#define SMK_PAD_OPTION (SMK_PAD_FULL / 2u)          /* (#43) a layer's options breathe up to half a lit pad: at full
+                                                     * they read as the one chosen */
 /* (PO 31.10) a pad takes only the hue from the theme's track colour, the brightness from the logic: the colour scaled so
  * its brightest component is q /256 of full. A near-grey track colour (LCD's ink) has no hue to give: the track's SKIFF
  * colour instead, so the tracks stay apart */
@@ -161,12 +161,11 @@ static void smk_pads_steps(void)
 }
 
 /* ui_input.c ui_leds: the pads' picture for the frame. The keys' own map (a layer's, NAME's, SLICES'): its levels for
- * the white keys (lit, breathing, the mid level, the glow) in the selected track's colour; the DRUM grid and the rest:
- * the steps */
+ * the white keys (lit, breathing up to half, the mid level, the glow) in the selected track's colour; the DRUM grid
+ * and the rest: the steps */
 static void smk_pads_out(const uint8_t *nl, const uint8_t *nd, const uint8_t *nb, const uint8_t *nm)
 {
-    uint32_t w, k, col = smk_trk_rgb(song.sel, SMK_PAD_FULL);
-    uint32_t option_col = ui.layer == LAYER_PERF ? smk_trk_rgb(song.sel, SMK_PAD_PERF_OPTION) : col;
+    uint32_t w, k, col = smk_trk_rgb(song.sel, SMK_PAD_FULL), option_col = smk_trk_rgb(song.sel, SMK_PAD_OPTION);
     if (!smk_pads_keys() || grid_on()) {
         smk_pads_steps();
         return;

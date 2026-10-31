@@ -1011,9 +1011,7 @@ static int takes(void)
     input_on(t, 62, 100); input_off(t, 62);
     lock_next(t); lock_next(t);
     take_commit(0);
-    ok = (ui.take_t && !take_box.kind && str_eq(take_box.title, "TAKE PARTIAL PASS")) ||
-         str_eq(ui.msg, "TAKE T1 PARTIAL PASS");
-    bad += check("takes:   (#33) in the first pass: the pass so far, TAKE PARTIAL PASS", ok && t->step[0].note[0] == 62);
+    bad += check("takes:   (#33) in the first pass: the pass so far, TAKE KEPT", take_said(0) && t->step[0].note[0] == 62);
     seq_stop();
 
     t = tk_track();

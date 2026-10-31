@@ -461,7 +461,7 @@ static int test_perf_breath(void)
     bad += check("(#43) [ARP] PERFORM: it still breathes (its darkest well under its peak)",
                  floor_top * 4u < top_channel(peak));
     peak = breath_peak(LAYER_SCL, &floor_top);
-    bad += check("(#43) another layer's breathing keys: up to a lit pad, as before", peak == rgb_of(0, SMK_PAD_FULL));
+    bad += check("(#43) SCL: its scale notes breathe up to half a lit pad too", peak == rgb_of(0, SMK_PAD_FULL / 2u));
     return bad;
 }
 /* (wishlist #5) MENU > DISPLAY > PAD LIGHT: 100 % the pads as they were; dimmer, lit dims most, an empty step stays

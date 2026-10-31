@@ -838,7 +838,7 @@ enum { S_HOME, S_HOME_IDLE, S_MESSAGE, S_MESSAGE_KEY, S_MESSAGE_NOFILE, S_PRESET
        S_ROLL_LOCKS, S_ROLL_LOCK_HELD, S_DRUM_LOCKS, S_DRUM_LOCK_HELD, S_MOTION_LOCKS, S_AUTO_LIST, S_AUTO_LIST_ADD, S_AUTO_LIST_DRUM, S_AUTO_LIST_DEL, S_REC_LAYER, S_REC_LAYER_SET,
        S_COUNTIN, S_COUNTIN2, S_MENU_AUDIO, S_HEAD_PLAY_REC, S_HEAD_REC_OTHER, S_HEAD_BPM_TURN, S_HEAD_BPM_LOCK,
        S_HEAD_BPM_LOCK_LEVEL, S_HEAD_GLO_TURN, S_HEAD_DOWNBEAT, S_HEAD_BEAT_2, S_HEAD_PROJECT,
-       S_TAKE_BOX, S_TAKE_PARTIAL, S_TAKE_PASS, S_CONFIRM_INIT, S_UNDO_BOX, S_CHANCE_FLAM,
+       S_TAKE_BOX, S_TAKE_PARTIAL, S_CONFIRM_INIT, S_UNDO_BOX, S_CHANCE_FLAM,
        S_PLAY_DIR, S_POOL, S_CONFIRM_POOL, S_PERF_LAYER, S_DUCK, S_DUCK_OFF, S_PLAY_GATE, S_PERF_SCENES, S_TILES, S_TILES_BAR2, S_TILES_DRUM,
        S_SONG, S_SONG_PLAYING, S_SONG_COPY, S_SONG_CLEAR, S_CONFIRM_ENTRY, S_CONFIRM_ENTRY_LAST, S_STEP_MARK,
        S_DX_SOUND, S_DX_SOUND2, S_DX_SOUND3, S_CONFIRM_INIT_DX,   /* (Skiff;
@@ -886,7 +886,7 @@ static const char *const S_NAME[S_COUNT] = {"home", "home_idle", "message", "mes
     "roll_locks", "roll_lock_held", "drum_locks", "drum_lock_held", "motion_locks", "auto_list", "auto_list_add", "auto_list_drum", "auto_list_delete", "layer_rec", "layer_rec_set",
     "countin", "countin_2bars", "menu_audio", "head_play_rec", "head_rec_other", "head_bpm_turn", "head_bpm_lock",
     "head_bpm_lock_level", "head_glo_turn", "head_downbeat", "head_beat_2", "head_project",
-    "take_box", "take_partial", "take_pass", "confirm_init", "undo_box", "chance_flam", "play_dir", "pool",
+    "take_box", "take_partial", "confirm_init", "undo_box", "chance_flam", "play_dir", "pool",
     "confirm_pool", "layer_perform", "fx_duck", "fx_duck_off", "play_gate", "layer_perform_scenes",
     "step_tiles", "step_tiles_bar2", "step_tiles_drum",
     "song", "song_playing", "song_copy", "song_clear", "confirm_entry", "confirm_entry_last", "step_mark",
@@ -1656,11 +1656,6 @@ static void setup(int s)
         take_box.trk = 3; take_box.gen++; take_box.kind = 0; ui.take_t = TB_FRAMES;
         str_cpy(take_box.title, "TAKE PARTIAL", sizeof take_box.title);
         str_cpy(take_box.line, "256 NOTES, AUTOMATION FULL", sizeof take_box.line);
-        break;
-    case S_TAKE_PASS:                               /* (#33) the pass so far, before its end */
-        take_box.trk = 0; take_box.gen++; take_box.kind = 0; ui.take_t = TB_FRAMES;
-        str_cpy(take_box.title, "TAKE PARTIAL PASS", sizeof take_box.title);
-        str_cpy(take_box.line, "5 NOTES, 2 KNOB MOVES", sizeof take_box.line);
         break;
     case S_MENU: ui.menu = 1; ui.menu_sel = 0; song.rec = 1; break;
     case S_MENU_SPEAKER: ui.menu = 1; ui.menu_sel = MI_LOWCUT; settings.lowcut = 2; break;
