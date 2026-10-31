@@ -584,7 +584,7 @@ ace5dcf3db1af208 CRYPT_drive_soft
 f2a5929aadf4e5f6 CRYPT_drum
 ed523ce365835d89 CRYPT_drum_cym
 37c27665d9a8e9c5 CRYPT_drum_hand
-88eedd0cd6b7d5e9 CRYPT_drum_kit_usr
+2af71e424915ce54 CRYPT_drum_kit_usr
 28902ff138517732 CRYPT_drum_lock_held
 d9b88323dd0391dd CRYPT_drum_locks
 a3f2fd74dc264f0d CRYPT_dx_sound
@@ -593,8 +593,8 @@ af725a34499c6838 CRYPT_dx_sound_3
 bb85de6e8f76843b CRYPT_edit_analog
 ef400503473424d6 CRYPT_edit_flt
 22ede8dd71385d08 CRYPT_edit_fm6
-9830a79be97cd726 CRYPT_edit_grain
-e35c49a8cf8bd8c6 CRYPT_edit_phys
+6319a7babb97a86f CRYPT_edit_grain
+7e270dee32d52ee7 CRYPT_edit_phys
 4d4fe0733251269f CRYPT_edit_sample
 9bb3a21ee7fdf202 CRYPT_edit_wheel
 1cd853ce6d340301 CRYPT_env
@@ -715,7 +715,7 @@ f454200b6f0e5e14 CRYPT_name_typing
 a2b40ed7d6fc8d8e CRYPT_notes_overlap
 dbf6ee1365fad09e CRYPT_notes_pick
 b552a4e6cea19d2d CRYPT_notes_range
-b9426d75f5eab866 CRYPT_page_scope_track
+3513ea892d9b87a3 CRYPT_page_scope_track
 366d3583b1956f97 CRYPT_pattern
 611a625b6389fd55 CRYPT_perform_harm
 43d9035181c763c8 CRYPT_perform_held
@@ -746,7 +746,7 @@ c0a2cdbb038e4192 CRYPT_roll_low
 f4123edb4c61145e CRYPT_roll_playing
 e79fa48b0ee7d284 CRYPT_roll_ties
 f3838592e64bc805 CRYPT_roll_wide
-f87e6f5e774906bd CRYPT_samples
+890ca8656afe7418 CRYPT_samples
 975419615f24064f CRYPT_scl
 a56389a2dad19afa CRYPT_shift_env
 d762c7fe0020226a CRYPT_shift_fm
@@ -848,7 +848,7 @@ e1736a96df8f3f2e CUSTOM_CRYPT_drive_hard
 0b9758f071ded226 CUSTOM_CRYPT_drum
 a96000bac39f5adc CUSTOM_CRYPT_drum_cym
 38b633fa881f2d75 CUSTOM_CRYPT_drum_hand
-0d0b7658ccfe5647 CUSTOM_CRYPT_drum_kit_usr
+a7f71251e4afc21e CUSTOM_CRYPT_drum_kit_usr
 7d25738d1f3dfa8e CUSTOM_CRYPT_drum_lock_held
 105a4c3573074d49 CUSTOM_CRYPT_drum_locks
 5d03473ba3f65e94 CUSTOM_CRYPT_dx_sound
@@ -857,8 +857,8 @@ fae446fa757e59b6 CUSTOM_CRYPT_dx_sound_2
 56e77cf733a8cfaa CUSTOM_CRYPT_edit_analog
 556ab61433952a91 CUSTOM_CRYPT_edit_flt
 5fc9ca3d1cca5c8a CUSTOM_CRYPT_edit_fm6
-e86b4c3d1a2089e8 CUSTOM_CRYPT_edit_grain
-3cf501e1d79aadab CUSTOM_CRYPT_edit_phys
+ab4d964d294d2c29 CUSTOM_CRYPT_edit_grain
+6634ace282865c46 CUSTOM_CRYPT_edit_phys
 3d4a9dbf2e9eb986 CUSTOM_CRYPT_edit_sample
 d913ff889f75f537 CUSTOM_CRYPT_edit_wheel
 bd18b6facd58a4c1 CUSTOM_CRYPT_env
@@ -979,7 +979,7 @@ e45557ae7af8033c CUSTOM_CRYPT_name_typing
 42efe80048e521c6 CUSTOM_CRYPT_notes_overlap
 e8397cde96722f12 CUSTOM_CRYPT_notes_pick
 a8df15e1bf40c247 CUSTOM_CRYPT_notes_range
-86e088bd78afd447 CUSTOM_CRYPT_page_scope_track
+fbb47d8c0362d6da CUSTOM_CRYPT_page_scope_track
 d64d78c860bde82f CUSTOM_CRYPT_pattern
 cebfeb18fcf11ef9 CUSTOM_CRYPT_perform_harm
 bc675a6e57622ffb CUSTOM_CRYPT_perform_held
@@ -1010,7 +1010,7 @@ d4e8cbd32bfbe57a CUSTOM_CRYPT_roll_low
 a4562016936fed0a CUSTOM_CRYPT_roll_playing
 389ebc80f1b3bbc9 CUSTOM_CRYPT_roll_ties
 59c5dc3ef3f0ac4d CUSTOM_CRYPT_roll_wide
-7c3e944ce52a54be CUSTOM_CRYPT_samples
+95c06c69c6257c23 CUSTOM_CRYPT_samples
 b8d4a0ee64a7d682 CUSTOM_CRYPT_scl
 f5b6be64b5e82a7c CUSTOM_CRYPT_shift_env
 4bea82724cdb11f7 CUSTOM_CRYPT_shift_fm
@@ -1376,7 +1376,7 @@ ec8f333c048c5308 CUSTOM_NEON_drive_fuzz
 9b8e90b06fce38c4 CUSTOM_NEON_drum
 3bdf9e56f87055ea CUSTOM_NEON_drum_cym
 975bddd3fe1a2442 CUSTOM_NEON_drum_hand
-a7c4c16a96a30362 CUSTOM_NEON_drum_kit_usr
+7d6945e1f7741fff CUSTOM_NEON_drum_kit_usr
 1fa7bf5be294943d CUSTOM_NEON_drum_lock_held
 9512b5f2c894a644 CUSTOM_NEON_drum_locks
 aa0360e1823038e7 CUSTOM_NEON_dx_sound
@@ -1385,8 +1385,8 @@ aa0360e1823038e7 CUSTOM_NEON_dx_sound
 13de040b4f08a045 CUSTOM_NEON_edit_analog
 d5c243717e3db60d CUSTOM_NEON_edit_flt
 02ccbad878765be1 CUSTOM_NEON_edit_fm6
-af87fbd8cb5092a8 CUSTOM_NEON_edit_grain
-39d800c1b210c9fd CUSTOM_NEON_edit_phys
+a1715c23b81ec8f5 CUSTOM_NEON_edit_grain
+609e747d17dceb70 CUSTOM_NEON_edit_phys
 0c0c51ab285f7e89 CUSTOM_NEON_edit_sample
 4a3185010a8b8077 CUSTOM_NEON_edit_wheel
 a166d1ef2190b473 CUSTOM_NEON_env
@@ -1507,7 +1507,7 @@ eb8df37696ad3d77 CUSTOM_NEON_notes_chain
 c7f9c00fb8a32ec8 CUSTOM_NEON_notes_overlap
 62f95d35a35833a3 CUSTOM_NEON_notes_pick
 9ed5bc8703e5aa34 CUSTOM_NEON_notes_range
-495e58a72e631108 CUSTOM_NEON_page_scope_track
+6342efb9f0133465 CUSTOM_NEON_page_scope_track
 c1473dd819ae4a56 CUSTOM_NEON_pattern
 e4a6cb804a3f1ef7 CUSTOM_NEON_perform_harm
 af1cb4786a03e6af CUSTOM_NEON_perform_held
@@ -1538,7 +1538,7 @@ e348620586b23d2d CUSTOM_NEON_roll_locks
 1b0865ddc7b18831 CUSTOM_NEON_roll_playing
 fc48de90805feb1e CUSTOM_NEON_roll_ties
 df6eadb884c7cfad CUSTOM_NEON_roll_wide
-bd05726d200cc7a9 CUSTOM_NEON_samples
+ed1806d290b608e4 CUSTOM_NEON_samples
 0529c6a33942e0bb CUSTOM_NEON_scl
 58d2c381edf354e7 CUSTOM_NEON_shift_env
 68ee0860cf1ec559 CUSTOM_NEON_shift_fm
@@ -1640,7 +1640,7 @@ f269ddce830928ad CUSTOM_QUARK_drive_hard
 c8d302a622a039a4 CUSTOM_QUARK_drum
 8e01cc52f3075e0e CUSTOM_QUARK_drum_cym
 8fca449e28e030be CUSTOM_QUARK_drum_hand
-659e17f87b46a53f CUSTOM_QUARK_drum_kit_usr
+0400adbba80257e0 CUSTOM_QUARK_drum_kit_usr
 2e37b4a1e46847a4 CUSTOM_QUARK_drum_lock_held
 e37cdda9f201daa4 CUSTOM_QUARK_drum_locks
 95c697781e267df3 CUSTOM_QUARK_dx_sound
@@ -1649,8 +1649,8 @@ e37cdda9f201daa4 CUSTOM_QUARK_drum_locks
 5ab37da71ef468b0 CUSTOM_QUARK_edit_analog
 ea16aac68ba8df6c CUSTOM_QUARK_edit_flt
 4a8ca53cbfeac91f CUSTOM_QUARK_edit_fm6
-eed34d80ab88f315 CUSTOM_QUARK_edit_grain
-328dc5928b1ccf1c CUSTOM_QUARK_edit_phys
+a4158b256826e2be CUSTOM_QUARK_edit_grain
+8b7deaf814a2013f CUSTOM_QUARK_edit_phys
 0859995afa654c53 CUSTOM_QUARK_edit_sample
 9faaa363cf9c0745 CUSTOM_QUARK_edit_wheel
 96b87c77a6e9a344 CUSTOM_QUARK_env
@@ -1771,7 +1771,7 @@ a6e8a252984d15d0 CUSTOM_QUARK_name_playing
 29eaabaea19f40db CUSTOM_QUARK_notes_overlap
 bfefdaebbb607e5e CUSTOM_QUARK_notes_pick
 4e344ad8e62a79e8 CUSTOM_QUARK_notes_range
-831b99a09190d6ea CUSTOM_QUARK_page_scope_track
+515758461e5df47d CUSTOM_QUARK_page_scope_track
 c113331824fb3add CUSTOM_QUARK_pattern
 e6bcd66c63bc0ee9 CUSTOM_QUARK_perform_harm
 dbacc152b60cc395 CUSTOM_QUARK_perform_held
@@ -1802,7 +1802,7 @@ ca8d042b39d275a5 CUSTOM_QUARK_roll_high
 9126f57c3b9c4325 CUSTOM_QUARK_roll_playing
 049189d697a0c1af CUSTOM_QUARK_roll_ties
 4515bdb8d4142fb8 CUSTOM_QUARK_roll_wide
-04656e0114cb145b CUSTOM_QUARK_samples
+21d83f08aa784518 CUSTOM_QUARK_samples
 d0f620ed0aaf0984 CUSTOM_QUARK_scl
 467d7f45e5b4575d CUSTOM_QUARK_shift_env
 063df04ba8a23021 CUSTOM_QUARK_shift_fm
@@ -6668,7 +6668,7 @@ caf7ed1382eeee38 NEON_drive_soft
 c7ab7c350aa01986 NEON_drum
 20d0924e88961907 NEON_drum_cym
 0c47bdfa1221a6fc NEON_drum_hand
-586b246793d37169 NEON_drum_kit_usr
+968eb15304241d3b NEON_drum_kit_usr
 fe20671095595ea7 NEON_drum_lock_held
 7f9fc3efd07654c6 NEON_drum_locks
 31e858461505a7e7 NEON_dx_sound
@@ -6677,8 +6677,8 @@ fe20671095595ea7 NEON_drum_lock_held
 42d48bc3788db836 NEON_edit_analog
 8ed13fc05471d757 NEON_edit_flt
 33b9c0db4624322e NEON_edit_fm6
-f2272287470d7880 NEON_edit_grain
-ed1b1f502651f3d9 NEON_edit_phys
+27b2bec356baeb4c NEON_edit_grain
+619374cecbe085b1 NEON_edit_phys
 372621bf523a3d20 NEON_edit_sample
 826c9dc073e24a24 NEON_edit_wheel
 fba44c065afdb9c8 NEON_env
@@ -6799,7 +6799,7 @@ ed258a7b1e7190a3 NEON_name_user
 fe53b98e85c66073 NEON_notes_overlap
 4f12727dd1b9e3fb NEON_notes_pick
 e960e94946ab3aec NEON_notes_range
-edcc133397fff23f NEON_page_scope_track
+f08e6b902375a027 NEON_page_scope_track
 22a8885d25230405 NEON_pattern
 480c3ba2e758b028 NEON_perform_harm
 d09d9f2f4ba2d2fe NEON_perform_held
@@ -6830,7 +6830,7 @@ f7fd7102c459d860 NEON_roll_locks
 4b51b19779868771 NEON_roll_playing
 23b7d3ef78db4de2 NEON_roll_ties
 11766218a4129f75 NEON_roll_wide
-ca8c5a7d35a59493 NEON_samples
+083ca9036b680da7 NEON_samples
 6c8400f2151a645e NEON_scl
 89a99c4185604597 NEON_shift_env
 6b7c00a6c72daa2d NEON_shift_fm
@@ -7204,7 +7204,7 @@ b506b6fa66af453c QUARK_drive_fold
 19508f19dc19875c QUARK_drum
 b6c6e1e5dc2c846d QUARK_drum_cym
 d9330b9e04aa042e QUARK_drum_hand
-c62a86f8a3307a6b QUARK_drum_kit_usr
+31a63163758125e3 QUARK_drum_kit_usr
 7ceb7a95063cc3e0 QUARK_drum_lock_held
 a9a39471ab25141c QUARK_drum_locks
 1b8afc7a08c6e86b QUARK_dx_sound
@@ -7213,8 +7213,8 @@ bc383fe6d9a123f6 QUARK_dx_sound_3
 65c46001c73f3ac0 QUARK_edit_analog
 ca4ccf39698c47ad QUARK_edit_flt
 ada35f89bc399d1f QUARK_edit_fm6
-e18ed07f4a63ef73 QUARK_edit_grain
-f250c7b7711a1dd1 QUARK_edit_phys
+00b327a458db5221 QUARK_edit_grain
+b26f09a4ca4f96eb QUARK_edit_phys
 59af0bc7996f122a QUARK_edit_sample
 ac101b1ef4ba53d3 QUARK_edit_wheel
 5e69a68b107a09ef QUARK_env
@@ -7335,7 +7335,7 @@ d1999852907a28ca QUARK_name_typing
 77f4efa2d68f121a QUARK_notes_overlap
 7efa686f9ca9a04b QUARK_notes_pick
 8e47b89c25dba809 QUARK_notes_range
-31ee3dfa40ac3237 QUARK_page_scope_track
+c1bcc5744d32f14d QUARK_page_scope_track
 ca43ccc2ea9e7c15 QUARK_pattern
 ac82fed3c0cfbd3c QUARK_perform_harm
 229cc6ed76a2265a QUARK_perform_held
@@ -7366,7 +7366,7 @@ a8ecf1c6ce9480c4 QUARK_roll_lock_held
 65c0e42214fd89a4 QUARK_roll_playing
 e978c3ddf01adfcc QUARK_roll_ties
 3c3e351f415e5a22 QUARK_roll_wide
-0c985ea247af66e6 QUARK_samples
+08742fc2fd4d0a80 QUARK_samples
 e8c698e4a134ebb7 QUARK_scl
 1200c8ad2540b3cf QUARK_shift_env
 7cee92a9430af67a QUARK_shift_fm

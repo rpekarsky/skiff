@@ -2584,13 +2584,15 @@ static void qk_detector(int32_t cx, int32_t cy)
 }
 
 /* oscilloscope of the output, triggered on a rising zero crossing: a RAISE centre line, the trace 2 px (in silence
- * a flat line on it; MENU > SCREEN OFF keeps it from staying on the panel for hours) */
+ * a flat line on it; MENU > SCREEN OFF keeps it from staying on the panel for hours). (PO) The themes' own scopes on
+ * HOME only: a track's pages read the wave itself */
 static void graph_scope(uint16_t c)
 {
     static int16_t snap[SCOPE_N];
     uint32_t i, trig = 0;
     int32_t cy = (int32_t)cv_h / 2, py = cy, x, peak = 1500, a = cv_h >= H_GRAPH ? 46 : cy - 6;   /* (LARGE: the strip) */
-    if (ux.quark && cv_h >= H_GRAPH) {
+    int themed = ui.home;
+    if (themed && ux.quark && cv_h >= H_GRAPH) {
         qk_detector(120, cy);
         return;
     }
@@ -2606,7 +2608,7 @@ static void graph_scope(uint16_t c)
             trig = i;
             break;
         }
-    if (ux.crypt) {                                  /* (Skiff N8) CRYPT: the sound burns: fire up from the foot as tall
+    if (themed && ux.crypt) {                        /* (Skiff N8) CRYPT: the sound burns: fire up from the foot as tall
                                                       * as the wave there (ember, amber, gold, its tips flame), flickering;
                                                       * behind it a skull, its eyes as bright as the sound is loud */
         int32_t foot = (int32_t)cv_h - 3, top = 6, k;
@@ -2626,7 +2628,7 @@ static void graph_scope(uint16_t c)
         }
         return;
     }
-    if (ux.neon && cv_h >= H_GRAPH) {                /* (Skiff N8) NEON: the sound as the skyline: the wave a ridge of
+    if (themed && ux.neon && cv_h >= H_GRAPH) {      /* (Skiff N8) NEON: the sound as the skyline: the wave a ridge of
                                                       * vector mountains over the horizon, the striped sun behind it
                                                       * swelling with how loud it is, the floor running toward the viewer */
         int32_t hy = (int32_t)cv_h * 64 / 100, my = hy / 2 + 2, ma = hy / 2 - 6;
