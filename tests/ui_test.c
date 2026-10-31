@@ -8457,6 +8457,20 @@ static int test_u5(void)
     btn_up(B_HOME); frame();
     bad += check("U5 A1: HOME held shows SHIFT's map (ENV: PRESETS SOUND; STEP: PRESETS STEP, KEYS STEPS; + SAVE TAKE lit), "
                  "held on it stays, let go the MENU, a combo ends it; HINTS OFF: none", ok);
+    go_home();
+    ui_prefs |= PREF_BPM_LOCK;
+    shift_map(m);
+    ok = str_eq(m[1].key, "SELECT") && str_eq(m[1].job, "LEVEL") && str_eq(m[5].key, "GLO + SELECT") &&
+         str_eq(m[5].job, "TEMPO");
+    ui_prefs &= (uint8_t)~PREF_BPM_LOCK;
+    shift_map(m);
+    ok &= str_eq(m[1].key, "SELECT") && str_eq(m[1].job, "TEMPO") && str_eq(m[5].key, "PLAY");
+    go_title("ENV");
+    ui_prefs |= PREF_BPM_LOCK;
+    shift_map(m);
+    ok &= str_eq(m[1].job, "PAGE") && str_eq(m[5].key, "PLAY");
+    bad += check("(wishlist #49) SHIFT's map on HOME: BPM LOCK ON, SELECT LEVEL and GLO + SELECT TEMPO in PLAY's cell; "
+                 "OFF, SELECT TEMPO and PLAY; on a page PLAY stays", ok);
     ui_hints_off = 0;
     ui_power_on();
     return bad;
