@@ -4,7 +4,9 @@
  *   PADS     on HOME the step taps, in a layer and the DRUM grid the white keys; a tap sets a step to the last note
  *            (its velocity), again clears it, one undo a run; DRUM: the lane; past LEN nothing; the colours (A), PAD LIGHT;
  *            PAD FOLLOW (OFF PAGE ROW: the steps shown while playing, a tap's step, held).
- *   FADERS   the four tracks shown, taking over once they reach the value, SHIFT + FADER BANK (its LED), the window.
+ *   FADERS   the four tracks shown, taking over once they reach the value, SHIFT + FADER BANK (its LED), the window;
+ *            (#56) HOME's bars: one fader moved, all four fader lanes (the fill and the fader's tick apart, together
+ *            once taken over), the other two thin; gone 0.5 s after.
  *   TAPS     (#39) KNOB BANK's tap UNDO, FADER BANK's REDO; a hold, a combo, a pad meanwhile, the MENU: none.
  *   ENTRIES  > and < the selected track's entry after and before, the first's end said; in PERFORM and GLO (held or
  *            locked) the same, a combo (no tap, the lock kept); in another layer nothing; (#50) an empty one
@@ -750,6 +752,163 @@ static int test_faders(void)
     return bad;
 }
 
+/* (#56) HOME's fader bar: the screen as drawn (RGB565), lane k's top (six lanes: the selected one tall) */
+static uint16_t screen_at(int32_t x, int32_t y)
+{
+    uint16_t c = host_screen[y * 240 + x];
+    return (uint16_t)(c >> 8 | c << 8);
+}
+static int32_t lane_y(uint32_t k)
+{
+    int32_t y = (int32_t)graph_y() + ((int32_t)graph_h() - (HL_H + ((int32_t)NTRK - 1) * (HL_C_H + 3))) / 2;
+    uint32_t i;
+    for (i = 0; i < k; i++)
+        y += (i == song.sel ? HL_H : HL_C_H) + 3;
+    return y;
+}
+static int32_t lane_mid(uint32_t k) { return lane_y(k) + (k == song.sel ? HL_H : HL_C_H) / 2; }
+static int lane_is(uint32_t k, const uint16_t *was)   /* lane k's steps as copied by lane_copy */
+{
+    int32_t x, y, y0 = lane_y(k);
+    for (y = 0; y < HL_C_H; y++)
+        for (x = HL_STEP_X - 3; x < HL_STEP_X + HL_BAR_W + 3; x++)
+            if (screen_at(x, y0 + y) != was[y * 240 + x])
+                return 0;
+    return 1;
+}
+static void lane_copy(uint32_t k, uint16_t *to)
+{
+    int32_t x, y, y0 = lane_y(k);
+    for (y = 0; y < HL_C_H; y++)
+        for (x = 0; x < 240; x++)
+            to[y * 240 + x] = screen_at(x, y0 + y);
+}
+/* SMK_SHOTS=dir: the screen as dir/name.ppm (the pictures for the PO; ui_render.c draws the FM-1 only) */
+static void shot(const char *name)
+{
+    const char *dir = getenv("SMK_SHOTS");
+    char path[256];
+    FILE *f;
+    int32_t i;
+    if (!dir)
+        return;
+    snprintf(path, sizeof path, "%s/%s.ppm", dir, name);
+    if (!(f = fopen(path, "wb")))
+        return;
+    fprintf(f, "P6\n240 240\n255\n");
+    for (i = 0; i < 240 * 240; i++) {
+        uint16_t c = screen_at(i % 240, i / 240);
+        fputc((c >> 11) * 255 / 31, f);
+        fputc(((c >> 5) & 63) * 255 / 63, f);
+        fputc((c & 31) * 255 / 31, f);
+    }
+    fclose(f);
+}
+static void fader_to(uint32_t j, uint32_t v)
+{
+    fm1_in.fader[j] = (uint8_t)v;
+    frame();
+}
+static void fader_scene(const char *theme, uint32_t palette)   /* the faders settled at 20 100 64 10; F1 short of T1's
+                                                                 * LEVEL, F2 past T2's, F4 taken over; F3 PAN short of
+                                                                 * T3's; T6 selected: F3 is T5's PAN, taken over */
+{
+    char name[64];
+    smk_power_on();
+    settings.palette = palette;
+    palette_set(palette);
+    trk[0].p[P_LEVEL] = 100;
+    trk[1].p[P_LEVEL] = 30;
+    trk[3].p[P_LEVEL] = 70;
+    fm1_in.fader[0] = 20;
+    fm1_in.fader[1] = 100;
+    fm1_in.fader[2] = 64;
+    fm1_in.fader[3] = 10;
+    frame();
+    fader_to(0, 45);
+    fader_to(1, 90);
+    fader_to(3, 80);
+    fader_to(3, 64);
+    snprintf(name, sizeof name, "%s-level", theme);
+    shot(name);
+    press_with(panel.btn[B_HOME], SMK_BTN_FADER_BANK);
+    trk[2].p[P_PAN] = -30;
+    fader_to(2, 90);
+    snprintf(name, sizeof name, "%s-pan", theme);
+    shot(name);
+    sel_set(5);
+    trk[4].p[P_PAN] = 20;
+    frame();
+    fader_to(2, 80);
+    fader_to(2, 70);
+    snprintf(name, sizeof name, "%s-pan-t6", theme);
+    shot(name);
+}
+static int lane_thin(uint32_t k, int32_t filled_x, int32_t empty_x)   /* a fader-less lane's thin DIM bar on RAISE */
+{
+    int32_t y = lane_mid(k);
+    return screen_at(filled_x, y) == T_DIM && screen_at(empty_x, y) == T_RAISE && screen_at(filled_x, y - 3) == T_SURF &&
+           screen_at(filled_x, y + 3) == T_SURF;
+}
+static int test_fader_bar(void)
+{
+    static uint16_t was[HL_C_H * 240], was5[HL_C_H * 240];
+    int bad = 0, ok;
+    uint32_t id, place;
+    int32_t y;
+    smk_power_on();
+    trk[1].p[P_LEVEL] = 100;
+    trk[4].p[P_LEVEL] = 80;
+    fm1_in.fader[0] = 20;
+    fm1_in.fader[1] = 20;
+    fm1_in.fader[2] = 50;
+    fm1_in.fader[3] = 90;
+    frame();
+    lane_copy(1, was);
+    lane_copy(4, was5);
+    bad += check("SMK fader bars (#56): none until a fader moves", !smk_fader_bars(&id) && lane_is(1, was));
+    fader_to(1, 40);
+    y = lane_mid(1);
+    ok = smk_fader_bars(&id) && id == P_LEVEL && smk_fader_place(1, &place) && place == 40u && trk[1].p[P_LEVEL] == 100;
+    ok &= screen_at(hl_bar_x(40), y) == T_TEXT && screen_at(hl_bar_x(40) - 2, y) == T_SURF;
+    ok &= screen_at(hl_bar_x(70), y) == T_TRK(1) && screen_at(hl_bar_x(99), y) == T_TRK(1);
+    ok &= screen_at(hl_bar_x(101), y) == T_LINE;
+    bad += check("SMK fader bars: F2 short of the value, T2's lane: the fill to 100, the tick at 40 apart", ok);
+    ok = screen_at(hl_bar_x(50), lane_mid(2)) == T_TEXT && screen_at(hl_bar_x(90), lane_mid(3)) == T_TEXT;
+    ok &= smk_fader_place(0, &place) && place == 20u;
+    bad += check("SMK fader bars: one fader moved, all four fader lanes up, each its fader's tick (T3 50, T4 90)", ok);
+    ok = !smk_fader_place(4, &place) && !smk_fader_place(5, &place) && lane_thin(4, hl_bar_x(40), hl_bar_x(100));
+    bad += check("SMK fader bars: T5 and T6 (no fader): a thin DIM bar on RAISE, T5's 80, no tick", ok);
+    fader_to(1, 104);
+    ok = trk[1].p[P_LEVEL] == 104 && screen_at(hl_bar_x(104), y) == T_TEXT;
+    ok &= screen_at(hl_bar_x(104) - 3, y) == T_TRK(1) && screen_at(hl_bar_x(104) + 3, y) == T_LINE;
+    bad += check("SMK fader bars: taken over, the tick on the fill's end, together", ok);
+    frames(496);
+    bad += check("SMK fader bars: still there just under 0.5 s after the last move", smk_fader_bars(&id) &&
+                 !lane_is(1, was) && !lane_is(4, was5));
+    frames(16);
+    bad += check("SMK fader bars: gone 0.5 s after, the steps as before", !smk_fader_bars(&id) && lane_is(1, was) &&
+                 lane_is(4, was5));
+    press_with(panel.btn[B_HOME], SMK_BTN_FADER_BANK);
+    trk[1].p[P_PAN] = -32;
+    fader_to(1, 100);
+    fader_to(1, 110);
+    ok = screen_at(hl_bar_x(48), y) == T_TRK(1) && screen_at(hl_bar_x(30), y) == T_LINE;
+    ok &= screen_at(hl_bar_x(70), y) == T_LINE && screen_at(hl_bar_x(110), y) == T_TEXT;
+    bad += check("SMK fader bars, PAN: filled from the centre (-32: 32..64)", ok);
+    sel_set(5);
+    trk[0].p[P_PAN] = -32;
+    fader_to(0, 0);
+    fader_to(0, 60);
+    ok = smk_fader_place(2, &place) && place == 60u && !smk_fader_place(0, &place) && !smk_fader_place(1, &place);
+    ok &= smk_fader_bars(&id) && id == P_PAN && lane_thin(0, hl_bar_x(48), hl_bar_x(80));
+    bad += check("SMK fader bars: T6 selected, F1 on T3's lane, T1 and T2 thin (T1 PAN -32)", ok);
+    fader_scene("skiff", UI_SKIFF_INDEX);
+    fader_scene("lcd", UI_LCD_INDEX);
+    fader_scene("lcd-night", UI_LCD_NIGHT_INDEX);
+    return bad;
+}
+
 static int test_entries(void)
 {
     int bad = 0;
@@ -1366,6 +1525,7 @@ int main(void)
     bad += test_pad_follow();
     bad += test_settings_bits();
     bad += test_faders();
+    bad += test_fader_bar();
     bad += test_entries();
     bad += test_layer_arrows();
     bad += test_outer_keys();

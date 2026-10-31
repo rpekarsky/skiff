@@ -156,7 +156,12 @@ loader 7,859 B (the limit: 7,936 B, below).
   view stays, so a tap always hits the step under the finger.
 - **Faders:** a mixer for the four tracks the screen shows (T1..T4, or the six-track window). SHIFT + FADER
   BANK steps LEVEL, PAN, REVERB and DELAY, and the header names the bank. A fader takes over only once it reaches the value,
-  and again after something else has set it, so nothing jumps.
+  and again after something else has set it, so nothing jumps. Fader 1..4 is T1..T4 while one of them is selected,
+  T2..T5 with T5 selected, T3..T6 with T6. On HOME, while a fader moves and half a second after, every lane's steps
+  give way to a bar filled to the bank's parameter (PAN from the centre). On the four faders' lanes the fader's place is
+  a tick: short of the value it stands apart from the fill's end and the value stays; once the fader takes over the
+  tick sits on the fill's end and they move together. The two lanes without a fader get a thin grey bar, their value
+  only. The header says the value too, on every screen.
 - **Wheels and pedal:** as MIDI in on the selected track's channel: a pitch bend (2 semitones, or what RPN set), the
   mod wheel as CC1 (the MOD matrix's MODW), the pedal as CC64 sustain. The pedal holds the keys too: while it is
   down, a note played on the keys keeps sounding after its key is let go, until the pedal goes up or the key is

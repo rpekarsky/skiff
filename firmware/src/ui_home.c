@@ -98,6 +98,53 @@ static void home_meters_tick(void)
     }
 }
 
+#if BOARD_SMK37
+/* (#56) a fader moving: over every lane's steps a bar filled to the bank's parameter (PAN from the centre). A fader's
+ * track: the fader's place a tick in a gap, apart from the fill's end until it takes over (smk_ui.c smk_faders); the two
+ * tracks without one: a thin bar in DIM on RAISE */
+static int smk_fader_bars(uint32_t *id);              /* (smk_ui.c) */
+static int smk_fader_place(uint32_t k, uint32_t *place);
+#define HL_BAR_W 132                                  /* under the 16 cells */
+#define HL_THIN_H 3
+static int32_t hl_bar_x(int32_t v) { return HL_STEP_X + v * HL_BAR_W / 127; }
+static uint32_t hl_fader_sig(uint32_t k)
+{
+    uint32_t id, place = 255u;                       /* (255: a lane without a fader) */
+    if (!smk_fader_bars(&id))
+        return 0;
+    smk_fader_place(k, &place);
+    return 1u + id * 3u + place * 389u + (uint32_t)trk[k].p[id] * 52511u;
+}
+static int hl_fader_bar(uint32_t k, int32_t y, int32_t h, uint16_t lane, uint16_t fill, uint16_t groove, uint16_t tick)
+{
+    uint32_t id, place;
+    int has_fader;
+    int32_t bh, by, from, to, tick_x;
+    if (!smk_fader_bars(&id))
+        return 0;
+    has_fader = smk_fader_place(k, &place);
+    if (!has_fader) {
+        fill = T_DIM;
+        groove = T_RAISE;
+    }
+    bh = has_fader ? h / 3 : HL_THIN_H;
+    by = y + (h - bh) / 2;
+    from = hl_bar_x(id == P_PAN ? -TP[id].min : 0);
+    to = hl_bar_x(trk[k].p[id] - TP[id].min);
+    cv_rect(HL_STEP_X - 3, y + 1, HL_BAR_W + 6, h - 2, lane);
+    cv_rect(HL_STEP_X, by, HL_BAR_W, bh, groove);
+    cv_rect(from < to ? from : to, by, from < to ? to - from : from - to, bh, fill);
+    if (id == P_PAN)
+        cv_rect(from, by - 1, 1, bh + 2, fill);
+    if (!has_fader)
+        return 1;
+    tick_x = clamp(hl_bar_x((int32_t)place), HL_STEP_X + 1, HL_STEP_X + HL_BAR_W - 1);
+    cv_rect(tick_x - 2, by - 3, 4, bh + 6, lane);
+    cv_rect(tick_x - 1, by - 3, 2, bh + 6, tick);
+    return 1;
+}
+#endif
+
 /* what the overview shows: a change of it redraws the panel (draw_graph's signature) */
 static uint32_t home_sig(void)
 {
@@ -107,6 +154,9 @@ static uint32_t home_sig(void)
         const step_t *s = t->step;
         n = hl_len(t);
         h = (h ^ trk_pat(k) ^ (uint32_t)hm_lv[k] << 16) * 16777619u;
+#if BOARD_SMK37
+        h = (h ^ hl_fader_sig(k)) * 16777619u;
+#endif
         h = (h ^ (977u * n + 7u * (uint32_t)t->p[P_MUTE] + 31u * t->eng_req + 257u * t->preset + 65537u * t->user +
                   (uint32_t)midi_mark(k) * 0x40000000u)) * 16777619u;
         if (song.playing)
@@ -280,6 +330,10 @@ static void graph_tracks(void)
             int32_t x0 = hl_cell_x(b0 % per_row, per_row), x1 = hl_cell_x((b1 - 1u) % per_row, per_row) + cw;
             cv_rect(x0, top + (int32_t)(b0 / per_row) * (ch + HL_ROW_GAP) + ch + 1, x1 - x0, 1, ux_mix(on, lane, 55));
         }
+#if BOARD_SMK37
+        if (hl_fader_bar(k, y, h, lane, ux.h1n && !ib ? T_MID : on, off, ink) && sel)
+            tx = qx = -1;                             /* (no torch, car or collision over the bar) */
+#endif
         y += h + 3;
     }
     if (ux.crypt && tx >= 0)                          /* (Skiff C3) CRYPT: a torch on it, flickering a step to the next */
