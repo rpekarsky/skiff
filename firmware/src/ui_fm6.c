@@ -49,13 +49,13 @@ static const char *const FM_HZ[4] = {"1", "10", "100", "1K"};          /* a fixe
 
 static uint8_t fm_wave __attribute__((section(".pool")));       /* (#20w) the panel WAVE, not the envelopes; not saved */
 static uint32_t fm_wave_t0 __attribute__((section(".pool")));   /* (fm1_ms) WAVE's operator bars' clock from 0 */
-#define FM_WF_NS 36                                     /* WAVE's slices at most (fm_wf_tune.slices drawn) */
-#define FM_WF_NP 128                                    /* a slice's points: one period (fm_wf_tune.periods of it drawn) */
+#define FM_WF_BUF 4608                                  /* WAVE's slices' points, all of them */
+#define FM_WF_NP 192                                    /* a slice's points at most */
 #define FM_WF_SMOOTH_MAX 4
 enum { FM_WF_HELD_PLAYED, FM_WF_HELD_SMART, FM_WF_HELD_1S };   /* as played; 1 s while the key is down; always 1 s */
 typedef struct {                                        /* (#20t, test build) SHIFT + KNOB 1..4 on WAVE; not saved */
-    uint8_t slices;                                     /* 8 .. FM_WF_NS, two thirds the held note's */
-    uint8_t periods;                                    /* 1 .. 4 across */
+    uint8_t slices;                                     /* 8 .. as many as the buffer holds (fm_wf_slices) */
+    uint8_t periods;                                    /* 1 .. 3 across, each rendered (fm_wf_points) */
     uint8_t phase;                                      /* where a slice starts past the note's zero phase, % of a period */
     uint8_t smooth;                                     /* periods averaged a point, one after another */
     uint8_t step_x;                                     /* px a slice further back moves right: 0 .. 3 */
@@ -69,12 +69,24 @@ static fm_wf_tune_t fm_wf_tune __attribute__((section(".pool")));
 static const fm_wf_tune_t *fm_wf_cfg(void)
 {
     if (!fm_wf_tune.slices)
-        fm_wf_tune = (fm_wf_tune_t){24, 2, 0, 2, 3, 4, 30, 50, 25, FM_WF_HELD_PLAYED};
+        fm_wf_tune = (fm_wf_tune_t){26, 2, 0, 2, 3, 4, 30, 50, 25, FM_WF_HELD_PLAYED};
     return &fm_wf_tune;
+}
+/* a slice's points: PERIODS 1 128, 2 88 a period, 3 64, so the buffer holds 36, 26, 24 slices */
+static uint32_t fm_wf_points(void)
+{
+    static const uint8_t PER_PERIOD[3] = {128, 88, 64};
+    uint32_t p = fm_wf_cfg()->periods;
+    return p * PER_PERIOD[p - 1u];
+}
+static uint32_t fm_wf_slices(void)
+{
+    uint32_t most = FM_WF_BUF / fm_wf_points();
+    return fm_wf_cfg()->slices < most ? fm_wf_cfg()->slices : most;
 }
 static uint32_t fm_wf_held_slices(void)
 {
-    uint32_t n = fm_wf_cfg()->slices, held = n - n * fm_wf_cfg()->release / 100u;
+    uint32_t n = fm_wf_slices(), held = n - n * fm_wf_cfg()->release / 100u;
     return held ? held : 1u;
 }
 static uint32_t fm_wf_tune_sig(void)
@@ -342,8 +354,8 @@ static int fm_wave_set(int on)
         return 0;
     if (on && !fm_wave)
         fm_wave_t0 = fm1_ms;
-    else if (on)                                        /* (#20t) again, WAVE shown: SMOOTH 1, 2, 4, round */
-        fm_wf_tune.smooth = (uint8_t)(fm_wf_cfg()->smooth >= 4u ? 1u : fm_wf_cfg()->smooth * 2u);
+    else if (on)                                        /* (#20t) again, WAVE shown: PERIODS 1, 2, 3, round */
+        fm_wf_tune.periods = (uint8_t)(fm_wf_cfg()->periods % 3u + 1u);
     fm_wave = (uint8_t)(on != 0);
     return 1;
 }
@@ -360,9 +372,9 @@ static int fm_wf_tune_turn(uint32_t k, int32_t s)
         return 0;
     (void)fm_wf_cfg();
     if (k == 0u)
-        u->slices = (uint8_t)clamp(u->slices + s, 8, FM_WF_NS);
+        u->slices = (uint8_t)clamp((int32_t)fm_wf_slices() + s, 8, (int32_t)(FM_WF_BUF / fm_wf_points()));
     else if (k == 1u)
-        u->periods = (uint8_t)clamp(u->periods + s, 1, 4);
+        u->smooth = (uint8_t)clamp(u->smooth + s, 1, FM_WF_SMOOTH_MAX);
     else if (k == 2u)
         u->step_x = (uint8_t)clamp(u->step_x + s, 0, 3);
     else
@@ -397,10 +409,10 @@ static void fm_wf_fader(uint32_t j, uint32_t v)
 #endif
 static int fm_wf_tune_cards(void)
 {
-    static const char *const NAME[4] = {"SLICES", "PERIODS", "STEP X", "ZOOM Y"};
+    static const char *const NAME[4] = {"SLICES", "SMOOTH", "STEP X", "ZOOM Y"};
     const fm_wf_tune_t *u = fm_wf_cfg();
-    const int32_t v[4] = {u->slices, u->periods, u->step_x, u->zoom_y * 25}, lo[4] = {8, 1, 0, 100};
-    const int32_t hi[4] = {FM_WF_NS, 4, 3, 300};
+    const int32_t v[4] = {(int32_t)fm_wf_slices(), u->smooth, u->step_x, u->zoom_y * 25}, lo[4] = {8, 1, 0, 100};
+    const int32_t hi[4] = {(int32_t)(FM_WF_BUF / fm_wf_points()), FM_WF_SMOOTH_MAX, 3, 300};
     uint32_t c;
     if (!fm_wf_tuned_here())
         return 0;
@@ -435,7 +447,7 @@ typedef struct {
         struct {
             fm_env_line_t op[6], pitch;                 /* OP1 .. OP6, the pitch envelope */
         };
-        int8_t wave[FM_WF_NS][FM_WF_NP];                /* (#20w) WAVE's slices instead: one panel at a time */
+        int8_t wave[FM_WF_BUF];                         /* (#20w) WAVE's slices instead, fm_wf_points() each */
     };
     int32_t held, n, modlvl;                            /* the key up's block, the last; MOD LVL on the modulators (Q16) */
     uint32_t car, live, alg, fb;                        /* bit k: OP k+1 a carrier, sounding (OUTPUT > 0) */
@@ -1173,7 +1185,7 @@ static int32_t fm_wf_at(uint32_t j)                     /* slice j's block */
     int32_t nh = (int32_t)fm_wf_held_slices();
     if ((int32_t)j < nh)
         return fm_wf_unwarp(fm_wf.held, (int32_t)j + 1, nh);
-    return fm_wf.held + fm_wf_unwarp(fm_wf.tail, (int32_t)j - nh + 1, fm_wf_cfg()->slices - nh);
+    return fm_wf.held + fm_wf_unwarp(fm_wf.tail, (int32_t)j - nh + 1, (int32_t)fm_wf_slices() - nh);
 }
 /* the note-on: the envelopes at block 0, the key up; each operator's loudest level (its stages' targets as
  * fm6_env_advance sets them, MOD LVL on the modulators), the carriers' summed: the full height */
@@ -1257,24 +1269,23 @@ static void fm_wf_voice(fm6_note_t *n, const fm_sim_t *s, int32_t lf, const int3
         n->op[i].gain_out = fm6_exp2(clamp(lv, 0, 17 << 24) - (14 << 24));
     }
 }
-/* one period of the output from fm_wf_tune.phase past the first zero phase of the note's pitch past block b, as
- * fm6_render's fm6_note_compute renders it (the LFO at rest), FM_WF_NP points over it (the next period's first left
- * out, so it repeats), full height at peak; each point the mean of fm_wf_tune.smooth periods in a row. Returns the
- * samples rendered */
+/* fm_wf_tune.periods periods of the output from fm_wf_tune.phase past the first zero phase of the note's pitch past
+ * block b, as fm6_render's fm6_note_compute renders it (the LFO at rest), fm_wf_points() points over them, full height
+ * at peak; each point the mean of fm_wf_tune.smooth periods in a row. Returns the samples rendered */
 static int32_t fm_wf_slice(const fm_sim_t *s, const track_t *t, int8_t *pts)
 {
     const fm_wf_tune_t *u = fm_wf_cfg();
     fm6_note_t n;
     int32_t mean[FM_WF_NP] = {0};
-    uint8_t next[FM_WF_SMOOTH_MAX] = {0};                /* each averaged period's next point */
+    uint16_t next[FM_WF_SMOOTH_MAX] = {0};               /* each averaged period's next point */
     int32_t out[FM6_N], dt[6], lf = fm6_note_logfreq(fm_wf_engine_note(s) * 16, 0), i, k, j, prev = 0, len;
     uint32_t period = (uint32_t)((1ull << 32) / (uint32_t)fm6_freq(lf));   /* (1/256 samples) */
-    uint32_t s0, x0, x, r;
+    uint32_t span = u->periods * period, n_pts = fm_wf_points(), s0, x0, x, r;
     uint64_t at = ((uint64_t)fm_wf.b * FM6_N + FM_WF_WARM) << 8;
     at = (at + period - 1u) / period * period;
     s0 = (uint32_t)(at >> 8) - FM_WF_WARM;
     x0 = (FM_WF_WARM << 8) + (uint32_t)(at & 255u) + period * u->phase / 100u;
-    len = (int32_t)((x0 + u->smooth * period) >> 8) + 2;
+    len = (int32_t)((x0 + (u->smooth - 1u) * period + span) >> 8) + 2;
     fm6_spread(s->alg, t->p[P_E6], dt);
     fm_wf_voice(&n, s, lf, dt, s0);
     for (i = 0; i < len; i += FM6_N) {
@@ -1282,11 +1293,11 @@ static int32_t fm_wf_slice(const fm_sim_t *s, const track_t *t, int8_t *pts)
             memset(out, 0, sizeof out);
         for (k = 0; k < FM6_N; prev = out[k++])
             for (r = 0; r < u->smooth; r++)
-                while (next[r] < FM_WF_NP &&
-                       ((x = x0 + r * period + next[r] * period / FM_WF_NP) >> 8) == (uint32_t)(i + k - 1))
+                while (next[r] < n_pts &&
+                       ((x = x0 + r * period + next[r] * span / (n_pts - 1u)) >> 8) == (uint32_t)(i + k - 1))
                     mean[next[r]++] += (prev + (int32_t)(((int64_t)(out[k] - prev) * (x & 255u)) >> 8)) / (int32_t)u->smooth;
     }
-    for (j = 0; j < FM_WF_NP; j++)
+    for (j = 0; j < (int32_t)n_pts; j++)
         pts[j] = (int8_t)(fm_wf.peak >= 127 ? clamp(mean[j] / (fm_wf.peak / 127), -127, 127) : 0);
     return len;
 }
@@ -1295,16 +1306,16 @@ static void fm_wf_render(fm_sim_t *s, const track_t *t)
 {
     int32_t work = 0;
     uint32_t t0 = fm1_ticks();
-    while (fm_wf.done < fm_wf_cfg()->slices && work < FM_WF_SAMPLES) {
+    while (fm_wf.done < fm_wf_slices() && work < FM_WF_SAMPLES) {
         int32_t at;
         if (fm_wf.done == fm_wf_held_slices() && !fm_wf.tail)
             fm_wf.tail = fm_wf_release(s);
         at = fm_wf_at(fm_wf.done);
         while (fm_wf.b < at)
             fm_wf_step(s);
-        work += fm_wf_slice(s, t, s->wave[fm_wf.done++]);
+        work += fm_wf_slice(s, t, s->wave + fm_wf.done++ * fm_wf_points());
     }
-    if (fm_wf.done == fm_wf_cfg()->slices)
+    if (fm_wf.done == fm_wf_slices())
         fm_wf.whole = fm_wf.done;
     fm_wf.ticks += fm1_ticks() - t0;
 }
@@ -1312,10 +1323,10 @@ static void fm_wf_render(fm_sim_t *s, const track_t *t)
  * The slices are as wide as the back one's room leaves, so the waterfall fills the panel */
 static int32_t fm_wf_step_y(void)
 {
-    int32_t step = FM_WF_DEPTH_Y / (fm_wf_cfg()->slices - 1);
+    int32_t step = FM_WF_DEPTH_Y / ((int32_t)fm_wf_slices() - 1);
     return step > 1 ? step : 1;
 }
-static int32_t fm_wf_width(void) { return FM_WF_X1 - FM_WF_X0 - (fm_wf_cfg()->slices - 1) * fm_wf_cfg()->step_x; }
+static int32_t fm_wf_width(void) { return FM_WF_X1 - FM_WF_X0 - ((int32_t)fm_wf_slices() - 1) * fm_wf_cfg()->step_x; }
 static int32_t fm_wf_left(uint32_t j) { return FM_WF_X0 + (int32_t)j * fm_wf_cfg()->step_x; }
 /* slice j's line at height v (1/256 of a point), in 1/256 px; inside the graph: a tall zoom stops at its edges */
 static int32_t fm_wf_y256(uint32_t j, int32_t v)
@@ -1324,11 +1335,11 @@ static int32_t fm_wf_y256(uint32_t j, int32_t v)
     return clamp(y, FM_GY << 8, (FM_GY + FM_GH - 1) << 8);
 }
 static int32_t fm_wf_y(uint32_t j, int32_t v) { return fm_wf_y256(j, v << 8) >> 8; }
-/* slice j's height (1/256 of a point) at pixel column col of w: its period repeated fm_wf_tune.periods times across */
+/* slice j's height (1/256 of a point) at pixel column col of w: between its two points there */
 static int32_t fm_wf_at_col(const int8_t *v, int32_t col, int32_t w)
 {
-    uint32_t pos = (uint32_t)col * fm_wf_cfg()->periods * FM_WF_NP * 256u / (uint32_t)w, i = pos >> 8;
-    int32_t a = v[i % FM_WF_NP], b = v[(i + 1u) % FM_WF_NP];
+    uint32_t last = fm_wf_points() - 1u, pos = (uint32_t)col * last * 256u / (uint32_t)w, i = pos >> 8;
+    int32_t a = v[i], b = v[i < last ? i + 1u : last];
     return (a << 8) + (b - a) * (int32_t)(pos & 255u);
 }
 /* a pixel of the line covering cover / 256 of it: the ink mixed into the panel under it, a
@@ -1373,7 +1384,7 @@ static uint16_t fm_wf_ink(uint32_t j, uint16_t c)
 {
     if (ux.h1n)
         return j < fm_wf_held_slices() ? T_TEXT : T_MID;
-    return ux_mix(T_SURF, c, (100 - 70 * (int32_t)j / (fm_wf_cfg()->slices - 1)) * (j >= fm_wf_held_slices() ? 3 : 5) / 5);
+    return ux_mix(T_SURF, c, (100 - 70 * (int32_t)j / ((int32_t)fm_wf_slices() - 1)) * (j >= fm_wf_held_slices() ? 3 : 5) / 5);
 }
 /* the carrier the bars show: the picked operator, else the first one it feeds */
 static uint32_t fm_wf_carrier(const fm_sim_t *s)
@@ -1447,11 +1458,11 @@ static void fm_wf_caption(void)
     fm_secs(b + str_len(b), fm_wf.held);
     GFX_HOOK_ALIGN(0, FM_CY, 0, FM_CY + 12, AL_V, "FM6 graph caption on its row");
     cv_text_on(10, FM_CY + CAP_IN(S, 12), &AF_S, b, fm_wf.played ? T_MID : T_DIM, T_SURF);
-    if (fm_wf.done < fm_wf_cfg()->slices)
+    if (fm_wf.done < fm_wf_slices())
         return;
     fmt_fix(b, (int32_t)(fm_wf.ticks / (FM1_TICKS_PER_US * 100u)), 1);   /* (#20t) the render's time */
-    str_cpy(b + str_len(b), " MS  S", sizeof b - str_len(b));
-    fmt_int(b + str_len(b), fm_wf_cfg()->smooth);
+    str_cpy(b + str_len(b), " MS  P", sizeof b - str_len(b));
+    fmt_int(b + str_len(b), fm_wf_cfg()->periods);
     str_cpy(b + str_len(b), "  ", sizeof b - str_len(b));
     fm_secs(b + str_len(b), fm_wf.held + fm_wf.tail);
     cv_text_r(229, FM_CY + CAP_IN(S, 12), &AF_S, b, T_MID, T_SURF);
@@ -1463,8 +1474,8 @@ static void fm_wave_panel(fm_sim_t *s, const track_t *t, uint16_t c)
         fm_wf_begin(s, key);
     fm_wf_render(s, t);
     j = fm_wf.whole > fm_wf.done ? fm_wf.whole : fm_wf.done;   /* (a new note's slices over the last's: no blink) */
-    for (j = j < fm_wf_cfg()->slices ? j : fm_wf_cfg()->slices; j-- > 0;)
-        fm_wf_draw_slice(s->wave[j], j, fm_wf_ink(j, c));
+    for (j = j < fm_wf_slices() ? j : fm_wf_slices(); j-- > 0;)
+        fm_wf_draw_slice(s->wave + j * fm_wf_points(), j, fm_wf_ink(j, c));
     fm_wf_bars(s, t);
     fm_wf_caption();
 }
