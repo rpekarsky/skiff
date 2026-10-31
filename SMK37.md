@@ -152,8 +152,9 @@ loader 7,859 B (the limit: 7,936 B, below).
   25 % (lit steps dim most, an empty step stays visible). MENU > DISPLAY > PAD FOLLOW sets
   which steps they show while playing: PAGE (the default) the 16 the playhead is in; OFF the screen's page; ROW the
   two rows of 8, the playhead's on top and the 8 it plays next below (REV the row before, PING the way it goes),
-  moving up a row every 8 steps. Stopped, and on the DRUM grid, they show the screen's page; while a pad is held the
-  view stays, so a tap always hits the step under the finger.
+  moving up a row every 8 steps (a pattern of 16 steps or fewer stays put, as PAGE). Stopped, and on the DRUM
+  grid, they show the screen's page; while a pad is held the view stays, so a tap always hits the step under the
+  finger.
 - **Faders:** a mixer for the four tracks the screen shows (T1..T4, or the six-track window). SHIFT + FADER
   BANK steps LEVEL, PAN, REVERB and DELAY, and the header names the bank. A fader takes over only once it reaches the value,
   and again after something else has set it, so nothing jumps. Fader 1..4 is T1..T4 while one of them is selected,

@@ -575,16 +575,18 @@ static int test_pad_follow(void)
     bad += check("SMK PAD FOLLOW ROW FWD: the playhead's 8 on top, the next 8 below, the first after the last",
                  rows_are(SMK_PF_ROW, 5, 32, DIR_FWD, 0, 0, 8) && rows_are(SMK_PF_ROW, 13, 32, DIR_FWD, 0, 8, 16) &&
                  rows_are(SMK_PF_ROW, 31, 32, DIR_FWD, 0, 24, 0) && rows_are(SMK_PF_ROW, 17, 20, DIR_FWD, 0, 16, 0) &&
-                 rows_are(SMK_PF_ROW, 9, 12, DIR_FWD, 0, 8, 0) && rows_are(SMK_PF_ROW, 2, 12, DIR_FWD, 0, 0, 8));
+                 rows_are(SMK_PF_ROW, 9, 24, DIR_FWD, 0, 8, 16) && rows_are(SMK_PF_ROW, 17, 24, DIR_FWD, 0, 16, 0));
     bad += check("SMK PAD FOLLOW ROW REV: the row before below, the last after the first",
                  rows_are(SMK_PF_ROW, 13, 32, DIR_REV, 0, 8, 0) && rows_are(SMK_PF_ROW, 3, 32, DIR_REV, 0, 0, 24) &&
                  rows_are(SMK_PF_ROW, 3, 20, DIR_REV, 0, 0, 16));
     bad += check("SMK PAD FOLLOW ROW PING: the way it goes, back at either end",
                  rows_are(SMK_PF_ROW, 13, 32, DIR_PING, 0, 8, 16) && rows_are(SMK_PF_ROW, 29, 32, DIR_PING, 0, 24, 16) &&
                  rows_are(SMK_PF_ROW, 13, 32, DIR_PING, 1, 8, 0) && rows_are(SMK_PF_ROW, 3, 32, DIR_PING, 1, 0, 8));
-    bad += check("SMK PAD FOLLOW ROW RAND: as FWD; one row: the bottom dark",
-                 rows_are(SMK_PF_ROW, 29, 32, DIR_RAND, 0, 24, 0) && rows_are(SMK_PF_ROW, 3, 8, DIR_FWD, 0, 0, SMK_PF_NONE) &&
-                 rows_are(SMK_PF_ROW, 3, 5, DIR_REV, 0, 0, SMK_PF_NONE));
+    bad += check("SMK PAD FOLLOW ROW RAND: as FWD", rows_are(SMK_PF_ROW, 29, 32, DIR_RAND, 0, 24, 0));
+    bad += check("SMK PAD FOLLOW ROW, LEN 16 or less: as PAGE, steps 1..16 stay put (LEN 24 still rows)",
+                 rows_are(SMK_PF_ROW, 13, 16, DIR_FWD, 0, 0, 8) && rows_are(SMK_PF_ROW, 13, 16, DIR_PING, 1, 0, 8) &&
+                 rows_are(SMK_PF_ROW, 3, 8, DIR_FWD, 0, 0, 8) && rows_are(SMK_PF_ROW, 3, 5, DIR_REV, 0, 0, 8) &&
+                 rows_are(SMK_PF_ROW, 13, 24, DIR_FWD, 0, 8, 16));
 
     bad += check("SMK MENU > PAD FOLLOW: a DISPLAY row after PAD LIGHT (ten with POPUP TIME, CLOSE), OFF PAGE ROW, PAGE by default",
                  MI_TAB[MI_PADF] == MTAB_DISPLAY && MI_PADF == MI_PADL + 1u && mtab_rows(MTAB_DISPLAY) == 10u &&

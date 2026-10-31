@@ -80,10 +80,10 @@ static void smk_pad_put(uint32_t p, uint32_t c)
 /* (wishlist #42) MENU > PAD FOLLOW: the steps the pads show while the transport plays, as two rows of 8 (smk_pf_row:
  * each row's first step). OFF the page on the screen (ui.bank), as before; PAGE the 16 the playhead is in; ROW the 8
  * it is in on top and below the 8 it plays next, which move up when it gets there: FWD and RAND the row after (the
- * first after the last), REV the row before, PING the way it is going (back at either end); a pattern of one row: the
- * bottom dark. Stopped, every mode the screen's page; and where the pads are the white keys (the DRUM grid: its keys
- * edit the screen's page). While a pad is held as a step tap the view stays (not OFF's), so the step under the finger
- * is the one its tap is about */
+ * first after the last), REV the row before, PING the way it is going (back at either end); a pattern of 16 steps or
+ * fewer: as PAGE, the pads hold it all. Stopped, every mode the screen's page; and where the pads are the white keys
+ * (the DRUM grid: its keys edit the screen's page). While a pad is held as a step tap the view stays (not OFF's), so
+ * the step under the finger is the one its tap is about */
 #define SMK_PF_NONE 0xFFFFu
 static uint16_t smk_pf_row[2] = {0, 8};
 static void smk_pf_rows(uint32_t mode, uint32_t at, uint32_t len, uint32_t dir, uint32_t down, uint16_t *row)
@@ -94,7 +94,7 @@ static void smk_pf_rows(uint32_t mode, uint32_t at, uint32_t len, uint32_t dir, 
         row[1] = (uint16_t)(row[0] + 8u);
         return;
     }
-    if (mode == SMK_PF_PAGE) {
+    if (mode == SMK_PF_PAGE || len <= 16u) {
         row[0] = (uint16_t)(at / 16u * 16u);
         row[1] = (uint16_t)(row[0] + 8u);
         return;
