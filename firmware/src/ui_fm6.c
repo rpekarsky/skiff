@@ -52,6 +52,7 @@ static uint32_t fm_wave_t0 __attribute__((section(".pool")));   /* (fm1_ms) WAVE
 #define FM_WF_NS 36                                     /* WAVE's slices at most (fm_wf_tune.slices drawn) */
 #define FM_WF_NP 128                                    /* a slice's points: one period (fm_wf_tune.periods of it drawn) */
 #define FM_WF_SMOOTH_MAX 4
+enum { FM_WF_HELD_PLAYED, FM_WF_HELD_SMART, FM_WF_HELD_1S };   /* as played; 1 s while the key is down; always 1 s */
 typedef struct {                                        /* (#20t, test build) SHIFT + KNOB 1..4 on WAVE; not saved */
     uint8_t slices;                                     /* 8 .. FM_WF_NS, two thirds the held note's */
     uint8_t periods;                                    /* 1 .. 4 across */
@@ -62,13 +63,13 @@ typedef struct {                                        /* (#20t, test build) SH
     uint8_t fill;                                       /* (SMK FADERS WAVE) % a slice veils the lines behind it */
     uint8_t warp;                                       /* the time axis: 0 even, 100 log (the attack drawn large) */
     uint8_t release;                                    /* % of the slices on the release: 0 .. 70 */
-    uint8_t held_fixed;                                 /* the note held 1 s, however long it was played */
+    uint8_t held;                                       /* the note's length: FM_WF_HELD_* */
 } fm_wf_tune_t;
 static fm_wf_tune_t fm_wf_tune __attribute__((section(".pool")));
 static const fm_wf_tune_t *fm_wf_cfg(void)
 {
     if (!fm_wf_tune.slices)
-        fm_wf_tune = (fm_wf_tune_t){24, 2, 0, 2, 3, 4, 0, 100, 33, 0};
+        fm_wf_tune = (fm_wf_tune_t){24, 2, 0, 2, 3, 4, 30, 50, 25, FM_WF_HELD_PLAYED};
     return &fm_wf_tune;
 }
 static uint32_t fm_wf_held_slices(void)
@@ -306,12 +307,19 @@ static const char *fm_op_title(void)                 /* the header's: "OPERATOR 
 }
 static const char *fm_all_title(void) { return "ALL OPS"; }
 static int32_t fm_log2(uint32_t x);
+/* the note drawn held 1 s, not as long as it was played: HELD 1 S, or SMART while its key is still down (its length
+ * not known yet) */
+static int fm_wf_held_1s(const fm6_last_t *l)
+{
+    uint32_t mode = fm_wf_cfg()->held;
+    return mode == FM_WF_HELD_1S || (mode == FM_WF_HELD_SMART && l->down);
+}
 /* (#20w) the track's last note as WAVE plays it: its key, velocity and how long it was held, the hold in 1/16 octaves (a
  * sequencer's notes come a few ms apart: one rendering) */
 static uint32_t fm_wf_note_sig(void)
 {
     const fm6_last_t *l = &fm6_last[fm_tr()];
-    uint32_t held = l->held_ms && !fm_wf_cfg()->held_fixed ? fm_log2(l->held_ms) >> 12 : 0;
+    uint32_t held = l->held_ms && !fm_wf_held_1s(l) ? fm_log2(l->held_ms) >> 12 : 0;
     return l->note | (uint32_t)l->vel << 8 | held << 16;
 }
 /* what the cards and the panel show besides the track's values (ui_graph.c graph_signature hashes those) */
@@ -362,7 +370,8 @@ static int fm_wf_tune_turn(uint32_t k, int32_t s)
     return 1;
 }
 #if BOARD_SMK37
-/* (SMK FADERS WAVE, SHIFT + FADER BANK) fader j at v of 127: FILL, TIME WARP, RELEASE, HELD (as played / 1 s) */
+/* (SMK FADERS WAVE, SHIFT + FADER BANK) fader j at v of 127: FILL, TIME WARP, RELEASE, HELD (thirds: as played,
+ * smart, 1 s) */
 static void fm_wf_fader(uint32_t j, uint32_t v)
 {
     static const char *const NAME[4] = {"FILL ", "TIME WARP ", "RELEASE ", "HELD "};
@@ -376,9 +385,9 @@ static void fm_wf_fader(uint32_t j, uint32_t v)
     else if (j == 2u)
         u->release = (uint8_t)(v * 70u / 127u);
     else
-        u->held_fixed = v >= 64u;
+        u->held = (uint8_t)(v * 3u / 128u);
     if (j == 3u) {
-        ui_say(NAME[j], u->held_fixed ? "1 S" : "AS PLAYED");
+        ui_say(NAME[j], u->held == FM_WF_HELD_1S ? "1 S" : u->held == FM_WF_HELD_SMART ? "SMART" : "AS PLAYED");
         return;
     }
     fmt_int(b, j == 0u ? u->fill : j == 1u ? u->warp : u->release);
@@ -1176,7 +1185,7 @@ static void fm_wf_begin(const fm_sim_t *s, uint32_t key)
     fm_wf.played = l->vel != 0;
     fm_wf.note = fm_wf.played ? l->note : 60;
     fm_wf.vel = fm_wf.played ? l->vel : 100;
-    held_ms = fm_wf.played && l->held_ms && !fm_wf_cfg()->held_fixed ? (int32_t)l->held_ms : 1000;
+    held_ms = fm_wf.played && l->held_ms && !fm_wf_held_1s(l) ? (int32_t)l->held_ms : 1000;
     fm_wf.held = clamp(held_ms * 1378 / 1000, 1, 8 * 1378);
     fm_wf.b = fm_wf.tail = fm_wf.peak = 0;
     fm_wf.done = 0;
