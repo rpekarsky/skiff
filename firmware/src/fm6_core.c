@@ -499,7 +499,9 @@ static void fm6_note_retune(fm6_note_t *n, const uint8_t *p, int32_t note, int32
         n->fixed |= (uint8_t)((op[FP_MODE] & 1u) << k);
         e->outlevel = (int16_t)fm6_op_outlevel(op, note, vel);
         e->rscale = (uint8_t)fm6_scale_rate(note, op[FP_RS]);
-        if (e->ix < 4u)
+        if (e->ix == 3u && e->down)                     /* (held at its sustain: to the new one, at R3) */
+            fm6_env_advance(e, op, 2u);
+        else if (e->ix < 4u)
             fm6_env_advance(e, op, e->ix);
     }
 }

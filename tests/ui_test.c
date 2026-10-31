@@ -3329,7 +3329,7 @@ static double wave_vs_voice(const uint8_t *v, uint32_t note, int32_t block, int8
     for (i = 0; i < 4000u; i += CTL)
         track_render(TSEL, b, CTL);
     for (j = 0; j < FM_WF_NP; j++) {
-        uint32_t x = (uint32_t)x0 + j * fm_wf_cfg()->periods * period / (FM_WF_NP - 1u), k = (uint32_t)s0 + (x >> 8);
+        uint32_t x = (uint32_t)x0 + j * period / FM_WF_NP, k = (uint32_t)s0 + (x >> 8);
         double r = y[k] + (double)(y[k + 1u] - y[k]) * (x & 255u) / 256.0;
         y[j] = (int32_t)r;
         num += r * pts[j];
@@ -3355,7 +3355,7 @@ static int test_fm6_wave(void)
     fm6_unpack(FM6_INIT, v);
     off = wave_vs_voice(v, 60, 689, pts);
     for (j = 0; j < FM_WF_NP; j++) {
-        double d = fabs(pts[j] - 127.0 * sin(6.283185307 * fm_wf_cfg()->periods * j / (FM_WF_NP - 1u))) / 127.0;
+        double d = fabs(pts[j] - 127.0 * sin(6.283185307 * j / FM_WF_NP)) / 127.0;
         sine = d > sine ? d : sine;
     }
     bad += check("(#20w) WAVE, INIT's OP1: the voice's period (2 %) and a sine from its zero phase up (3 %)",
@@ -3377,7 +3377,7 @@ static int test_fm6_wave(void)
     v[4u * FP_OP + FP_FC] = 2;
     off = wave_vs_voice(v, 60, 689, pts);
     for (sine = 0, j = 0; j < FM_WF_NP; j++) {
-        double d = fabs(pts[j] - 127.0 * sin(6.283185307 * fm_wf_cfg()->periods * j / (FM_WF_NP - 1u))) / 127.0;
+        double d = fabs(pts[j] - 127.0 * sin(6.283185307 * j / FM_WF_NP)) / 127.0;
         sine = d > sine ? d : sine;
     }
     bad += check("(#20w) WAVE, OP2 at x2 into OP1: the voice's period, not a sine", off < 0.02 && sine > 0.2);
