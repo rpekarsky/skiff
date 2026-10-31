@@ -782,6 +782,20 @@ static int test_entries(void)
                  ent_rest(0, 3) && seq_is_empty(TSEL) && str_eq(ui.msg2, "NEW REST"));
     press_id(SMK_BTN_RIGHT);
     bad += check("(#50) SMK > again: another REST (E)", lists.cur[0] == 4u && ent_rest(0, 4));
+    press_id(SMK_BTN_LEFT);
+    press_id(SMK_BTN_LEFT);
+    press_id(SMK_BTN_LEFT);
+    press_id(SMK_BTN_LEFT);
+    go_page(GR_SONG);                             /* (#13) KNOB BANK held + K5 on SONG: A dragged to B (B A C) */
+    sg.entry = 0;
+    fm1_in.buttons |= 1u << SMK_BTN_KNOB_BANK;
+    frame();
+    host_enc[panel.enc[EN_K1]] += panel.dir[EN_K1];
+    frame();
+    fm1_in.buttons &= ~(1u << SMK_BTN_KNOB_BANK);
+    frame();
+    bad += check("SMK KNOB BANK + K5 on SONG: the entry dragged (A to B), no MENU",
+                 trk_pat(0) == ent_pat(0, 1) && lists.cur[0] == 1u && sg.entry == 1u && msg_is("MOVED 01 TO B") && !ui.menu);
     return bad;
 }
 
