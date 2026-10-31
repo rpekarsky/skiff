@@ -680,6 +680,8 @@ static void state(void)                          /* a playing song with steps on
         scope_buf[i] = (int16_t)((int32_t)((i * 37u) % 128u) * 200 - 12800 + (int32_t)((i % 32u) < 16u ? 3000 : -3000));
     scope_w = 0;
     song.master_q12 = MASTER_FULL;             /* (#18: ui_graph.c divides MASTER out of it) */
+    memset(hm_lv, 0, sizeof hm_lv);               /* ((#59) the meters at rest, the build's style) */
+    hm_style = SKIFF_HOME_METER;
 }
 /* (2.0, #35) USR1 a kit, MY KIT: host_slot_make's sound under seven lanes' notes, none under BELL's */
 static void host_kit_make(void)
@@ -744,6 +746,21 @@ static void home_fit(uint32_t sel)
     }
     trk[0].p[P_MUTE] = 1;
     sel_set(sel);
+}
+/* (#59) HOME's level meters: T1 silent, T2 at full scale, T5 quiet; the tick not due (the scene's levels stay) */
+static void home_meters(uint32_t style, int fit)
+{
+    static const uint8_t LV[NTRK] = {0, 64, 40, 52, 12, 30};
+    uint32_t k;
+    if (fit) {
+        home_fit(3);
+        for (k = 0; k < NTRK; k++)
+            trk_pid[k] = (uint8_t)(1u + 7u * k + 3u);
+    } else
+        sel_set(2);
+    hm_style = (uint8_t)style;
+    memcpy(hm_lv, LV, sizeof hm_lv);
+    hm_t = fm1_ms;
 }
 /* (Skiff phase 5) track k's steps saved into its entry e as a pattern of their own (the pattern it was on untouched) */
 static void keep_as(uint32_t k, uint32_t e) { trk_pid[k] = 0; bank_put(k, e, 0); }
@@ -850,6 +867,8 @@ enum { S_HOME, S_HOME_IDLE, S_MESSAGE, S_MESSAGE_KEY, S_MESSAGE_NOFILE, S_PRESET
        S_HOME_LISTS,                                                                          /* (#34) */
        S_HOME_FIT16, S_HOME_FIT24, S_HOME_FIT32, S_HOME_FIT64,                                /* (#41) */
        S_HOME_FIT_PATS,                                                                       /* (#34 with #41) */
+       S_HOME_METER_BAR, S_HOME_METER_FILL, S_HOME_METER_FIT_BAR, S_HOME_METER_FIT_FILL,      /* (#59) */
+       S_HOME_SCOPE_TRACK,
        S_MENU_POPUP,
        S_MOCK_HOME, S_MOCK_PRESETS, S_MOCK_SEQ, S_MOCK_DRUM, S_MOCK_MIXER, S_MOCK_DIALOG, S_MOCK_MENU, S_COUNT };
 static const char *const S_NAME[S_COUNT] = {"home", "home_idle", "message", "message_key", "message_nofile", "presets", "presets_nofav", "user",
@@ -884,7 +903,7 @@ static const char *const S_NAME[S_COUNT] = {"home", "home_idle", "message", "mes
     "chorus_flanger", "chorus_phaser", "presets_bass", "song_rest", "song_rest_pick",
     "notes_range", "notes_pick", "feel_range", "notes_overlap", "momentary", "pool_empty", "pool_unused", "confirm_empty",
     "song_once", "song_new", "song_copyplus", "song_chain", "song_chain3", "notes_chain", "lane_mix", "lane_mix_dx",
-    "song_sound", "song_sounds", "song_chains", "song_chain_copy", "drum_kit_usr", "lanes_usr", "menu_presets_knob", "presets_knob_pan", "shift_pan", "pool_new", "home_lists", "home_fit16", "home_fit24", "home_fit32", "home_fit64", "home_fit_pats", "menu_popup", "mock_home", "mock_presets", "mock_seq", "mock_drum", "mock_mixer", "mock_dialog", "mock_menu"};
+    "song_sound", "song_sounds", "song_chains", "song_chain_copy", "drum_kit_usr", "lanes_usr", "menu_presets_knob", "presets_knob_pan", "shift_pan", "pool_new", "home_lists", "home_fit16", "home_fit24", "home_fit32", "home_fit64", "home_fit_pats", "home_meter_bar", "home_meter_fill", "home_meter_fit_bar", "home_meter_fit_fill", "home_scope_track", "menu_popup", "mock_home", "mock_presets", "mock_seq", "mock_drum", "mock_mixer", "mock_dialog", "mock_menu"};
 
 /* the scenes of the UI design screens: the state the UI-redesign
  * prototype drew them from (its setup(): two pattern tracks, the drum pattern on track 4, a synthetic scope),
@@ -1058,6 +1077,18 @@ static void setup(int s)
         midi_at[1] = midi_at[3] = fm1_ms | 1u;
         break;
     }
+    case S_HOME_METER_BAR: home_meters(HM_BAR, 0); break;
+    case S_HOME_METER_FILL: home_meters(HM_UNDER, 0); break;
+    case S_HOME_METER_FIT_BAR: home_meters(HM_BAR, 1); break;
+    case S_HOME_METER_FIT_FILL: home_meters(HM_UNDER, 1); break;
+    case S_HOME_SCOPE_TRACK:                        /* ((#59) HOME tapped twice: the selected track, a note of it) */
+        for (uint32_t i = 0; i < SCOPE_TRK_N; i++)
+            scope_trk_buf[i] = (int16_t)(9000.0 * sin(6.2831853 * i / 100.0) + 3000.0 * sin(6.2831853 * i / 33.3));
+        scope_trk_w = 0;
+        sel_set(2);
+        ui.home = 1;
+        ui.home_scope = HOME_SCOPE_TRACK;
+        break;
     case S_HOME_IDLE: song.playing = 0; song.batt_raw = 570; ui.hot_col = 1; ui.hot_t = 30; break;
     case S_MESSAGE: ui_say("LOADED ", "07 A VERY LONG PATTERN NAME"); break;
     case S_MESSAGE_KEY: ui_message("HOLD [SAVE]: UNDO"); break;            /* a message with a keycap */

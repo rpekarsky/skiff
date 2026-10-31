@@ -2453,8 +2453,9 @@ static void ui_input(void)
         layer_tap(lytap);
     if (home == BT_TAP)
         layer_unlock();                                 /* ((Skiff U2) HOME tapped: a locked layer closes, as before) */
-    if (home == BT_TAP && ui.home) {                    /* Skiff: HOME on HOME, the tracks <-> the scope (ui_home.c) */
-        ui.home_scope ^= 1u;
+    if (home == BT_TAP && ui.home) {                    /* Skiff: HOME on HOME, the tracks -> the scope ((#59) the mix,
+                                                         * then the selected track) -> the tracks (ui_home.c) */
+        ui.home_scope = (uint8_t)((ui.home_scope + 1u) % (HOME_SCOPE_TRACK + 1u));
         ui.force = 1;
     } else if (home == BT_TAP)                          /* HOME acts on release: a hold opens the menu */
         go_home();

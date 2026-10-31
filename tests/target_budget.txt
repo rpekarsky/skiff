@@ -80,3 +80,5 @@ smx_render 17
 lpan_render 11
 lpan_mix 64
 drum_smp 139
+mix_track 0
+scope_trk_tap 12

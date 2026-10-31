@@ -60,7 +60,7 @@ Things to avoid:
 | EDIT | EDIT pages, on every page (U2; on NOTES with REC armed it clears the cursor step, with a step held its locks) | EDIT layer: engine on the keys | Lock |
 | SEQ | SEQ pages | SEQ TOOLS, on every page (U2) | Lock |
 | REC | Arm, on the press (U2); on an armed track every track disarmed (1.4.1) | — | REC layer, locked: CLEAR (held), CLICK, COUNT-IN, LEVEL, FEEL, KNOBS (C4) |
-| HOME | HOME (a locked layer closes); on HOME, the tracks or the scope; with a layer's button held: locks that layer (1.2.1, #13) | **SHIFT**. Let go alone: MENU (not over a dialog or NAME, U2) | — |
+| HOME | HOME (a locked layer closes); on HOME, the tracks, the scope (MASTER), the scope (TRACK) in turn (#59); with a layer's button held: locks that layer (1.2.1, #13) | **SHIFT**. Let go alone: MENU (not over a dialog or NAME, U2) | — |
 | PLAY | Start / stop | — | — |
 | OCT− / OCT+ | Octave. In dialogs and on action pages: OCT− cancel (or HOME, as its footer says), OCT+ do it. While the undo box (or message) shows: OCT− undo further, OCT+ redo (on action pages too, U2) | Both for 5 s: UPDATE MODE | — |
 
@@ -365,6 +365,8 @@ The colours differ in lightness as well as hue, and always appear with the track
   - Card icons are dropped, except MOTION's mark. Values snap: no rolling digits.
 - **Graphs** are drawn in the selected track's colour.
 - **The scope** (HOME tapped on HOME, MENU › LARGE's HOME strip, an engine's EDIT without a chart) draws the mix as at MASTER full (#18): `audio.c` keeps taking it after MASTER (nothing more in the audio ISR) and `ui_graph.c` divides MASTER back out at draw time, so turning the volume down does not shrink the wave. Below the knob's ~6 % it stops compensating (the picture shrinks again rather than blowing up a few quantisation steps). The limiter and soft clip still act at the real level: a mix that the limiter squeezes at MASTER full shows its unlimited peaks at a low MASTER.
+- **HOME's scope: MASTER or TRACK** (#59): HOME tapped on HOME cycles the lanes, the scope of the mix (MASTER, drawn in the theme's TEXT, captioned MASTER) and the selected track's (TRACK n, in the track's colour): the track after its LEVEL, before PAN and MASTER (nothing to divide out). `fx.c` taps it only while that view is on screen (the UI sets `scope_trk` every frame), out of line after `mix_part` (`mix_track`): ~6 instructions a sample then, a compare a track a block otherwise. THEME LCD's equalizer reads the same view.
+- **HOME's level meters** (#59): each lane shows its track's peak as it enters the mix (after LEVEL, DRIVE, INSERT, SLICER, mute, DUCK; before PAN and MASTER): `t->peak`, which `mix_part` always kept, read and cleared by the main loop about every 50 ms (the panel redrawn at most that often for it), 48 dB in 3/4 dB steps, falling ~33 dB/s. No new work in the audio ISR. Build switch `SKIFF_HOME_METER`: 1 a 3 px bar at the lane's left edge (INK on the selected band; default), 2 a faint fill under the lane as wide as the level (none on NEON's selected sign), 0 none.
 - **Dialogs** (`ui_blocks.c`):
   - A SURF tile, square, over the page dimmed, as the mockup's: the page drawn again with every colour 70 % of the way to BG (`confirm_backdrop`; the header stays itself, so REC shows).
   - The question, then what it is about: a name, or a sequence's steps and notes.

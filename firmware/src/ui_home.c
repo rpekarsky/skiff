@@ -38,6 +38,66 @@ static void hl_pat(uint32_t k, char *b)
         pat_num(b, trk_pat(k));
 }
 
+/* (#59) each lane's level meter: the peak fx.c's mix_part keeps of the track as it enters the mix (t->peak: after its
+ * LEVEL, DRIVE, INSERT, SLICER, mute and DUCK, before PAN and MASTER; nothing more in the audio ISR), read and cleared
+ * every HM_TICK_MS (the panel redrawn at most that often for it), shown in 3/4 dB steps from 48 dB under full scale
+ * (0) to full scale (HM_STEPS), falling HM_FALL steps a tick. SKIFF_HOME_METER: 1 a bar at the lane's left edge, 2 a
+ * faint fill under the lane as wide as the level, 0 none */
+#ifndef SKIFF_HOME_METER
+#define SKIFF_HOME_METER 1
+#endif
+enum { HM_NONE, HM_BAR, HM_UNDER };
+#define HM_TICK_MS 45u                                /* (every third frame: ~20 Hz) */
+#define HM_STEPS 64u
+#define HM_FULL_L8 (15u * 8u)                         /* log2 of full scale (32768: the mix at MASTER full), in eighths */
+#define HM_FALL 2u                                    /* ~33 dB/s */
+#define HM_BAR_W 3
+static uint8_t hm_style = SKIFF_HOME_METER;
+static uint8_t hm_lv[NTRK];
+static uint32_t hm_t;
+
+/* lane k's meter (y, h: the lane; lane its background, col the track's colour, band: the selected lane, INK on it) */
+static void hm_draw(uint32_t k, int32_t y, int32_t h, uint16_t lane, uint16_t col, int band)
+{
+    int32_t lv = hm_lv[k];
+    if (!lv)
+        return;
+    if (hm_style == HM_BAR) {
+        int32_t bh = lv * (h - 4) / (int32_t)HM_STEPS;
+        cv_rect(3, y + h - 2 - bh, HM_BAR_W, bh, band ? T_INK : col);
+    } else if (ux.neon && band)
+        return;                                       /* (NEON's sign: its gradient, no room for a tint) */
+    else if (ux.crypt && !band)
+        cr_stone(3, y, lv * 234 / (int32_t)HM_STEPS, h, ux_mix(lane, col, 18));
+    else
+        cv_rect(3, y, lv * 234 / (int32_t)HM_STEPS, h, ux_mix(lane, band ? T_INK : col, 18));
+}
+
+/* a peak in meter steps: its log2 in eighths (the top bit's place, then the next three bits) */
+static uint32_t hm_steps(int32_t peak)
+{
+    uint32_t p = peak > 0 ? (uint32_t)peak : 0u, top = 0, l8;
+    if (!p)
+        return 0;
+    while (p >> (top + 1u))
+        top++;
+    l8 = top * 8u + ((top >= 3u ? p >> (top - 3u) : p << (3u - top)) & 7u);
+    return l8 + HM_STEPS <= HM_FULL_L8 ? 0u : l8 >= HM_FULL_L8 ? HM_STEPS : l8 + HM_STEPS - HM_FULL_L8;
+}
+
+static void home_meters_tick(void)
+{
+    uint32_t k, back = fm1_ms - hm_t > 4u * HM_TICK_MS;   /* (back on HOME: not the peaks since it left) */
+    if (!hm_style || fm1_ms - hm_t < HM_TICK_MS)
+        return;
+    hm_t = fm1_ms;
+    for (k = 0; k < NTRK; k++) {
+        uint32_t now = hm_steps(trk[k].peak), fell = hm_lv[k] > HM_FALL ? hm_lv[k] - HM_FALL : 0u;
+        trk[k].peak = 0;                              /* (racing the audio: at worst a block's peak lost or kept) */
+        hm_lv[k] = (uint8_t)(back ? 0u : now > fell ? now : fell);
+    }
+}
+
 /* what the overview shows: a change of it redraws the panel (draw_graph's signature) */
 static uint32_t home_sig(void)
 {
@@ -46,7 +106,7 @@ static uint32_t home_sig(void)
         const track_t *t = &trk[k];
         const step_t *s = t->step;
         n = hl_len(t);
-        h = (h ^ trk_pat(k)) * 16777619u;
+        h = (h ^ trk_pat(k) ^ (uint32_t)hm_lv[k] << 16) * 16777619u;
         h = (h ^ (977u * n + 7u * (uint32_t)t->p[P_MUTE] + 31u * t->eng_req + 257u * t->preset + 65537u * t->user +
                   (uint32_t)midi_mark(k) * 0x40000000u)) * 16777619u;
         if (song.playing)
@@ -101,6 +161,7 @@ static void graph_tracks(void)
             ne_hgrad(3, y, 234, h, st, 2);
         } else
             cv_rect(3, y, 234, h, lane);
+        hm_draw(k, y, h, lane, col, ib);
         if (ux.quark && sel) {                        /* (Skiff Q3) QUARK: the beam's walls lit; the others two rails */
             cv_rect(3, y, 234, 1, col);
             cv_rect(3, y + h - 1, 234, 1, col);
