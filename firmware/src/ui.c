@@ -816,6 +816,10 @@ static void say_track_value(uint32_t k, uint32_t id, const char *name)
     str_cpy(b + str_len(b), val, sizeof b - str_len(b));
     ui_say(b, unit ? unit : "");
 }
+/* a track's channel strip: the SMK's FADER BANK, (wishlist #60) SHIFT + KNOB 1..4 */
+static const uint8_t CHANNEL_P[4] = {P_LEVEL, P_PAN, P_REV, P_DLY};
+static const char *const CHANNEL_N[4] = {"LEVEL", "PAN", "REVERB", "DELAY"};
+static uint8_t shift_channel __attribute__((section(".pool")));   /* (wishlist #60) the cards are the strip (ui_input) */
 /* (Skiff U4, the review's F4) MIDI IN into a track not selected: when (fm1_ms | 1; 0 never), HOME's lanes mark its
  * number for MIDI_MARK_MS (was a header message every 4 s per track, covering the title while a DAW played) */
 #define MIDI_MARK_MS 400u

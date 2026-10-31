@@ -124,7 +124,9 @@ loader 7,859 B (the limit: 7,936 B, below).
   default) as left; SAFE at most 20 %, the sound rising from silence over 1 s.
 - **The extra buttons:** KNOB BANK is SHIFT, as HOME held but on a button of its own: the map, + BT for TAKE, and
   + a layer's button to lock that layer, + K5 on SEQ › SONG to move the selected entry (past A: REMOVE, the entry
-  unlinked when it is let go, its pattern kept in the pool; each one undo step; held for that, KNOB BANK is no UNDO tap). Held and let go, it does nothing (HOME still taps home, and held opens MENU).
+  unlinked when it is let go, its pattern kept in the pool; each one undo step; held for that, KNOB BANK is no UNDO tap). SHIFT + K5..K8 on every
+  page: the selected track's LEVEL, PAN, REVERB, DELAY (the cards show them while SHIFT is held; on SONG K5 stays MOVE),
+  again no UNDO tap. Held and let go, it does nothing (HOME still taps home, and held opens MENU).
   A tap of KNOB BANK is UNDO and a tap of FADER BANK is REDO, as BT held and OCT+ in the undo window: the same undo
   box, NOTHING TO UNDO / REDO when there is none, and OCT- / OCT+ or more taps go on from there. A tap is let go
   before HOLD TIME with nothing else used meanwhile (a button, a key, a knob, a pad, a fader), and KNOB BANK's

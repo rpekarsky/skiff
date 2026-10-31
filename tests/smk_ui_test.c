@@ -1439,6 +1439,56 @@ static int test_bank_taps(void)
     return bad + test_bank_taps_popup(t);
 }
 
+/* (wishlist #60) KNOB BANK held (SHIFT) + K5..K8 on every page: the selected track's LEVEL PAN REVERB DELAY, the cards
+ * showing them; a SHIFT combo: KNOB BANK let go is no UNDO tap; PATCH (HOME) held the same */
+static int test_shift_channel(void)
+{
+    int bad = 0, ok;
+    track_t *t;
+    int16_t level, dly;
+    smk_power_on();
+    t = TSEL;
+    track_defaults_steps(t);
+    t->p[P_SLEN] = 16;
+    go_page(GR_ADSR);
+    frame();
+    pad_tap(3, 100);
+    frames(4000);                                 /* (an undo there, its window closed) */
+    level = t->p[P_LEVEL];
+    fm1_in.buttons |= 1u << SMK_BTN_KNOB_BANK;
+    host_pressed |= 1u << SMK_BTN_KNOB_BANK;
+    frames(400);
+    ok = ui.shift && !memcmp(ui.col[0], "LEVEL|", 6) && !memcmp(ui.col[3], "DELAY|", 6);
+    host_enc[panel.enc[EN_K1]] += panel.dir[EN_K1];
+    frame();
+    ok &= t->p[P_LEVEL] == level + 1 && ui.msg_t && !memcmp(ui.msg, "T1 LEVEL ", 9) && !memcmp(ui.col[0], "LEVEL|", 6);
+    fm1_in.buttons &= ~(1u << SMK_BTN_KNOB_BANK);
+    frame();
+    ok &= step_on(&t->step[3]) && !ui.undo_w && !ui.menu && !memcmp(ui.col[0], "ATTACK|", 7);
+    bad += check("(wishlist #60) SMK KNOB BANK held + K5 on ENV: the track's LEVEL (said), the cards the strip; let go: "
+                 "no UNDO, ENV's cards back", ok);
+    fm1_in.buttons |= 1u << SMK_BTN_KNOB_BANK;
+    host_pressed |= 1u << SMK_BTN_KNOB_BANK;
+    frame();
+    host_enc[panel.enc[EN_K1]] += panel.dir[EN_K1];
+    frame();
+    fm1_in.buttons &= ~(1u << SMK_BTN_KNOB_BANK);
+    frame();
+    bad += check("(wishlist #60) SMK KNOB BANK tapped with K5 turned (before the map): LEVEL, no UNDO",
+                 t->p[P_LEVEL] == level + 2 && step_on(&t->step[3]) && !ui.undo_w);
+    dly = t->p[P_DLY];
+    fm1_in.buttons |= 1u << panel.btn[B_HOME];
+    host_pressed |= 1u << panel.btn[B_HOME];
+    frame();
+    host_enc[panel.enc[EN_K4]] += 3 * panel.dir[EN_K4];
+    frame();
+    fm1_in.buttons &= ~(1u << panel.btn[B_HOME]);
+    frame();
+    bad += check("(wishlist #60) SMK PATCH (HOME) held + K8: the track's DELAY, no HOME", t->p[P_DLY] == dly + 3 &&
+                 !ui.home && !ui.menu && cur_page()->graph == GR_ADSR);
+    return bad;
+}
+
 static int test_master(void)
 {
     int bad = 0;
@@ -1556,6 +1606,7 @@ int main(void)
     bad += test_shift();
     bad += test_phase();
     bad += test_bank_taps();
+    bad += test_shift_channel();
     bad += test_seq_edit_clear();
     bad += test_master();
     bad += test_clock_out();

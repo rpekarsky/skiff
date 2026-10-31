@@ -516,8 +516,8 @@ static void tracks_edit(uint32_t slot, int32_t steps)
     ml_knob(t, (uint32_t)(vp - t->p));
 }
 
-/* the selected track's PAN ((wishlist #38) PRESETS KNOB PAN) or LEVEL ((wishlist #49) SELECT on HOME, BPM LOCK ON),
- * as MIXER's knobs */
+/* the selected track's PAN ((wishlist #38) PRESETS KNOB PAN), LEVEL ((wishlist #49) SELECT on HOME, BPM LOCK ON) or
+ * channel strip ((wishlist #60) SHIFT + KNOB 1..4), as MIXER's knobs */
 static void track_value_turn(uint32_t id, uint32_t enc, const char *name, int32_t s)
 {
     track_t *t = TSEL;
@@ -2313,13 +2313,26 @@ static uint32_t smk_bank_taps(uint32_t pressed, uint32_t notes, uint32_t knob_mo
 static int fm_phase_set(int on);                        /* (#20) ui_fm6.c */
 /* (Skiff 2.0) SHIFT held (HOME; the SMK's KNOB BANK too), and a combo of it taken: no HOME tap, no MENU after (the
  * caller drops ui_input's home_long) */
-static int shift_held(void)
+static uint32_t shift_t0(void)                         /* its press time | 1, | 2 once a combo used it (or held) */
 {
 #if BOARD_SMK37
     if (smk_sh_t0)
-        return 1;
+        return smk_sh_t0;
 #endif
-    return ui.home_t0 != 0u;
+    return ui.home_t0;
+}
+static int shift_held(void)
+{
+    return shift_t0() != 0u;
+}
+/* (wishlist #60) the cards show the channel strip from when SHIFT's map would come up (HINTS OFF too) or a combo used
+ * it, until it is let go: the map goes with a combo, the strip stays while its knobs turn */
+static uint8_t shift_channel_up(uint32_t now)
+{
+    uint32_t t0 = shift_t0();
+    if (!t0 || ui.menu || ui.confirm || name_on() || ui.layer)
+        return 0;
+    return (t0 & 2u) || now - (t0 & ~3u) > SHIFT_MAP_MS * 1000u * FM1_TICKS_PER_US;
 }
 static void shift_mark(void)
 {
@@ -2794,29 +2807,35 @@ static void ui_input(void)
             ui.hot_t = 40;
             continue;
         }
-        if (ui.home || pg->scope == SC_STEP || pg->scope == SC_TRK || page_desc(pg, k, &hv) ||
+        if (shift_held() || ui.home || pg->scope == SC_STEP || pg->scope == SC_TRK || page_desc(pg, k, &hv) ||
             ((pg->graph == GR_USER || pg->graph == GR_BANK || pg->graph == GR_MOD) && k == 0u)
             || (pg->graph == GR_SLICES && k < 2u) || pg->graph == GR_SONG || sheet_of(pg->graph)) {   /* (not an empty
                                                          * column; (Skiff) SONG's four; a sheet's four) */
             ui.hot_col = (uint8_t)k;
             ui.hot_t = 40;
         }
-        if (ui.home) {
+        if (shift_held()) {                             /* a SHIFT combo: (#13) SONG's KNOB 1 drags the entry, (wishlist
+                                                         * #60) else KNOB 1..4 are the selected track's channel strip */
+            shift_mark();
+            home_long = 0;
+#if BOARD_SMK37
+            smk_tap_spoil();                            /* (#39: KNOB BANK held for it is SHIFT, never an UNDO tap) */
+#endif
+            if (song_move_knob(k))
+                (void)song_drag(s);
+            else
+                track_value_turn(CHANNEL_P[k], EN_K1 + k, CHANNEL_N[k], s);
+        } else if (ui.home) {
             int16_t *vp;
             const param_desc_t *d = home_param(k, &vp);
             *vp = (int16_t)param_turn(d, *vp, accel(EN_K1 + k, s, d->fmt == F_ENUM ? 0 : d->max - d->min));
             motion_capture(TSEL, (uint32_t)(vp - TSEL->p), *vp);
             ml_knob(TSEL, (uint32_t)(vp - TSEL->p));
-        } else if (k == 0u && pg->graph == GR_SONG && shift_held() && song_drag(s)) {   /* ((#13) SHIFT + KNOB 1 on */
-            shift_mark();                                                              /* SONG: the entry dragged) */
-            home_long = 0;
-#if BOARD_SMK37
-            smk_tap_spoil();                            /* (#39: KNOB BANK held for it is SHIFT, never an UNDO tap) */
-#endif
         } else {
             edit_param(k, s);
         }
     }
+    shift_channel = shift_channel_up(now);              /* (after the knobs: a turn before the map shows at once) */
     ui_notices();
 }
 

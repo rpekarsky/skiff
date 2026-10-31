@@ -223,9 +223,7 @@ static void smk_pads(void)
 }
 
 /* ----------------------------------------------------------------------------------------------- faders --- */
-static const uint8_t SMK_FB_P[4] = {P_LEVEL, P_PAN, P_REV, P_DLY};
-static const char *const SMK_FB_N[4] = {"LEVEL", "PAN", "REVERB", "DELAY"};
-static uint8_t smk_fbank;                            /* FADER BANK: SMK_FB_P's */
+static uint8_t smk_fbank;                            /* FADER BANK: CHANNEL_P's */
 static struct { uint8_t tgt, last, picked; int16_t wrote; } smk_fd[4] = {{0xFF}, {0xFF}, {0xFF}, {0xFF}};
 static uint32_t smk_fd_moved_ms;                     /* (#56) any fader's last move; 0: none since a track or bank change */
 static void smk_faders(void)
@@ -234,7 +232,7 @@ static void smk_faders(void)
     if (fm1_in.frames < 300u)                        /* (the first readings settle) */
         return;
     for (j = 0; j < 4u; j++) {
-        uint32_t k = top + j, id = SMK_FB_P[smk_fbank % 4u], v = fm1_in.fader[j], tgt = k | smk_fbank << 4;
+        uint32_t k = top + j, id = CHANNEL_P[smk_fbank % 4u], v = fm1_in.fader[j], tgt = k | smk_fbank << 4;
         track_t *t = &trk[k % NTRK];
         int32_t cur = t->p[id] - TP[id].min;
         if (smk_fd[j].tgt != tgt) {                  /* another track or bank: wait for it to reach the value */
@@ -260,7 +258,7 @@ static void smk_faders(void)
         smk_tap_spoil();
         t->p[id] = (int16_t)(TP[id].min + (int32_t)v);
         smk_fd[j].wrote = t->p[id];
-        say_track_value(k, id, SMK_FB_N[smk_fbank % 4u]);
+        say_track_value(k, id, CHANNEL_N[smk_fbank % 4u]);
         ui.force = 1;
     }
 }
@@ -270,7 +268,7 @@ static int smk_fader_bars(uint32_t *id)
 {
     if (!smk_fd_moved_ms || fm1_ms - smk_fd_moved_ms >= SMK_FD_SHOW_MS)
         return 0;
-    *id = SMK_FB_P[smk_fbank % 4u];
+    *id = CHANNEL_P[smk_fbank % 4u];
     return 1;
 }
 static int smk_fader_place(uint32_t k, uint32_t *place)   /* track k has a fader: where it stands, 0..127 */
@@ -284,7 +282,7 @@ static int smk_fader_place(uint32_t k, uint32_t *place)   /* track k has a fader
 static void smk_fader_bank_next(void)                /* (#39) SHIFT + FADER BANK (ui_input.c) */
 {
     smk_fbank = (uint8_t)((smk_fbank + 1u) % 4u);
-    ui_say("FADERS ", SMK_FB_N[smk_fbank]);
+    ui_say("FADERS ", CHANNEL_N[smk_fbank]);
 }
 
 /* ------------------------------------------------------------------------------------- wheels, pedal --- */
