@@ -84,6 +84,7 @@ typedef struct {
     uint32_t key;                                       /* what the slices show (fm_wf_key); 0: none */
     uint32_t ticks;                                     /* (fm1_ticks) spent rendering them */
     uint8_t note, vel, done, played;                    /* the key and velocity; the slices rendered; 0: the default */
+    uint8_t whole;                                      /* slices a waterfall left whole: drawn till their turn comes */
 } fm_wf_t;
 static fm_wf_t fm_wf __attribute__((section(".pool")));
 
@@ -522,6 +523,7 @@ static void fm_ops(fm_sim_t *s, const track_t *t)
 static void fm_sim(fm_sim_t *s, const track_t *t)
 {
     fm_wf.key = 0;                                      /* (the lines take WAVE's slices' room) */
+    fm_wf.whole = 0;
     fm_ops(s, t);
     s->held = 0;
     fm_run(s, t, -1);
@@ -1256,6 +1258,8 @@ static void fm_wf_render(fm_sim_t *s, const track_t *t)
             fm_wf_step(s);
         work += fm_wf_slice(s, t, s->wave[fm_wf.done++]);
     }
+    if (fm_wf.done == fm_wf_cfg()->slices)
+        fm_wf.whole = fm_wf.done;
     fm_wf.ticks += fm1_ticks() - t0;
 }
 /* a slice further back: a whole pixel step up (a fractional one draws a staircase), at least 1; fm_wf_tune.step_x right.
@@ -1281,26 +1285,22 @@ static int32_t fm_wf_at_col(const int8_t *v, int32_t col, int32_t w)
     int32_t a = v[i % FM_WF_NP], b = v[(i + 1u) % FM_WF_NP];
     return (a << 8) + (b - a) * (int32_t)(pos & 255u);
 }
-/* a pixel of the line covering cover / 256 of it: the ink mixed into the panel under it (the slice's own fill), a
- * quarter at a time; (#29) the LCD looks' four tones take no mix: half covered or not at all */
+/* a pixel of the line covering cover / 256 of it: the ink mixed into the panel under it, a
+ * quarter at a time (mostly the panel there); (#29) the LCD looks' four tones take no mix: half covered or not at all */
 static void fm_wf_dot(int32_t x, int32_t y, int32_t cover, const uint16_t *ink)
 {
     int32_t q = ux.h1n ? (cover >= 128 ? 4 : 0) : (cover * 4 + 128) >> 8;
     if (q > 0)
         cv_rect(x, y, 1, 1, ink[(q > 4 ? 4 : q) - 1]);
 }
-/* slice j, a pixel column at a time: under its line the panel (it hides the slices behind), then the line smoothed
- * across the rows it falls between, a steep step a solid run; the front one 2 px thick */
+/* slice j, a pixel column at a time: the line smoothed across the rows it falls between, a steep step a solid run; the
+ * front one 2 px thick. (#20t, PO's experiment) No fill under it: the slices behind show through */
 static void fm_wf_draw_slice(const int8_t *v, uint32_t j, uint16_t c)
 {
-    int32_t w = fm_wf_width(), left = fm_wf_left(j), foot = fm_wf_y(j, -127) + 2, half = j ? 128 : 256, col, ya, yb;
+    int32_t w = fm_wf_width(), left = fm_wf_left(j), half = j ? 128 : 256, col, ya, yb;
     uint16_t ink[4];
     for (col = 0; col < 4; col++)
         ink[col] = ux_mix(T_SURF, c, 25 * (col + 1));
-    for (col = 1; col <= w; col++) {
-        yb = fm_wf_y256(j, fm_wf_at_col(v, col, w)) >> 8;
-        cv_rect(left + col, yb + 1, 1, foot - yb, T_SURF);
-    }
     for (ya = fm_wf_y256(j, v[0] << 8), col = 1; col <= w; col++, ya = yb) {
         int32_t x = left + col, top, f, lo, hi;
         yb = fm_wf_y256(j, fm_wf_at_col(v, col, w));
@@ -1338,9 +1338,20 @@ static uint32_t fm_wf_carrier(const fm_sim_t *s)
 #define FM_WF_BX 16                                     /* the bars: the first at x 16, 10 px apart, middle y 43 */
 #define FM_WF_BY 43
 #define FM_WF_BH 13                                     /* a bar's reach either way */
+/* the feedback operator at the slowed phase: its output y = sin(phase + y >> shift) x gain, the steady state of
+ * fm6_op_fb's two last outputs; found by halving the step towards it (a saw's edge: one of its roots) */
+static void fm_wf_self_mod(int32_t *sine, int32_t *out, uint32_t phase, int32_t gain, int32_t shift)
+{
+    uint32_t n;
+    for (n = 0; n < 8u; n++) {
+        *sine = fm6_sin((int32_t)(phase + (uint32_t)(*out >> shift)));
+        *out = (*out + (int32_t)(((int64_t)*sine * gain) >> 15)) / 2;
+    }
+}
 /* the sounding operators of that carrier's chain, one bar each (OP1 first): the operator's output in slowed time (the
  * note's pitch a turn a second, each at its own speed: RATIO, FINE, DETUNE), each at its loudest level and phase
- * modulated by its modulators as fm6_op_run does (the feedback left out), as far as that level reaches (60 dB) */
+ * modulated by its modulators as fm6_op_run does and the feedback operator by itself as fm6_op_fb does, as far as that
+ * level reaches (60 dB) */
 static void fm_wf_bars(const fm_sim_t *s, const track_t *t)
 {
     uint32_t c = fm_wf_carrier(s), chain = ((1u << c) | fm_feeders(s->alg, c)) & s->live, k, j, n = 0;
@@ -1359,6 +1370,8 @@ static void fm_wf_bars(const fm_sim_t *s, const track_t *t)
                 phase += (uint32_t)out[j];
         sine[k] = fm6_sin((int32_t)phase);
         out[k] = fm_wf.top[i] ? (int32_t)(((int64_t)sine[k] * gain) >> 15) : 0;
+        if (k == fm6_fb_op(s->alg) && s->fb && fm_wf.top[i])
+            fm_wf_self_mod(&sine[k], &out[k], phase, gain, 8 - (int32_t)s->fb);
     }
     for (k = 0; k < 6u; k++) {
         int32_t x = FM_WF_BX + (int32_t)n * 10, reach, y;
@@ -1398,7 +1411,8 @@ static void fm_wave_panel(fm_sim_t *s, const track_t *t, uint16_t c)
     if (key != fm_wf.key)
         fm_wf_begin(s, key);
     fm_wf_render(s, t);
-    for (j = fm_wf.done; j-- > 0;)
+    j = fm_wf.whole > fm_wf.done ? fm_wf.whole : fm_wf.done;   /* (a new note's slices over the last's: no blink) */
+    for (j = j < fm_wf_cfg()->slices ? j : fm_wf_cfg()->slices; j-- > 0;)
         fm_wf_draw_slice(s->wave[j], j, fm_wf_ink(j, c));
     fm_wf_bars(s, t);
     fm_wf_caption();
