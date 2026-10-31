@@ -53,8 +53,8 @@ enum { HM_NONE, HM_BAR, HM_UNDER };
 #define HM_FALL 2u                                    /* ~33 dB/s */
 #define HM_BAR_W 3
 static uint8_t hm_style = SKIFF_HOME_METER;
-static uint8_t hm_lv[NTRK];
-static uint32_t hm_t;
+static uint8_t hm_lv[NTRK] __attribute__((section(".pool")));
+static uint32_t hm_t __attribute__((section(".pool")));
 
 /* lane k's meter (y, h: the lane; lane its background, col the track's colour, band: the selected lane, INK on it) */
 static void hm_draw(uint32_t k, int32_t y, int32_t h, uint16_t lane, uint16_t col, int band)
