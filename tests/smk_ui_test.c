@@ -1300,10 +1300,10 @@ static int test_seq_edit_clear(void)
     frame();
     pg = ui.page;
     press_with(panel.btn[B_SEQ], panel.btn[B_EDIT]);
-    ok = seq_is_empty(t) && t->p[P_SLEN] == 16 && msg_is("T1 CLEARED");
+    ok = seq_is_empty(t) && t->p[P_SLEN] == 16 && msg_is("SEQUENCE CLEARED");
     frames(400);
     ok &= !ui.layer && ui.page == pg && !ui.home;
-    bad += check("SMK SEQ + PARA: T1 CLEARED, the steps gone, LEN kept; SEQ let go: no page", ok);
+    bad += check("SMK SEQ + PARA: SEQUENCE CLEARED, the steps gone, LEN kept; SEQ let go: no page", ok);
     press_id(SMK_BTN_KNOB_BANK);
     ok = step_on(&t->step[2]) && step_on(&t->step[9]) && ui.undo_w && take_box.kind == 1u && ui.take_t;
     bad += check("SMK KNOB BANK tap after SEQ + PARA: the clear undone, the undo box", ok);

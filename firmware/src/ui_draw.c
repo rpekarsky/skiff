@@ -1376,10 +1376,22 @@ static void confirm_text(char *a, char *b)
         str_cpy(a + str_len(a), " UNUSED?", 24 - str_len(a));
         str_cpy(b, "patterns no entry uses", 40);
         break;
-    default:
-        str_cpy(a, "CLEAR T1 SEQUENCE?", 24);     /* the header (T1..T4) is hidden */
-        a[7] = (char)('1' + k % NTRK);
+    default: {                                      /* CF_CLEAR_SEQ: (#53) "CLEAR PATTERN 05?", where else it plays */
+        static const char *const USED_IN[4] = {"", " is used in other entries", " is used in other projects",
+                                               " is used elsewhere"};   /* (by PAT_IN_ENTRIES | PAT_IN_PROJECTS) */
+        uint32_t id = trk_pat(k), where = id < NPAT ? pat_used_elsewhere(k, id) : 0u;
+        if (!where) {
+            str_cpy(a, "CLEAR T1 SEQUENCE?", 24);     /* the header (T1..T4) is hidden */
+            a[7] = (char)('1' + k % NTRK);
+            break;
+        }
+        str_cpy(a, "CLEAR PATTERN ", 24);
+        pat_num(a + 14, id);
+        str_cpy(a + 16, "?", 8);
+        pat_num(b, id);
+        str_cpy(b + 2, USED_IN[where & 3u], 38);
         break;
+    }
     }
 }
 static void draw_confirm(void) { draw_confirm_blocks(); }   /* (U2: BLOCKS' dialog, ui_blocks.c) */

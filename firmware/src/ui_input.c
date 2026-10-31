@@ -1975,6 +1975,7 @@ static int layer_allowed(void);
 static uint32_t ly_bit(uint32_t l);
 static void layer_lock_input(uint32_t pressed);
 static uint32_t seq_edit_clear(uint32_t pressed);
+static void tools_clear(void);
 static void layer_shift_lock(uint32_t pressed, uint32_t now);
 static uint32_t layer_bits_all(void);
 static void layer_unlock(void);
@@ -2259,7 +2260,7 @@ static void ui_input(void)
     }
 #endif
     layer_lock_input(pressed);                          /* (a button closes a locked layer) */
-    pressed = seq_edit_clear(pressed);                  /* (#53) SEQ held + EDIT: the track cleared, no second layer */
+    pressed = seq_edit_clear(pressed);                  /* (#53) SEQ held + EDIT: F3's CLEAR, no second layer */
     layer_arm(pressed, now);
     layer_oct_open(pressed);                            /* (OCT± with a SET layer's button down: it opens now) */
     oct = oct_taps(pressed, ui.menu || ui.confirm || act_cols() || name_on() || layer_set_open() || ui.ml.on);
@@ -2425,23 +2426,8 @@ static void ui_input(void)
                 ui_message("SETTINGS RESET");
             } else if (kind == CF_STORE_SCENE) {        /* (Skiff U2) PERFORM: SAVE + a white key over a scene */
                 scene_saved(ui.confirm_trk);
-            } else {
-                track_t *t = &trk[ui.confirm_trk % NTRK];
-                undo_label = "CLEAR";
-                char b[24] = "PATTERN 00 CLEARED";     /* ((Skiff U4) which one: its number) */
-                uint32_t id = trk_pat(ui.confirm_trk % NTRK);
-                load_begin(t, UNDO_PAT);
-                track_defaults_steps(t);
-                load_end(t);
-                t->nheld = 0;                           /* and the latched arp chord */
-                t->arp_phys = 0;
-                if (id < NPAT) {
-                    pat_num(b + 8, id);
-                    b[10] = ' ';
-                } else {
-                    str_cpy(b, "PATTERN CLEARED", sizeof b);
-                }
-                ui_message(b);
+            } else {                                    /* CF_CLEAR_SEQ: ((#53) SEQ + EDIT) SEQ TOOLS' F3 CLEAR */
+                tools_clear();
             }
         } else if (oct & 1u) {
             ui.confirm = 0;

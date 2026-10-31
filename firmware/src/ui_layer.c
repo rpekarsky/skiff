@@ -18,7 +18,7 @@
  *              opening SONG) TOOLS: the white keys from F3 the sequence tools (ui_tools.c: CLEAR,
  *              REVERSE, SHIFT < >, RANDOM, COOK; on a DRUM track BEAT and the lane's CLEAR REVERSE FILL RANDOM), black
  *              keys 1..8 the lane (DRUM); KNOB 1..4 the PATTERN page's LEN DIV SWING GATE; (#53) EDIT, SEQ held (not
- *              locked), REC's CLEAR. Each action one undo (SAVE held), OCT- the track as the layer opened (tl_put_back)
+ *              locked), F3's CLEAR. Each action one undo (SAVE held), OCT- the track as the layer opened (tl_put_back)
  *   REC  SET   (1.1.5; (Skiff U2) REC is a transport button again, arming on its press: the layer opens locked by
  *              SHIFT + REC only) the white keys from F3: CLEAR (held for the hold time: the selected track's steps and
  *              automation, no dialog: one undo, SAVE held), CLICK (OFF REC ON), COUNT-IN (OFF 1 BAR
@@ -428,10 +428,30 @@ static void tools_key(uint32_t p)
     ui.force = 1;
 }
 
-/* REC's CLEAR and (#53) SEQ held + EDIT: all 64 steps of the selected track and its automation (and ARP's latched
- * chord), one undo (SAVE held), no dialog (up to 1.1.4 REC held on SEQ asked first, CF_CLEAR_SEQ). Its own undo copy
- * (not a sound load's); LEN, DIV, the sound and the pattern's place in the pool stay */
-static void track_clear(const char *said)
+static void tools_clear(void) { tools_key(TL_CLEAR); }   /* (F3's, by EDIT: below and CF_CLEAR_SEQ's OCT+) */
+/* (#53) EDIT (the SMK's PARA) pressed with SEQ held: F3's CLEAR, asked first (CF_CLEAR_SEQ) when the track's pattern
+ * plays elsewhere too, another entry or another saved project, which an undo here can't put back once they have it.
+ * A combo: the map opens now, so OCT-'s snapshot is taken before the clear and letting SEQ go is no tap.
+ * Locked SEQ TOOLS never gets here: layer_lock_input has closed it on EDIT. -> pressed, without EDIT if it was used */
+static uint32_t seq_edit_clear(uint32_t pressed)
+{
+    uint32_t edit = 1u << panel.btn[B_EDIT], id = trk_pat(song.sel);
+    if (!(pressed & edit) || ui.ly != LAYER_SEQ || (ui.ly_t0 & LY_DEAD) || !layer_held())
+        return pressed;
+    if (!(ui.ly_t0 & LY_OPEN)) {
+        ui.ly_t0 |= LY_OPEN | LY_COMBO;
+        layer_opened(LAYER_SEQ);
+    }
+    if (id < NPAT && pat_used_elsewhere(song.sel, id))
+        confirm_open(CF_CLEAR_SEQ, song.sel);
+    else
+        tools_clear();
+    return pressed & ~edit;
+}
+
+/* REC: CLEAR, the selected track's steps and automation (and ARP's latched chord): one undo (SAVE held), no dialog,
+ * as SEQ TOOLS' CLEAR (up to 1.1.4 REC held on SEQ asked first, CF_CLEAR_SEQ). Its own undo copy (not a sound load's) */
+static void rec_clear(void)
 {
     track_t *t = TSEL;
     if (seq_is_empty(t) && !motion_count(t)) {
@@ -445,7 +465,7 @@ static void track_clear(const char *said)
     load_end(t);
     t->nheld = 0;
     t->arp_phys = 0;
-    ui_message(said);
+    ui_message("SEQUENCE CLEARED");
     if (!lys.loaded)                                    /* (the first one: how to take it back) */
         str_cpy(ui.msg2, "HOLD [SAVE]: UNDO", sizeof ui.msg2);
     lys.loaded = 1;
@@ -462,27 +482,8 @@ static void rec_clear_poll(void)
     }
     if (fm1_ms - (lys.clr_t & ~1u) >= HOLD_MS[settings_hold % 4u]) {
         lys.clr_t = 0;
-        track_clear("SEQUENCE CLEARED");
+        rec_clear();
     }
-}
-/* (#53) EDIT (the SMK's PARA) pressed with SEQ held: REC's CLEAR. A combo: the map opens now, so OCT-'s snapshot is
- * taken before the clear and letting SEQ go is no tap. Locked SEQ TOOLS never gets here: layer_lock_input has closed
- * it on EDIT. -> pressed, without EDIT if it cleared */
-static uint32_t seq_edit_clear(uint32_t pressed)
-{
-    uint32_t edit = 1u << panel.btn[B_EDIT];
-    char said[] = "T1 CLEARED";
-    if (!(pressed & edit) || ui.ly != LAYER_SEQ || (ui.ly_t0 & LY_DEAD) || !layer_held())
-        return pressed;
-    if (!(ui.ly_t0 & LY_OPEN)) {
-        ui.ly_t0 |= LY_OPEN | LY_COMBO;
-        layer_opened(LAYER_SEQ);
-    }
-    if (eu.on)                                          /* (an open EUCLID applied first, as another tool does) */
-        eu_close(TSEL, 1);
-    said[1] = (char)('1' + song.sel);
-    track_clear(said);
-    return pressed & ~edit;
 }
 #define RL_KNOBS 4u                                     /* (Skiff #23) C4: KNOBS ON / OFF */
 #define RL_ROWS 5u

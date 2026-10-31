@@ -349,8 +349,10 @@ Felucca) first, and lists what it converted.
   AUTOMATION lists them all to edit, move or delete
 - **SEQ TOOLS** (hold SEQ): CLEAR, REVERSE, SHIFT < / >, RANDOM, COOK, and (1.3) EUCLID (hits spread over the steps,
   rotated; OCT+ applies), DOUBLE and HALF (the length and the steps with it); on a drum track BEAT and each lane's
-  tools. SEQ held + EDIT clears the selected track as the REC layer's CLEAR does (its steps and automation; LEN, DIV,
-  the sound and the pattern stay), one undo
+  tools. (#53) SEQ held + EDIT is F3's CLEAR as a shortcut (PATTERN 05 CLEARED, one undo); it asks first
+  (CLEAR PATTERN 05?) when that pattern plays elsewhere too, in another entry or another saved project: patterns are
+  shared by every project, and the undo only lives in this session, so a project saved with the cleared pattern
+  can't be helped by it
 - **MOMENTARY** (1.3): hold LFO and turn knobs on HOME, a sound page, an FX page or the MIXER: let go and the values
   come back (OCT+ keeps them), not recorded; (2.0) over a bar, or as MENU › CONTROL › RETURN says (SNAP, 1 BEAT,
   1 BAR), the same for FX's macros and PERFORM's throws

@@ -29,6 +29,9 @@ static void project_new(void);
 static int step_page(uint32_t g) { return g == GR_ROLL; }   /* (Skiff 2.0) NOTES: the keys write (REC) or pick there */
 #define BANK_SLOTS 16u                         /* Skiff: the pattern bank (bank.c): A..P a track */
 static int bank_used(uint32_t k, uint32_t s);
+#define PAT_IN_ENTRIES 1u                        /* (#53) bank.c pat_used_elsewhere */
+#define PAT_IN_PROJECTS 2u
+static uint32_t pat_used_elsewhere(uint32_t k, uint32_t id);
 static int ent_on(uint32_t k, uint32_t e);
 static uint32_t ent_free_after(uint32_t k, uint32_t e);   /* ((2.0, #33) COPY+'s entry: bank.c) */
 static uint32_t copy_ids(uint32_t k, uint32_t e, uint8_t *ids);
@@ -1433,6 +1436,7 @@ static undo_t undo_ring[UNDO_N] __attribute__((section(".ramx")));
 static uint8_t undo_n, undo_top, undo_back;
 static const char *undo_label;   /* the next copy's name, set just before its load_begin (tl_undo_take,
                                   * motion_undo_take); 0: by what it changes */
+static const char UNDO_PAT_CLEAR[] = "CLEAR";   /* (#53) SEQ TOOLS' CLEAR: the undo box names its pattern (undo_name) */
 #define undo (undo_ring[undo_top])
 /* (2.0) the copies numbered; pin: the copy a SET layer's first change took (SEQ TOOLS, REC: the track as the layer
  * opened, its OCT- puts that back: ui_tools.c tl_put_back; was a copy of its own, 1.1 KB of the pool), kept while the
@@ -1865,10 +1869,20 @@ static int undo_swap(undo_t *c)
 /* Skiff: SAVE held, or OCT- in the undo window: back one copy; OCT+ in the window: forward one (its redo). Each opens
  * the window again (ui.undo_w: ui_input.c takes OCT- / OCT+ while it is open): the undo box says what and how far back
  * (BLOCKS, ui_take.c), else the header */
+static void pat_num(char *b, uint32_t id);
+/* the undo box's word for copy c: its name; a track's clear with the pattern it was on, "CLEAR PATTERN 05" (b: 20) */
+static const char *undo_name(const undo_t *c, char *b)
+{
+    if (c->name != UNDO_PAT_CLEAR || !c->pid)
+        return c->name;
+    str_cpy(b, "CLEAR PATTERN ", 20);
+    pat_num(b + 14, c->pid - 1u);
+    return b;
+}
 static void undo_step(int redo)
 {
     undo_t *c;
-    char b[24];
+    char b[24], name[20];
     if (redo ? !undo_back : undo_back >= undo_n) {
         ui_message(redo ? "NOTHING TO REDO" : "NOTHING TO UNDO");
         ui.undo_w = undo_n ? UNDO_WIN : 0u;       /* (the other way may still go) */
@@ -1885,11 +1899,11 @@ static void undo_step(int redo)
     if (!redo)
         undo_back++;
     if (take_box_fits()) {
-        take_box_undo(redo, (uint32_t)c->trk - 1u, c->name);
+        take_box_undo(redo, (uint32_t)c->trk - 1u, undo_name(c, name));
     } else {                                      /* "UNDO T1 TAKE", then the keys */
         str_cpy(b, redo ? "REDO T1 " : "UNDO T1 ", sizeof b);
         b[6] = (char)('1' + (c->trk - 1u) % NTRK);
-        ui_say(b, c->name);
+        ui_say(b, undo_name(c, name));
         str_cpy(ui.msg2, UNDO_KEYS, sizeof ui.msg2);
     }
     ui.undo_w = UNDO_WIN;

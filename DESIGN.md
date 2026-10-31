@@ -30,7 +30,7 @@ Each rule comes from what FM-1 owners said about the stock firmware, Felucca and
    - Idle buttons glow (MENU > LEDS), so the black unit's labels stay readable.
    - LEDs breathe, never blink (U6: NAME's cycling key too).
    - Nothing is shown only on an LED. (#35, #119; Sloop #10, #33, #62)
-7. **Destructive actions:** a dialog with CANCEL (OCT-) as the default, or a hold the screen names while it runs (the REC layer's CLEAR: HOLD: CLEAR, then held for the hold time). Undo where the firmware can (SAVE held), and say CAN'T BE UNDONE where it can't. Clearing still has to be quick. (D#91)
+7. **Destructive actions:** a dialog with CANCEL (OCT-) as the default, or a hold the screen names while it runs (the REC layer's CLEAR: HOLD: CLEAR, then held for the hold time). Undo where the firmware can (SAVE held), and say CAN'T BE UNDONE where it can't. Clearing still has to be quick. (D#91) (#53) SEQ held + EDIT, F3's CLEAR as a shortcut, is undoable and asks nothing, unless the track's pattern plays elsewhere too (another entry, another saved project): then CLEAR PATTERN 05? first, as the pool is every project's and the undo only this session's.
 8. **Never lose a jam.** The session comes back at power-on (MENU > SYSTEM > RESTORE LAST, on by default). (D#130; Sloop #20) (2.0) A save or a project load brings it up to date within a second, so switching off right after one keeps it.
 9. **Legibility floor:**
    - Values in large numerals; no hairline glyph details.
