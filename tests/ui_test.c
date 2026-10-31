@@ -1137,7 +1137,7 @@ static int test_scope_master(void)
 
 /* (#59) HOME tapped on HOME: the lanes, the scope of the mix (MASTER), the selected track's (TRACK), the lanes again.
  * Only while TRACK is up the audio taps a track, the selected one: its block after LEVEL, silence when it has none
- * (another track sounding is not in it) */
+ * (another track sounding is not in it); (#59b) on a page it always does */
 static uint32_t track_scope_blocks(uint32_t blocks, int16_t *loudest)
 {
     int32_t o[2u * CTL];
@@ -1170,11 +1170,17 @@ static int test_scope_track(void)
     ok &= track_scope_blocks(8, &loudest) == 8u * CTL / 2u && loudest > 1000;
     press(B_HOME);
     ok &= ui.home && !ui.home_scope && !scope_trk && track_scope_blocks(4, &loudest) == 0u;
+    go_title("EDIT 1");
+    frame();
+    ok &= scope_trk == song.sel + 1u && track_scope_blocks(8, &loudest) == 8u * CTL / 2u && loudest > 1000;
+    press(B_HOME);
+    press(B_HOME);
+    ok &= ui.home && ui.home_scope == HOME_SCOPE_MASTER && !scope_trk;
     trk_all_off(TSEL);
     trk_all_off(&trk[other]);
     song.master_q12 = mq;
-    return check("#59 HOME on HOME: lanes -> MASTER -> TRACK -> lanes; TRACK taps the selected track only, while shown",
-                 ok);
+    return check("#59 HOME on HOME: lanes -> MASTER -> TRACK -> lanes; TRACK taps the selected track only, while shown; "
+                 "(#59b) a page: always the track, back on HOME the cycle as it was", ok);
 }
 
 /* (#59) HOME's level meters read each track's peak (fx.c t->peak) every ~50 ms, clear it, show it in 3/4 dB steps from

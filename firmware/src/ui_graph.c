@@ -27,8 +27,9 @@ static int16_t scope_at_full_master(uint32_t i, int32_t unmaster_q8)
     return (int16_t)clamp((scope_buf[i & (SCOPE_N - 1u)] * unmaster_q8) >> 8, -32768, 32767);
 }
 
-/* (#59) HOME's scope tapped twice: the selected track as fx.c taps it, before MASTER (nothing to divide out) */
-static int scope_track_view(void) { return ui.home && ui.home_scope == HOME_SCOPE_TRACK; }
+/* (#59) HOME's scope tapped twice, (#59b) a track's own pages' always: the selected track as fx.c taps it, before
+ * MASTER (nothing to divide out) */
+static int scope_track_view(void) { return !ui.home || ui.home_scope == HOME_SCOPE_TRACK; }
 
 /* the scope's last SCOPE_N samples, oldest first: the mix at MASTER full, or the selected track */
 static void scope_snapshot(int16_t *snap)
@@ -2646,17 +2647,17 @@ static void graph_scope(uint16_t c)
     }
 }
 
-/* (#59) HOME's scope says what it shows: the mix in the theme's TEXT (not a track's colour), the track in its colour */
-static uint16_t home_scope_colour(void) { return scope_track_view() ? T_TRK(song.sel) : T_TEXT; }
+/* (#59) the scope says what it shows: the mix in the theme's TEXT (not a track's colour), the track in its colour */
+static uint16_t scope_colour(void) { return scope_track_view() ? T_TRK(song.sel) : T_TEXT; }
 
-static void home_scope_caption(void)
+static void scope_caption(void)
 {
     char track[8] = "TRACK 1";
     const char *what = scope_track_view() ? track : "MASTER";
     int32_t y = 4 + AF_S_CAP_Y;
     track[6] = (char)('1' + song.sel);
     cv_rect(PANEL_X0, y - 2, text_w(&AF_S, what) + 4, AF_S_CAP_H + 4, T_SURF);   /* (CRYPT's fire, NEON's ridge reach it) */
-    cv_text(PANEL_X0 + 2, 4, &AF_S, what, scope_track_view() ? home_scope_colour() : T_MID);
+    cv_text(PANEL_X0 + 2, 4, &AF_S, what, scope_track_view() ? scope_colour() : T_MID);
 }
 
 #include "ui_pgraph.c"                               /* (Skiff U5, V1) the pages' own graphs */
@@ -2695,7 +2696,7 @@ static void draw_graph(void)
         cv_oy = k == SK_ADSR || k == SK_LFO ? 3 : k == SK_SCOPE ? 0 : pad;
         graph_ht = (int32_t)graph_h() - 6;
         if (k == SK_SCOPE && ui.home && ux.h1n) hn_eq();   /* ((Skiff #29) LCD: the equalizer) */
-        else if (k == SK_SCOPE) graph_scope(ui.home ? home_scope_colour() : c);
+        else if (k == SK_SCOPE) graph_scope(ui.home ? scope_colour() : c);
         else if (k == SK_ADSR) graph_adsr(t, c);
         else if (k == SK_LFO) graph_lfo(t, c);
         else if (k == SK_STEPS) graph_steps(t, c);
@@ -2709,8 +2710,8 @@ static void draw_graph(void)
             if (ux.h1n)
                 hn_eq();                             /* (Skiff #29) LCD: the equalizer */
             else
-                graph_scope(home_scope_colour());
-            home_scope_caption();
+                graph_scope(scope_colour());
+            scope_caption();
         }
     } else {
         switch (pg->graph) {
@@ -2856,7 +2857,11 @@ static void draw_graph(void)
             else if ((pg->scope == SC_ENGINE || pg->id[0] == P_FM1_LEVEL) && t->eng_req % NENGINES == ENGI_DIGITAL)
                 graph_fm(t, c);                      /* (OP LEVEL too: the levels on the chart) */
 #endif
-            else { cv_oy = 0; graph_scope(c); }   /* (it centres itself in the canvas) */
+            else {                                   /* (it centres itself in the canvas) */
+                cv_oy = 0;
+                graph_scope(scope_colour());
+                scope_caption();
+            }
             break;
         }
     }

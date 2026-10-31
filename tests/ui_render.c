@@ -877,7 +877,7 @@ enum { S_HOME, S_HOME_IDLE, S_MESSAGE, S_MESSAGE_KEY, S_MESSAGE_NOFILE, S_PRESET
        S_HOME_FIT16, S_HOME_FIT24, S_HOME_FIT32, S_HOME_FIT64,                                /* (#41) */
        S_HOME_FIT_PATS,                                                                       /* (#34 with #41) */
        S_HOME_METER, S_HOME_METER_FIT,      /* (#59) */
-       S_HOME_SCOPE_TRACK,
+       S_HOME_SCOPE_TRACK, S_PAGE_SCOPE_TRACK,                                                /* (#59b) */
        S_MENU_POPUP,
        S_HEAD_MEMORY,                                                                         /* (#62) */
        S_MOCK_HOME, S_MOCK_PRESETS, S_MOCK_SEQ, S_MOCK_DRUM, S_MOCK_MIXER, S_MOCK_DIALOG, S_MOCK_MENU, S_COUNT };
@@ -913,7 +913,7 @@ static const char *const S_NAME[S_COUNT] = {"home", "home_idle", "message", "mes
     "chorus_flanger", "chorus_phaser", "presets_bass", "song_rest", "song_rest_pick",
     "notes_range", "notes_pick", "feel_range", "notes_overlap", "momentary", "pool_empty", "pool_unused", "confirm_empty",
     "song_once", "song_new", "song_copyplus", "song_chain", "song_chain3", "notes_chain", "lane_mix", "lane_mix_dx",
-    "song_sound", "song_sounds", "song_chains", "song_chain_copy", "drum_kit_usr", "lanes_usr", "menu_presets_knob", "presets_knob_level", "shift_level", "shift_strip", "pool_new", "home_lists", "home_fit16", "home_fit24", "home_fit32", "home_fit64", "home_fit_pats", "home_meter", "home_meter_fit", "home_scope_track", "menu_popup", "head_memory", "mock_home", "mock_presets", "mock_seq", "mock_drum", "mock_mixer", "mock_dialog", "mock_menu"};
+    "song_sound", "song_sounds", "song_chains", "song_chain_copy", "drum_kit_usr", "lanes_usr", "menu_presets_knob", "presets_knob_level", "shift_level", "shift_strip", "pool_new", "home_lists", "home_fit16", "home_fit24", "home_fit32", "home_fit64", "home_fit_pats", "home_meter", "home_meter_fit", "home_scope_track", "page_scope_track", "menu_popup", "head_memory", "mock_home", "mock_presets", "mock_seq", "mock_drum", "mock_mixer", "mock_dialog", "mock_menu"};
 
 /* the scenes of the UI design screens: the state the UI-redesign
  * prototype drew them from (its setup(): two pattern tracks, the drum pattern on track 4, a synthetic scope),
@@ -1090,11 +1090,16 @@ static void setup(int s)
     }
     case S_HOME_METER: home_meters(0); break;
     case S_HOME_METER_FIT: home_meters(1); break;
-    case S_HOME_SCOPE_TRACK:                        /* ((#59) HOME tapped twice: the selected track, a note of it) */
+    case S_HOME_SCOPE_TRACK:                        /* ((#59) HOME tapped twice: the selected track, a note of it; */
+    case S_PAGE_SCOPE_TRACK:                        /* (#59b) a page's scope: always the track) */
         for (uint32_t i = 0; i < SCOPE_TRK_N; i++)
             scope_trk_buf[i] = (int16_t)(9000.0 * sin(6.2831853 * i / 100.0) + 3000.0 * sin(6.2831853 * i / 33.3));
         scope_trk_w = 0;
         sel_set(2);
+        if (s == S_PAGE_SCOPE_TRACK) {
+            go_title("EDIT 1");
+            break;
+        }
         ui.home = 1;
         ui.home_scope = HOME_SCOPE_TRACK;
         break;
