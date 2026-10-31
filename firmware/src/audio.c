@@ -36,7 +36,8 @@ static void audio_block(int32_t *out, uint32_t n)       /* mix (fx.c), then Q15 
 #endif
     if (fx_usb_fixed)                                   /* USB LEVEL FIXED: USB took the full level, the DAC */
         usb_fixed_dac(out, n);                          /* (speaker, headphones) gets MASTER's (fx.c) */
-    for (i = 1; i < n; i += 2u)                         /* the HOME scope: the music, before the click */
+    for (i = 1; i < n; i += 2u)                         /* the HOME scope: the music after MASTER (ui_graph.c
+                                                         * divides it out), before the click */
         scope_buf[scope_w++ & (SCOPE_N - 1u)] = (int16_t)out[2u * i];
     click_render(out, n);                               /* the metronome (click.c): the DAC only, not USB */
     for (i = 0; i < n; i++) {

@@ -1063,6 +1063,61 @@ static int test_home_footer(void)
     return check("#3 HOME after SEQ's first page (NOTES, a drum grid): the footer as after any other page", ok);
 }
 
+/* (#18) the scope draws the mix as at MASTER full: audio.c takes it after MASTER (fx.c mix_block's gain, below), the
+ * same music at MASTER 100 % and 10 % (the knob's square law: Q12 4088 and 40) is the same picture to a pixel's
+ * rounding, on HOME and in MENU > LARGE's strip; at 10 % the wave is there, not a flat line */
+static void scope_after_master(uint32_t master_q12, int sound)
+{
+    uint32_t i;
+    for (i = 0; i < SCOPE_N; i++) {
+        int32_t mix = sound ? (int32_t)(12000.0 * sin(6.2831853 * i / 100.0) + 4500.0 * sin(6.2831853 * i / 50.0 + 0.7))
+                            : 0;
+        scope_buf[i] = (int16_t)(((mix >> 2) * (int32_t)master_q12) >> 10);
+    }
+    scope_w = 0;
+    song.master_q12 = master_q12;
+}
+
+static uint32_t scope_pixels_differ(const uint16_t *ref)
+{
+    uint32_t i, n = 0, from = graph_y() * 240u, to = from + graph_h() * 240u;
+    for (i = from; i < to; i++)
+        n += host_screen[i] != ref[i];
+    return n;
+}
+
+static void scope_draw(uint32_t master_q12, int sound)
+{
+    scope_after_master(master_q12, sound);
+    ui.force = 1;
+    frame();
+}
+
+static int test_scope_master(void)
+{
+    static uint16_t full[240 * 240], flat[240 * 240];
+    uint32_t k, ok = 1, mq = song.master_q12;
+    const uint32_t loud = master_of_pot(1023u), quiet = master_of_pot(102u);
+    for (k = 0; k < 2u; k++) {
+        uint32_t rounding, wave;
+        ui_power_on();
+        ui_prefs = k ? PREF_LARGE : 0u;
+        if (!k)
+            press(B_HOME);
+        scope_draw(loud, 1);
+        memcpy(full, host_screen, sizeof full);
+        scope_draw(quiet, 0);
+        memcpy(flat, host_screen, sizeof flat);
+        scope_draw(quiet, 1);
+        rounding = scope_pixels_differ(full);
+        wave = scope_pixels_differ(flat);
+        ok &= ui.home && ui.home_scope == !k && rounding * 10u < wave;
+    }
+    ui_prefs = 0;
+    song.master_q12 = mq;
+    return check("#18 the scope at MASTER 10 % draws the music as at 100 % (HOME, LARGE's strip), not a flat line", ok);
+}
+
 /* (#22) HOME without its lanes (MENU > LARGE's tall cards; the scope, HOME tapped on HOME): the footer names the track's
  * engine and sound, as with HINTS OFF, not HOLD [HOME] SHIFT; with the lanes the hint stays */
 static int test_home_names(void)
@@ -9998,6 +10053,7 @@ int main(void)
     bad += test_grid();
     bad += test_home_footer();
     bad += test_home_names();
+    bad += test_scope_master();
     bad += test_clock_wait();
     bad += test_grid_rows();
     bad += test_mixer_no_flash();

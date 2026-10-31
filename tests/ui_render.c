@@ -679,6 +679,7 @@ static void state(void)                          /* a playing song with steps on
     for (i = 0; i < SCOPE_N; i++)                 /* a stand-in signal for the scope */
         scope_buf[i] = (int16_t)((int32_t)((i * 37u) % 128u) * 200 - 12800 + (int32_t)((i % 32u) < 16u ? 3000 : -3000));
     scope_w = 0;
+    song.master_q12 = MASTER_FULL;             /* (#18: ui_graph.c divides MASTER out of it) */
 }
 /* (2.0, #35) USR1 a kit, MY KIT: host_slot_make's sound under seven lanes' notes, none under BELL's */
 static void host_kit_make(void)
@@ -901,6 +902,7 @@ static void mock_state(int s)
         scope_buf[i] = (int16_t)((ph * 2.0 - 1.0) * 9000.0 + sin(i * 0.4908) * 2500.0);
     }
     scope_w = 0;
+    song.master_q12 = MASTER_FULL;
     song.playing = 1;
     song.g[G_BPM] = 124;
     clk_pos = 0; clk_step = 8; cin_total = cin_left = 0;   /* (as state()) */
@@ -1225,6 +1227,7 @@ static void setup(int s)
             scope_buf[i] = (int16_t)(12000.0 * sin(6.2831853 * i / 100.0) + 4500.0 * sin(6.2831853 * i / 50.0 + 0.7) +
                                      1800.0 * sin(6.2831853 * i / 33.3 + 1.9));
         scope_w = 0;
+        song.master_q12 = MASTER_FULL;
         ui.home = 1;
         ui.home_scope = 1;
         break;

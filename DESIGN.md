@@ -364,6 +364,7 @@ The colours differ in lightness as well as hue, and always appear with the track
   - The knob just turned is a whole accent tile, with everything on it in INK.
   - Card icons are dropped, except MOTION's mark. Values snap: no rolling digits.
 - **Graphs** are drawn in the selected track's colour.
+- **The scope** (HOME tapped on HOME, MENU › LARGE's HOME strip, an engine's EDIT without a chart) draws the mix as at MASTER full (#18): `audio.c` keeps taking it after MASTER (nothing more in the audio ISR) and `ui_graph.c` divides MASTER back out at draw time, so turning the volume down does not shrink the wave. Below the knob's ~6 % it stops compensating (the picture shrinks again rather than blowing up a few quantisation steps). The limiter and soft clip still act at the real level: a mix that the limiter squeezes at MASTER full shows its unlimited peaks at a low MASTER.
 - **Dialogs** (`ui_blocks.c`):
   - A SURF tile, square, over the page dimmed, as the mockup's: the page drawn again with every colour 70 % of the way to BG (`confirm_backdrop`; the header stays itself, so REC shows).
   - The question, then what it is about: a name, or a sequence's steps and notes.
