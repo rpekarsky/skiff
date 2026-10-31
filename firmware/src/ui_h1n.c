@@ -8,9 +8,9 @@
 
 /* (#48) the rail at the screen's left edge, on every screen: HOME's lanes in miniature where they are on HOME, the
  * selected track's division ink and taller, the others ghost; the track selected told by its place alone. Columns
- * 0 .. HN_RAIL_X1 - 1 of the panel's rows are the rail's: its divisions, then a BG column; the pages start at x 3 */
-#define HN_RAIL_W 2
-#define HN_RAIL_X1 3
+ * 0 .. HN_RAIL_X1 - 1 of the panel's rows are the rail's: its divisions, then a BG column; the pages start at x 4 */
+#define HN_RAIL_W 3
+#define HN_RAIL_X1 4
 #define HN_RAIL_H ((int32_t)(H_GRAPH + FOOT_LINE))    /* (HOME's panel, MENU > LARGE or not) */
 static int32_t hl_lane_y(uint32_t k, uint32_t sel, int32_t panel_h, int32_t *h);   /* (ui_home.c) */
 static uint8_t hn_rail_sel __attribute__((section(".pool")));   /* the track the rail on the screen shows */

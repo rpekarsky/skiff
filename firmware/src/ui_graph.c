@@ -1914,7 +1914,7 @@ static void graph_user(void)
 static void graph_bank(void)
 {
     int32_t th = 15, py = 17, pitch = ux.h1n ? 29 : 30, x0 = ux.h1n ? HN_RAIL_X1 : 1;   /* the tiles 2 narrower than their
-                                                     * pitch: x 1 .. 238; ((#48) LCD: right of the rail, 3 .. 233) */
+                                                     * pitch: x 1 .. 238; ((#48) LCD: right of the rail, 4 .. 234) */
     uint16_t tile = T_SURF;
     uint32_t id, n;
     cv_rect(0, 0, 240, (int32_t)cv_h, T_BG);         /* (over the panel: the tiles are on the ground) */
