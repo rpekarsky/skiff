@@ -408,6 +408,9 @@ static int test_pad_colours(void)
                  host_pad[3] == rgb_of(0, SMK_PAD_FULL) && rgb_max(host_pad[3]) == 255u * SMK_PAD_FULL >> 8 &&
                  rgb_max(rgb_of(1, SMK_PAD_FULL)) == 255u * SMK_PAD_FULL >> 8 && rgb_of(1, SMK_PAD_FULL) != host_pad[3] &&
                  host_pad[0] == SMK_PAD_FAINT);
+    palette_set(UI_LCD_GREEN_INDEX);
+    frame();
+    bad += check("SMK pad colours, (#66) LCD GREEN: the SKIFF hues as on LCD", host_pad[3] == col);
     palette_set(UI_SKIFF_INDEX);
     frame();
     song.playing = 1;

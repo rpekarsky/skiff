@@ -826,10 +826,13 @@ static int song_move_knob(uint32_t k)
     return k == 0u && !ui.home && cur_page()->graph == GR_SONG;
 }
 /* (wishlist #60) SHIFT held: KNOB 1..4 are the selected track's LEVEL PAN REVERB DELAY (ui_input.c), as MIXER's cards */
+static int fm_wf_tune_cards(void);                      /* (#20t) ui_fm6.c: WAVE's own, while it shows */
 static void channel_columns(void)
 {
     const track_t *t = TSEL;
     uint32_t c;
+    if (fm_wf_tune_cards())
+        return;
     for (c = 0; c < 4u; c++) {
         uint32_t id = CHANNEL_P[c];
         const param_desc_t *d = &TP[id];

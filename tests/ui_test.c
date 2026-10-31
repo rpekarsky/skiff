@@ -1656,8 +1656,8 @@ static int test_display_preferences(void)
                  settings.palette == 2 && T_BG == UI_PALETTES[2].bg && ux.light && ui.menu == 1 && !song.octave &&
                  memcmp(before, host_screen, sizeof before) && !memcmp(sounds, trk, sizeof sounds));
     bad += check("THEME KNOB 1 steps on to CRYPT, NEON (both the pixel faces), QUARK (Barlow), LCD, LCD NIGHT (pixel), the "
-                 "plain GAMEBOY, AMBER and BLUE-STN, LCD GRAIN (pixel), then wraps to SKIFF (R1: SKIFF HI-CON PAPER CRYPT NEON "
-                 "QUARK, #29 LCD LCD NIGHT, wishlist #47)",
+                 "plain GAMEBOY, AMBER and BLUE-STN, LCD GRAIN, LCD GREEN (pixel), then wraps to SKIFF (R1: SKIFF HI-CON PAPER "
+                 "CRYPT NEON QUARK, #29 LCD LCD NIGHT, wishlist #47, #66)",
                  str_eq(MI_NAME[MI_COLOR], "THEME") && (turn(EN_K1, 1), settings.palette == UI_CRYPT_INDEX) && ux.crypt &&
                  str_eq(UI_PALETTES[UI_CRYPT_INDEX].name, "CRYPT") && &AF_S == &AF_S_PX &&
                  (turn(EN_K1, 1), settings.palette == UI_NEON_INDEX) && ux.neon && !ux.crypt && &AF_S == &AF_S_PX &&
@@ -1668,10 +1668,12 @@ static int test_display_preferences(void)
                  str_eq(UI_PALETTES[UI_LCD_INDEX].name, "LCD") &&
                  (turn(EN_K1, 1), settings.palette == UI_LCD_NIGHT_INDEX) && ux.h1n && &AF_S == &AF_S_PX &&
                  str_eq(UI_PALETTES[UI_LCD_NIGHT_INDEX].name, "LCD NIGHT") &&
-                 (turn(EN_K1, 1), turn(EN_K1, 1), turn(EN_K1, 1), settings.palette == NPALETTES - 2u) &&
-                 !ux.h1n && &AF_S != &AF_S_PX && str_eq(UI_PALETTES[NPALETTES - 2u].name, "BLUE-STN") &&
+                 (turn(EN_K1, 1), turn(EN_K1, 1), turn(EN_K1, 1), settings.palette == NPALETTES - 3u) &&
+                 !ux.h1n && &AF_S != &AF_S_PX && str_eq(UI_PALETTES[NPALETTES - 3u].name, "BLUE-STN") &&
                  (turn(EN_K1, 1), settings.palette == UI_LCD_GRAIN_INDEX) && ux.h1n && ux.grain && &AF_S == &AF_S_PX &&
                  str_eq(UI_PALETTES[UI_LCD_GRAIN_INDEX].name, "LCD GRAIN") &&
+                 (turn(EN_K1, 1), settings.palette == UI_LCD_GREEN_INDEX) && ux.h1n && !ux.grain && ux.light &&
+                 &AF_S == &AF_S_PX && str_eq(UI_PALETTES[UI_LCD_GREEN_INDEX].name, "LCD GREEN") &&
                  (turn(EN_K1, 1), settings.palette == UI_SKIFF_INDEX) && !ux.h1n && !ux.crypt && !ux.neon && &AF_S != &AF_S_PX &&
                  str_eq(UI_PALETTES[UI_SKIFF_INDEX].name, "SKIFF"));
     settings.lowcut = 2;
@@ -3296,6 +3298,8 @@ static double wave_vs_voice(const uint8_t *v, uint32_t note, int32_t block, int8
     fm6_adopt(tr);
     fm6_last[tr] = (fm6_last_t){(uint8_t)note, 100, 0, 0, 0, 2000};
     fm_ops(&s, TSEL);
+    (void)fm_wf_cfg();
+    fm_wf_tune.smooth = 1;                              /* (one period against the voice's: SMOOTH's mean is not it) */
     fm_wf_begin(&s, 1);
     while (fm_wf.b < block)
         fm_wf_step(&s);
@@ -3319,7 +3323,7 @@ static double wave_vs_voice(const uint8_t *v, uint32_t note, int32_t block, int8
     for (i = 0; i < 4000u; i += CTL)
         track_render(TSEL, b, CTL);
     for (j = 0; j < FM_WF_NP; j++) {
-        uint32_t x = (uint32_t)x0 + j * period / (FM_WF_NP - 1u), k = (uint32_t)s0 + (x >> 8);
+        uint32_t x = (uint32_t)x0 + j * fm_wf_cfg()->periods * period / (FM_WF_NP - 1u), k = (uint32_t)s0 + (x >> 8);
         double r = y[k] + (double)(y[k + 1u] - y[k]) * (x & 255u) / 256.0;
         y[j] = (int32_t)r;
         num += r * pts[j];
@@ -3345,7 +3349,7 @@ static int test_fm6_wave(void)
     fm6_unpack(FM6_INIT, v);
     off = wave_vs_voice(v, 60, 689, pts);
     for (j = 0; j < FM_WF_NP; j++) {
-        double d = fabs(pts[j] - 127.0 * sin(6.283185307 * j / (FM_WF_NP - 1u))) / 127.0;
+        double d = fabs(pts[j] - 127.0 * sin(6.283185307 * fm_wf_cfg()->periods * j / (FM_WF_NP - 1u))) / 127.0;
         sine = d > sine ? d : sine;
     }
     bad += check("(#20w) WAVE, INIT's OP1: the voice's period (2 %) and a sine from its zero phase up (3 %)",
@@ -3367,7 +3371,7 @@ static int test_fm6_wave(void)
     v[4u * FP_OP + FP_FC] = 2;
     off = wave_vs_voice(v, 60, 689, pts);
     for (sine = 0, j = 0; j < FM_WF_NP; j++) {
-        double d = fabs(pts[j] - 127.0 * sin(6.283185307 * j / (FM_WF_NP - 1u))) / 127.0;
+        double d = fabs(pts[j] - 127.0 * sin(6.283185307 * fm_wf_cfg()->periods * j / (FM_WF_NP - 1u))) / 127.0;
         sine = d > sine ? d : sine;
     }
     bad += check("(#20w) WAVE, OP2 at x2 into OP1: the voice's period, not a sine", off < 0.02 && sine > 0.2);
@@ -3387,15 +3391,15 @@ static int test_fm6_wave(void)
         for (i = 0; i < 8; i++)
             track_render(TSEL, b, CTL);
         ok = fm6_last[tr].note == 50u && fm6_last[tr].vel == 80u && fm6_last[tr].held_ms == 300u && !fm6_last[tr].down;
-        for (i = 0; i < 64 && (i < 2 || fm_wf.done < FM_WF_NS); i++)
+        for (i = 0; i < 64 && (i < 2 || fm_wf.done < fm_wf_cfg()->slices); i++)
             frame();
-        ok &= fm_wf.note == 50u && fm_wf.vel == 80u && fm_wf.held == 300 * 1378 / 1000 && fm_wf.done == FM_WF_NS && i > 2;
+        ok &= fm_wf.note == 50u && fm_wf.vel == 80u && fm_wf.held == 300 * 1378 / 1000 && fm_wf.done == fm_wf_cfg()->slices;
         trk_note_on(TSEL, 50, 80);
         track_render(TSEL, b, CTL);
         ok &= fm6_last[tr].held_ms == 300u && fm6_last[tr].down;
         trk_note_off(TSEL, 50);
         (void)fm_wave_set(0);
-        bad += check("(#20w) WAVE plays the track's last note (D3 at 80 held 0.3 s), over a few frames; its next note-on keeps it", ok);
+        bad += check("(#20w) WAVE plays the track's last note (D3 at 80 held 0.3 s); its next note-on keeps it", ok);
     }
     return bad;
 }

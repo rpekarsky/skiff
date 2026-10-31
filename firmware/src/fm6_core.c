@@ -474,12 +474,34 @@ static int32_t fm6_osc_base(const uint8_t *op, int32_t note, int32_t extra)
 
 /* operator op's envelope at a note-on of MIDI note `note`, velocity vel: its output level with the key's level scaling
  * and the velocity, its rate scaling. The note's, and (FM6 LAB) the editor's: ui_fm6.c draws what plays */
-static void fm6_op_env_init(fm6_env_t *e, const uint8_t *op, int32_t note, int32_t vel)
+static int32_t fm6_op_outlevel(const uint8_t *op, int32_t note, int32_t vel)
 {
     int32_t ol = fm6_scaleout(op[FP_OL]) + fm6_scale_level(note, op);
     ol = (ol > 127 ? 127 : ol) << 5;
     ol += fm6_scale_vel(vel, op[FP_KVS]);
-    fm6_env_init(e, op, ol < 0 ? 0 : ol, fm6_scale_rate(note, op[FP_RS]));
+    return ol < 0 ? 0 : ol;
+}
+static void fm6_op_env_init(fm6_env_t *e, const uint8_t *op, int32_t note, int32_t vel)
+{
+    fm6_env_init(e, op, fm6_op_outlevel(op, note, vel), fm6_scale_rate(note, op[FP_RS]));
+}
+/* (#69) a sounding note follows an edit of patch p: each operator's frequency and output level as a note-on would set
+ * them, its envelope's stage aimed again from where it is; the phases go on, so nothing clicks */
+static void fm6_note_retune(fm6_note_t *n, const uint8_t *p, int32_t note, int32_t vel)
+{
+    uint32_t k;
+    note = note < 0 ? 0 : note > 127 ? 127 : note;
+    n->fixed = 0;
+    for (k = 0; k < 6u; k++) {
+        const uint8_t *op = p + k * FP_OP;
+        fm6_env_t *e = &n->env[k];
+        n->base[k] = fm6_osc_base(op, note, 0);
+        n->fixed |= (uint8_t)((op[FP_MODE] & 1u) << k);
+        e->outlevel = (int16_t)fm6_op_outlevel(op, note, vel);
+        e->rscale = (uint8_t)fm6_scale_rate(note, op[FP_RS]);
+        if (e->ix < 4u)
+            fm6_env_advance(e, op, e->ix);
+    }
 }
 
 /* a note-on (msfa note init) of patch p, MIDI note `note` (transposed), velocity vel. fresh: from silence
