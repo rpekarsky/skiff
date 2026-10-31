@@ -1867,14 +1867,15 @@ static int undo_swap(undo_t *c)
 /* Skiff: SAVE held, or OCT- in the undo window: back one copy; OCT+ in the window: forward one (its redo). Each opens
  * the window again (ui.undo_w: ui_input.c takes OCT- / OCT+ while it is open): the undo box says what and how far back
  * (BLOCKS, ui_take.c), else the header */
-static void rec_live_end(void);                   /* (ui_input.c) */
+static void rec_live_step(int redo);              /* ((#55) ui_input.c: recording goes on through it) */
+static void rec_live_stepped(void);
 static void undo_step(int redo)
 {
     undo_t *c;
     char b[24], pass_name[12];
     const char *name;
-    if (song.playing && song.rec && (!redo || undo_back))
-        rec_live_end();                           /* ((#55) what it swaps must not be recorded into meanwhile) */
+    if (song.playing && song.rec)
+        rec_live_step(redo);
     if (redo ? !undo_back : undo_back >= undo_n) {
         ui_message(redo ? "NOTHING TO REDO" : "NOTHING TO UNDO");
         ui.undo_w = undo_n ? UNDO_WIN : 0u;       /* (the other way may still go) */
@@ -1890,6 +1891,8 @@ static void undo_step(int redo)
     }
     if (!redo)
         undo_back++;
+    if (song.playing && song.rec)
+        rec_live_stepped();
     name = c->name;
     if (name == UNDO_PASS) {
         str_cpy(pass_name, "PASS ", sizeof pass_name);

@@ -1364,54 +1364,64 @@ static int undo_said(const char *verb, const char *what)   /* the box "UNDO PASS
 static int rec_passes(void)
 {
     int bad = 0, ok;
-    uint32_t n0, i, steps;
+    uint32_t n0, i;
     track_t *t = rp_armed(8);
-    n0 = undo_n;
+    n0 = undo_n;                                      /* (RECORDING in) */
     rp_note(t, 60);                                   /* pass 1: step 1 */
     rp_steps(t, 8);
     rp_steps(t, 2); rp_note(t, 62); rp_steps(t, 6);   /* pass 2: step 3 */
     rp_steps(t, 4); rp_note(t, 64); rp_steps(t, 4);   /* pass 3: step 5; pass 4 playing, nothing in it yet */
-    ok = undo_n == n0 + 3u && song.rec;               /* (RECORDING, PASS 2, PASS 3, PASS 4 open) */
+    ok = undo_n == n0 + 1u;                           /* (RECORDING, LAST PASS) */
     undo_step(0);
-    ok &= !song.rec && tk_has(t, 60) && tk_has(t, 62) && !tk_has(t, 64) && undo_said("UNDO", "PASS 3");
-    bad += check("(#55) REC: 3 passes, UNDO while recording: it ends, the empty pass 4 goes, pass 3 undone, 1-2 kept", ok);
+    ok &= song.rec && tk_has(t, 60) && tk_has(t, 62) && !tk_has(t, 64) && undo_said("UNDO", "PASS 3");
+    bad += check("(#55) REC: 3 passes, UNDO while recording: pass 3 undone, 1-2 kept, REC still on, 2 copies", ok);
     undo_step(0);
-    ok = tk_has(t, 60) && !tk_has(t, 62) && undo_said("UNDO", "PASS 2");
-    bad += check("(#55)   UNDO again: pass 2 gone, pass 1 kept", ok);
+    ok = song.rec && !tk_has(t, 60) && !tk_has(t, 62) && undo_said("UNDO", "RECORDING");
+    bad += check("(#55)   UNDO again: the whole recording (RECORDING)", ok);
+    undo_step(1); undo_step(1);
+    ok = tk_has(t, 60) && tk_has(t, 62) && tk_has(t, 64) && undo_said("REDO", "PASS 3");
+    bad += check("(#55)   REDO, REDO: all back", ok);
+    undo_step(0);                                     /* pass 3 undone again, still in pass 4 */
+    rp_steps(t, 1); rp_note(t, 66); rp_steps(t, 1);   /* recorded after the undo: the redo goes */
     undo_step(1);
-    ok = tk_has(t, 62) && !tk_has(t, 64) && undo_said("REDO", "PASS 2");
-    undo_step(1);
-    ok &= tk_has(t, 64) && undo_said("REDO", "PASS 3");
-    bad += check("(#55)   REDO, REDO: passes 2 and 3 back", ok);
-    undo_step(0); undo_step(0); undo_step(0);
-    ok = !tk_has(t, 60) && !tk_has(t, 62) && !tk_has(t, 64) && undo_said("UNDO", "RECORDING");
-    bad += check("(#55)   the oldest, RECORDING: pass 1 too, the track as armed", ok);
+    ok = !undo_back && tk_has(t, 66) && !tk_has(t, 64) && tk_has(t, 62) && str_eq(ui.msg, "NOTHING TO REDO");
+    undo_step(0);
+    ok &= !tk_has(t, 66) && !tk_has(t, 64) && tk_has(t, 62) && undo_said("UNDO", "PASS 4");
+    bad += check("(#55)   recorded after an UNDO: no REDO over it, the notes kept; UNDO takes them (PASS 4)", ok);
     seq_stop();
 
     t = rp_armed(8);
-    n0 = undo_n;
     rp_note(t, 60); rp_steps(t, 8);                   /* pass 1 */
     rp_steps(t, 8);                                   /* pass 2: nothing */
     rp_steps(t, 4); rp_note(t, 64); rp_steps(t, 4);   /* pass 3 */
-    ok = undo_n == n0 + 2u;
+    rp_steps(t, 8);                                   /* pass 4: nothing */
     undo_step(0);
-    ok &= tk_has(t, 60) && !tk_has(t, 64) && undo_said("UNDO", "PASS 3");
+    ok = tk_has(t, 60) && !tk_has(t, 64) && undo_said("UNDO", "PASS 3");
     undo_step(0);
     ok &= !tk_has(t, 60) && undo_said("UNDO", "RECORDING");
-    bad += check("(#55)   a pass with nothing recorded takes no undo: pass 3, then RECORDING", ok);
+    bad += check("(#55)   passes with nothing recorded are skipped: pass 3, then RECORDING", ok);
     seq_stop();
 
     t = rp_armed(8);
-    rp_steps(t, 2); rp_note(t, 62); rp_steps(t, 5);   /* pass 1: step 3; now its last step, the first half looked at */
+    rp_note(t, 60); rp_steps(t, 8);
+    rp_steps(t, 2); rp_note(t, 62); rp_steps(t, 2);   /* pass 2 so far: undone first */
+    undo_step(0);
+    ok = tk_has(t, 60) && !tk_has(t, 62) && undo_said("UNDO", "PASS 2") && song.rec;
+    bad += check("(#55)   UNDO in a pass with notes: that pass (PASS 2)", ok);
+    seq_stop();
+
+    t = rp_armed(8);
+    rp_note(t, 60); rp_steps(t, 8);
+    rp_steps(t, 2); rp_note(t, 62); rp_steps(t, 5);   /* pass 2: step 3; now its last step, the first half looked at */
     while (t->seq_pos <= step_samples(t, div_samples((uint32_t)t->p[P_SDIV]), t->seq_idx) / 2u)
         seq_tick(t, CTL);
-    rp_note(t, 65);                                   /* early for pass 2: into step 1 (the main loop not there yet) */
+    rp_note(t, 65);                                   /* early for pass 3: into step 1 (the main loop not there yet) */
     while (t->seq_idx == 7u)
         seq_tick(t, CTL);
     rec_pass_poll();
-    ok = tk_has(t, 65) && t->step[0].note[0] == 65;
+    ok = t->step[0].note[0] == 65;
     undo_step(0);
-    ok &= !tk_has(t, 65) && tk_has(t, 62) && undo_said("UNDO", "PASS 2");
+    ok &= !tk_has(t, 65) && tk_has(t, 62) && undo_said("UNDO", "PASS 3");
     bad += check("(#55)   a note played early for the next pass, the main loop late: undone with that pass", ok);
     seq_stop();
 
@@ -1423,34 +1433,43 @@ static int rec_passes(void)
     ok = motion_count(t) == 0u && tk_has(t, 60) && undo_said("UNDO", "PASS 2");
     seq_stop();
     t = rp_armed(8);
-    n0 = undo_n;
     knobs_set(1);
     rp_note(t, 60); rp_steps(t, 8);
     rp_steps(t, 3); motion_capture(t, P_REV, 77); rp_steps(t, 5);
-    ok &= undo_n == n0 + 1u && motion_count(t) == 0u;
+    rp_steps(t, 8);
+    undo_step(0);
+    ok &= motion_count(t) == 0u && !tk_has(t, 60) && undo_said("UNDO", "RECORDING");
     knobs_set(0);
     bad += check("(#55)   a knob move recorded is a pass; with KNOBS OFF none", ok);
     seq_stop();
 
-    t = rp_armed(16);
+    t = tk_track();
+    motion_undo_take(t, 0);                           /* older history: kept through the whole recording */
+    n0 = undo_n;
+    t->p[P_SLEN] = 16;
+    knobs_set(0);
+    seq_start(); seq_tick(t, CTL);
+    rec_tap(); rec_pass_poll();
     for (i = 0; i < 9u; i++) {                        /* passes 1..9, a note each in step i + 1 */
         rp_steps(t, i); rp_note(t, 60 + i); rp_steps(t, 16 - i);
     }
-    for (steps = 0; steps < 10u && tk_has(t, 60); steps++)
-        undo_step(0);
-    ok = steps == 6u && !tk_has(t, 60) && !tk_has(t, 63) && undo_said("UNDO", "RECORDING");
-    bad += check("(#55)   9 passes: the last 5 one by one, then RECORDING (the first 4): REC_PASS_MAX copies", ok);
+    ok = undo_n == n0 + 2u;
+    undo_step(0);
+    ok &= tk_has(t, 67) && !tk_has(t, 68) && undo_said("UNDO", "PASS 9");
+    undo_step(0);
+    ok &= !tk_has(t, 60) && undo_said("UNDO", "RECORDING") && undo_back == 2u && undo_n == n0 + 2u;
+    bad += check("(#55)   9 passes: 2 copies (LAST PASS rolls), older history kept; PASS 9, then RECORDING", ok);
     seq_stop();
 
     t = rp_armed(8);
     rp_note(t, 60); rp_steps(t, 8);
-    rp_steps(t, 2); rp_note(t, 62); rp_steps(t, 6);
-    rp_steps(t, 1);
-    undo_step(0);                                     /* pass 2 undone, REC off */
-    rp_note(t, 67); rp_steps(t, 7);                   /* played now: TAKES logs it */
-    take_commit(0);
-    ok = tk_has(t, 60) && !tk_has(t, 62) && tk_has(t, 67);
-    bad += check("(#55)   after the UNDO the keys are logged again: TAKE puts the pass played into the track", ok);
+    rp_steps(t, 2); rp_note(t, 62); rp_steps(t, 1);
+    rec_tap();                                        /* disarmed in pass 2: what it holds is the last pass */
+    undo_step(0);
+    ok = !song.rec && tk_has(t, 60) && !tk_has(t, 62) && undo_said("UNDO", "PASS 2");
+    undo_step(0);
+    ok &= !tk_has(t, 60) && undo_said("UNDO", "RECORDING");
+    bad += check("(#55)   disarmed mid-pass: that pass, then RECORDING", ok);
     seq_stop();
     return bad;
 }
