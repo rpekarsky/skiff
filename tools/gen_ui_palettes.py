@@ -47,10 +47,11 @@ PALETTES = [
     # (Skiff) QUARK, design/mock_quark.py's A COLLIDER: a detector's dark, cyan readouts, gold for the one active thing;
     # the tracks the colour charges red, green, blue and their anticolours cyan, magenta, yellow
     ("QUARK",  (3, 7, 12),      (10, 21, 32),    (216, 243, 255), (79, 209, 255),  (255, 224, 102)),
-    # (Skiff #29) LCD, the PO's H1N GREY (a reflective monochrome LCD, the Zoom H1n's): four tones only, BG, the unlit
-    # segments' ghost (RAISE: 160,170,148), MID, ink. No tiles (SURF is BG, as an LCD has no boxes); src/gfx.c
-    # lcd_tones pins the derived tokens to the four; every track ink, told apart by its number
-    ("LCD",    (178, 186, 166), (178, 186, 166), (28, 32, 26),    (28, 32, 26),    (28, 32, 26)),
+    # (Skiff #29) LCD, the Zoom H1n's backlit display (PO, after a photo of the real one: cool blue-white, not the H1N
+    # GREY mockup): four tones only, BG, the unlit segments' ghost and MID (LCD_OWN_TONES), navy ink. No tiles (SURF is
+    # BG, as an LCD has no boxes); src/gfx.c lcd_tones pins the derived tokens to the four; every track ink, told apart
+    # by its number
+    ("LCD",    (214, 228, 246), (214, 228, 246), (18, 30, 84),    (18, 30, 84),    (18, 30, 84)),
     # (Skiff #29) LCD NIGHT, the PO's pick of THEME CUSTOM over LCD (tests/ui_render.c's dusk set), as it shows: an
     # inverted LCD, navy, pale ink. SURF stays the dusk's, as it makes the ghost (RAISE); THEME is the MID tone, which
     # the dusk's orange (and five of its six tracks) snapped to; ACCENT the ink
@@ -64,6 +65,9 @@ PALETTES = [
 ]
 SKIFF, CRYPT, NEON, QUARK, LCD, LCD_NIGHT = "SKIFF", "CRYPT", "NEON", "QUARK", "LCD", "LCD NIGHT"
 LCD_LOOKS = (LCD, LCD_NIGHT)       # src/gfx.c ux.h1n: four tones, CRYPT's font, ui_h1n.c's widgets
+# LCD's ghost and MID as the backlit H1n shows them: blue, off the line from BG to ink that the derived ones lie on
+# (src/gfx.c lcd_tones; THEME CUSTOM over the look derives its own)
+LCD_OWN_TONES = {LCD: ((150, 190, 240), (96, 128, 196))}
 # the six tracks' colours (src/gfx.c T_TRK; (Skiff phase 6) T5, T6 too): a palette not named here gives every track
 # its THEME. Told apart by lightness as well as hue, and always drawn with the track's number (never the colour alone)
 TRACKS = {"SKIFF": [(255, 90, 54), (34, 195, 180), (255, 191, 0), (149, 128, 255),    # vermilion teal amber violet
@@ -148,6 +152,8 @@ def derive(p):
     d["rec"] = to565(REC_LIGHT if d["light"] else REC_DARK)
     if name in LCD_LOOKS:                             # src/gfx.c lcd_tones
         mid = mix(bg, text, LCD_MID_PCT)
+        if name in LCD_OWN_TONES:
+            d["raise_"], mid = (to565(c) for c in LCD_OWN_TONES[name])
         d.update(mid=mid, dim=mid, line=d["raise_"], tint=d["raise_"], sel=text, key=text, rec=text)
     return name, d
 
@@ -222,6 +228,9 @@ def main():
                 "Felucca's oldest */"]
         out += [f"#define UI_{k}_PCT {v}" for k, v in PCT.items()] + [f"#define UI_RAISE_PCT {RAISE_PCT}   /* SURF -> TEXT */",
                                                     f"#define UI_LCD_MID_PCT {LCD_MID_PCT}   /* (LCD) BG -> TEXT */"]
+        ghost, mid = (to565(c) for c in LCD_OWN_TONES[LCD])
+        out += [f"#define UI_LCD_GHOST 0x{ghost:04x}u   /* (LCD) its own ghost and MID (CUSTOM over it: derived) */",
+                f"#define UI_LCD_MID 0x{mid:04x}u"]
         out += [f"#define UI_REC_DARK 0x{to565(REC_DARK):04x}u", f"#define UI_REC_LIGHT 0x{to565(REC_LIGHT):04x}u",
                 f"#define UI_QR_LIGHT 0x{to565(QR_LIGHT):04x}u", f"#define UI_QR_DARK 0x{to565(QR_DARK):04x}u",
                 f"#define UI_CRASH_BG 0x{to565(CRASH_BG):04x}u", f"#define UI_CRASH_INK 0x{to565(CRASH_INK):04x}u", "",

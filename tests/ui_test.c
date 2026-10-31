@@ -128,6 +128,15 @@ static volatile uint32_t audio_max_us;
 #include "../firmware/src/bank.c"
 #include "phrases.h"                              /* (test material: the phrases the firmware no longer ships) */
 
+/* (#48) LCD: px, swapped, is the rail's tone there, or (BG, the ghost) one of its backlight shades (gfx.c lcd_vig) */
+static int rail_px_ok(uint16_t px, uint16_t tone)
+{
+    uint32_t i;
+    for (i = 0; i <= LCD_VIG; i++)
+        if (px == (tone == T_RAISE ? lcd_vig[1][i] : tone == T_BG ? lcd_vig[0][i] : swap16(tone)))
+            return 1;
+    return 0;
+}
 static int check(const char *what, int ok)
 {
     printf("ui: %-74s %s\n", what, ok ? "ok" : "FAIL");
@@ -4591,7 +4600,7 @@ static int test_bughunt_ui2(void)
             dot = ux.h1n ? swap16(T_RAISE) : bg;
             for (y = Y_GRAPH; y < Y_GRAPH + H_GRAPH; y++)
                 for (x = 0; x < 3u; x++)
-                    out += ux.h1n ? host_screen[y * 240u + x] != (x < HN_RAIL_W ? swap16(hn_rail_tone((int32_t)y)) : bg)
+                    out += ux.h1n ? !rail_px_ok(host_screen[y * 240u + x], x < HN_RAIL_W ? hn_rail_tone((int32_t)y) : T_BG)
                                   : host_screen[y * 240u + x] != bg && host_screen[y * 240u + x] != dot;
         }
         bad += check("piano roll: the C-1 label stays inside the panel (every palette)", !out);

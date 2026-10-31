@@ -169,6 +169,8 @@ static uint32_t ux_luma(uint16_t c)        /* 0..255 */
     return ((c >> 11) * 255u / 31u * 54u + ((c >> 5) & 63u) * 255u / 63u * 183u + (c & 31u) * 255u / 31u * 19u) >> 8;
 }
 
+static inline uint16_t swap16(uint32_t c) { return (uint16_t)(((c >> 8) & 0xFFu) | ((c & 0xFFu) << 8)); }
+
 /* (Skiff #29) THEME LCD: a reflective LCD's four tones, BG, RAISE (the unlit segments' ghost), MID and TEXT (its ink).
  * Every token is one of them (tools/gen_ui_palettes.py derive); cv_lcd_rows snaps every pixel drawn to the nearest by
  * luma, so text, curves and corners lose their anti-aliasing. THEME CUSTOM's colours over it: the same, from theirs */
@@ -179,10 +181,17 @@ static uint16_t lcd_snap(uint16_t c)
     uint32_t l = lcd_luma(c);
     return lcd.tone[(l > lcd.th[0]) + (l > lcd.th[1]) + (l > lcd.th[2])];
 }
-static void lcd_tones(void)
+/* (PO) the LCD's backlight falling off toward the corners: BG and the ghost a little darker with the square of the
+ * distance from the screen's centre, LCD_VIG % at the corners (cv_lcd_vignette); their shades, a percent apart */
+#define LCD_VIG 11u
+static uint16_t lcd_vig[2][LCD_VIG + 1u] __attribute__((section(".pool")));   /* BG's, the ghost's; swapped */
+static uint8_t lcd_vig_off __attribute__((section(".pool")));   /* 1: none (the splash: its square filled flat) */
+static void lcd_tones(int own)                    /* own: LCD's ghost and MID, else derived (tools/gen_ui_palettes.py) */
 {
     uint32_t i, k;
-    ux.mid = ux.dim = ux_mix(ux.bg, ux.text, UI_LCD_MID_PCT);
+    if (own)
+        ux.raise = UI_LCD_GHOST;
+    ux.mid = ux.dim = own ? UI_LCD_MID : ux_mix(ux.bg, ux.text, UI_LCD_MID_PCT);
     ux.line = ux.tint = ux.lane = ux.grid = ux.raise;
     ux.sel = ux.key = ux.rec = ux.text;
     lcd.tone[0] = ux.bg; lcd.tone[1] = ux.raise; lcd.tone[2] = ux.mid; lcd.tone[3] = ux.text;
@@ -194,6 +203,10 @@ static void lcd_tones(void)
         }
     for (i = 0; i < 3u; i++)
         lcd.th[i] = (lcd_luma(lcd.tone[i]) + lcd_luma(lcd.tone[i + 1u])) / 2u;
+    for (i = 0; i <= LCD_VIG; i++) {
+        lcd_vig[0][i] = swap16(ux_mix(ux.bg, 0, (int32_t)i));
+        lcd_vig[1][i] = swap16(ux_mix(ux.raise, 0, (int32_t)i));
+    }
 }
 
 /* (Skiff #27) THEME CUSTOM's colours over the palette's: 11 RGB565, low byte first (BG SURF TEXT THEME ACCENT, the six
@@ -231,7 +244,7 @@ static void palette_set(uint32_t i)
     ux.light = ux_luma(ux.bg) > 128u;
     ux.rec = ux.light ? UI_REC_LIGHT : UI_REC_DARK;
     if (ux.h1n)
-        lcd_tones();
+        lcd_tones(i == UI_LCD_INDEX && !ux_cpal);
     ux.gen++;                                    /* the text ramps change with the coverage curve */
 }
 
@@ -248,8 +261,6 @@ static int palette_stored_ok(uint32_t v)
 {
     return v < 20u || (v >= UI_PAL_TAG && v - UI_PAL_TAG < 11u) || (v >= UI_THEME_TAG && v - UI_THEME_TAG < NPALETTES);
 }
-
-static inline uint16_t swap16(uint32_t c) { return (uint16_t)(((c >> 8) & 0xFFu) | ((c & 0xFFu) << 8)); }
 
 /* ------------------------------------------------------------ canvas --- */
 static void cv_begin(uint32_t w, uint32_t h, uint16_t bg)
@@ -295,6 +306,26 @@ static void cv_lcd_dots(uint32_t x, uint32_t y, uint32_t r0)
     }
 }
 
+/* the backlight's fall-off on the BG and ghost pixels of rows r0.. of the canvas going to (x, y): its level the
+ * squared distance from the screen's centre in half pixels (2 * 119.5 = 239), LCD_VIG at a corner */
+#define LCD_VIG_K ((LCD_VIG << 24) / (2u * 239u * 239u))
+static void cv_lcd_vignette(uint32_t x, uint32_t y, uint32_t r0)
+{
+    uint32_t r, i;
+    if (lcd_vig_off)
+        return;
+    for (r = r0; r < cv_h; r++) {
+        int32_t dy = 2 * (int32_t)(y + r) - 239;
+        uint16_t *p = cv_px + r * cv_w;
+        for (i = 0; i < cv_w; i++) {
+            int32_t dx = 2 * (int32_t)(x + i) - 239;
+            int ghost = p[i] == lcd_vig[1][0];
+            if (ghost || p[i] == lcd_vig[0][0])
+                p[i] = lcd_vig[ghost][((uint32_t)(dx * dx + dy * dy) * LCD_VIG_K) >> 24];
+        }
+    }
+}
+
 static void hn_rail_rows(uint32_t x, uint32_t y, uint32_t r0);   /* (ui_h1n.c) */
 /* (Skiff #29) THEME LCD: rows r0.. of the canvas in the LCD's four tones, the dot grid (LCD NIGHT: none), (#48) the
  * track rail */
@@ -314,6 +345,7 @@ static void cv_lcd_rows(uint32_t x, uint32_t y, uint32_t r0)
     if (ux.light)
         cv_lcd_dots(x, y, r0);
     hn_rail_rows(x, y, r0);
+    cv_lcd_vignette(x, y, r0);
 }
 
 static void cv_blit(uint32_t x, uint32_t y)
@@ -322,6 +354,21 @@ static void cv_blit(uint32_t x, uint32_t y)
     cv_lcd_rows(x, y, 0);
     GFX_HOOK_BLIT(x, y, 0u);
     lcd_blit(x, y, cv_w, cv_h, cv_px);
+}
+
+/* BG over a screen rectangle; the LCD look: through the canvas, so its dot grid, rail and vignette reach it too */
+static void cv_fill_bg(uint32_t x, uint32_t y, uint32_t w, uint32_t h)
+{
+    uint32_t rows;
+    if (!ux.h1n) {
+        lcd_fill(x, y, w, h, ux.bg);
+        return;
+    }
+    for (; w && h; y += rows, h -= rows) {
+        rows = CV_MAX / w < h ? CV_MAX / w : h;
+        cv_begin(w, rows, ux.bg);
+        cv_blit(x, y);
+    }
 }
 
 /* canvas rows r0 .. cv_h-1 only, to screen row y + r0 */

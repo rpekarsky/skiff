@@ -43,16 +43,10 @@ static void hn_rail_rows(uint32_t x, uint32_t y, uint32_t r0)
     }
 }
 
-/* the rail straight to the screen: over the BG the page's fills leave (ui_draw.c ui_draw: a full redraw, a track
- * selected) */
+/* the rail alone to the screen: over what the page left there (ui_draw.c ui_draw: a full redraw, a track selected) */
 static void hn_rail_paint(void)
 {
-    uint32_t k;
-    lcd_fill(0, Y_GRAPH, HN_RAIL_X1, (uint32_t)HN_RAIL_H, T_BG);
-    for (k = 0; k < NTRK; k++) {
-        int32_t h, y = Y_GRAPH + hl_lane_y(k, song.sel, HN_RAIL_H, &h);
-        lcd_fill(0, (uint32_t)y, HN_RAIL_W, (uint32_t)h, k == song.sel ? T_TEXT : T_RAISE);
-    }
+    cv_fill_bg(0, Y_GRAPH, HN_RAIL_X1, (uint32_t)HN_RAIL_H);
     hn_rail_sel = song.sel;
 }
 

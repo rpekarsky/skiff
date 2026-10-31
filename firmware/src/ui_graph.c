@@ -2395,11 +2395,11 @@ static void draw_tracks(void)
         if (NTRK > 4u)                               /* the six strips are the panel's full height: only the gaps */
             for (c = 0, pos = 0; c <= NTRK; c++) {   /* between them, so a track change doesn't flash them (#15) */
                 int32_t r = c < NTRK ? MS_X(c) : 240;
-                lcd_fill(pos, graph_y(), (uint32_t)r - pos, graph_h(), T_BG);
+                cv_fill_bg(pos, graph_y(), (uint32_t)r - pos, graph_h());
                 pos = (uint32_t)(r + MS_W);
             }
         else
-            lcd_fill(0, graph_y(), 240, graph_h(), T_BG);
+            cv_fill_bg(0, graph_y(), 240, graph_h());
         for (c = 0; c < NTRK; c++)
             ts.meter[c] = 0;
     }

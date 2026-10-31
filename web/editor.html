@@ -48,10 +48,10 @@
     --line: #3f6c8c; --rec: #ff5460; --txmix: 100%; --head: #4fd1ff; color-scheme: dark;
     --t1: #ff5460; --t2: #46dc82; --t3: #5a8cff; --t4: #3cdcf0; --t5: #e660e6; --t6: #fadc50; }
   :root[data-theme="quark"] h2 { border-bottom: 1px dotted var(--head); padding-bottom: 3px; }
-  /* (Skiff #29) LCD: a reflective LCD, four tones (BG, the unlit ghost, MID, ink), every track ink, pixel headings */
-  :root[data-theme="h1n"] { --bg: #b2baa6; --tile: #a0aa94; --raise: #949e88; --hover: #88927c; --fg: #1c201a; --dim: #3c4236;
-    --line: #58604f; --rec: #1c201a; --txmix: 100%; --head: #1c201a; --on-trk: #b2baa6; color-scheme: light;
-    --t1: #1c201a; --t2: #1c201a; --t3: #1c201a; --t4: #1c201a; --t5: #1c201a; --t6: #1c201a; }
+  /* (Skiff #29) LCD: the Zoom H1n's backlit LCD, four tones (BG, the unlit ghost, MID, ink), every track ink, pixel headings */
+  :root[data-theme="h1n"] { --bg: #d6e4f6; --tile: #b4d0f2; --raise: #96bef0; --hover: #7ea6e0; --fg: #121e54; --dim: #6080c4;
+    --line: #6080c4; --rec: #121e54; --txmix: 100%; --head: #121e54; --on-trk: #d6e4f6; color-scheme: light;
+    --t1: #121e54; --t2: #121e54; --t3: #121e54; --t4: #121e54; --t5: #121e54; --t6: #121e54; }
   :root[data-theme="h1n"] h1, :root[data-theme="h1n"] h2 { font-family: ui-monospace, Consolas, Menlo, monospace; }
   html { color-scheme: light dark; }
   body { margin: 0; background: var(--bg); color: var(--fg);
@@ -529,7 +529,7 @@ const PAL_BUILTIN = [
   ["CRYPT", 0x0820, 0x20c2, 0xeeb5, 0xfd84, 0xfeef, 0xeb66, 0xf5a7, 0xde74, 0xeac8, 0xad6b, 0xcc36],
   ["NEON", 0x0823, 0x1866, 0xf77f, 0xfad7, 0x371f, 0xfa16, 0x371f, 0xfeeb, 0xfc07, 0xab3f, 0x57f5],
   ["QUARK", 0x0021, 0x08a4, 0xdf9f, 0x4e9f, 0xff0c, 0xfaac, 0x46f0, 0x5c7f, 0x3efe, 0xe31c, 0xfeea],
-  ["LCD", 0xb5d4, 0xb5d4, 0x1903, 0x1903, 0x1903, 0x1903, 0x1903, 0x1903, 0x1903, 0x1903, 0x1903],
+  ["LCD", 0xd73e, 0xd73e, 0x10ea, 0x10ea, 0x10ea, 0x10ea, 0x10ea, 0x10ea, 0x10ea, 0x10ea, 0x10ea],
   ["LCD NIGHT", 0x10c4, 0x1946, 0xf75b, 0x9cb2, 0xf75b, 0x9cb2, 0x9cb2, 0x9cb2, 0x9cb2, 0x9cb2, 0x9cb2],
   ["GAMEBOY", 0xc749, 0xb6c8, 0x0901, 0x2244, 0x0901, 0x2244, 0x2244, 0x2244, 0x2244, 0x2244, 0x2244],
   ["AMBER", 0xfeac, 0xf60a, 0x28a0, 0x59a1, 0x28a0, 0x59a1, 0x59a1, 0x59a1, 0x59a1, 0x59a1, 0x59a1],
