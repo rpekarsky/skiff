@@ -540,13 +540,13 @@ static int roll_on(void)
  * Armed and playing, STEP's keys record live (at the play head) instead of writing the cursor step.
  * (1.4.1) Several tracks can be armed (MIDI IN records each on its channel); REC on an armed track disarms them all,
  * as its LED (lit while any is armed) says: one track armed, another selected, REC no longer looked stuck */
-static void rec_pass_undo(int armed);
+static void rec_pass_undo(uint32_t was);
 static int rec_tap(void)                                /* 1: the arming changed */
 {
-    uint8_t bit = (uint8_t)(1u << song.sel);
+    uint8_t bit = (uint8_t)(1u << song.sel), was = song.rec;
     song.rec = (uint8_t)(song.rec & bit ? 0u : song.rec | bit);
     ui.force = 1;                                     /* also refresh the status on MENU / ABOUT */
-    rec_pass_undo((song.rec & bit) != 0u);            /* ((Skiff U2) what this arming records: one undo) */
+    rec_pass_undo(was);                               /* ((Skiff U2) what this arming records: its undo) */
     if ((song.rec & bit) && !song.playing && !seq_counting() && roll_on()) {
         ui_message("KEYS WRITE STEPS");               /* step recording: stopped, at the cursor */
         return 1;
@@ -1998,20 +1998,209 @@ static void step_clear_undo(track_t *t)
     tl_undo_take(t, STEP_CLR);
 }
 
-/* (Skiff U2, the review's S6) a recording pass is one undo: armed, the track as it is (RECORDING, SAVE held puts it
- * back: live REC, step entry, what the keys wrote); disarmed with nothing recorded, that copy goes again (no empty undo) */
+/* (Skiff U2, the review's S6) a recording is undone: armed, the track as it is (RECORDING, SAVE held puts it back: live
+ * REC, step entry, what the keys wrote); disarmed with nothing recorded, that copy goes again (no empty undo).
+ * (#55) Live, the last pass that recorded something is an undo of its own too: one LAST PASS copy per recording
+ * ("PASS 3"), replaced at each recorded pass, so a recording holds two copies at most: UNDO takes back the last pass,
+ * again the whole recording. A pass ends where REC starts placing notes into the next one (take_stamp: past the middle
+ * of its last step); the main loop (rec_pass_poll) then keeps the track as it is in rec_pend, the pass that begins, but
+ * the step it starts on as the first half of that last step found it (pre: a note played early for it went in already).
+ * The pass after a recorded one turns rec_pend into the LAST PASS copy; so does an UNDO, or disarming, while it holds
+ * notes. Recording goes on through an UNDO: what it records after one drops the redo (rec_redo_check), as any edit.
+ * rec_pend is the track armed last's (rec_pend_k); another armed track keeps its RECORDING copy only */
 static const char REC_PASS[] = "RECORDING";
-static void rec_pass_undo(int armed)
+typedef struct {
+    uint32_t sig;                /* rec_sig of the track as the pass begun (rec_pend's), or as the last undo left it */
+    uint32_t arm_sig;            /* .. as armed */
+    uint16_t arm, last;          /* the copies (undo_t.seq): RECORDING, LAST PASS */
+    uint16_t at;                 /* the pass REC places notes in (take_stamp), last looked */
+    uint16_t num;                /* that pass counted from the arming's, 1 .. */
+    uint8_t live, pid, pre_ok, pre_idx;
+    step_t pre;                  /* step pre_idx, the one the next pass starts on, before it */
+} rec_pass_t;
+static rec_pass_t rpass[NTRK];
+static undo_t rec_pend;
+static uint8_t rec_pend_k = NTRK;
+
+static void undo_copy_track(undo_t *c, track_t *t);
+static uint32_t undo_age(uint32_t slot) { return (undo_top + UNDO_N - slot) % UNDO_N; }
+static undo_t *undo_aged(uint32_t age) { return &undo_ring[(undo_top + UNDO_N - age) % UNDO_N]; }
+static void undo_remove(uint32_t age)                   /* (0: the newest; the newer ones move down into its place) */
 {
-    track_t *t = TSEL;
-    if (armed) {
-        tl_undo_take(t, REC_PASS);
-        undo.after = track_sig(t);
-    } else if (undo_n && !undo_back && undo.name == REC_PASS && undo.trk == trk_index(t) + 1u &&
-               track_sig(t) == undo.after) {
-        undo_top = (uint8_t)((undo_top + UNDO_N - 1u) % UNDO_N);
-        undo_n--;
+    for (; age; age--)
+        *undo_aged(age) = *undo_aged(age - 1u);
+    undo_top = (uint8_t)((undo_top + UNDO_N - 1u) % UNDO_N);
+    undo_n--;
+}
+static void undo_drop_redo(void)
+{
+    undo_n = (uint8_t)(undo_n - undo_back);
+    undo_top = (uint8_t)((undo_top + UNDO_N - undo_back) % UNDO_N);
+    undo_back = 0;
+}
+/* what REC changes on track t: the steps (step i as *s), LEN DIV SWING GATE DIR, the motion */
+static uint32_t rec_sig(const track_t *t, uint32_t i, const step_t *s)
+{
+    uint32_t h = fnv(2166136261u, t->step, i * sizeof *s);
+    h = fnv(fnv(h, s, sizeof *s), t->step + i + 1u, (NSTEP - 1u - i) * sizeof *s);
+    h = fnv(h, &t->p[P_SLEN], (P_SGATE - P_SLEN + 1u) * sizeof t->p[0]);
+    return fnv(h, &t->p[P_DIR], sizeof t->p[0]) ^ motion_sig(t);
+}
+static uint32_t rec_sig_now(const track_t *t) { return rec_sig(t, 0, &t->step[0]); }
+static int rec_pass_recorded(uint32_t k) { return rec_sig_now(&trk[k]) != rpass[k].sig; }
+
+static void rec_pend_take(uint32_t k)                   /* the pass begins now: rec_pend the track as it is */
+{
+    undo_copy_track(&rec_pend, &trk[k]);
+    rpass[k].sig = rec_sig_now(&trk[k]);
+}
+/* rec_pend becomes the recording's LAST PASS copy: the old one replaced (in its place while the newest, else it goes
+ * and the new one is the newest). Not while rec_pend is the track as armed: RECORDING undoes that pass already */
+static void undo_put_pend(const char *name)             /* the newest copy becomes rec_pend, named */
+{
+    uint16_t seq = undo.seq;
+    undo = rec_pend;
+    undo.seq = seq;
+    undo.name = name;
+}
+static void rec_pass_keep(rec_pass_t *r)
+{
+    int32_t slot;
+    if (r->sig == r->arm_sig)
+        return;
+    undo_drop_redo();
+    slot = undo_find(r->last);
+    if (slot < 0 || (uint32_t)slot != undo_top) {
+        if (slot >= 0)
+            undo_remove(undo_age((uint32_t)slot));
+        undo_push(UNDO_PAT);
     }
+    undo_put_pend(UNDO_PASS);
+    undo.pass = r->num;
+    r->last = undo.seq;
+}
+static void rec_pass_undo(uint32_t was)                 /* the arming went from was to song.rec */
+{
+    uint32_t k;
+    rec_pass_t *r;
+    for (k = 0; k < NTRK; k++) {                        /* disarmed: the pass so far kept; nothing recorded at all, */
+        r = &rpass[k];                                  /* RECORDING goes again */
+        if (!(((was & ~song.rec) >> k) & 1u))
+            continue;
+        if (k == rec_pend_k && rec_pass_recorded(k))
+            rec_pass_keep(r);
+        if (undo_n && !undo_back && undo.seq == r->arm && rec_sig_now(&trk[k]) == r->arm_sig)
+            undo_remove(0);
+    }
+    if (!(song.rec & ~was))
+        return;
+    r = &rpass[song.sel];
+    tl_undo_take(TSEL, REC_PASS);
+    r->arm = undo.seq;
+    r->last = 0;
+    r->num = 1;
+    r->live = 0;
+    rec_pend_k = song.sel;
+    rec_pend_take(song.sel);
+    r->arm_sig = r->sig;
+}
+
+/* (#55) something recorded since the last undo or redo: its redo goes (it would swap an older pattern over the notes) */
+static void rec_redo_check(void)
+{
+    uint32_t k;
+    for (k = 0; k < NTRK && undo_back; k++)
+        if (rec_on(&trk[k]) && rec_pass_recorded(k)) {
+            undo_drop_redo();
+            if (k == rec_pend_k && undo_find(rpass[k].arm) < 0) {   /* (the recording undone, then recorded again: */
+                undo_push(UNDO_PAT);                                /* it starts from there) */
+                undo_put_pend(REC_PASS);
+                rpass[k].arm = undo.seq;
+                rpass[k].last = 0;
+                rpass[k].arm_sig = rpass[k].sig;
+            }
+        }
+}
+/* (#55, ui.c undo_step) before an undo or redo while recording plays: UNDO takes back the pass playing if it holds notes */
+static void rec_live_step(int redo)
+{
+    if (redo)
+        rec_redo_check();
+    else if (rec_pend_k < NTRK && rec_on(&trk[rec_pend_k]) && rec_pass_recorded(rec_pend_k))
+        rec_pass_keep(&rpass[rec_pend_k]);
+}
+/* .. and after it: each recording goes on from the track as it left it */
+static void rec_live_stepped(void)
+{
+    uint32_t k;
+    for (k = 0; k < NTRK; k++)
+        if (rec_on(&trk[k])) {
+            if (k == rec_pend_k)
+                rec_pend_take(k);
+            rpass[k].sig = rec_sig_now(&trk[k]);
+        }
+}
+
+/* the pass REC placed notes in is over: recorded into, rec_pend becomes LAST PASS and the next pass is taken (the step it
+ * starts on as pre holds it); nothing recorded, rec_pend goes on to the next pass */
+static void rec_pass_end(uint32_t k, rec_pass_t *r)
+{
+    uint32_t i = r->pre_ok ? r->pre_idx : 0u, sig = rec_sig(&trk[k], i, r->pre_ok ? &r->pre : &trk[k].step[i]);
+    if (sig != r->sig) {
+        rec_pass_keep(r);
+        rec_pend_take(k);
+        if (r->pre_ok)
+            rec_pend.step[i] = r->pre;
+        r->sig = sig;
+    }
+    r->num++;
+}
+/* another pattern came in while recording (a song, a chain, a launch): its passes from here; the old one's pass begun
+ * just now holds nothing (missed, its end with the switch: kept) */
+static void rec_pass_repattern(uint32_t k, rec_pass_t *r, int just_ended)
+{
+    if (!just_ended) {
+        rec_pass_keep(r);
+        r->num++;
+    }
+    rec_pend_take(k);
+}
+static void rec_pass_watch(uint32_t k, rec_pass_t *r)
+{
+    track_t *t = &trk[k];
+    uint32_t len = (uint32_t)clamp(t->p[P_SLEN], 1, NSTEP), at, in_last_step;
+    int32_t feel;
+    if (!rec_on(t)) {
+        r->live = 0;
+        return;
+    }
+    fm1_irq_off();                                      /* (pre whole, not half a note the audio ISR writes) */
+    (void)take_stamp(t, &at, &feel);
+    in_last_step = len > 1u && seq_pass_last(t, len) && t->p[P_DIR] != DIR_RAND;
+    if (in_last_step && at == r->at) {
+        r->pre_idx = (uint8_t)seq_peek(t, len);
+        r->pre = t->step[r->pre_idx];
+    }
+    fm1_irq_on();
+    if (!r->live || at < r->at) {                       /* (armed or PLAY since: from here) */
+        r->live = 1;
+        r->pid = trk_pid[k];
+    } else if (k == rec_pend_k && r->pid != trk_pid[k]) {
+        r->pid = trk_pid[k];
+        rec_pass_repattern(k, r, at == r->at);
+    } else if (k == rec_pend_k && at > r->at && r->at) {   /* (pass 0: PLAY's block) */
+        rec_pass_end(k, r);
+    }
+    r->pre_ok = (uint8_t)(in_last_step && at == r->at);
+    r->at = (uint16_t)at;
+}
+/* (#55) the main loop: where each recording track's pass ends; a recording after an undo ends its redo */
+static void rec_pass_poll(void)
+{
+    uint32_t k;
+    rec_redo_check();
+    for (k = 0; k < NTRK; k++)
+        rec_pass_watch(k, &rpass[k]);
 }
 
 /* a page button let go (they act on release; a layer's own button: layer_gesture). 1: it acted (EDIT on NOTES, USER,
@@ -2169,6 +2358,7 @@ static void ui_input(void)
     clock_wait_poll();                                  /* (PLAY on an external clock that sends nothing: say so) */
     bank_poll();                                        /* (Skiff) a pattern switched in live: what went out kept */
     song_poll();                                        /* (Skiff phase 5) SONG: each track's next entry staged */
+    rec_pass_poll();                                    /* ((#55) REC: a pass that recorded, an undo of its own) */
 #if !FELUCCA_FM4 && FELUCCA_LEGACY
     for (k = 0; k < NTRK; k++)                          /* a DIGITAL sound any other way (the paths convert it */
         if (trk[k].eng_req == ENGI_DIGITAL)             /* already): FM6 (fm4_convert.c) */

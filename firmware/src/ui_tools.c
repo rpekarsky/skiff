@@ -31,23 +31,27 @@ static int tl_cell(const track_t *t, uint32_t p)
 /* the undo copy of t as it is now (ui.c load_begin, but the automation is copied and stays): one action, named */
 static const char *const TL_UNDO[TL_N] = {UNDO_PAT_CLEAR, "REVERSE", "SHIFT", "SHIFT", "RANDOM", "COOK", "BEAT",
     "EUCLID", "LANE CLEAR", "LANE REVERSE", "LANE FILL", "LANE RANDOM", "DOUBLE", "HALF"};   /* (Skiff: the undo box) */
-static void tl_undo_take(track_t *t, const char *name)
+static void undo_copy_track(undo_t *c, track_t *t)
 {
     uint32_t i = trk_index(t);
+    c->trk = (uint8_t)(i + 1u);
+    c->what = UNDO_PAT;
+    c->keep = 0;                                        /* (the next load or action takes its own copy) */
+    c->eng = t->eng_req;
+    c->preset = t->preset;
+    c->user = t->user;
+    memcpy(c->p, t->p, sizeof c->p);
+    memcpy(c->step, t->step, sizeof c->step);
+    memcpy(c->fm6, fm6_patch[i], FP_SIZE);
+    c->fm6_slot = fm6_slot[i];
+    c->pid = trk_pid[i];
+    motion_snapshot_track(t, &c->motion_backup);
+}
+static void tl_undo_take(track_t *t, const char *name)
+{
     undo_label = name;
     undo_push(UNDO_PAT);
-    undo.trk = (uint8_t)(i + 1u);
-    undo.what = UNDO_PAT;
-    undo.keep = 0;                                      /* (the next load or action takes its own copy) */
-    undo.eng = t->eng_req;
-    undo.preset = t->preset;
-    undo.user = t->user;
-    memcpy(undo.p, t->p, sizeof undo.p);
-    memcpy(undo.step, t->step, sizeof undo.step);
-    memcpy(undo.fm6, fm6_patch[i], FP_SIZE);
-    undo.fm6_slot = fm6_slot[i];
-    undo.pid = trk_pid[i];
-    motion_snapshot_track(t, &undo.motion_backup);
+    undo_copy_track(&undo, t);
 }
 
 /* the layer's OCT- (SEQ TOOLS, REC): t's steps and automation as the undo copy of its first change holds them (the track
