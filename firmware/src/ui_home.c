@@ -41,36 +41,26 @@ static void hl_pat(uint32_t k, char *b)
 /* (#59) each lane's level meter: the peak fx.c's mix_part keeps of the track as it enters the mix (t->peak: after its
  * LEVEL, DRIVE, INSERT, SLICER, mute and DUCK, before PAN and MASTER; nothing more in the audio ISR), read and cleared
  * every HM_TICK_MS (the panel redrawn at most that often for it), shown in 3/4 dB steps from 48 dB under full scale
- * (0) to full scale (HM_STEPS), falling HM_FALL steps a tick. SKIFF_HOME_METER: 1 a bar at the lane's left edge, 2 a
- * faint fill under the lane as wide as the level, 0 none */
-#ifndef SKIFF_HOME_METER
-#define SKIFF_HOME_METER 1
-#endif
-enum { HM_NONE, HM_BAR, HM_UNDER };
+ * (0) to full scale (HM_STEPS), falling HM_FALL steps a tick. Drawn as a faint fill under the lane's label (PO: C) */
 #define HM_TICK_MS 45u                                /* (every third frame: ~20 Hz) */
 #define HM_STEPS 64u
 #define HM_FULL_L8 (15u * 8u)                         /* log2 of full scale (32768: the mix at MASTER full), in eighths */
 #define HM_FALL 2u                                    /* ~33 dB/s */
-#define HM_BAR_W 3
-static uint8_t hm_style = SKIFF_HOME_METER;
+#define HM_FILL_W (HL_STEP_X - 4 - 3)                 /* the label's width: the steps stay clear */
 static uint8_t hm_lv[NTRK] __attribute__((section(".pool")));
 static uint32_t hm_t __attribute__((section(".pool")));
 
-/* lane k's meter (y, h: the lane; lane its background, col the track's colour, band: the selected lane, INK on it) */
+/* lane k's meter (y, h: the lane; lane its background, col the track's colour, band: the selected lane, INK on it).
+ * LCD's selected band: MID, the one tone apart from both the band and its INK (lighter by day, darker at night) */
 static void hm_draw(uint32_t k, int32_t y, int32_t h, uint16_t lane, uint16_t col, int band)
 {
-    int32_t lv = hm_lv[k];
-    if (!lv)
+    int32_t w = hm_lv[k] * HM_FILL_W / (int32_t)HM_STEPS;
+    if (!w || (ux.neon && band))                      /* (NEON's sign: its gradient, no room for a tint) */
         return;
-    if (hm_style == HM_BAR) {
-        int32_t bh = lv * (h - 4) / (int32_t)HM_STEPS;
-        cv_rect(3, y + h - 2 - bh, HM_BAR_W, bh, band ? T_INK : col);
-    } else if (ux.neon && band)
-        return;                                       /* (NEON's sign: its gradient, no room for a tint) */
-    else if (ux.crypt && !band)
-        cr_stone(3, y, lv * 234 / (int32_t)HM_STEPS, h, ux_mix(lane, col, 18));
+    if (ux.crypt && !band)
+        cr_stone(3, y, w, h, ux_mix(lane, col, 18));
     else
-        cv_rect(3, y, lv * 234 / (int32_t)HM_STEPS, h, ux_mix(lane, band ? T_INK : col, 18));
+        cv_rect(3, y, w, h, ux.h1n && band ? T_MID : ux_mix(lane, band ? T_INK : col, 18));
 }
 
 /* a peak in meter steps: its log2 in eighths (the top bit's place, then the next three bits) */
@@ -88,7 +78,7 @@ static uint32_t hm_steps(int32_t peak)
 static void home_meters_tick(void)
 {
     uint32_t k, back = fm1_ms - hm_t > 4u * HM_TICK_MS;   /* (back on HOME: not the peaks since it left) */
-    if (!hm_style || fm1_ms - hm_t < HM_TICK_MS)
+    if (fm1_ms - hm_t < HM_TICK_MS)
         return;
     hm_t = fm1_ms;
     for (k = 0; k < NTRK; k++) {
