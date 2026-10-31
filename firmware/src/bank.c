@@ -1922,10 +1922,15 @@ static int song_snd(uint32_t k, uint32_t e, int set)
     }
     return song_snd_put(k, e, b);
 }
+/* ((#54) the commands for an entry with a pattern (COPY .. NO SOUND) are not kept: none can fill an empty one) */
+static int fills_empty_entry(uint32_t p) { return p && p <= SPICK_NEW; }
 static void song_oct(void)
 {
     uint32_t p = song_pick();
     sg.pick = 0;
+    sg.pick_at = (uint8_t)song_here();
+    if (fills_empty_entry(p))
+        sg.last = (uint8_t)p;
     if (!p)
         entry_ui(sg.entry % NENT);
     else if (p >= SPICK_SOUND)
@@ -1939,6 +1944,7 @@ static void song_back(void)
     uint32_t k = song.sel % NTRK;
     if (song_pick()) {
         sg.pick = 0;
+        sg.pick_at = (uint8_t)song_here();
         ui_message("CANCELLED");
     } else if (user_staged(k) && bank_cancel(k)) {
         ui_message("CANCELLED");

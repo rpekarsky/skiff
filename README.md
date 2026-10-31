@@ -423,7 +423,10 @@ The notes live in **patterns**, and a project says which ones each track plays:
   what): REST, a kept pattern, **NEW** (2.0: a new empty pattern, numbered beside the list's patterns as a copy
   is), **COPY** (a copy of the entry's pattern), **COPY+** (2.0: the copy into the first empty entry after it, this
   entry left as it is), CLEAR, then (2.0) **SOUND** (the track's sound now onto the entry: SET SOUND STRINGS) and
-  **NO SOUND**; KNOB 3 the REPS (CHAIN, 1x–16x); KNOB 4 SONG (OFF, ON, ONCE).
+  **NO SOUND**; KNOB 3 the REPS (CHAIN, 1x–16x); KNOB 4 SONG (OFF, ON, ONCE). On an **empty entry** KNOB 2 starts
+  at the last REST, NEW or pattern OCT+ put in, so OCT+ alone fills entry after entry the same way (OCT− drops it:
+  `--`); on an entry with a pattern or a REST it starts at its own, so a stray OCT+ never overwrites it. COPY, COPY+,
+  CLEAR, SOUND and NO SOUND are not remembered (they need a used entry). Forgotten at power-on and at a project load.
 - **Moving an entry:** hold SHIFT and turn KNOB 1: the entry travels with the knob and the ones between shift a place
   (MOVE 02 TO E; a REST: MOVE REST TO E), its REPS and sound with it; the track's place, a launch staged and the
   scenes follow it, playing too. Turned past A or P it says REMOVE: let SHIFT go there and the entry is **unlinked**
