@@ -347,7 +347,11 @@ Felucca) first, and lists what it converted.
   automation edits); OCT− and OCT+ step through them while the undo box shows. Overdubbing, the last loop pass that
   recorded something is an undo of its own (UNDO PASS 3), then the whole recording (RECORDING); REC stays on.
   (#58) An undo of a pattern the track has left (a launch, the song, a chain moved on) goes into that pattern where
-  it is kept, in the background: the track plays on, the box says PATTERN 21 RESTORED; REDO swaps back
+  it is kept, in the background: the track plays on, the box says PATTERN 21 RESTORED; REDO swaps back.
+  (#68) Sound edits by knob are undone too (HOME, the sound and FX pages, FM6's and DRUM-X's sheets, MIXER's LEVEL
+  PAN REVERB MUTE, SHIFT's channel strip, the SMK faders): the first turn takes the step (UNDO T1 ENV; turns on several
+  pages: SOUND), and tweaking on one track stays that one step until another undo step comes between. Not while REC
+  records (the pass's undo has the turns), not PATTERN's values, not the GLO layer's levels (its own UNDO)
 - **Parameter locks and automation:** hold a step and turn a knob to lock it; knob moves recorded live; SEQ ›
   AUTOMATION lists them all to edit, move or delete
 - **SEQ TOOLS** (hold SEQ): CLEAR, REVERSE, SHIFT < / >, RANDOM, COOK, and (1.3) EUCLID (hits spread over the steps,
@@ -433,9 +437,9 @@ The notes live in **patterns**, and a project says which ones each track plays:
 - **Moving an entry:** hold SHIFT and turn KNOB 1: the entry travels with the knob and the ones between shift a place
   (MOVE 02 TO E; a REST: MOVE REST TO E), its REPS and sound with it; the track's place, a launch staged and the
   scenes follow it, playing too; past P it stops at P. Turned past A it says REMOVE and its tile leaves the grid, a
-  trash can on it: let SHIFT go there and the entry is **unlinked** (T1 02 UNLINKED): it leaves the list, the ones
-  after it close up (no empty cell stays), and its pattern stays in the pool, unused (pick its number on KNOB 2 to put
-  it back; SAVE › PATTERNS › UNUSED clears such ones). Turn back while SHIFT is held to keep it; leaving SONG or
+  trash can on it, the others shown closed up already (#51c): let SHIFT go there and the entry is **unlinked** (T1 02
+  UNLINKED): it leaves the list, the ones after it close up (no empty cell stays), and its pattern stays in the pool,
+  unused (pick its number on KNOB 2 to put it back; SAVE › PATTERNS › UNUSED clears such ones). Turn back while SHIFT is held to keep it; leaving SONG or
   changing track with SHIFT still held cancels the REMOVE. A track on that entry plays on. Each move and each unlink
   is one undo step (UNDO T1 MOVE 02, UNDO T1 UNLINK 02), redo too.
 - **An entry's sound** (2.0): when the track comes onto it, the entry loads its sound, as PRESETS or USER would (a

@@ -255,7 +255,7 @@ static void smk_faders(void)
         smk_fd[j].picked = 1;
         smk_fd[j].last = (uint8_t)v;
         smk_tap_spoil();
-        t->p[id] = (int16_t)(TP[id].min + (int32_t)v);
+        sound_set(t, &t->p[id], TP[id].min + (int32_t)v, UNDO_MIX);
         smk_fd[j].wrote = t->p[id];
         say_track_value(k, id, CHANNEL_N[smk_fbank % 4u]);
         ui.force = 1;

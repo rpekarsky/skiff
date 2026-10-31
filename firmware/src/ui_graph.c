@@ -1914,7 +1914,7 @@ static void graph_user(void)
 static void graph_bank(void)
 {
     int32_t th = 15, py = 17, pitch = ux.h1n ? 29 : 30, x0 = ux.h1n ? HN_RAIL_X1 : 1;   /* the tiles 2 narrower than their
-                                                     * pitch: x 1 .. 238; ((#48) LCD: right of the rail, 3 .. 233) */
+                                                     * pitch: x 1 .. 238; ((#48) LCD: right of the rail, 4 .. 234) */
     uint16_t tile = T_SURF;
     uint32_t id, n;
     cv_rect(0, 0, 240, (int32_t)cv_h, T_BG);         /* (over the panel: the tiles are on the ground) */
@@ -2004,8 +2004,8 @@ static void graph_song(void)
                 if (ci[p] > NPAT)                    /* (no number for one: nothing shown) */
                     cp = NENT;
         }
-        for (first = 0; first < NENT && !ent_on(k, first); first++)   /* ((1.2.1, #12) the empty entries between */
-            ;                                                      /* these two are rests; (#28) a REST is one too */
+        for (first = (uint32_t)out; first < NENT && !ent_on(k, first); first++)   /* ((1.2.1, #12) the empty entries */
+            ;                                            /* between these two are rests; (#28) a REST is one too */
         for (last = first < NENT ? NENT - 1u : 0u; last > first && !ent_on(k, last); last--)
             ;
         if (cb && ux.neon)                           /* ((Skiff S1) NEON: the band its colour into violet) */
@@ -2023,15 +2023,16 @@ static void graph_song(void)
                 cm |= (2u << c1) - (1u << c0), cs |= 1u << c0;
         if (cp < NENT && cn > 1u)
             cm |= ((1u << cn) - 1u) << cp, cs |= 1u << cp;
-        for (p = 0; p < NENT; p++)                   /* (each part's piece of it; where two meet, 2 px inside their tiles:
+        for (p = (uint32_t)out; p < NENT; p++)       /* (each part's piece of it; where two meet, 2 px inside their tiles:
                                                       * a notch between them) */
             if ((cm >> p) & 1u) {
                 int32_t a = !((cs >> p) & 1u) ? -1 : p && ((cm >> (p - 1u)) & 1u) ? 2 : -2,
                         z = p + 1u < NENT && ((cm >> (p + 1u)) & 1u) ? ((cs >> (p + 1u)) & 1u ? 10 : 13) : 14;
-                cv_rect(SG_X(p) + a, y, z - a + 1, SG_H, bx);
+                cv_rect(SG_X(p - (uint32_t)out) + a, y, z - a + 1, SG_H, bx);
             }
-        for (p = (uint32_t)out; p < NENT; p++) {               /* (#13) REMOVE: A left empty, the entry out of the grid */
-            int32_t x = SG_X(p);
+        for (p = (uint32_t)out; p < NENT; p++) {     /* (#13) REMOVE: the entry out of the grid, (#51c) the others in
+                                                      * the places they take once it goes, P empty */
+            int32_t x = SG_X(p - (uint32_t)out);
             int cpy = p >= cp && p < cp + cn,        /* ((2.0) COPY+'s copy here: of its chain's part p - cp) */
                 in = (int)((cm >> p) & 1u);          /* (on a chain's box: it the ground, the marks the track's colour) */
             uint16_t gi = in ? bx : g, mk = in ? col : lit;
@@ -2088,8 +2089,10 @@ static void graph_song(void)
             for (r = 0; r + 1u < reps && r < 3u; r++)
                 cv_rect(x + 1 + 3 * (int32_t)r, ty + SG_TH + 1, 2, 1, mk);
         }
-        if (out)
+        if (out) {
+            cv_rect(SG_X(NENT - 1u) + 5, ty + SG_TH / 2 - 1, 2, 2, ux_mix(bd.ground, bd.mark, 55));
             song_trash(SG_X(0) - SG_W - 2, ty);
+        }
     }
 }
 /* SEQ > AUTOMATION (ui_events.c; 1.1.5's AUTO LIST): the track's records around the one selected, a row each: the kind
