@@ -230,7 +230,7 @@ static uint32_t menu_get(uint32_t row)
     case MI_TCH1: case MI_TCH2: case MI_TCH3: case MI_TCH4: case MI_TCH5: case MI_TCH6: return trk_midi_ch(row - MI_TCH1);
     case MI_HINTS: return ui_hints_off != 0;
     case MI_PREVIEW: return PREVIEW_SET ? 1u : 0u;
-    case MI_PKNOB: return PRESETS_PAN_SET;
+    case MI_PKNOB: return PRESETS_LEVEL_SET;
     case MI_RETURN: return ret_mode();
     case MI_POPUP: return popup_time();
     case MI_PCLOSE: return ui.popup_on_input;
@@ -261,7 +261,7 @@ static const char *menu_vname(uint32_t row, uint32_t v)
     switch (row) {
     case MI_COLOR: return v < NPALETTES ? UI_PALETTES[v].name : "CUSTOM";
     case MI_PHEAD: return v & 1u ? "LINE" : "THEME";
-    case MI_PKNOB: return v & 1u ? "PAN" : "PRESETS";
+    case MI_PKNOB: return v & 1u ? "LEVEL" : "PRESETS";
     case MI_LOWCUT: return SPK_EQ[v % 3u];
     case MI_HOLD: return HOLD_N[v & 3u];
     case MI_CLICK: return CLICK_N[v % 3u];

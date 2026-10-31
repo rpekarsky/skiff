@@ -151,8 +151,8 @@ static void theme_apply(void)                  /* settings.palette, and over it 
 #define CPU2_BYTE (favorites.factory[15][5])
 #define CPU2_SET (CPU2_BYTE & 1u)
 #define PREVIEW_SET ((CPU2_BYTE >> 1) & 1u)            /* ((1.3) MENU > STEP PREVIEW ON) */
-#define PRESETS_PAN_SET ((CPU2_BYTE >> 3) & 1u)        /* (wishlist #38) MENU > PRESETS KNOB PAN: ui_input.c
-                                                        * presets_turn turns PAN where it would load a sound */
+#define PRESETS_LEVEL_SET ((CPU2_BYTE >> 3) & 1u)      /* (wishlist #38, #10b) MENU > PRESETS KNOB LEVEL: ui_input.c
+                                                        * presets_turn turns LEVEL where it would load a sound */
 /* (2.0, D 2A) MENU > CONTROL > RETURN: how MOMENTARY's values, the FX layer's macros and PERFORM's throws come back once
  * let go (mom_poll; throw.c thr_beats): SNAP, over 1 BEAT, over 1 BAR. A settings byte ([15][16]: zero, the default
  * 1 BAR; RET_BAR - the value) */
@@ -805,7 +805,7 @@ static void ui_say(const char *a, const char *b)
 }
 
 static void ui_message(const char *s) { ui_say(s, ""); }
-/* "T1 PAN +25%": track k's value said (the SMK's faders; (wishlist #38) PRESETS KNOB PAN, (wishlist #49) SELECT on
+/* "T1 PAN +25%": track k's value said (the SMK's faders; (wishlist #38) PRESETS KNOB LEVEL, (wishlist #49) SELECT on
  * HOME) */
 static void say_track_value(uint32_t k, uint32_t id, const char *name)
 {

@@ -90,7 +90,7 @@ fbdf9e1911e430ce AMBER_global
 4e52b7162db70b10 AMBER_global_swing
 b56928b633b14a86 AMBER_head_beat_2
 b554d057720cdefa AMBER_head_bpm_lock
-125d910889039709 AMBER_head_bpm_lock_level
+afebaa393faa0248 AMBER_head_bpm_lock_pan
 7bfb8df05e591a81 AMBER_head_bpm_turn
 b56928b633b14a86 AMBER_head_downbeat
 92cadd870d6af57b AMBER_head_glo_turn
@@ -148,7 +148,7 @@ ef7b5964e2ca6642 AMBER_menu_end
 78399b16f47e4739 AMBER_menu_midi
 0a539043bac9c486 AMBER_menu_midi_scroll
 3e27e2544227d19b AMBER_menu_popup
-931f6cae8abcda6c AMBER_menu_presets_knob
+ce491c8bebb3545c AMBER_menu_presets_knob
 a7e615a4d06a96c9 AMBER_menu_slide
 d9c52a515de8a195 AMBER_menu_speaker
 43c90a7077fb35c9 AMBER_menu_system
@@ -196,7 +196,7 @@ fb59233c3846e324 AMBER_pool_empty
 aa923b2163d4e416 AMBER_pool_unused
 eb70e320ef43316e AMBER_presets
 328c46a39fba6e1f AMBER_presets_bass
-61b2248fe4cd577a AMBER_presets_knob_pan
+d7a28174226d4f3d AMBER_presets_knob_level
 f0ee8ae46b722992 AMBER_presets_nofav
 6ae029ce49c628c8 AMBER_project
 03bfca720cebd026 AMBER_project_named
@@ -218,8 +218,8 @@ aa49d8080d288f0f AMBER_scl
 314252cc783674c0 AMBER_shift_env
 9f04b39741a9367b AMBER_shift_fm
 bcbe1151de320948 AMBER_shift_home
-92f5a03f03082944 AMBER_shift_home_lock
-4625aa3cb4b3cab0 AMBER_shift_pan
+e6318739b7bf57b4 AMBER_shift_home_lock
+391832b6410e439a AMBER_shift_level
 a7b7d6a99b6b9f50 AMBER_shift_step
 a4a7b1c3ee94ea8f AMBER_shift_strip
 9c00df6c140cc18b AMBER_six_edit
@@ -355,7 +355,7 @@ df4c090258e9659b BLUE-STN_global
 7575d4761bd72d50 BLUE-STN_global_swing
 a5b4af7fd83dee77 BLUE-STN_head_beat_2
 c573c73408928d73 BLUE-STN_head_bpm_lock
-c7316d0a961a4ea6 BLUE-STN_head_bpm_lock_level
+0878eafcc81db9b0 BLUE-STN_head_bpm_lock_pan
 f02a7bba56cdcab8 BLUE-STN_head_bpm_turn
 a5b4af7fd83dee77 BLUE-STN_head_downbeat
 30562f75f8e59c66 BLUE-STN_head_glo_turn
@@ -413,7 +413,7 @@ f4dd63e0888d0e31 BLUE-STN_menu_leds
 30a4ebc3863b5c4b BLUE-STN_menu_midi
 745a67b6738da299 BLUE-STN_menu_midi_scroll
 3fab9f5f8480a925 BLUE-STN_menu_popup
-128ccdd98e8745d5 BLUE-STN_menu_presets_knob
+f357ae574a3c3e1e BLUE-STN_menu_presets_knob
 577046de72b2c608 BLUE-STN_menu_slide
 d8921576e0d3cbad BLUE-STN_menu_speaker
 692f8cc4a38a0337 BLUE-STN_menu_system
@@ -461,7 +461,7 @@ efa6ce13ab351b3c BLUE-STN_pool_new
 32e176fbaded35aa BLUE-STN_pool_unused
 0502494c3058097e BLUE-STN_presets
 cf8650bb1fdf1f9e BLUE-STN_presets_bass
-310cb09b898f47e0 BLUE-STN_presets_knob_pan
+2ca3169f80599c2f BLUE-STN_presets_knob_level
 bb87c988aa3a2ee9 BLUE-STN_presets_nofav
 58894562c31abb35 BLUE-STN_project
 b07812aee68bd58c BLUE-STN_project_named
@@ -483,8 +483,8 @@ e7267edd8262c879 BLUE-STN_roll_empty
 bd4f3aa994330b5b BLUE-STN_shift_env
 a753f0e952f3cb69 BLUE-STN_shift_fm
 9f9b1055a7bd0c46 BLUE-STN_shift_home
-2ff7136ead535bcf BLUE-STN_shift_home_lock
-4693fde99fd9f182 BLUE-STN_shift_pan
+f540ae440cc51d01 BLUE-STN_shift_home_lock
+4434fe573ab667e8 BLUE-STN_shift_level
 4bb7c2bf960ec608 BLUE-STN_shift_step
 b939e049afd2e8a5 BLUE-STN_shift_strip
 2f2b3a1f86f9d1d2 BLUE-STN_six_edit
@@ -620,7 +620,7 @@ c0a84a8c73ca7462 CRYPT_fx
 1c46e0fc7c8cc809 CRYPT_global_swing
 e3a4824d76a2647a CRYPT_head_beat_2
 127e91aaf38896a5 CRYPT_head_bpm_lock
-18884d58a8fde440 CRYPT_head_bpm_lock_level
+cb157026b47a4e58 CRYPT_head_bpm_lock_pan
 95606341166befe9 CRYPT_head_bpm_turn
 e3a4824d76a2647a CRYPT_head_downbeat
 71abdf1098055982 CRYPT_head_glo_turn
@@ -678,7 +678,7 @@ de6b1d343ff71af3 CRYPT_learn_cc
 814b31b45e5f314f CRYPT_menu_midi
 9b5642c1e2994372 CRYPT_menu_midi_scroll
 2a7092387b293423 CRYPT_menu_popup
-018e06e67c8e033f CRYPT_menu_presets_knob
+cf96526be93d7365 CRYPT_menu_presets_knob
 43498b21139b12d4 CRYPT_menu_slide
 40c734ce81e68b80 CRYPT_menu_speaker
 b2484abda1bd3135 CRYPT_menu_system
@@ -726,7 +726,7 @@ c530602b734b98d7 CRYPT_pool_new
 efbedadad95e9d94 CRYPT_pool_unused
 1d8a1278b2539a0d CRYPT_presets
 d23ab5379eb81e35 CRYPT_presets_bass
-f27cd1c45cba3b90 CRYPT_presets_knob_pan
+c696c5cbbf3b05bc CRYPT_presets_knob_level
 3eb8e3b5818a8f58 CRYPT_presets_nofav
 9c9621794547353c CRYPT_project
 b7216539c54e7739 CRYPT_project_named
@@ -748,8 +748,8 @@ eb333bb43e15a520 CRYPT_samples
 a56389a2dad19afa CRYPT_shift_env
 d762c7fe0020226a CRYPT_shift_fm
 5394ca077fe9dec2 CRYPT_shift_home
-757e8b4ccf975e63 CRYPT_shift_home_lock
-bf24ee4173005b25 CRYPT_shift_pan
+c56d39dac0a5193e CRYPT_shift_home_lock
+69fb5712642890ba CRYPT_shift_level
 6f80d927949754fa CRYPT_shift_step
 7c41e5156e8615f0 CRYPT_shift_strip
 b6ba44eb5bcd5dc8 CRYPT_six_edit
@@ -883,7 +883,7 @@ a50e6b0306444f81 CUSTOM_CRYPT_fx_duck_off
 236ff4b2182a259a CUSTOM_CRYPT_global_swing
 f3c75386d655666a CUSTOM_CRYPT_head_beat_2
 63ef26037391c50d CUSTOM_CRYPT_head_bpm_lock
-63e436834bcac132 CUSTOM_CRYPT_head_bpm_lock_level
+81f75c820c0bbefc CUSTOM_CRYPT_head_bpm_lock_pan
 10b804cfb6a5343b CUSTOM_CRYPT_head_bpm_turn
 f3c75386d655666a CUSTOM_CRYPT_head_downbeat
 d09ca06c26e46ca4 CUSTOM_CRYPT_head_glo_turn
@@ -941,7 +941,7 @@ a65cd70b061bee99 CUSTOM_CRYPT_menu_leds
 2230b29fd0d0ad99 CUSTOM_CRYPT_menu_midi
 3bffabda03058c18 CUSTOM_CRYPT_menu_midi_scroll
 c8d98e4136a4582d CUSTOM_CRYPT_menu_popup
-590f5514fc66b05a CUSTOM_CRYPT_menu_presets_knob
+c4d1a3fad92e4194 CUSTOM_CRYPT_menu_presets_knob
 1ac767326e6f3902 CUSTOM_CRYPT_menu_slide
 e7259fa3118f8889 CUSTOM_CRYPT_menu_speaker
 4cd49a750dd448be CUSTOM_CRYPT_menu_system
@@ -989,7 +989,7 @@ f9fde09e504c14fb CUSTOM_CRYPT_pool
 2947234925fe1c43 CUSTOM_CRYPT_pool_unused
 ca5a1f52922f1368 CUSTOM_CRYPT_presets
 40dc98cf86b99765 CUSTOM_CRYPT_presets_bass
-ba5dae747fe9b67e CUSTOM_CRYPT_presets_knob_pan
+c160d2ff667503c6 CUSTOM_CRYPT_presets_knob_level
 8c05975244adccbc CUSTOM_CRYPT_presets_nofav
 e83dd28466b29b2b CUSTOM_CRYPT_project
 4e241c8209d30fbc CUSTOM_CRYPT_project_named
@@ -1011,8 +1011,8 @@ b8d4a0ee64a7d682 CUSTOM_CRYPT_scl
 f5b6be64b5e82a7c CUSTOM_CRYPT_shift_env
 4bea82724cdb11f7 CUSTOM_CRYPT_shift_fm
 9198af34609c90aa CUSTOM_CRYPT_shift_home
-195a53208fd4f5cd CUSTOM_CRYPT_shift_home_lock
-51065f785bd875e5 CUSTOM_CRYPT_shift_pan
+df41b0c2399e7bf2 CUSTOM_CRYPT_shift_home_lock
+6398158ea57d3700 CUSTOM_CRYPT_shift_level
 f1867130f87fefe0 CUSTOM_CRYPT_shift_step
 461ea86b13bcd2c9 CUSTOM_CRYPT_shift_strip
 f39891592b654834 CUSTOM_CRYPT_six_edit
@@ -1146,7 +1146,7 @@ cb986d86403e197d CUSTOM_LCD_fx_duck_off
 9d68aedce4a7232c CUSTOM_LCD_global_swing
 645b0c3d1863c3e7 CUSTOM_LCD_head_beat_2
 2b261b6525e0f40f CUSTOM_LCD_head_bpm_lock
-7f2ccbb03b0f8ba2 CUSTOM_LCD_head_bpm_lock_level
+577b6a5d69670c14 CUSTOM_LCD_head_bpm_lock_pan
 d1a3059bb46d8627 CUSTOM_LCD_head_bpm_turn
 645b0c3d1863c3e7 CUSTOM_LCD_head_downbeat
 4f75186cbdddb3f8 CUSTOM_LCD_head_glo_turn
@@ -1204,7 +1204,7 @@ fed116af828027ea CUSTOM_LCD_menu_leds
 c87ef086b24166a8 CUSTOM_LCD_menu_midi
 5d9799488dca3f1f CUSTOM_LCD_menu_midi_scroll
 c6578fb0a0c284d3 CUSTOM_LCD_menu_popup
-99d64c0a63df37a4 CUSTOM_LCD_menu_presets_knob
+4f9da589d77fcd56 CUSTOM_LCD_menu_presets_knob
 b55149b9b63282bb CUSTOM_LCD_menu_slide
 b0553c143aa6ae51 CUSTOM_LCD_menu_speaker
 66138570c293c8dd CUSTOM_LCD_menu_system
@@ -1252,7 +1252,7 @@ a4887553d03e88a9 CUSTOM_LCD_play_dir
 6790167e1caeda68 CUSTOM_LCD_pool_unused
 41c6f301e5f83858 CUSTOM_LCD_presets
 865d38d64767918a CUSTOM_LCD_presets_bass
-5edf88e2c39c04cd CUSTOM_LCD_presets_knob_pan
+5859301c70f4c63d CUSTOM_LCD_presets_knob_level
 b714bf0429294ea3 CUSTOM_LCD_presets_nofav
 38e6610ee95cf9ab CUSTOM_LCD_project
 917b9f1e7a309b3c CUSTOM_LCD_project_named
@@ -1274,8 +1274,8 @@ a72d7b3c660cc546 CUSTOM_LCD_scl
 f5b5643e81caeb23 CUSTOM_LCD_shift_env
 57a4b351736a0493 CUSTOM_LCD_shift_fm
 5f0b7430a7f14670 CUSTOM_LCD_shift_home
-1ff850a02bda3877 CUSTOM_LCD_shift_home_lock
-9fee61cddf6bb871 CUSTOM_LCD_shift_pan
+35feab9eeab3f6cf CUSTOM_LCD_shift_home_lock
+0b61cd53ab3f5097 CUSTOM_LCD_shift_level
 13ecef36d3191d62 CUSTOM_LCD_shift_step
 d07f92e00209ee88 CUSTOM_LCD_shift_strip
 b5b014d10d040457 CUSTOM_LCD_six_edit
@@ -1409,7 +1409,7 @@ f011af31c1b293ec CUSTOM_NEON_fm_wave_saw
 468605d82a01ca73 CUSTOM_NEON_global_swing
 c58f2f0072c6958f CUSTOM_NEON_head_beat_2
 f6c07d14e06268be CUSTOM_NEON_head_bpm_lock
-9834c8351729211d CUSTOM_NEON_head_bpm_lock_level
+2e9df194cc5e2877 CUSTOM_NEON_head_bpm_lock_pan
 db97920b4abe7c28 CUSTOM_NEON_head_bpm_turn
 c58f2f0072c6958f CUSTOM_NEON_head_downbeat
 d221fac3127ee736 CUSTOM_NEON_head_glo_turn
@@ -1467,7 +1467,7 @@ dd68cedf03d4e487 CUSTOM_NEON_menu_hold
 88e2e7be4de1e71b CUSTOM_NEON_menu_midi
 618d97cafba9e67b CUSTOM_NEON_menu_midi_scroll
 0d4b36b33a2bd8cf CUSTOM_NEON_menu_popup
-08a6687cc6234f18 CUSTOM_NEON_menu_presets_knob
+487190a7abce6fc0 CUSTOM_NEON_menu_presets_knob
 028a7d9fd4a8f4ba CUSTOM_NEON_menu_slide
 212dc0d4ca4d0aab CUSTOM_NEON_menu_speaker
 e4e02a48353c1b4f CUSTOM_NEON_menu_system
@@ -1515,7 +1515,7 @@ ee3ff8797bd9d275 CUSTOM_NEON_pool_new
 cff483c924d17661 CUSTOM_NEON_pool_unused
 7b3e0045d319b7c5 CUSTOM_NEON_presets
 bb9ada0b7e4ec248 CUSTOM_NEON_presets_bass
-847205ed91618df2 CUSTOM_NEON_presets_knob_pan
+a7d5e52c67f6195a CUSTOM_NEON_presets_knob_level
 b66654461843b66a CUSTOM_NEON_presets_nofav
 190aa4f07acedc49 CUSTOM_NEON_project
 c64e2d04686768ee CUSTOM_NEON_project_named
@@ -1537,8 +1537,8 @@ df6eadb884c7cfad CUSTOM_NEON_roll_wide
 58d2c381edf354e7 CUSTOM_NEON_shift_env
 68ee0860cf1ec559 CUSTOM_NEON_shift_fm
 1daa79d6d8f7d75d CUSTOM_NEON_shift_home
-48f4ecde8477e87f CUSTOM_NEON_shift_home_lock
-c07a230979c89741 CUSTOM_NEON_shift_pan
+60e0c8877eea2a85 CUSTOM_NEON_shift_home_lock
+054ebf0122dd3dcb CUSTOM_NEON_shift_level
 e14fa3c87169e7e3 CUSTOM_NEON_shift_step
 e831993affc720a4 CUSTOM_NEON_shift_strip
 1de6763ad860efe1 CUSTOM_NEON_six_edit
@@ -1672,7 +1672,7 @@ e66a3a12b5f0a34e CUSTOM_QUARK_fx
 f3f3737c73234f84 CUSTOM_QUARK_global_swing
 6cc344031128302b CUSTOM_QUARK_head_beat_2
 318e1c2055ea9ca8 CUSTOM_QUARK_head_bpm_lock
-9ae566d7b996841c CUSTOM_QUARK_head_bpm_lock_level
+97c00463b19f8994 CUSTOM_QUARK_head_bpm_lock_pan
 1acb6a2da071e67e CUSTOM_QUARK_head_bpm_turn
 6cc344031128302b CUSTOM_QUARK_head_downbeat
 3032e1fc540da4d1 CUSTOM_QUARK_head_glo_turn
@@ -1730,7 +1730,7 @@ c01600409b4eb157 CUSTOM_QUARK_menu_audio
 c43b84572f022e38 CUSTOM_QUARK_menu_midi
 09bac33a8840b146 CUSTOM_QUARK_menu_midi_scroll
 b34dd596b5a189f3 CUSTOM_QUARK_menu_popup
-64e4ff6aeefe823a CUSTOM_QUARK_menu_presets_knob
+90e275ce130df3dc CUSTOM_QUARK_menu_presets_knob
 509935179cba59b8 CUSTOM_QUARK_menu_slide
 646019b4679a9810 CUSTOM_QUARK_menu_speaker
 6f7d2ad1ee8ebc20 CUSTOM_QUARK_menu_system
@@ -1778,7 +1778,7 @@ b46cf162484c1adf CUSTOM_QUARK_pool_new
 82bf7da891d95054 CUSTOM_QUARK_pool_unused
 cc41afe74437917c CUSTOM_QUARK_presets
 8e3345c3f44999dd CUSTOM_QUARK_presets_bass
-684cce29859f3cfc CUSTOM_QUARK_presets_knob_pan
+bdfc930376332221 CUSTOM_QUARK_presets_knob_level
 118e1a6fc66acddf CUSTOM_QUARK_presets_nofav
 f5db1a0b6bad333a CUSTOM_QUARK_project
 1de6f86b78289dcc CUSTOM_QUARK_project_named
@@ -1800,8 +1800,8 @@ d0f620ed0aaf0984 CUSTOM_QUARK_scl
 467d7f45e5b4575d CUSTOM_QUARK_shift_env
 063df04ba8a23021 CUSTOM_QUARK_shift_fm
 22eb512c6c6133da CUSTOM_QUARK_shift_home
-b74749c0bedab0d5 CUSTOM_QUARK_shift_home_lock
-7322464a71880302 CUSTOM_QUARK_shift_pan
+90304ad1f57298f0 CUSTOM_QUARK_shift_home_lock
+c49ac085b43858fe CUSTOM_QUARK_shift_level
 72c139a3ed464214 CUSTOM_QUARK_shift_step
 0d1f6cc84610b860 CUSTOM_QUARK_shift_strip
 b19d819a4fce0c09 CUSTOM_QUARK_six_edit
@@ -1935,7 +1935,7 @@ d4f8dc247268770f CUSTOM_SKIFF_global
 cf340805185aecb7 CUSTOM_SKIFF_global_swing
 a281b9ac862392b4 CUSTOM_SKIFF_head_beat_2
 6ea82fd2cb123c34 CUSTOM_SKIFF_head_bpm_lock
-b499c2b16f532468 CUSTOM_SKIFF_head_bpm_lock_level
+02ad49a604a91530 CUSTOM_SKIFF_head_bpm_lock_pan
 83ca5648afbbb3de CUSTOM_SKIFF_head_bpm_turn
 a281b9ac862392b4 CUSTOM_SKIFF_head_downbeat
 72866b14bc842a03 CUSTOM_SKIFF_head_glo_turn
@@ -1993,7 +1993,7 @@ ad5e284a0221b94b CUSTOM_SKIFF_menu_hold
 d470db2259cdc7c8 CUSTOM_SKIFF_menu_midi
 9742f1cdd9b51d7c CUSTOM_SKIFF_menu_midi_scroll
 44af6038ed0ae321 CUSTOM_SKIFF_menu_popup
-8b2eceee2078dbfa CUSTOM_SKIFF_menu_presets_knob
+a940664d1054cefb CUSTOM_SKIFF_menu_presets_knob
 21f5b39ab1571c36 CUSTOM_SKIFF_menu_slide
 93fa55876d9455ab CUSTOM_SKIFF_menu_speaker
 79177e1e5556b29c CUSTOM_SKIFF_menu_system
@@ -2041,7 +2041,7 @@ d03d3a14a1831de7 CUSTOM_SKIFF_pool_new
 d65a0757d69b619a CUSTOM_SKIFF_pool_unused
 a1c7965e50ca1c82 CUSTOM_SKIFF_presets
 0b429a0bc1414a8b CUSTOM_SKIFF_presets_bass
-edc3cb2f8803b104 CUSTOM_SKIFF_presets_knob_pan
+a3fb12784709477d CUSTOM_SKIFF_presets_knob_level
 c58ae6d42e5f0e49 CUSTOM_SKIFF_presets_nofav
 f8970c144f1d12de CUSTOM_SKIFF_project
 fee32a85008926c4 CUSTOM_SKIFF_project_named
@@ -2063,8 +2063,8 @@ bc4bfd68b0ff47f2 CUSTOM_SKIFF_roll_wide
 36219d983a38a967 CUSTOM_SKIFF_shift_env
 ddc9ccaa6ded9dab CUSTOM_SKIFF_shift_fm
 db279a0b442b1528 CUSTOM_SKIFF_shift_home
-0ec431d13ddb63a7 CUSTOM_SKIFF_shift_home_lock
-13098dfe180702c8 CUSTOM_SKIFF_shift_pan
+dc62ad7d30df644a CUSTOM_SKIFF_shift_home_lock
+4b35e365cd99cd24 CUSTOM_SKIFF_shift_level
 6ef39fa7a4998512 CUSTOM_SKIFF_shift_step
 df567331811a447c CUSTOM_SKIFF_shift_strip
 0cb656b2b03fcf09 CUSTOM_SKIFF_six_edit
@@ -2200,7 +2200,7 @@ f13a5d224fff493b GAMEBOY_fx_duck
 59392f731aa2b059 GAMEBOY_global_swing
 7634db029442809c GAMEBOY_head_beat_2
 c98530c33e37cf30 GAMEBOY_head_bpm_lock
-1d8bc3f4b328114e GAMEBOY_head_bpm_lock_level
+616b3279cb7b9d65 GAMEBOY_head_bpm_lock_pan
 3336550e79c3b5bc GAMEBOY_head_bpm_turn
 7634db029442809c GAMEBOY_head_downbeat
 5d77b4df3d2aa446 GAMEBOY_head_glo_turn
@@ -2258,7 +2258,7 @@ de68926d3226005c GAMEBOY_menu_hold
 66004402dc68ba6a GAMEBOY_menu_midi
 c38c1b680a3edd0e GAMEBOY_menu_midi_scroll
 457d96b4b9edebf9 GAMEBOY_menu_popup
-9513014e896f7835 GAMEBOY_menu_presets_knob
+803befa605a4579b GAMEBOY_menu_presets_knob
 6ea316c277f228a4 GAMEBOY_menu_slide
 0e2bd73a3636d245 GAMEBOY_menu_speaker
 e5616a96b5657686 GAMEBOY_menu_system
@@ -2306,7 +2306,7 @@ d5c47fedf8a40c15 GAMEBOY_perform_peek
 49372b9d9b12a6e4 GAMEBOY_pool_unused
 f1ff66788cc1b075 GAMEBOY_presets
 8c1c00e2ef27f90d GAMEBOY_presets_bass
-57f9d3976056bc0d GAMEBOY_presets_knob_pan
+3479b7b3378b06b4 GAMEBOY_presets_knob_level
 03ea06d6c8417842 GAMEBOY_presets_nofav
 a36a0e95bddb7642 GAMEBOY_project
 73a4a11c8e2a0939 GAMEBOY_project_named
@@ -2328,8 +2328,8 @@ c762a9ed855a4605 GAMEBOY_roll_ties
 58c5bc211ef89ad3 GAMEBOY_shift_env
 b2e30590737290df GAMEBOY_shift_fm
 381117a5ff9b8c9d GAMEBOY_shift_home
-eb55bd2cce4a70dc GAMEBOY_shift_home_lock
-f00070ae1e964402 GAMEBOY_shift_pan
+2498a959591ec252 GAMEBOY_shift_home_lock
+b9a533c15db63685 GAMEBOY_shift_level
 a3beab960251c292 GAMEBOY_shift_step
 b8f22b73a11e4930 GAMEBOY_shift_strip
 7b614ad305f1e992 GAMEBOY_six_edit
@@ -2463,7 +2463,7 @@ f610f7e0f7aaa212 HI-CON_global
 78ca990fe904194e HI-CON_global_swing
 f227d9de6c1e8b47 HI-CON_head_beat_2
 f240ec93e06b9b5f HI-CON_head_bpm_lock
-693239fa4620005e HI-CON_head_bpm_lock_level
+6573a16c7922787b HI-CON_head_bpm_lock_pan
 acbd3b9d6cdb84c3 HI-CON_head_bpm_turn
 f227d9de6c1e8b47 HI-CON_head_downbeat
 66cbb4a296e1bbfd HI-CON_head_glo_turn
@@ -2521,7 +2521,7 @@ f106ab635f045406 HI-CON_menu_leds
 7b3825849473f436 HI-CON_menu_midi
 44f20e9128f02de2 HI-CON_menu_midi_scroll
 a230fa225d4e6403 HI-CON_menu_popup
-44895ede2527e639 HI-CON_menu_presets_knob
+1043c18879b24c29 HI-CON_menu_presets_knob
 ddccfce734c94edf HI-CON_menu_slide
 278400b4b5d84a49 HI-CON_menu_speaker
 b38f6fbbec1709d1 HI-CON_menu_system
@@ -2569,7 +2569,7 @@ a932333d19ce5c84 HI-CON_pool_new
 c7befeb875e9dad7 HI-CON_pool_unused
 ea77d98eca192510 HI-CON_presets
 6103df17de8980ad HI-CON_presets_bass
-e5ba4178ec015c85 HI-CON_presets_knob_pan
+388da9f31b183c4e HI-CON_presets_knob_level
 54142c1300863ade HI-CON_presets_nofav
 077078b2334442da HI-CON_project
 564cce6ff7e1666d HI-CON_project_named
@@ -2591,8 +2591,8 @@ a51de9ba47a964d2 HI-CON_scl
 2630a2611d659218 HI-CON_shift_env
 f5dcef78167add19 HI-CON_shift_fm
 7212828223100738 HI-CON_shift_home
-24a4396d0efb5627 HI-CON_shift_home_lock
-f142faca18f26202 HI-CON_shift_pan
+de047f32df301bd6 HI-CON_shift_home_lock
+4575fee939401f29 HI-CON_shift_level
 1eb24cdd8f1aee3c HI-CON_shift_step
 e591ed5fdb7b7858 HI-CON_shift_strip
 c1f26ec66bb6ec7f HI-CON_six_edit
@@ -2726,7 +2726,7 @@ bd20407774fd2284 LARGE_AMBER_fx_duck
 58832da43b97026c LARGE_AMBER_global_swing
 6a1a61277f499915 LARGE_AMBER_head_beat_2
 b4a84613e4e237a1 LARGE_AMBER_head_bpm_lock
-dde9369ae3ba272a LARGE_AMBER_head_bpm_lock_level
+84e62dc1c0819def LARGE_AMBER_head_bpm_lock_pan
 38a432a20f7b5e12 LARGE_AMBER_head_bpm_turn
 6a1a61277f499915 LARGE_AMBER_head_downbeat
 dd1d4af7b1d927c7 LARGE_AMBER_head_glo_turn
@@ -2784,7 +2784,7 @@ a6fe43e243db934b LARGE_AMBER_menu_leds
 dc58a4e1b262e20c LARGE_AMBER_menu_midi
 f97d50ea63c74436 LARGE_AMBER_menu_midi_scroll
 f27a7a4dbb18888d LARGE_AMBER_menu_popup
-8696d28976d4e56d LARGE_AMBER_menu_presets_knob
+a2a13f9ef1299731 LARGE_AMBER_menu_presets_knob
 d9b115d285cd30c7 LARGE_AMBER_menu_slide
 f8d4320ff8ab97e4 LARGE_AMBER_menu_speaker
 d5f9ce65f00f7d01 LARGE_AMBER_menu_system
@@ -2832,7 +2832,7 @@ b4706690262cf053 LARGE_AMBER_pool_new
 190f20d6097fb1f0 LARGE_AMBER_pool_unused
 439a51e9364181fc LARGE_AMBER_presets
 e48cdd74df264829 LARGE_AMBER_presets_bass
-a79401d2a77b885b LARGE_AMBER_presets_knob_pan
+fd8b33208b2211e4 LARGE_AMBER_presets_knob_level
 c780f9dc9f9dfbd4 LARGE_AMBER_presets_nofav
 cf4ed1c4ddc0658a LARGE_AMBER_project
 49309a55d3e5de10 LARGE_AMBER_project_named
@@ -2854,8 +2854,8 @@ cdf2c0929f17b261 LARGE_AMBER_scl
 00e8fbbf23c83e16 LARGE_AMBER_shift_env
 eae230b8e4a14fdb LARGE_AMBER_shift_fm
 717b24f9a02d923a LARGE_AMBER_shift_home
-5aed7e22b966bf76 LARGE_AMBER_shift_home_lock
-64cadbddb509591a LARGE_AMBER_shift_pan
+42bcd3b9ad7452de LARGE_AMBER_shift_home_lock
+de5840adeeeb9660 LARGE_AMBER_shift_level
 64542caa6bb59e70 LARGE_AMBER_shift_step
 83fd922438b505cb LARGE_AMBER_shift_strip
 518324b497043436 LARGE_AMBER_six_edit
@@ -2989,7 +2989,7 @@ d0716f0fe2aebd01 LARGE_BLUE-STN_fx_duck
 d3ba0bce32dec017 LARGE_BLUE-STN_global_swing
 43bfc2a202467e33 LARGE_BLUE-STN_head_beat_2
 2c82866918fa401f LARGE_BLUE-STN_head_bpm_lock
-8ae7679acbd5aa76 LARGE_BLUE-STN_head_bpm_lock_level
+9a21a6a3877bda18 LARGE_BLUE-STN_head_bpm_lock_pan
 88c7815be9ba3f10 LARGE_BLUE-STN_head_bpm_turn
 43bfc2a202467e33 LARGE_BLUE-STN_head_downbeat
 858b31f5f59eeb7a LARGE_BLUE-STN_head_glo_turn
@@ -3047,7 +3047,7 @@ e3199e0b75a337d0 LARGE_BLUE-STN_menu_audio
 6d9f6f08fd2bc49e LARGE_BLUE-STN_menu_midi
 bd1d965ce019609b LARGE_BLUE-STN_menu_midi_scroll
 11feb4c63727714a LARGE_BLUE-STN_menu_popup
-1ccf0c1ac22255d5 LARGE_BLUE-STN_menu_presets_knob
+8971f42d0a762386 LARGE_BLUE-STN_menu_presets_knob
 b5b26ed2aca92ba1 LARGE_BLUE-STN_menu_slide
 f2f62008e898992f LARGE_BLUE-STN_menu_speaker
 ac96d5c9decb652a LARGE_BLUE-STN_menu_system
@@ -3095,7 +3095,7 @@ f8498b2a7371c750 LARGE_BLUE-STN_pool_empty
 e96f6b472d0fe4ab LARGE_BLUE-STN_pool_unused
 cdaccd0a8f3e6caa LARGE_BLUE-STN_presets
 15a4260c61440792 LARGE_BLUE-STN_presets_bass
-bc990481db09d43a LARGE_BLUE-STN_presets_knob_pan
+add60189986b8aad LARGE_BLUE-STN_presets_knob_level
 8c43090c78fa48dd LARGE_BLUE-STN_presets_nofav
 1e8ca0d3f3704e2f LARGE_BLUE-STN_project
 85a38592ed8c79ea LARGE_BLUE-STN_project_named
@@ -3117,8 +3117,8 @@ cfab4d3558607a19 LARGE_BLUE-STN_scl
 2ec65b1315654d85 LARGE_BLUE-STN_shift_env
 6d8e55a89f43998d LARGE_BLUE-STN_shift_fm
 423f0bd404ea9bc0 LARGE_BLUE-STN_shift_home
-e774a54c7b7f7169 LARGE_BLUE-STN_shift_home_lock
-a4037dab52f52fa4 LARGE_BLUE-STN_shift_pan
+dff4ef1395972bbb LARGE_BLUE-STN_shift_home_lock
+26280131da838752 LARGE_BLUE-STN_shift_level
 bda1dde78ad7bacc LARGE_BLUE-STN_shift_step
 72078156db664918 LARGE_BLUE-STN_shift_strip
 e444dfc773c05dfe LARGE_BLUE-STN_six_edit
@@ -3252,7 +3252,7 @@ dcecac91312e5367 LARGE_CRYPT_fx_duck
 1c7b20cd069370eb LARGE_CRYPT_global_swing
 95f525e2c43812ab LARGE_CRYPT_head_beat_2
 da30938cec273e6c LARGE_CRYPT_head_bpm_lock
-63c151cb666d7689 LARGE_CRYPT_head_bpm_lock_level
+56e35d17a6f80dd1 LARGE_CRYPT_head_bpm_lock_pan
 ec730170c09ec348 LARGE_CRYPT_head_bpm_turn
 95f525e2c43812ab LARGE_CRYPT_head_downbeat
 7e01d504bd836466 LARGE_CRYPT_head_glo_turn
@@ -3310,7 +3310,7 @@ e14426404c4ea203 LARGE_CRYPT_menu_hold
 14d705633d041074 LARGE_CRYPT_menu_midi
 d47ac5628508678d LARGE_CRYPT_menu_midi_scroll
 afb940ada58cbfb3 LARGE_CRYPT_menu_popup
-08530593ad97b13c LARGE_CRYPT_menu_presets_knob
+e5bfd9cffec198aa LARGE_CRYPT_menu_presets_knob
 0062b1266aecc680 LARGE_CRYPT_menu_slide
 d5d8a3a16934b954 LARGE_CRYPT_menu_speaker
 203d3eefe4b2cabb LARGE_CRYPT_menu_system
@@ -3358,7 +3358,7 @@ f30e19ebd3e7a320 LARGE_CRYPT_pool_new
 ee6860238eb19bff LARGE_CRYPT_pool_unused
 7081a5024c911e43 LARGE_CRYPT_presets
 3f22d00b27fe26a3 LARGE_CRYPT_presets_bass
-f60bf1fece48a853 LARGE_CRYPT_presets_knob_pan
+5fd5f49ce26b8c77 LARGE_CRYPT_presets_knob_level
 6d0f0787e9f071ce LARGE_CRYPT_presets_nofav
 c86efac34ce60ef5 LARGE_CRYPT_project
 3016df452d2b6da0 LARGE_CRYPT_project_named
@@ -3380,8 +3380,8 @@ e7df8b1a46824792 LARGE_CRYPT_scl
 4c53338510f77b12 LARGE_CRYPT_shift_env
 080e7590f15181df LARGE_CRYPT_shift_fm
 19d424a058b44fca LARGE_CRYPT_shift_home
-b8a5ff84ba74be6b LARGE_CRYPT_shift_home_lock
-d4f7b601278898dd LARGE_CRYPT_shift_pan
+174279a4fddd2ee6 LARGE_CRYPT_shift_home_lock
+3b27986fe391f7b2 LARGE_CRYPT_shift_level
 f84e9fb45bb2952f LARGE_CRYPT_shift_step
 25cff666feaa2732 LARGE_CRYPT_shift_strip
 5dc77129ed89b4db LARGE_CRYPT_six_edit
@@ -3515,7 +3515,7 @@ ee5322cff5fb358e LARGE_GAMEBOY_global
 aa03d728a1f36344 LARGE_GAMEBOY_global_swing
 4bf8822550b8d094 LARGE_GAMEBOY_head_beat_2
 a11f6b1a63492608 LARGE_GAMEBOY_head_bpm_lock
-99fe7ec462aeaa7e LARGE_GAMEBOY_head_bpm_lock_level
+22ef21f9476658f9 LARGE_GAMEBOY_head_bpm_lock_pan
 b2fec3c9c11cc774 LARGE_GAMEBOY_head_bpm_turn
 4bf8822550b8d094 LARGE_GAMEBOY_head_downbeat
 5cb3b6060dfe6896 LARGE_GAMEBOY_head_glo_turn
@@ -3573,7 +3573,7 @@ d2a1869029f385eb LARGE_GAMEBOY_menu_end
 18c9c0dd316e39c7 LARGE_GAMEBOY_menu_midi
 2ff134d311f66635 LARGE_GAMEBOY_menu_midi_scroll
 3c69484e2bd455c0 LARGE_GAMEBOY_menu_popup
-fe2385741bb202ba LARGE_GAMEBOY_menu_presets_knob
+d9619e12f0254378 LARGE_GAMEBOY_menu_presets_knob
 03477c1b6ae79a71 LARGE_GAMEBOY_menu_slide
 aab61dec05154cde LARGE_GAMEBOY_menu_speaker
 1ebf6d38f242e5fe LARGE_GAMEBOY_menu_system
@@ -3621,7 +3621,7 @@ d1c65357e35b881a LARGE_GAMEBOY_perform_wait
 5f83351dd9af340a LARGE_GAMEBOY_pool_unused
 779c0f0aa072d7cc LARGE_GAMEBOY_presets
 020fe7d84a495fcc LARGE_GAMEBOY_presets_bass
-0e7ff41909fe269b LARGE_GAMEBOY_presets_knob_pan
+653b7b8ab6e1a46e LARGE_GAMEBOY_presets_knob_level
 a4eb3fef9ac49493 LARGE_GAMEBOY_presets_nofav
 436bbc10b16d6c78 LARGE_GAMEBOY_project
 5128630d4d28774f LARGE_GAMEBOY_project_named
@@ -3643,8 +3643,8 @@ ad104d181e23c772 LARGE_GAMEBOY_samples
 289be8a9765d74e2 LARGE_GAMEBOY_shift_env
 65dcd08c59f9bd44 LARGE_GAMEBOY_shift_fm
 d2888d0f8782d580 LARGE_GAMEBOY_shift_home
-b0db6d198c2f61f1 LARGE_GAMEBOY_shift_home_lock
-3f9a4e619c249da7 LARGE_GAMEBOY_shift_pan
+04d0c12b1ea14343 LARGE_GAMEBOY_shift_home_lock
+92f4043cdbc8d524 LARGE_GAMEBOY_shift_level
 0965ae9a685c478d LARGE_GAMEBOY_shift_step
 b5bd995a4722cc69 LARGE_GAMEBOY_shift_strip
 51635153b1276a36 LARGE_GAMEBOY_six_edit
@@ -3778,7 +3778,7 @@ a206afe3d5bd90ba LARGE_LCD-GRAIN_global
 4f03ab4eeab3a924 LARGE_LCD-GRAIN_global_swing
 7f2c13155ff3d3a1 LARGE_LCD-GRAIN_head_beat_2
 6f302a31b5749e03 LARGE_LCD-GRAIN_head_bpm_lock
-dcc506e7f94f5e3b LARGE_LCD-GRAIN_head_bpm_lock_level
+bfb6ffe94e0a3f7a LARGE_LCD-GRAIN_head_bpm_lock_pan
 04375b6cf3bae507 LARGE_LCD-GRAIN_head_bpm_turn
 c03c79f54c28e7b7 LARGE_LCD-GRAIN_head_downbeat
 2d3f24d6150e8be1 LARGE_LCD-GRAIN_head_glo_turn
@@ -3836,7 +3836,7 @@ f3a178357ee2ba28 LARGE_LCD-GRAIN_menu_audio
 456232b57c0d2ebe LARGE_LCD-GRAIN_menu_midi
 17ebd9bc7c380687 LARGE_LCD-GRAIN_menu_midi_scroll
 8d93e02543dfb7af LARGE_LCD-GRAIN_menu_popup
-eb7a450e7a15af86 LARGE_LCD-GRAIN_menu_presets_knob
+c5530dc37de377fa LARGE_LCD-GRAIN_menu_presets_knob
 2d9406bcd7ee6119 LARGE_LCD-GRAIN_menu_slide
 39054d85ce63931b LARGE_LCD-GRAIN_menu_speaker
 fd2df505347ed550 LARGE_LCD-GRAIN_menu_system
@@ -3884,7 +3884,7 @@ e129aa45bc629cd8 LARGE_LCD-GRAIN_pool_new
 be9366b6eb618e53 LARGE_LCD-GRAIN_pool_unused
 0a391fcec76dd776 LARGE_LCD-GRAIN_presets
 f9a499b1efd6251e LARGE_LCD-GRAIN_presets_bass
-729e59137363adc9 LARGE_LCD-GRAIN_presets_knob_pan
+b6bd87cd2906621b LARGE_LCD-GRAIN_presets_knob_level
 f6e73b9eaaab491d LARGE_LCD-GRAIN_presets_nofav
 cb04dcc03593d88e LARGE_LCD-GRAIN_project
 f9f85ba4e9fe4343 LARGE_LCD-GRAIN_project_named
@@ -3906,8 +3906,8 @@ b591aeccde6a84fd LARGE_LCD-GRAIN_scl
 12876f699c3d9e6e LARGE_LCD-GRAIN_shift_env
 3a215820357df34e LARGE_LCD-GRAIN_shift_fm
 ecc676de0ff7a7b7 LARGE_LCD-GRAIN_shift_home
-497efbbe04586693 LARGE_LCD-GRAIN_shift_home_lock
-bf84c7f2fe13f8dc LARGE_LCD-GRAIN_shift_pan
+3a98bb6af0868bfa LARGE_LCD-GRAIN_shift_home_lock
+57cee65fa9fbd8b2 LARGE_LCD-GRAIN_shift_level
 18a22dfbdaac2931 LARGE_LCD-GRAIN_shift_step
 a66148397b333d9f LARGE_LCD-GRAIN_shift_strip
 5a6e2f71134001ae LARGE_LCD-GRAIN_six_edit
@@ -4041,7 +4041,7 @@ c80220d0f34a031e LARGE_LCD-NIGHT_global
 fc96ffccf580fc59 LARGE_LCD-NIGHT_global_swing
 e6f50711d09ba4ce LARGE_LCD-NIGHT_head_beat_2
 78e11fa2635d8418 LARGE_LCD-NIGHT_head_bpm_lock
-a6955589243cc1b9 LARGE_LCD-NIGHT_head_bpm_lock_level
+2fe79583f5cbb35b LARGE_LCD-NIGHT_head_bpm_lock_pan
 1739c6096a263376 LARGE_LCD-NIGHT_head_bpm_turn
 383c28f2491dd8fe LARGE_LCD-NIGHT_head_downbeat
 3f237c31548090cf LARGE_LCD-NIGHT_head_glo_turn
@@ -4099,7 +4099,7 @@ ff68d56723aaea0e LARGE_LCD-NIGHT_menu_end
 b2d25f30afb7c240 LARGE_LCD-NIGHT_menu_midi
 f5a7c127f0d4f669 LARGE_LCD-NIGHT_menu_midi_scroll
 8ef3fe913afead51 LARGE_LCD-NIGHT_menu_popup
-70acfdf1ed270ab1 LARGE_LCD-NIGHT_menu_presets_knob
+cf4f0a2edc60f13b LARGE_LCD-NIGHT_menu_presets_knob
 a1230a9b032737d0 LARGE_LCD-NIGHT_menu_slide
 0ff38ba24a2875cf LARGE_LCD-NIGHT_menu_speaker
 ce7ea214770b3db0 LARGE_LCD-NIGHT_menu_system
@@ -4147,7 +4147,7 @@ e15f20afc3c1aab7 LARGE_LCD-NIGHT_notes_pick
 20b733aac434f496 LARGE_LCD-NIGHT_pool_unused
 a520db7b28b5e62f LARGE_LCD-NIGHT_presets
 c213b92af5a26639 LARGE_LCD-NIGHT_presets_bass
-21ea668b57219edc LARGE_LCD-NIGHT_presets_knob_pan
+7f3248fa175578ac LARGE_LCD-NIGHT_presets_knob_level
 8470071084fe0b64 LARGE_LCD-NIGHT_presets_nofav
 52f1a44662cf1527 LARGE_LCD-NIGHT_project
 670401c5c593aef8 LARGE_LCD-NIGHT_project_named
@@ -4169,8 +4169,8 @@ c082bdc1f7b51b2f LARGE_LCD-NIGHT_roll_len32_p2
 518215aa36d1db83 LARGE_LCD-NIGHT_shift_env
 62ff46f8d8dd5186 LARGE_LCD-NIGHT_shift_fm
 87781c8f0794ca10 LARGE_LCD-NIGHT_shift_home
-e7bd83fa84337397 LARGE_LCD-NIGHT_shift_home_lock
-9cdac9a3a5967ad1 LARGE_LCD-NIGHT_shift_pan
+a2928ce2bccd8e6f LARGE_LCD-NIGHT_shift_home_lock
+7d50729becabb277 LARGE_LCD-NIGHT_shift_level
 87c23b25551526b7 LARGE_LCD-NIGHT_shift_step
 5b02f2fdb358f9b8 LARGE_LCD-NIGHT_shift_strip
 fdfa67b2948ed30b LARGE_LCD-NIGHT_six_edit
@@ -4304,7 +4304,7 @@ e4623988e896ae5f LARGE_LCD_global
 9fecb202a3beee4c LARGE_LCD_global_swing
 ccccf2614227f806 LARGE_LCD_head_beat_2
 2b3cebfd5ec6d562 LARGE_LCD_head_bpm_lock
-4eaae29fb18c0001 LARGE_LCD_head_bpm_lock_level
+5a12c7bdad8ad3d6 LARGE_LCD_head_bpm_lock_pan
 08712a4d295f2bc3 LARGE_LCD_head_bpm_turn
 d00ee0daf3928643 LARGE_LCD_head_downbeat
 5a1a8f795beae6c5 LARGE_LCD_head_glo_turn
@@ -4362,7 +4362,7 @@ f0db3c1cbc445923 LARGE_LCD_menu_end
 405955e6d370ad79 LARGE_LCD_menu_midi
 aca0ce23cbcab178 LARGE_LCD_menu_midi_scroll
 4a11a3f5bb2b259b LARGE_LCD_menu_popup
-853d8d7c500c341c LARGE_LCD_menu_presets_knob
+1269ae2522292b7a LARGE_LCD_menu_presets_knob
 65cc97d572a01b69 LARGE_LCD_menu_slide
 9e91c4851ce049ee LARGE_LCD_menu_speaker
 fc6dc053a2ff4a65 LARGE_LCD_menu_system
@@ -4410,7 +4410,7 @@ d8a74dee51589238 LARGE_LCD_pool
 372771d410752b78 LARGE_LCD_pool_unused
 ee56f435ca6bd660 LARGE_LCD_presets
 635d73428d280fe1 LARGE_LCD_presets_bass
-08ff458a77a121b2 LARGE_LCD_presets_knob_pan
+6f58fd51c4c198e4 LARGE_LCD_presets_knob_level
 58d779ffffaf608c LARGE_LCD_presets_nofav
 8456e6034c001648 LARGE_LCD_project
 0602212b850f52f5 LARGE_LCD_project_named
@@ -4432,8 +4432,8 @@ f710bc7a5922cf66 LARGE_LCD_roll_playing
 803237368293a92f LARGE_LCD_shift_env
 ebbc767b3d39c105 LARGE_LCD_shift_fm
 ab98bc464b27fb84 LARGE_LCD_shift_home
-a32c79e39300405d LARGE_LCD_shift_home_lock
-bc8ff49c59ed27a5 LARGE_LCD_shift_pan
+9036491df28955f2 LARGE_LCD_shift_home_lock
+d945bf4756db8397 LARGE_LCD_shift_level
 f10e00f6a96f9dd8 LARGE_LCD_shift_step
 32f8fc58fcd26b5d LARGE_LCD_shift_strip
 0c459591f9d7787f LARGE_LCD_six_edit
@@ -4567,7 +4567,7 @@ e907f23a21f80365 LARGE_NEON_fm_op_tone
 4508852cdab9d3ef LARGE_NEON_global_swing
 cdd0c4935fdd1ab0 LARGE_NEON_head_beat_2
 544b6e15b82fa4c5 LARGE_NEON_head_bpm_lock
-d6acc7a524b21d24 LARGE_NEON_head_bpm_lock_level
+76a0ed1a83eb2cc5 LARGE_NEON_head_bpm_lock_pan
 df489f0c8868820b LARGE_NEON_head_bpm_turn
 cdd0c4935fdd1ab0 LARGE_NEON_head_downbeat
 db8249bcac4494f5 LARGE_NEON_head_glo_turn
@@ -4625,7 +4625,7 @@ ce562c2323829291 LARGE_NEON_lfo_run
 21982a4539b31622 LARGE_NEON_menu_midi
 81d899f0f4810e6c LARGE_NEON_menu_midi_scroll
 be562bce113f6151 LARGE_NEON_menu_popup
-5ffd9a5c8fc85911 LARGE_NEON_menu_presets_knob
+ab6c3f70640a52a2 LARGE_NEON_menu_presets_knob
 d21416ddd75860fc LARGE_NEON_menu_slide
 23e01ae50e6dea64 LARGE_NEON_menu_speaker
 ba8e79b8ebd4534e LARGE_NEON_menu_system
@@ -4673,7 +4673,7 @@ d53b329b745916a2 LARGE_NEON_play_gate
 b6081883632ddcbd LARGE_NEON_pool_unused
 05b27a676f0f0538 LARGE_NEON_presets
 80332fc6fc49d1fe LARGE_NEON_presets_bass
-589e0698e7fcb17c LARGE_NEON_presets_knob_pan
+824e6fce7839feb8 LARGE_NEON_presets_knob_level
 54c7d007136f044e LARGE_NEON_presets_nofav
 4361c799496ae3f7 LARGE_NEON_project
 937296db75bb630a LARGE_NEON_project_named
@@ -4695,8 +4695,8 @@ e02da5a978578d09 LARGE_NEON_roll_wide
 82b690e965cafba9 LARGE_NEON_shift_env
 aad221e51eaedec7 LARGE_NEON_shift_fm
 c127d46ad0f3bdf6 LARGE_NEON_shift_home
-a1de4c259788140a LARGE_NEON_shift_home_lock
-0d437b5c06a47d39 LARGE_NEON_shift_pan
+d98e8e69fe56c506 LARGE_NEON_shift_home_lock
+d92ccbd12118b555 LARGE_NEON_shift_level
 02810a4751f6294a LARGE_NEON_shift_step
 2f1b1f82c7632348 LARGE_NEON_shift_strip
 66a3a0645070775e LARGE_NEON_six_edit
@@ -4830,7 +4830,7 @@ d9d10dc24890df2c LARGE_QUARK_global
 845b1513850eaab8 LARGE_QUARK_global_swing
 b6a9071b51c458df LARGE_QUARK_head_beat_2
 30100d8350060f1c LARGE_QUARK_head_bpm_lock
-ff20d86986df01b4 LARGE_QUARK_head_bpm_lock_level
+e32982040319eb3d LARGE_QUARK_head_bpm_lock_pan
 b1652d68c64a72d2 LARGE_QUARK_head_bpm_turn
 b6a9071b51c458df LARGE_QUARK_head_downbeat
 b636fa94d74350d2 LARGE_QUARK_head_glo_turn
@@ -4888,7 +4888,7 @@ f9f7124355f054c7 LARGE_QUARK_menu_hold
 99d0588c28ab6a84 LARGE_QUARK_menu_midi
 2b687f729b5f05fa LARGE_QUARK_menu_midi_scroll
 668c801a70c5fd65 LARGE_QUARK_menu_popup
-505eb07af3729607 LARGE_QUARK_menu_presets_knob
+d1590ca4c16d17a6 LARGE_QUARK_menu_presets_knob
 f744c4a44482634c LARGE_QUARK_menu_slide
 95c6ac3cd43cccdc LARGE_QUARK_menu_speaker
 b381163863b2e7b0 LARGE_QUARK_menu_system
@@ -4936,7 +4936,7 @@ b753a7e4d06c9d0b LARGE_QUARK_pool_empty
 9a86333023f531e0 LARGE_QUARK_pool_unused
 ee5a1b665ad17afd LARGE_QUARK_presets
 c8439aed33b95c40 LARGE_QUARK_presets_bass
-143377a5e44f59ba LARGE_QUARK_presets_knob_pan
+3c151e46df3262ad LARGE_QUARK_presets_knob_level
 bdd09055158b13ee LARGE_QUARK_presets_nofav
 4c8edbfad9cfa962 LARGE_QUARK_project
 26f4624c47872280 LARGE_QUARK_project_named
@@ -4958,8 +4958,8 @@ f5279180cfbe785b LARGE_QUARK_scl
 4d31da07b2e70b8f LARGE_QUARK_shift_env
 5eacff3fd97bd99d LARGE_QUARK_shift_fm
 aaef542429ddc758 LARGE_QUARK_shift_home
-b8f6099d01f5c7e3 LARGE_QUARK_shift_home_lock
-3b0e2879e5615a00 LARGE_QUARK_shift_pan
+8e59c6c6ab2b268c LARGE_QUARK_shift_home_lock
+d2609a8156207db6 LARGE_QUARK_shift_level
 4cd2f114daeb3ef5 LARGE_QUARK_shift_step
 93790c3243bbe481 LARGE_QUARK_shift_strip
 6617dc1a6b298524 LARGE_QUARK_six_edit
@@ -5093,7 +5093,7 @@ c781bfa08d97577e LARGE_SKIFF_fx_duck_off
 72062eeabda6d69c LARGE_SKIFF_global_swing
 7a4d33c857878851 LARGE_SKIFF_head_beat_2
 4773f979ab7a35ed LARGE_SKIFF_head_bpm_lock
-865b275d6ba93544 LARGE_SKIFF_head_bpm_lock_level
+1b30cbc88b5f2133 LARGE_SKIFF_head_bpm_lock_pan
 2409315137fb48ec LARGE_SKIFF_head_bpm_turn
 7a4d33c857878851 LARGE_SKIFF_head_downbeat
 51d2f56068a3d9bc LARGE_SKIFF_head_glo_turn
@@ -5151,7 +5151,7 @@ f5cb818c73a674ae LARGE_SKIFF_menu_hold
 6cd452f23a41cb41 LARGE_SKIFF_menu_midi
 13acef039281e52f LARGE_SKIFF_menu_midi_scroll
 a27aea2c8df11c0f LARGE_SKIFF_menu_popup
-6385bc82a046f893 LARGE_SKIFF_menu_presets_knob
+903ff40dc39dac6e LARGE_SKIFF_menu_presets_knob
 521d70af43832fed LARGE_SKIFF_menu_slide
 0b38aa13c5bbda49 LARGE_SKIFF_menu_speaker
 251fb4b6cb5a7568 LARGE_SKIFF_menu_system
@@ -5199,7 +5199,7 @@ ed015829d9479942 LARGE_SKIFF_pool
 c1ce4ea320242f6c LARGE_SKIFF_pool_unused
 2b20754ef447a101 LARGE_SKIFF_presets
 fcbad73d064f7a01 LARGE_SKIFF_presets_bass
-346f2ee4792a39f9 LARGE_SKIFF_presets_knob_pan
+1bee1f76e26aa1e2 LARGE_SKIFF_presets_knob_level
 481a1d1963be8733 LARGE_SKIFF_presets_nofav
 db1b3b58320c60c5 LARGE_SKIFF_project
 5ec716a8a7dd6ba0 LARGE_SKIFF_project_named
@@ -5221,8 +5221,8 @@ d85e5e7836d6e7d4 LARGE_SKIFF_samples
 1d953ae3ebcb6eff LARGE_SKIFF_shift_env
 c783b98030fa3a9c LARGE_SKIFF_shift_fm
 3762af3c52ebb9c4 LARGE_SKIFF_shift_home
-a148707f20546631 LARGE_SKIFF_shift_home_lock
-3bcc948964957386 LARGE_SKIFF_shift_pan
+f532de338fa3ac2a LARGE_SKIFF_shift_home_lock
+b91a71e89e290578 LARGE_SKIFF_shift_level
 48ac36942278270f LARGE_SKIFF_shift_step
 bf34f8cfbf99c27d LARGE_SKIFF_shift_strip
 b17188a85bb69571 LARGE_SKIFF_six_edit
@@ -5358,7 +5358,7 @@ ff952a80cf782f74 LCD-GRAIN_fx_duck
 5d2fffd3a396d378 LCD-GRAIN_global_swing
 8e6b536475a126cb LCD-GRAIN_head_beat_2
 0b6d13ac3111ff9d LCD-GRAIN_head_bpm_lock
-12baba3b7635100a LCD-GRAIN_head_bpm_lock_level
+d790803a74b13407 LCD-GRAIN_head_bpm_lock_pan
 9f44746f1c6c7b64 LCD-GRAIN_head_bpm_turn
 8e6b536475a126cb LCD-GRAIN_head_downbeat
 523795d090eac157 LCD-GRAIN_head_glo_turn
@@ -5416,7 +5416,7 @@ a912b965b39a9308 LCD-GRAIN_menu_leds
 c39d397dafa36ed5 LCD-GRAIN_menu_midi
 ea37baa703607503 LCD-GRAIN_menu_midi_scroll
 233172faf5b8bc69 LCD-GRAIN_menu_popup
-740598b37fe8de2f LCD-GRAIN_menu_presets_knob
+98d2207392f31c1b LCD-GRAIN_menu_presets_knob
 e2e04386144439ca LCD-GRAIN_menu_slide
 d39e26250811f335 LCD-GRAIN_menu_speaker
 eff482ca00e44c23 LCD-GRAIN_menu_system
@@ -5464,7 +5464,7 @@ fcc638ca5f35e7e1 LCD-GRAIN_pool
 def7bf4da0ccdce5 LCD-GRAIN_pool_unused
 8fb83472af131bc3 LCD-GRAIN_presets
 ff943d4bf621c723 LCD-GRAIN_presets_bass
-cd538691124e3c66 LCD-GRAIN_presets_knob_pan
+554b82aed55f6e80 LCD-GRAIN_presets_knob_level
 92198e92a3d604f8 LCD-GRAIN_presets_nofav
 b8aae00d178b32da LCD-GRAIN_project
 b42399c6b1eac66f LCD-GRAIN_project_named
@@ -5486,8 +5486,8 @@ c25b5ff25dc1fb1f LCD-GRAIN_roll_low
 14dafbdcd5221008 LCD-GRAIN_shift_env
 e95a1852d241dbcd LCD-GRAIN_shift_fm
 fb40293d8ee8a6e5 LCD-GRAIN_shift_home
-f4d6d184a4a1d6d1 LCD-GRAIN_shift_home_lock
-e22b73976c14e7d2 LCD-GRAIN_shift_pan
+ae26478ec0c87f4c LCD-GRAIN_shift_home_lock
+3f03be3c9e955d14 LCD-GRAIN_shift_level
 cc4dbd65eb30ece6 LCD-GRAIN_shift_step
 47636b9e9e835fde LCD-GRAIN_shift_strip
 99c813a816cbb5c5 LCD-GRAIN_six_edit
@@ -5623,7 +5623,7 @@ cb986d86403e197d LCD-NIGHT_fx_duck_off
 22ff96b2bf2a6ac0 LCD-NIGHT_global_swing
 f9d4088ede25d1b3 LCD-NIGHT_head_beat_2
 52441fca47fb93fb LCD-NIGHT_head_bpm_lock
-9d7bb045d9d60066 LCD-NIGHT_head_bpm_lock_level
+4709e228d18b9370 LCD-NIGHT_head_bpm_lock_pan
 0fc1020c6e0f61f3 LCD-NIGHT_head_bpm_turn
 f9d4088ede25d1b3 LCD-NIGHT_head_downbeat
 b071b66f0329ed43 LCD-NIGHT_head_glo_turn
@@ -5681,7 +5681,7 @@ d772a0cbf2b60427 LCD-NIGHT_menu_leds
 c87ef086b24166a8 LCD-NIGHT_menu_midi
 5d9799488dca3f1f LCD-NIGHT_menu_midi_scroll
 c6578fb0a0c284d3 LCD-NIGHT_menu_popup
-99d64c0a63df37a4 LCD-NIGHT_menu_presets_knob
+4f9da589d77fcd56 LCD-NIGHT_menu_presets_knob
 b55149b9b63282bb LCD-NIGHT_menu_slide
 b0553c143aa6ae51 LCD-NIGHT_menu_speaker
 66138570c293c8dd LCD-NIGHT_menu_system
@@ -5729,7 +5729,7 @@ a4887553d03e88a9 LCD-NIGHT_play_dir
 6790167e1caeda68 LCD-NIGHT_pool_unused
 41c6f301e5f83858 LCD-NIGHT_presets
 865d38d64767918a LCD-NIGHT_presets_bass
-5edf88e2c39c04cd LCD-NIGHT_presets_knob_pan
+5859301c70f4c63d LCD-NIGHT_presets_knob_level
 b714bf0429294ea3 LCD-NIGHT_presets_nofav
 38e6610ee95cf9ab LCD-NIGHT_project
 917b9f1e7a309b3c LCD-NIGHT_project_named
@@ -5751,8 +5751,8 @@ a72d7b3c660cc546 LCD-NIGHT_scl
 f5b5643e81caeb23 LCD-NIGHT_shift_env
 57a4b351736a0493 LCD-NIGHT_shift_fm
 5f0b7430a7f14670 LCD-NIGHT_shift_home
-1ff850a02bda3877 LCD-NIGHT_shift_home_lock
-9fee61cddf6bb871 LCD-NIGHT_shift_pan
+35feab9eeab3f6cf LCD-NIGHT_shift_home_lock
+0b61cd53ab3f5097 LCD-NIGHT_shift_level
 13ecef36d3191d62 LCD-NIGHT_shift_step
 d07f92e00209ee88 LCD-NIGHT_shift_strip
 b5b014d10d040457 LCD-NIGHT_six_edit
@@ -5888,7 +5888,7 @@ d4b4b98c9a835880 LCD_fx_duck_off
 fa4a2cb548928cdb LCD_global_swing
 179db546883cdc45 LCD_head_beat_2
 5eabce02d63cfbd9 LCD_head_bpm_lock
-e866ecec2141f05e LCD_head_bpm_lock_level
+6309a340ffeb2f89 LCD_head_bpm_lock_pan
 71ae58aa8150165c LCD_head_bpm_turn
 179db546883cdc45 LCD_head_downbeat
 58eee8cb27ef6597 LCD_head_glo_turn
@@ -5946,7 +5946,7 @@ d965c0950421ac86 LCD_menu_leds
 cae86a8f2f8a35db LCD_menu_midi
 32ff0665049315e2 LCD_menu_midi_scroll
 1fbb01ac01c42e57 LCD_menu_popup
-73b882a93748c5e3 LCD_menu_presets_knob
+b4ad4bb59f1f9c89 LCD_menu_presets_knob
 7e53e325b8db869f LCD_menu_slide
 049ea66011254126 LCD_menu_speaker
 9dc74fe0c03f4fcb LCD_menu_system
@@ -5994,7 +5994,7 @@ a9c909e227ff7e9d LCD_pool_empty
 2a6b68dbb0489d05 LCD_pool_unused
 39989ff6d88018c4 LCD_presets
 25cc6d64f62ee0e5 LCD_presets_bass
-4b678c818cfa4f1e LCD_presets_knob_pan
+918fec9b32fb7904 LCD_presets_knob_level
 57e50f359735d7d8 LCD_presets_nofav
 6b1d58a06762f81f LCD_project
 2de7daaa773daf4e LCD_project_named
@@ -6016,8 +6016,8 @@ eba5751573236c0b LCD_scl
 d2a2cff492b516e1 LCD_shift_env
 96c62ac254cbb90f LCD_shift_fm
 1db62ce0ba66153e LCD_shift_home
-ec6bd6cbdc10cc1b LCD_shift_home_lock
-fa55f3ce3b1702c7 LCD_shift_pan
+5fe783de9f259878 LCD_shift_home_lock
+79783fe6caf9b685 LCD_shift_level
 3dd6a1e8181d1932 LCD_shift_step
 58414e9c91d6c5d3 LCD_shift_strip
 5899e5db7b27db08 LCD_six_edit
@@ -6153,7 +6153,7 @@ ad48334503d56939 NEON_global
 bbe7d27316b3aa9b NEON_global_swing
 c13062a304a3b133 NEON_head_beat_2
 4f1f627a39e602a2 NEON_head_bpm_lock
-a117c1a31d190bcf NEON_head_bpm_lock_level
+7174e17f05a18aa2 NEON_head_bpm_lock_pan
 808676d2c63ecc8c NEON_head_bpm_turn
 c13062a304a3b133 NEON_head_downbeat
 e67162931ce96e81 NEON_head_glo_turn
@@ -6211,7 +6211,7 @@ a78fca33ff0a5c91 NEON_menu_hold
 e56003e194b2ab8c NEON_menu_midi
 2a6f08e094fdf45e NEON_menu_midi_scroll
 af50cd892270b620 NEON_menu_popup
-ddc29d6e6ad5f9c7 NEON_menu_presets_knob
+335bda4c246fded0 NEON_menu_presets_knob
 3dc77ca1b1488066 NEON_menu_slide
 4334ae321b1e509a NEON_menu_speaker
 a71e5b6f2ab2f6dd NEON_menu_system
@@ -6259,7 +6259,7 @@ c9fe5d781c35dbf6 NEON_pool_new
 b48b595b2f4e2bcf NEON_pool_unused
 b3912fdacfc0d362 NEON_presets
 da506b483030d248 NEON_presets_bass
-ba520edf2612d6be NEON_presets_knob_pan
+ce93c650ae844cba NEON_presets_knob_level
 8c0a0d8510587d70 NEON_presets_nofav
 e05da5fc19d81dc7 NEON_project
 f26b9e0db84893e2 NEON_project_named
@@ -6281,8 +6281,8 @@ f7fd7102c459d860 NEON_roll_locks
 89a99c4185604597 NEON_shift_env
 6b7c00a6c72daa2d NEON_shift_fm
 74062c86f983e280 NEON_shift_home
-2697b4304c0d16fc NEON_shift_home_lock
-ba210d7e063321f7 NEON_shift_pan
+033cffd6402803b0 NEON_shift_home_lock
+4eb9d52bf945e1b3 NEON_shift_level
 65dbf5969b9e39dc NEON_shift_step
 f610402ce3f01eb5 NEON_shift_strip
 2e8bb9726cafca47 NEON_six_edit
@@ -6416,7 +6416,7 @@ c4b07b3a9f2b4119 PAPER_fx_duck_off
 45c4e9ca27ced59e PAPER_global_swing
 3e073511a163d338 PAPER_head_beat_2
 065fa0bcc875f418 PAPER_head_bpm_lock
-12cf4d94f5161445 PAPER_head_bpm_lock_level
+53940f65801d41db PAPER_head_bpm_lock_pan
 727a7e8347ec8657 PAPER_head_bpm_turn
 3e073511a163d338 PAPER_head_downbeat
 5b7cafb8c1fa7ff1 PAPER_head_glo_turn
@@ -6474,7 +6474,7 @@ c3f57331be1187a5 PAPER_menu_end
 ec2db8cb8d487139 PAPER_menu_midi
 2e1c515d6596bc60 PAPER_menu_midi_scroll
 9fd84e6140e0ea3b PAPER_menu_popup
-20320566141ef1dd PAPER_menu_presets_knob
+ad91e066670f29cc PAPER_menu_presets_knob
 4df78d8085ee9a69 PAPER_menu_slide
 7843a4eb2e47b4c0 PAPER_menu_speaker
 ea170af85d9e57ba PAPER_menu_system
@@ -6522,7 +6522,7 @@ f152a43d68ef6ef2 PAPER_pool_new
 020cac12dc36bf4b PAPER_pool_unused
 bf788386ba219cf4 PAPER_presets
 43020b35d9357293 PAPER_presets_bass
-2393e942e93e56f3 PAPER_presets_knob_pan
+49ede49673c02fe2 PAPER_presets_knob_level
 fe6cd0f1d5cec76a PAPER_presets_nofav
 40321dd5904ed089 PAPER_project
 209a43335915aace PAPER_project_named
@@ -6544,8 +6544,8 @@ c01001b86b81230e PAPER_roll_wide
 d84e4411734a28d3 PAPER_shift_env
 9581cc160394661a PAPER_shift_fm
 cf5c98c40e5aed83 PAPER_shift_home
-d83e4bd7f6e02d5e PAPER_shift_home_lock
-7c88873917d83cac PAPER_shift_pan
+3cbba1b4d9e1c72c PAPER_shift_home_lock
+940bd7d38385db0d PAPER_shift_level
 7e176c98d5deee49 PAPER_shift_step
 be8424b87c143746 PAPER_shift_strip
 9398d2560194e1d1 PAPER_six_edit
@@ -6687,7 +6687,7 @@ bccae5b3012fd7df QUARK_global
 05d7ec9be9e18149 QUARK_global_swing
 9bcaa773c7861ea1 QUARK_head_beat_2
 3f9f8e492acbece2 QUARK_head_bpm_lock
-09483035dda0413a QUARK_head_bpm_lock_level
+0088c7f0554f10d7 QUARK_head_bpm_lock_pan
 b89563c778a956e0 QUARK_head_bpm_turn
 9bcaa773c7861ea1 QUARK_head_downbeat
 dc5bedbef466a53e QUARK_head_glo_turn
@@ -6745,7 +6745,7 @@ b9e93c7024c1dca1 QUARK_menu_hold
 c67f50d0ca928916 QUARK_menu_midi
 39214b40d6e35f70 QUARK_menu_midi_scroll
 ce5419bf1d5bdb17 QUARK_menu_popup
-0432e3648be0685d QUARK_menu_presets_knob
+76c4f7dae8775f5c QUARK_menu_presets_knob
 52b1ff1f50ec1851 QUARK_menu_slide
 8a8b2b47f5764e03 QUARK_menu_speaker
 e06ad69b548dbe5a QUARK_menu_system
@@ -6793,7 +6793,7 @@ f2cf8410065567ab QUARK_pool_new
 a5e3b8d59a505c14 QUARK_pool_unused
 1d18f6a41d5e7e55 QUARK_presets
 12208ca79279eb28 QUARK_presets_bass
-76af793999d64cfc QUARK_presets_knob_pan
+fe4fa52688755017 QUARK_presets_knob_level
 d21ae55864213516 QUARK_presets_nofav
 a819fe71f26358cb QUARK_project
 56f6e8f0931a17e9 QUARK_project_named
@@ -6815,8 +6815,8 @@ e8c698e4a134ebb7 QUARK_scl
 1200c8ad2540b3cf QUARK_shift_env
 7cee92a9430af67a QUARK_shift_fm
 bc58e6ff3d047998 QUARK_shift_home
-3c4cb3038c9df123 QUARK_shift_home_lock
-1203e041da816cc0 QUARK_shift_pan
+46477fdf9328594c QUARK_shift_home_lock
+2950d9b5220ee2f6 QUARK_shift_level
 76ef002402615a86 QUARK_shift_step
 d0ae127d9e89be3e QUARK_shift_strip
 7ee9d8bdde3c6db8 QUARK_six_edit
@@ -6952,7 +6952,7 @@ dcf31d7059187d67 SKIFF_fx_duck_off
 b9884322f0a2773f SKIFF_global_swing
 be022f6d07961638 SKIFF_head_beat_2
 367d6a04fa0e16bc SKIFF_head_bpm_lock
-5c19426cc0da2e2d SKIFF_head_bpm_lock_level
+8c6dcdf8d894994a SKIFF_head_bpm_lock_pan
 df677cebf5ac1f75 SKIFF_head_bpm_turn
 be022f6d07961638 SKIFF_head_downbeat
 20ceea1c4a0f1b60 SKIFF_head_glo_turn
@@ -7010,7 +7010,7 @@ f27412ab6d3f8348 SKIFF_menu_end
 de2bd40c0e594a11 SKIFF_menu_midi
 8f09e4a4327593c1 SKIFF_menu_midi_scroll
 2096cebd1b800d96 SKIFF_menu_popup
-a5a4972548322edb SKIFF_menu_presets_knob
+b60e623e7f5dc6da SKIFF_menu_presets_knob
 a79484ee57354033 SKIFF_menu_slide
 281d7aa71b71ac38 SKIFF_menu_speaker
 61deedf2fba34a97 SKIFF_menu_system
@@ -7058,7 +7058,7 @@ f9b83db0d9e4ffd4 SKIFF_perform_wait
 08f1010b5cce2b80 SKIFF_pool_unused
 edbcec05c7e620ea SKIFF_presets
 4061b9910e88015a SKIFF_presets_bass
-909cb8fac63d4bc2 SKIFF_presets_knob_pan
+5000a1790e825489 SKIFF_presets_knob_level
 1c2c14119967db8c SKIFF_presets_nofav
 d7f84b8cb7287191 SKIFF_project
 8b1d4090ad891c34 SKIFF_project_named
@@ -7080,8 +7080,8 @@ c033b45b34344c55 SKIFF_samples
 3350515daf3d1f47 SKIFF_shift_env
 3a1a664487bf9d00 SKIFF_shift_fm
 85714533c2651f8c SKIFF_shift_home
-cd0e6126492d4169 SKIFF_shift_home_lock
-a6be60cfa196a4ee SKIFF_shift_pan
+b9588712707be5d2 SKIFF_shift_home_lock
+643054e714ad6050 SKIFF_shift_level
 2c411f2a6d781b93 SKIFF_shift_step
 369f9aed402a520f SKIFF_shift_strip
 480f03aff8e6dce5 SKIFF_six_edit

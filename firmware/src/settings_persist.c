@@ -30,7 +30,7 @@ typedef struct {
 typedef struct {                               /* Skiff's settings: favorites.factory[15][0..31] in RAM, in its order */
     uint8_t restore_slot, restore_clean[4];    /* RESTORE LAST: the slot + 1 (0 none), the music's value then (project.c) */
     uint8_t cpu;                               /* bit 0 CPU 2 CORES, 1 STEP PREVIEW, 2 CPU CLOCK 320 MHZ, 3 PRESETS KNOB
-                                                * PAN, 4 MASTER START SAFE (SMK-37), 5 SHARED WARN OFF (ui.c
+                                                * LEVEL, 4 MASTER START SAFE (SMK-37), 5 SHARED WARN OFF (ui.c
                                                 * CPU2_BYTE) */
     uint8_t mch[6];                            /* T1..T6 CHANNEL (ui.c ui_mch) */
     uint8_t smk_kv, smk_master;                /* (SMK-37) KEY VELOCITY, MASTER's level / 4 + 1 (ui.c SMK_*_BYTE) */

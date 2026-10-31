@@ -1490,7 +1490,7 @@ typedef struct {
 static void shift_map(smap_t *m)
 {
     uint32_t g = ui.home ? GR_NONE : cur_page()->graph, sel = !ui.home && (step_page(g) || g == GR_FEEL),
-             drum = drum_track(TSEL), home_level = ui.home && (ui_prefs & PREF_BPM_LOCK);
+             drum = drum_track(TSEL), home_pan = ui.home && (ui_prefs & PREF_BPM_LOCK);
     static const char SND[] = "SOUND";              /* (PRESETS' job on most pages: not this page's own) */
     const sheet_t *sh = sheet_of(g);
     const char *pj = ui.home || g == GR_BROWSE ? SND : sel ? "STEP" : g == GR_STEPS ? "DIR" :
@@ -1502,18 +1502,18 @@ static void shift_map(smap_t *m)
                                                      * NOTES, FEEL: the selection's, ui_input.c sel_shift, sel_copy) */
     uint32_t i;
     m[0] = (smap_t){"PRESETS", pj, (uint8_t)(pj != SND)};
-    if (PRESETS_PAN_SET && pj == SND && g != GR_BROWSE)   /* ((wishlist #38) PRESETS KNOB PAN) */
-        m[0].job = "PAN";
+    if (PRESETS_LEVEL_SET && pj == SND && g != GR_BROWSE)   /* ((wishlist #38, #10b) PRESETS KNOB LEVEL) */
+        m[0].job = "LEVEL";
     if (!(ui_prefs & PREF_BPM_LOCK) && !sh)
         m[1] = (smap_t){"SELECT", "TEMPO", 1};
-    else if (home_level)                             /* (wishlist #49) */
-        m[1] = (smap_t){"SELECT", "LEVEL", 1};
+    else if (home_pan)                               /* (wishlist #49, #10b) */
+        m[1] = (smap_t){"SELECT", "PAN", 1};
     else
         m[1] = (smap_t){"SELECT", sh ? "ROWS" : "PAGE", (uint8_t)(sh != 0)};
     m[2] = (smap_t){"ALGO", "TRACK", 0};
     m[3] = (smap_t){"KEYS", drum ? "DRUMS" : "NOTES", 0};
     m[4] = !ui.home && act_cols() ? (smap_t){"OCT+", "DO IT", 1} : (smap_t){"OCT- +", "OCTAVE", 0};
-    if (home_level)                                  /* ((wishlist #49) PLAY's cell, obvious, makes room for the tempo; */
+    if (home_pan)                                    /* ((wishlist #49) PLAY's cell, obvious, makes room for the tempo; */
         m[5] = (smap_t){"GLO + SELECT", "TEMPO", 0};   /* KEYS NOTES is the next such cell) */
     else
         m[5] = (smap_t){"PLAY", song.playing ? "STOP" : "START", 0};   /* (what it would do now) */
