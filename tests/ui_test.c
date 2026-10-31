@@ -9312,13 +9312,13 @@ static int px_in(int32_t x0, int32_t y0, int32_t x1, int32_t y1, uint16_t c)   /
     return 0;
 }
 /* (#57) the HOME scope's CPU readout (bottom right), sampled every CPU_SAMPLE_MS: MENU > CPU's load, the longest half's
- * share (falling CPU_PEAK_FALL a sample), the dropouts since power-on; a new one marks XRUN in REC's colour for
- * CPU_XRUN_MARK_MS */
-static int scope_corner_texts_are(const char *load, const char *xrun)
+ * share (falling CPU_PEAK_FALL a sample), the dropouts since power-on; a new one turns the line into
+ * DROP n / load, in REC's colour, for CPU_XRUN_MARK_MS */
+static int scope_corner_text_is(const char *want)
 {
-    char l[CPU_TEXT], x[CPU_TEXT];
-    cpu_corner_texts(l, x);
-    return str_eq(l, load) && str_eq(x, xrun);
+    char line[CPU_TEXT];
+    cpu_line_text(line);
+    return str_eq(line, want);
 }
 static int xrun_marked_on_screen(int32_t band_y) { return px_in(180, band_y + 2, 228, band_y + 17, T_REC); }
 static int test_scope_cpu(void)
@@ -9333,22 +9333,22 @@ static int test_scope_cpu(void)
     press(B_HOME);
     band_y = (int32_t)(graph_y() + graph_h()) - CPU_BAND_H;
     memcpy(first, host_screen + band_y * 240, sizeof first);
-    ok = ui.home_scope && scope_corner_texts_are("CPU 42 %  PK 71 %", "XRUN 0") &&
-         px_in(90, band_y + 2, 228, band_y + 17, T_MID) && !xrun_marked_on_screen(band_y);
+    ok = ui.home_scope && scope_corner_text_is("CPU 42/71 %") &&
+         px_in(150, band_y + 2, 228, band_y + 17, T_MID) && !xrun_marked_on_screen(band_y);
     song.cpu_q8 = 200;
     frame();
-    ok &= scope_corner_texts_are("CPU 42 %  PK 71 %", "XRUN 0");   /* (until the next sample) */
+    ok &= scope_corner_text_is("CPU 42/71 %");   /* (until the next sample) */
     frames(CPU_SAMPLE_MS);
-    ok &= scope_corner_texts_are("CPU 78 %  PK 69 %", "XRUN 0") &&
+    ok &= scope_corner_text_is("CPU 78/69 %") &&
           memcmp(first, host_screen + band_y * 240, sizeof first) != 0;
     felucca_dbg.late += 2;
     frames(CPU_SAMPLE_MS);
-    ok &= scope_corner_texts_are("CPU 78 %  PK 67 %", "XRUN 2") && cpu_shown.xrun_marked && xrun_marked_on_screen(band_y);
+    ok &= scope_corner_text_is("DROP 2 / 78%") && cpu_shown.xrun_marked && xrun_marked_on_screen(band_y);
     frames(CPU_XRUN_MARK_MS + CPU_SAMPLE_MS);
-    ok &= scope_corner_texts_are("CPU 78 %  PK 51 %", "XRUN 2") && !cpu_shown.xrun_marked &&
+    ok &= scope_corner_text_is("CPU 78/51 %") && !cpu_shown.xrun_marked &&
           !xrun_marked_on_screen(band_y);
     song.cpu_q8 = 0;
-    return check("#57 the HOME scope's CPU readout: CPU, its peak falling, XRUN since power-on, marked REC after a dropout",
+    return check("#57 the HOME scope's CPU readout: CPU, its peak falling, DROP n / load inverted for 2 s after a dropout",
                  ok);
 }
 static int test_blocks(void)

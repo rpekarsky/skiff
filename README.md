@@ -472,9 +472,10 @@ by the keys, with what each key is in Skiff.
 
 - Tap a page button for its pages (again, or SELECT, for the next one); every family reopens the page you left
 - **HOME** goes home. **Held**, it is SHIFT: its map shows what every control does on the page; let go alone,
-  the MENU opens. Tapped on HOME: the scope (THEME LCD: the equalizer), with the audio's load bottom right (LCD: top right):
-  **CPU** (as MENU › CPU shows it), **PK** (the busiest audio buffer lately, falling back slowly) and **XRUN** (the
-  dropouts since power-on, each one a click; marked in red for 2 s after a new one); the figures change 4 times a second
+  the MENU opens. Tapped on HOME: the scope (THEME LCD: the equalizer), with the audio's load bottom right:
+  **CPU 42/71 %** (as MENU › CPU shows it, then the busiest audio buffer lately, falling back slowly); for 2 s after a
+  dropout (a click) the line turns red and reads **DROP 3 / 89%** (dropouts since power-on, the load); the figures change
+  4 times a second
 - Hold FX, GLO, SEL, EDIT, ARP or SEQ for its layer; **SHIFT + the button** (or the button held, then HOME) keeps it open (the header says
   LOCKED), the button closes it. A locked FX layer latches its effects
 - **SAVE** tapped: its pages (PRESETS, USER, PATTERNS, PROJECT); **held**: undo. **SHIFT + SAVE**: TAKE

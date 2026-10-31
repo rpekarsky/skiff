@@ -1588,32 +1588,38 @@ static uint32_t cpu_shown_sig(void)
     return cpu_shown.avg * 7919u + cpu_shown.peak * 104729u + cpu_xruns() * 1299709u + cpu_shown.xrun_marked;
 }
 
-static void cpu_corner_texts(char *load, char *xrun)   /* "CPU 42 %  PK 71 %" (MENU > CPU's "42 %"), "XRUN 0" */
+/* "CPU 42/71 %" (MENU > CPU's load, then the peak); after a dropout "DROP 3 / 89%" (the dropouts since power-on, the load) */
+static void cpu_line_text(char *b)
 {
-    str_cpy(load, "CPU ", CPU_TEXT);
-    fmt_int(load + str_len(load), cpu_shown.avg);
-    str_cpy(load + str_len(load), " %  PK ", CPU_TEXT - str_len(load));
-    fmt_int(load + str_len(load), cpu_shown.peak);
-    str_cpy(load + str_len(load), " %", CPU_TEXT - str_len(load));
-    str_cpy(xrun, "XRUN ", CPU_TEXT);
-    fmt_int(xrun + str_len(xrun), (int32_t)cpu_xruns());
+    if (cpu_shown.xrun_marked) {
+        str_cpy(b, "DROP ", CPU_TEXT);
+        fmt_int(b + str_len(b), (int32_t)cpu_xruns());
+        str_cpy(b + str_len(b), " / ", CPU_TEXT - str_len(b));
+        fmt_int(b + str_len(b), cpu_shown.avg);
+        str_cpy(b + str_len(b), "%", CPU_TEXT - str_len(b));
+        return;
+    }
+    str_cpy(b, "CPU ", CPU_TEXT);
+    fmt_int(b + str_len(b), cpu_shown.avg);
+    str_cpy(b + str_len(b), "/", CPU_TEXT - str_len(b));
+    fmt_int(b + str_len(b), cpu_shown.peak);
+    str_cpy(b + str_len(b), " %", CPU_TEXT - str_len(b));
 }
 static int scope_cpu_shown(void) { return ui.home && ui.home_scope && strip_kind() == SK_NONE; }
-/* bottom right, on a patch of the panel over whatever the scope drew there; LCD: top right (the EQ's 100 1K 10K are at
- * its foot) */
+/* bottom right, on a patch of the panel over whatever the scope drew there (LCD's EQ leaves its 10K out for it);
+ * after a dropout the line inverted, in REC's colour */
 static void scope_cpu_readout(void)
 {
-    char load[CPU_TEXT], xrun[CPU_TEXT];
-    int32_t band = ux.h1n ? 0 : (int32_t)cv_h - CPU_BAND_H, y = band + CAP_IN(S, CPU_BAND_H);
-    int32_t xr = PANEL_X0 + PANEL_W - 4, xw, x;
-    cpu_corner_texts(load, xrun);
-    xw = text_w(&AF_S, xrun);
-    x = xr - xw - 10 - text_w(&AF_S, load);
-    cv_rect(x - 4, band + 2, xr + 4 - (x - 4), CPU_BAND_H - 4, T_SURF);
-    cv_text_on(x, y, &AF_S, load, T_MID, T_SURF);
+    char line[CPU_TEXT];
+    int32_t band = (int32_t)cv_h - CPU_BAND_H, y = band + CAP_IN(S, CPU_BAND_H);
+    int32_t xr = PANEL_X0 + PANEL_W - 4, w;
+    uint16_t ink = cpu_shown.xrun_marked ? T_SURF : T_MID, paper = cpu_shown.xrun_marked ? T_REC : T_SURF;
+    cpu_line_text(line);
+    w = text_w(&AF_S, line);
+    cv_rect(xr - w - 4, band + 2, w + 8, CPU_BAND_H - 4, T_SURF);
     if (cpu_shown.xrun_marked)
-        cv_rect(xr - xw - 3, y + AF_S_CAP_Y - 3, xw + 6, AF_S_CAP_H + 6, T_REC);
-    cv_text_r(xr, y, &AF_S, xrun, cpu_shown.xrun_marked ? T_SURF : T_MID, cpu_shown.xrun_marked ? T_REC : T_SURF);
+        cv_rect(xr - w - 3, y + AF_S_CAP_Y - 3, w + 6, AF_S_CAP_H + 6, T_REC);
+    cv_text_r(xr, y, &AF_S, line, ink, paper);
 }
 
 /* (Skiff U5) an EDIT page of ANALOG (its own graphs: ui_pgraph.c graph_osc, graph_flt) */
