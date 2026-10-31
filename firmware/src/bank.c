@@ -775,8 +775,8 @@ static void trk_name(uint32_t k, uint32_t id)
     }
 }
 /* track k kept: its pattern, changed since it came in (trk_sig), waits to be written (pat_keep_rec); steps on no
- * pattern yet become a new one, the first free id (trk_name). 0 kept (or unchanged, or nothing there), 1 not: PATTERNS
- * FULL (no id, no waiting slot) */
+ * pattern yet become a new one ((#14, #50) numbered beside its neighbours', trk_name). 0 kept (or unchanged, or
+ * nothing there), 1 not: PATTERNS FULL (no id, no waiting slot) */
 static int trk_keep(uint32_t k)
 {
     uint32_t h, id;
@@ -790,7 +790,7 @@ static int trk_keep(uint32_t k)
     h = proj_hash(bk_rec, BK_REC);
     if (trk_pid[k] && h == trk_sig[k])
         return 0;
-    id = trk_pid[k] ? trk_pid[k] - 1u : pool_alloc();
+    id = trk_pid[k] ? trk_pid[k] - 1u : pool_alloc_beside(k, lists.cur[k] % NENT);
     if (id == NPAT || pat_keep_now(id, bk_rec))
         return 1;
     if (!trk_pid[k])
@@ -1064,7 +1064,7 @@ static void bank_poll_trk(uint32_t k)
         return;
     if (!q->same && (trk_pid[k] || !q_empty(q)) &&     /* ((2.0.3, #71) the same pattern: nothing went out) */
         bk_pack_raw(bk_rec, k, q->step, q->time, &q->motion, (q->motion.on >> k) & 1u)) {
-        id = trk_pid[k] ? trk_pid[k] - 1u : pool_alloc();   /* (a new pattern went out: the first free id) */
+        id = trk_pid[k] ? trk_pid[k] - 1u : pool_alloc_beside(k, lists.cur[k] % NENT);   /* ((#14, #50) a new one */
         if (trk_pid[k] && ((motion_lost >> k) & 1u))
             rec_motion_of(bk_rec, id);
         if (trk_pid[k] && proj_hash(bk_rec, BK_REC) == trk_sig[k])
@@ -1603,6 +1603,29 @@ static int entry_go(uint32_t k, uint32_t e)
     return rc;
 }
 static void entry_ui(uint32_t e) { (void)entry_go(song.sel % NTRK, e); }
+/* (#50) SMK's < >: the selected track to the entry before / after the one it is on, or is staged for. An empty one
+ * there becomes a REST first, so the arrows always move and a pattern can be recorded in live: steps put into a REST
+ * make it a new pattern (trk_name). Nowhere to keep what the track had (PATTERNS FULL): the entry stays empty */
+static void entry_step(int dir)
+{
+    uint32_t k = song.sel % NTRK;
+    const launch_t *q = &launch_q[k];
+    int32_t e = (int32_t)(q->armed && !q->adv ? q->slot : lists.cur[k]) % (int32_t)NENT + dir;
+    if (e < 0 || e >= (int32_t)NENT) {
+        ui_message(dir < 0 ? "FIRST ENTRY" : "LAST ENTRY");
+        return;
+    }
+    if (ent_on(k, (uint32_t)e)) {
+        (void)entry_go(k, (uint32_t)e);
+        return;
+    }
+    lists.ent[k][e][0] = (uint8_t)PAT_REST;
+    bk.gen++;
+    if (entry_go(k, (uint32_t)e) == 4)
+        lists.ent[k][e][0] = 0;
+    else
+        str_cpy(ui.msg2, "NEW REST", sizeof ui.msg2);
+}
 /* (phase 5) SAVE > PATTERNS, the pool view: how many use pattern id: the entries naming it (the lists, the saved
  * projects), and a track on it that no entry of its names (0: it can be cleared) */
 static uint32_t pool_refs(uint32_t id)

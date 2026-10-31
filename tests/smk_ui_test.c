@@ -7,7 +7,8 @@
  *   FADERS   the four tracks shown, taking over once they reach the value, SHIFT + FADER BANK (its LED), the window.
  *   TAPS     (#39) KNOB BANK's tap UNDO, FADER BANK's REDO; a hold, a combo, a pad meanwhile, the MENU: none.
  *   ENTRIES  > and < the selected track's entry after and before, the first's end said; in PERFORM and GLO (held or
- *            locked) the same, a combo (no tap, the lock kept); in another layer nothing.
+ *            locked) the same, a combo (no tap, the lock kept); in another layer nothing; (#50) an empty one
+ *            becomes a REST.
  *   KEYS     the outer keys' notes and velocity (KEY VELOCITY), out of the TRS jack too; the curves.
  *   MENU     KEY VELOCITY in CONTROL, no LEDS row, the editor's rows; USR2 / USR3 not offered.
  *   WHEELS   the wheels and the pedal as MIDI in on the selected track's channel, back to rest on a switch.
@@ -773,6 +774,13 @@ static int test_entries(void)
     press_id(SMK_BTN_LEFT);
     press_id(SMK_BTN_LEFT);
     bad += check("SMK < on A: FIRST ENTRY, nowhere", lists.cur[0] == 0u && msg_is("FIRST ENTRY"));
+    press_id(SMK_BTN_RIGHT);
+    press_id(SMK_BTN_RIGHT);
+    press_id(SMK_BTN_RIGHT);
+    bad += check("(#50) SMK > past the last pattern: a REST there, the track on it (D)", lists.cur[0] == 3u &&
+                 ent_rest(0, 3) && seq_is_empty(TSEL) && str_eq(ui.msg2, "NEW REST"));
+    press_id(SMK_BTN_RIGHT);
+    bad += check("(#50) SMK > again: another REST (E)", lists.cur[0] == 4u && ent_rest(0, 4));
     return bad;
 }
 
@@ -827,6 +835,9 @@ static int test_layer_arrows(void)
     press_id(SMK_BTN_RIGHT);
     bad += check("SMK PERFORM locked: > the entry after, the lock kept", ok && lists.cur[0] == 2u &&
                  ui.lock == LAYER_PERF && ui.layer == LAYER_PERF);
+    press_id(SMK_BTN_RIGHT);
+    bad += check("(#50) SMK PERFORM locked: > past the last pattern: a REST there, the track on it", lists.cur[0] == 3u &&
+                 ent_rest(0, 3));
     hold(B_ARP);                                  /* (its button closes the lock: the outer keys' test after plays) */
     let_go(B_ARP);
     return bad;
