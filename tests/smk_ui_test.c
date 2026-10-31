@@ -955,18 +955,18 @@ static int test_knob_bars(void)
     pan = TSEL->p[P_PAN];
     knob_turn(EN_SELECT);
     place = 255u;
-    ok = TSEL->p[P_PAN] > pan && smk_fader_bars(&id) && id == P_PAN && smk_fader_place(0, &place) && place == 255u;
+    ok = TSEL->p[P_PAN] > pan && smk_fader_bars(&id) && id == P_PAN && smk_fader_place(0, &place) &&
+         place == (uint32_t)(trk[0].p[P_PAN] - TP[P_PAN].min);
     ok &= !lane_is(0, was) && !lane_thin(0, hl_bar_x(40), hl_bar_x(100));
-    bad += check("SMK knob bars (#56b): K2 on HOME, the PAN bars on every lane, no tick (the faders on LEVEL)", ok);
+    bad += check("SMK knob bars (#56b): K2 on HOME, the PAN bars on every lane, each tick at its value", ok);
     frames(520);
     bad += check("SMK knob bars: gone 0.5 s after", !smk_fader_bars(&id) && lane_is(0, was));
     menu_put(MI_PKNOB, 1);
     knob_turn(EN_PRESET);
-    ok = smk_fader_bars(&id) && id == P_LEVEL && smk_fader_place(0, &place) && place == 30u;
-    frame();
-    ok &= screen_at(hl_bar_x(30), lane_mid(0)) == T_TEXT;
+    ok = smk_fader_bars(&id) && id == P_LEVEL && smk_fader_place(0, &place) &&
+         place == (uint32_t)(trk[0].p[P_LEVEL] - TP[P_LEVEL].min);
     menu_put(MI_PKNOB, 0);
-    bad += check("SMK knob bars: K4 as LEVEL, the LEVEL bars, the faders' ticks (their bank)", ok);
+    bad += check("SMK knob bars: K4 as LEVEL, the LEVEL bars, each tick at its value, not the faders'", ok);
     frames(520);
     fm1_in.buttons |= 1u << SMK_BTN_KNOB_BANK;
     frame();
