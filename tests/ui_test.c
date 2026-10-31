@@ -8416,7 +8416,8 @@ static int test_u2(void)
 static int test_u4(void)
 {
     static const char *const M[] = {"SAVE > PATTERNS: CLEAR", "AUTOMATION: DELETE ONE",
-        "UNDO NEEDS PATTERN 07", "DISARM REC FOR A TAKE", "PLAY ONE LOOP FIRST", "NOTHING BEFORE TO JOIN", "STOP TO RENAME",
+        "UNDO NEEDS PATTERN 07", "UNDONE IN PATTERN 21", "REDONE IN PATTERN 21", "STOP TO UNDO",
+        "DISARM REC FOR A TAKE", "PLAY ONE LOOP FIRST", "NOTHING BEFORE TO JOIN", "STOP TO RENAME",
         "TAP: CLOCK IS EXTERNAL", "RESTART: CLOCK EXTERNAL", "SLICES NOW MANUAL", "PICK A USR SAMPLE FIRST",
         "SAVED UNTIL POWER OFF", "RENAMED UNTIL POWER OFF", "ERASED UNTIL POWER OFF", "STORAGE ERROR", "KEYS RECORD LANES",
         "HOLD [GLO]: SHORTCUTS", "HOLD [EDIT]: SHORTCUTS", "SOUND INITIALIZED", "PATTERN 06 CLEARED", "UNDONE: SEQUENCE",
@@ -9617,13 +9618,217 @@ static int test_perform(void)
     t->step[0].note[0] = 58;
     load_end(t);
     bank_switch(song.sel, 0);                         /* A: C's edit kept as C */
-    hold(B_SAVE);
-    ok &= t->step[0].note[0] == 50 && !memcmp(ui.msg, "UNDO NEEDS PATTERN ", 19);
-    bank_switch(song.sel, 2);                         /* back on C: its edit there; the undo works again */
-    ok &= t->step[0].note[0] == 58;
-    hold(B_SAVE);
+    hold(B_SAVE);                                     /* ((#58) undone into C in the pool, A stays) */
+    ok &= t->step[0].note[0] == 50 && undo_back == 1u;
+    bank_switch(song.sel, 2);                         /* back on C: as before the edit; the redo works there */
     ok &= t->step[0].note[0] == 55;
-    bad += check("  stopped: C comes in, T3's mute too; an edit on C kept over a switch; its undo refused on A, works on C", ok);
+    undo_step(1);
+    ok &= t->step[0].note[0] == 58;
+    bad += check("  stopped: C comes in, T3's mute too; an edit on C kept over a switch; undone on A into C, redone on C", ok);
+    return bad;
+}
+
+/* (#58) UNDO in the background: a copy taken on another pattern than the one its track is on now goes into that
+ * pattern in the pool (bank.c undo_pool_swap), the track playing on as it was; REDO swaps back */
+static step_t ub_st[NSTEP];
+static motion_store_t ub_ms;
+static int16_t ub_tv[5];
+static int pool_read(uint32_t id) { return !pat_decode(&trk[0], id, ub_st, ub_tv, &ub_ms); }
+static int pool_holds(uint32_t id, uint32_t step, uint32_t note)   /* pattern id's step holds note, in the pool */
+{
+    return pool_read(id) && ub_st[step].n && ub_st[step].note[0] == note;
+}
+static int restored_said(const char *verb, const char *num)   /* box "PATTERN 01 RESTORED, ..", or "UNDONE IN PATTERN 01" */
+{
+    char line[24], head[32];
+    str_cpy(line, "pattern ", sizeof line); str_cpy(line + 8, num, 3u); str_cpy(line + 10, " restored", 10u);
+    str_cpy(head, verb, sizeof head); str_cpy(head + 4, "NE IN PATTERN ", 15u); str_cpy(head + 18, num, 3u);
+    lower_words(take_box.line);
+    return (ui.take_t && take_box.kind && !memcmp(take_box.title, verb, 4) && !memcmp(take_box.line, line, 19)) ||
+           str_eq(ui.msg, head);
+}
+static int ub_heard(uint32_t k, uint32_t note) { return trk[k].seq_n && trk[k].seq_notes[0] == note; }
+static void ub_next(uint32_t n)                       /* track 1 on n steps, the main loop after each block */
+{
+    track_t *t = &trk[0];
+    while (n--) {
+        uint32_t i = t->seq_idx;
+        while (t->seq_idx == i) {
+            events_block(CTL);
+            bank_poll();
+            rec_pass_poll();
+        }
+    }
+}
+static void ub_flush(void) { while (pend_free() < PEND_N) pat_flush_one(); }
+/* T1: A (01) notes 60.. with an automation event, B (02) notes 80..; on A an edit (62, LEN 3, another event) with its
+ * undo copy, then on B: A kept with the edit */
+static track_t *ub_setup(void)
+{
+    track_t *t;
+    uint32_t i;
+    ui_power_on();
+    t = &trk[0];
+    sel_set(0);
+    ui_launch = LAUNCH_LOOP;
+    for (i = 0; i < 2u; i++) {
+        fresh_pattern(0, (uint8_t)(60u + 20u * i));
+        motion_clear(t);
+        t->step[2] = (step_t){{(uint8_t)(70u + 20u * i)}, 1, ST_NOTE, 0, 90};
+        t->p[P_SLEN] = 4;
+        if (!i)
+            motion_set_event(t, 2, P_REV, 30);
+        bank_put(0, i, 0);
+    }
+    ent_go(0, 0);
+    load_begin(t, UNDO_PAT);
+    t->step[0].note[0] = 62;
+    t->p[P_SLEN] = 3;
+    load_end(t);
+    motion_set_event(t, 1, P_REV, 50);
+    ent_go(0, 1);
+    return t;
+}
+static int test_undo_background(void)
+{
+    int bad = 0, ok;
+    uint32_t i;
+    track_t *t = ub_setup();
+    ok = pool_holds(0, 0, 62) && ub_tv[0] == 3 && t->step[0].note[0] == 80 && trk_pat(0) == 1u;
+    hold(B_SAVE);
+    ok &= t->step[0].note[0] == 80 && trk_pat(0) == 1u && undo_back == 1u && restored_said("UNDO", "01");
+    ok &= pool_holds(0, 0, 60) && ub_tv[0] == 4 && ub_ms.count == 1u && ub_ms.event[0].value == 30;
+    ok &= text_w(&AF_S, "pattern 64 restored, 8 of 8 undone") <= TB_W - 20;
+    bad += check("(#58) on B, UNDO of A's copy: A restored in the pool (steps, LEN, automation), B stays, said (fits)", ok);
+    press(B_OCTUP);
+    ok = pool_holds(0, 0, 62) && ub_tv[0] == 3 && ub_ms.count == 1u && ub_ms.event[0].value == 50 && !undo_back &&
+         restored_said("REDO", "01") && t->step[0].note[0] == 80;
+    bad += check("(#58)   REDO: the edit back into A (the pool's content went into the copy)", ok);
+    hold(B_SAVE);
+    ent_go(0, 0);
+    ok = t->step[0].note[0] == 60 && t->p[P_SLEN] == 4 && motion_count(t) == 1u;
+    undo_step(1);
+    ok &= t->step[0].note[0] == 62 && t->p[P_SLEN] == 3 && trk_pat(0) == 0u;
+    bad += check("(#58)   back on A: the restored one comes in; REDO there swaps with the track as before", ok);
+
+    t = ub_setup();
+    trk[0].step[1].note[0] = 99;                     /* (a sound copy on B, then back on A: its automation is A's) */
+    undo_label = 0;
+    load_begin(t, UNDO_SOUND);
+    load_end(t);
+    ent_go(0, 0);
+    i = motion_count(t);
+    hold(B_SAVE);
+    ok = motion_count(t) == i && t->step[0].note[0] == 62 && undo_back == 1u;
+    bad += check("(#58)   a sound copy from another pattern: the sound back, not that pattern's automation", ok);
+
+    t = ub_setup();                                  /* A erased since: restored, the redo erases it again */
+    ok = bank_put(0, 0, 1) == 0 && !pool_used(0);
+    hold(B_SAVE);
+    ok &= pool_holds(0, 0, 60) && pool_used(0) && t->step[0].note[0] == 80;
+    press(B_OCTUP);
+    ok &= !pool_used(0) && !undo_back;
+    bad += check("(#58)   A erased since the copy: UNDO puts it back in the pool, REDO empties it again", ok);
+
+    t = ub_setup();                                  /* an automation edit on A: only A's automation swaps */
+    ent_go(0, 0);
+    motion_undo_take(t, 0);
+    motion_set_event(t, 3, P_REV, 77);
+    motion_undo_done(t);
+    ent_go(0, 1);
+    hold(B_SAVE);
+    ok = pool_holds(0, 0, 62) && ub_tv[0] == 3 && ub_ms.count == 1u && ub_ms.event[0].value == 50;
+    press(B_OCTUP);
+    ok &= pool_holds(0, 0, 62) && ub_ms.count == 2u;
+    bad += check("(#58)   an automation copy (UNDO_MOT): A's automation alone back, then redone", ok);
+
+    ui_power_on();
+    t = &trk[0];
+    fresh_pattern(0, 50);                            /* (steps on no pattern yet: the copy's has no number) */
+    load_begin(t, UNDO_PAT);
+    t->step[0].note[0] = 52;
+    load_end(t);
+    bank_put(0, 0, 0);
+    hold(B_SAVE);
+    ok = t->step[0].note[0] == 52 && msg_is("UNDO NEEDS PATTERN --");
+    bad += check("(#58)   a copy of steps no pattern held yet: refused (UNDO NEEDS PATTERN --)", ok);
+
+    t = ub_setup();                                  /* T2 on X (03), A staged for it; T3 on A (its copy: 62) */
+    fresh_pattern(1, 40);
+    trk[1].step[2] = (step_t){{42}, 1, ST_NOTE, 0, 90};
+    trk[1].p[P_SLEN] = 4;
+    bank_put(1, 1, 0);
+    lists.ent[1][0][0] = 1;
+    lists.ent[2][0][0] = 1;
+    ent_go(2, 0);
+    ub_flush();
+    transport_req = 1;
+    events_block(1);
+    ok = bank_switch(1, 0) == 0 && launch_q[1].armed && launch_q[1].step[0].note[0] == 62;
+    hold(B_SAVE);
+    ok &= pool_holds(0, 0, 60) && pend_at(0) < PEND_N && launch_q[1].step[0].note[0] == 60 && trk[2].step[0].note[0] == 62;
+    ub_next(2);
+    ok &= ub_heard(0, 90) && ub_heard(1, 42) && ub_heard(2, 70);
+    ub_next(2);
+    ok &= ub_heard(0, 80) && ub_heard(1, 60) && trk[2].step[0].note[0] == 62 && trk_pat(1) == 0u;
+    bad += check("(#58)   playing: A restored; B plays on; T2's staged A takes it at the swap, T3 on A its own copy", ok);
+    transport_req = 2;
+    events_block(1);
+    bank_poll();
+    ok = ent_go(2, 0) == 0 && trk[2].step[0].note[0] == 60 && pool_holds(0, 0, 60);
+    bad += check("(#58)   T3 loads A again: the restored one (its unchanged copy kept nothing over it)", ok);
+
+    t = ub_setup();
+    ub_flush();
+    transport_req = 1;
+    events_block(1);
+    ok = trk_rec(0);
+    for (i = 0; i < PEND_N; i++)
+        ok &= !pat_keep_rec(10u + i, bk_rec);
+    hold(B_SAVE);
+    ok &= msg_is("PATTERNS FULL") && str_eq(ui.msg2, "STOP TO UNDO") && !undo_back && pool_holds(0, 0, 62);
+    bad += check("(#58)   playing, every waiting slot used: PATTERNS FULL, STOP TO UNDO; the copy kept, A as it was", ok);
+    transport_req = 2;
+    events_block(1);
+    hold(B_SAVE);
+    ok = undo_back == 1u && pool_holds(0, 0, 60) && t->step[0].note[0] == 80;
+    bad += check("(#58)   stopped: the same UNDO goes in", ok);
+
+    ui_power_on();                                   /* REC passes on A (8 steps), then B: the last pass undone in A */
+    t = &trk[0];
+    sel_set(0);
+    ui_launch = LAUNCH_LOOP;
+    track_defaults_steps(t);
+    t->p[P_SLEN] = 8;
+    t->step[7] = (step_t){{30}, 1, ST_NOTE, 0, 90};
+    bank_put(0, 0, 0);
+    fresh_pattern(0, 80);
+    t->p[P_SLEN] = 8;
+    bank_put(0, 1, 0);
+    ent_go(0, 0);
+    ub_flush();
+    transport_req = 1;
+    events_block(CTL);
+    rec_tap();
+    rec_pass_poll();
+    input_on(t, 60, 100); input_off(t, 60);           /* pass 1: step 1 */
+    ub_next(8);
+    ub_next(2); input_on(t, 62, 100); input_off(t, 62); ub_next(6);   /* pass 2: step 3 */
+    ub_next(4); input_on(t, 64, 100); input_off(t, 64); ub_next(4);   /* pass 3: step 5 */
+    rec_tap();
+    rec_pass_poll();
+    bank_switch(0, 1);
+    ub_next(8);
+    ok = trk_pat(0) == 1u && pool_holds(0, 4, 64) && pool_holds(0, 2, 62);
+    hold(B_SAVE);
+    ok &= trk_pat(0) == 1u && t->step[0].note[0] == 80 && pool_holds(0, 2, 62) && pool_holds(0, 0, 60) &&
+          !pool_holds(0, 4, 64) && restored_said("UNDO", "01");
+    bad += check("(#58)   REC passes on A, then on B: UNDO takes the last pass out of A in the pool, B plays on", ok);
+    undo_step(1);
+    ok = pool_holds(0, 4, 64) && trk_pat(0) == 1u;
+    bad += check("(#58)   REDO: the pass back in A", ok);
+    transport_req = 2;
+    events_block(1);
     return bad;
 }
 
@@ -10561,6 +10766,7 @@ int main(void)
     bad += test_undo_levels();
     bad += test_pool();                               /* Skiff phase 5: SAVE > PATTERNS, the pool view */
     bad += test_perform();                            /* Skiff: the PERFORM layer (live switching) */
+    bad += test_undo_background();                    /* Skiff #58: UNDO into a pattern in the pool */
     bad += test_scenes();                             /* Skiff: scenes (the PERFORM layer's KEYS SCENE) */
     bad += test_song_page();                          /* Skiff phase 5: SEQ > SONG */
     bad += test_song_chain();                         /* (2.0, #44) a chain on SONG and NOTES */

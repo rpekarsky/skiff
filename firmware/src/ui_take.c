@@ -179,8 +179,9 @@ static void take_box_draw(void)
     else                                              /* the take's undo: SAVE held (the mockup's words) */
         cv_text_on(TB_X + 10, TB_Y + 49, &AF_S, "HOLD SAVE: UNDO", T_INK, T_TEXT);
 }
-/* the undo box (ui.c undo_step): UNDO or REDO and the copy's name, how far back of how many */
-static void take_box_undo(int redo, uint32_t trk, const char *name)
+/* the undo box (ui.c undo_step): UNDO or REDO and the copy's name, ((#58) "PATTERN 21 RESTORED": pool_pattern, the copy
+ * gone into the pool, "" into the track), how far back of how many */
+static void take_box_undo(int redo, uint32_t trk, const char *name, const char *pool_pattern)
 {
     uint32_t n;
     take_box.trk = (uint8_t)(trk % NTRK);
@@ -188,7 +189,13 @@ static void take_box_undo(int redo, uint32_t trk, const char *name)
     take_box.kind = 1;
     str_cpy(take_box.title, redo ? "REDO " : "UNDO ", sizeof take_box.title);
     str_cpy(take_box.title + 5, name, sizeof take_box.title - 5);
-    fmt_int(take_box.line, (int32_t)undo_back);
+    take_box.line[0] = 0;
+    if (pool_pattern[0]) {
+        str_cpy(take_box.line, pool_pattern, sizeof take_box.line);
+        str_cpy(take_box.line + str_len(take_box.line), " RESTORED, ", sizeof take_box.line - str_len(take_box.line));
+    }
+    n = str_len(take_box.line);
+    fmt_int(take_box.line + n, (int32_t)undo_back);
     n = str_len(take_box.line);
     str_cpy(take_box.line + n, " OF ", sizeof take_box.line - n);
     n = str_len(take_box.line);

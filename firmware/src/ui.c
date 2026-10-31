@@ -1431,6 +1431,8 @@ typedef struct {
     int16_t p[P_COUNT];
     step_t step[NSTEP];
     motion_store_t motion_backup; /* one track only, swaps with the shared event pool on undo */
+    uint8_t pat_empty;           /* (#58) pattern pid was empty in the pool when this copy went there: back, it empties
+                                  * it again (bank.c undo_pool_swap) */
     uint32_t after;              /* track_sig right after the last load */
     uint32_t t_ms;               /* time of the last load (the editor's SETs after it belong to it) */
     const char *name;            /* (Skiff) what it undoes: TAKE, CLEAR, PATTERN, SOUND, a tool's name (the undo box) */
@@ -1488,6 +1490,7 @@ static void undo_push(uint32_t what)                       /* a new copy: the ca
         upin.pin = undo.seq;
         upin.pin_next = 0;
     }
+    undo.pat_empty = 0;
     undo.name = undo_label ? undo_label : (what & UNDO_SOUND) ? "SOUND" : (what & UNDO_PAT) ? "PATTERN" : "AUTOMATION";
     undo_label = 0;
 }
@@ -1798,31 +1801,46 @@ static void motion_undo_done(track_t *t)
 /* a copy and its track change places: what its loads changed (c->what). The sound: engine, preset and its
  * parameters (not param_kept); the pattern: the steps and LEN DIV SWING GATE; the track's motion. The mix (LEVEL PAN
  * MUTE) stays: no load changes it. Swapped again, the track is back: one copy is its undo and its redo.
- * (Skiff phase 5) a copy of the steps or the motion undoes only on the pattern it was taken on (the track's steps are
- * kept as that pattern: another one's would go into this one). 0: nothing changed (AUTOMATION FULL, OTHER PATTERN) */
-static void undo_other_pattern(uint32_t pid)      /* a copy of pattern pid's steps, the track on another one */
+ * (Skiff phase 5) the steps and the motion are the pattern's (the track's are kept as the pattern it is on): (#58) a
+ * copy taken on another pattern than the track's now swaps them with that pattern in the pool instead (bank.c
+ * undo_pool_swap), its sound with the track's as ever. 0: nothing changed (AUTOMATION FULL, PATTERNS FULL) */
+static void undo_other_pattern(uint32_t pid)      /* a copy of pattern pid - 1's steps that cannot go there */
 {
-    char b[24] = "UNDO NEEDS PATTERN 00";             /* ((Skiff U4) which one: its number) */
-    b[19] = (char)('0' + (pid + 1u) / 10u % 10u);
-    b[20] = (char)('0' + (pid + 1u) % 10u);
+    char b[24] = "UNDO NEEDS PATTERN --";             /* ((Skiff U4) which one: its number; --: steps on none yet) */
+    if (pid) {
+        b[19] = (char)('0' + pid / 10u % 10u);
+        b[20] = (char)('0' + pid % 10u);
+    }
     ui_message(b);
 }
+static void undo_pattern_words(char *b, uint32_t pid)   /* "PATTERN 21" (b: 11 bytes) */
+{
+    str_cpy(b, "PATTERN 00", 11);
+    b[8] = (char)('0' + pid / 10u % 10u);
+    b[9] = (char)('0' + pid % 10u);
+}
+static int undo_in_pool(const undo_t *c)          /* (#58) c's pattern part goes into the pool, not the track */
+{
+    return (c->what & (UNDO_PAT | UNDO_MOT)) && c->pid != trk_pid[(c->trk - 1u) % NTRK];
+}
+static int undo_pool_swap(undo_t *c);             /* (bank.c) */
 static int undo_swap(undo_t *c)
 {
     track_t *t = &trk[(c->trk - 1u) % NTRK];
-    uint32_t i;
+    uint32_t i, own_pattern = c->pid == trk_pid[trk_index(t)];
     motion_store_t current_motion;
-    if ((c->what & (UNDO_PAT | UNDO_MOT)) && c->pid != trk_pid[trk_index(t)]) {
-        undo_other_pattern(c->pid);
+    if (undo_in_pool(c) && !undo_pool_swap(c))
         return 0;
+    if (own_pattern) {                            /* (another's automation is that pattern's: a sound copy leaves it) */
+        motion_restore(t);
+        motion_snapshot_track(t, &current_motion);
+        if (motion_replace_track(t, &c->motion_backup) != 0) {
+            ui_way("AUTOMATION FULL", WAY_MOTION);
+            return 0;
+        }
+        c->motion_backup = current_motion;
+        c->pat_empty = 0;
     }
-    motion_restore(t);
-    motion_snapshot_track(t, &current_motion);
-    if (motion_replace_track(t, &c->motion_backup) != 0) {
-        ui_way("AUTOMATION FULL", WAY_MOTION);
-        return 0;
-    }
-    c->motion_backup = current_motion;
     fm1_irq_off();                                /* the audio ISR must not see half a sound */
     if (c->what & UNDO_SOUND) {
         uint8_t e = t->eng_req, pr = t->preset, u = t->user;
@@ -1840,7 +1858,7 @@ static int undo_swap(undo_t *c)
                 c->p[i] = v;
             }
     }
-    if (c->what & UNDO_PAT) {
+    if ((c->what & UNDO_PAT) && own_pattern) {
         for (i = P_SLEN; i <= P_SGATE + 1u; i++) {    /* LEN DIV SWING GATE, (Skiff) and DIR */
             uint32_t k = i <= P_SGATE ? i : P_DIR;
             int16_t v = t->p[k];
@@ -1897,7 +1915,7 @@ static void rec_live_stepped(void);
 static void undo_step(int redo)
 {
     undo_t *c;
-    char b[24], pass_name[12], clear_name[20];
+    char b[24], pass_name[12], clear_name[20], pool_pattern[11];
     const char *name;
     if (song.playing && song.rec)
         rec_live_step(redo);
@@ -1924,8 +1942,14 @@ static void undo_step(int redo)
         fmt_int(pass_name + 5, c->pass);
         name = pass_name;
     }
+    pool_pattern[0] = 0;
+    if (undo_in_pool(c))
+        undo_pattern_words(pool_pattern, c->pid);
     if (take_box_fits()) {
-        take_box_undo(redo, (uint32_t)c->trk - 1u, name);
+        take_box_undo(redo, (uint32_t)c->trk - 1u, name, pool_pattern);
+    } else if (pool_pattern[0]) {                 /* "UNDONE IN PATTERN 21" (the box's RESTORED: too wide), the keys */
+        ui_say(redo ? "REDONE IN " : "UNDONE IN ", pool_pattern);
+        str_cpy(ui.msg2, UNDO_KEYS, sizeof ui.msg2);
     } else {                                      /* "UNDO T1 TAKE", then the keys */
         str_cpy(b, redo ? "REDO T1 " : "UNDO T1 ", sizeof b);
         b[6] = (char)('1' + (c->trk - 1u) % NTRK);

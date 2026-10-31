@@ -345,7 +345,9 @@ Felucca) first, and lists what it converted.
 - **TAKE** (SHIFT + SAVE): keep the last loop you played, notes and knob moves, on the track, after the fact
 - **Undo:** SAVE held, 8 levels across the tracks (sound loads, takes, clears, tools, recording passes,
   automation edits); OCT− and OCT+ step through them while the undo box shows. Overdubbing, the last loop pass that
-  recorded something is an undo of its own (UNDO PASS 3), then the whole recording (RECORDING); REC stays on
+  recorded something is an undo of its own (UNDO PASS 3), then the whole recording (RECORDING); REC stays on.
+  (#58) An undo of a pattern the track has left (a launch, the song, a chain moved on) goes into that pattern where
+  it is kept, in the background: the track plays on, the box says PATTERN 21 RESTORED; REDO swaps back
 - **Parameter locks and automation:** hold a step and turn a knob to lock it; knob moves recorded live; SEQ ›
   AUTOMATION lists them all to edit, move or delete
 - **SEQ TOOLS** (hold SEQ): CLEAR, REVERSE, SHIFT < / >, RANDOM, COOK, and (1.3) EUCLID (hits spread over the steps,
