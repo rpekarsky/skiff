@@ -23,7 +23,7 @@ Outside the palette: REC, a fixed red; the QR code's fixed black and white; the 
 bright or dim light), CRYPT and NEON (their own font and widgets besides: src/gfx.c ux.crypt, ux.neon), QUARK (its own
 widgets: ux.quark), (#29) LCD and LCD NIGHT (four tones, CRYPT's font, their own widgets: ux.h1n), then the plain
 GAMEBOY, AMBER and BLUE-STN (wishlist #47: old handhelds' and synths' LCDs), then LCD GRAIN (LCD's look with the cells'
-gaps instead of the dot grid). Saved settings name them by a tagged id
+gaps instead of the dot grid) and LCD GREEN (LCD's look in its first, reflective green-grey). Saved settings name them by a tagged id
 (THEME_TAG + index). Earlier ids are migrated: PAL_TAG + an index into the eleven palettes before THEME
 (UI_PALETTE_MIGRATE11), and below 20 Felucca's oldest twenty (UI_PALETTE_MIGRATE20); a palette that is gone is SKIFF.
 --report prints the WCAG contrast of every pairing. The tool fails (exit 1) on any miss.
@@ -66,9 +66,13 @@ PALETTES = [
     # (PO, 31.10) LCD GRAIN: LCD's colours and look, the dot grid replaced by the gaps between the LCD's cells, the
     # backlight showing through every third row and column (src/gfx.c cv_lcd_gaps); after the others: ids stay
     ("LCD GRAIN", (214, 228, 246), (214, 228, 246), (18, 30, 84), (18, 30, 84),  (18, 30, 84)),
+    # (wishlist #66) LCD GREEN: LCD as it was before the H1n's backlit blue, the PO's H1N GREY (a reflective LCD): the
+    # ghost and MID derived (RAISE 160,170,148; BG to ink LCD_MID_PCT)
+    ("LCD GREEN", (178, 186, 166), (178, 186, 166), (28, 32, 26),  (28, 32, 26),  (28, 32, 26)),
 ]
-SKIFF, CRYPT, NEON, QUARK, LCD, LCD_NIGHT, LCD_GRAIN = "SKIFF", "CRYPT", "NEON", "QUARK", "LCD", "LCD NIGHT", "LCD GRAIN"
-LCD_LOOKS = (LCD, LCD_NIGHT, LCD_GRAIN)   # src/gfx.c ux.h1n: four tones, CRYPT's font, ui_h1n.c's widgets
+SKIFF, CRYPT, NEON, QUARK, LCD, LCD_NIGHT = "SKIFF", "CRYPT", "NEON", "QUARK", "LCD", "LCD NIGHT"
+LCD_GRAIN, LCD_GREEN = "LCD GRAIN", "LCD GREEN"
+LCD_LOOKS = (LCD, LCD_NIGHT, LCD_GRAIN, LCD_GREEN)   # src/gfx.c ux.h1n: four tones, CRYPT's font, ui_h1n.c's widgets
 # LCD's ghost and MID as the backlit H1n shows them: blue, off the line from BG to ink that the derived ones lie on
 # (src/gfx.c lcd_tones; THEME CUSTOM over the look derives its own)
 LCD_OWN_TONES = {LCD: ((150, 190, 240), (96, 128, 196)), LCD_GRAIN: ((150, 190, 240), (96, 128, 196))}
@@ -228,6 +232,7 @@ def main():
                 f"#define UI_LCD_INDEX {names.index(LCD)}u          /* LCD: four tones, CRYPT's font, its own widgets */",
                 f"#define UI_LCD_NIGHT_INDEX {names.index(LCD_NIGHT)}u          /* LCD NIGHT: LCD's look, its own colours */",
                 f"#define UI_LCD_GRAIN_INDEX {names.index(LCD_GRAIN)}u          /* LCD GRAIN: LCD, the cells' gaps for the dots */",
+                f"#define UI_LCD_GREEN_INDEX {names.index(LCD_GREEN)}u          /* LCD GREEN: LCD in its first green-grey */",
                 f"#define UI_THEME_TAG {THEME_TAG}u          /* stored id = UI_THEME_TAG + index */",
                 f"#define UI_PAL_TAG {PAL_TAG}u          /* before THEME: UI_PAL_TAG + an index into the eleven; below 20: "
                 "Felucca's oldest */"]
