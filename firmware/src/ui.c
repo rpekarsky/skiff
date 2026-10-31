@@ -1421,6 +1421,7 @@ typedef struct {
     uint32_t t_ms;               /* time of the last load (the editor's SETs after it belong to it) */
     const char *name;            /* (Skiff) what it undoes: TAKE, CLEAR, PATTERN, SOUND, a tool's name (the undo box) */
     uint16_t seq;                /* (2.0) its number (undo_push; 0: none): a SET layer's OCT- finds its copy by it */
+    uint16_t pass;               /* (#55) name UNDO_PASS: the REC pass it undoes (ui_input.c rec_pass_end) */
 } undo_t;
 /* Skiff: UNDO_N copies in a ring (.ramx, after the RAM code: app.ld), the newest at undo_top; undo_back of the newest
  * are undone (each then holds the track as it was after it: its redo). A copy is one swap, so undo and redo are the
@@ -1434,6 +1435,7 @@ static uint8_t undo_n, undo_top, undo_back;
 static const char *undo_label;   /* the next copy's name, set just before its load_begin (tl_undo_take,
                                   * motion_undo_take); 0: by what it changes */
 #define undo (undo_ring[undo_top])
+static const char UNDO_PASS[] = "PASS";   /* (#55) a REC pass's copy, said "PASS 3" (its undo_t.pass) */
 /* (2.0) the copies numbered; pin: the copy a SET layer's first change took (SEQ TOOLS, REC: the track as the layer
  * opened, its OCT- puts that back: ui_tools.c tl_put_back; was a copy of its own, 1.1 KB of the pool), kept while the
  * ring turns (undo_push); pin_next: such a layer open, its first copy not taken yet */
@@ -1865,10 +1867,14 @@ static int undo_swap(undo_t *c)
 /* Skiff: SAVE held, or OCT- in the undo window: back one copy; OCT+ in the window: forward one (its redo). Each opens
  * the window again (ui.undo_w: ui_input.c takes OCT- / OCT+ while it is open): the undo box says what and how far back
  * (BLOCKS, ui_take.c), else the header */
+static void rec_live_end(void);                   /* (ui_input.c) */
 static void undo_step(int redo)
 {
     undo_t *c;
-    char b[24];
+    char b[24], pass_name[12];
+    const char *name;
+    if (song.playing && song.rec && (!redo || undo_back))
+        rec_live_end();                           /* ((#55) what it swaps must not be recorded into meanwhile) */
     if (redo ? !undo_back : undo_back >= undo_n) {
         ui_message(redo ? "NOTHING TO REDO" : "NOTHING TO UNDO");
         ui.undo_w = undo_n ? UNDO_WIN : 0u;       /* (the other way may still go) */
@@ -1884,12 +1890,18 @@ static void undo_step(int redo)
     }
     if (!redo)
         undo_back++;
+    name = c->name;
+    if (name == UNDO_PASS) {
+        str_cpy(pass_name, "PASS ", sizeof pass_name);
+        fmt_int(pass_name + 5, c->pass);
+        name = pass_name;
+    }
     if (take_box_fits()) {
-        take_box_undo(redo, (uint32_t)c->trk - 1u, c->name);
+        take_box_undo(redo, (uint32_t)c->trk - 1u, name);
     } else {                                      /* "UNDO T1 TAKE", then the keys */
         str_cpy(b, redo ? "REDO T1 " : "UNDO T1 ", sizeof b);
         b[6] = (char)('1' + (c->trk - 1u) % NTRK);
-        ui_say(b, c->name);
+        ui_say(b, name);
         str_cpy(ui.msg2, UNDO_KEYS, sizeof ui.msg2);
     }
     ui.undo_w = UNDO_WIN;

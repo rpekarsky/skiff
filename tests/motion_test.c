@@ -1333,6 +1333,128 @@ static int knobs(void)
     return bad;
 }
 
+/* (#55) REC with overdub: each pass that recorded is an undo of its own (ui_input.c rec_pass_poll) */
+static void rp_next(track_t *t)                       /* to the next step, the main loop looking after every block */
+{
+    uint32_t i = t->seq_idx, n = 0;
+    while (t->seq_idx == i && n++ < 100000u) {
+        seq_tick(t, CTL);
+        rec_pass_poll();
+    }
+}
+static void rp_steps(track_t *t, uint32_t n) { while (n--) rp_next(t); }
+static void rp_note(track_t *t, uint32_t note) { input_on(t, note, 100); input_off(t, note); }
+static track_t *rp_armed(uint32_t len)                /* track 1 playing, armed in its first step: RECORDING */
+{
+    track_t *t = tk_track();
+    t->p[P_SLEN] = (int16_t)len;
+    knobs_set(0);
+    seq_start(); seq_tick(t, CTL);
+    rec_tap();
+    rec_pass_poll();
+    return t;
+}
+static int undo_said(const char *verb, const char *what)   /* the box "UNDO PASS 3", or the header "UNDO T1 PASS 3" */
+{
+    char box[24], head[24];
+    str_cpy(box, verb, sizeof box); str_cpy(box + str_len(box), " ", 2u); str_cpy(box + str_len(box), what, 16u);
+    str_cpy(head, verb, sizeof head); str_cpy(head + str_len(head), " T1 ", 5u); str_cpy(head + str_len(head), what, 16u);
+    return (ui.take_t && take_box.kind && str_eq(take_box.title, box)) || str_eq(ui.msg, head);
+}
+static int rec_passes(void)
+{
+    int bad = 0, ok;
+    uint32_t n0, i, steps;
+    track_t *t = rp_armed(8);
+    n0 = undo_n;
+    rp_note(t, 60);                                   /* pass 1: step 1 */
+    rp_steps(t, 8);
+    rp_steps(t, 2); rp_note(t, 62); rp_steps(t, 6);   /* pass 2: step 3 */
+    rp_steps(t, 4); rp_note(t, 64); rp_steps(t, 4);   /* pass 3: step 5; pass 4 playing, nothing in it yet */
+    ok = undo_n == n0 + 3u && song.rec;               /* (RECORDING, PASS 2, PASS 3, PASS 4 open) */
+    undo_step(0);
+    ok &= !song.rec && tk_has(t, 60) && tk_has(t, 62) && !tk_has(t, 64) && undo_said("UNDO", "PASS 3");
+    bad += check("(#55) REC: 3 passes, UNDO while recording: it ends, the empty pass 4 goes, pass 3 undone, 1-2 kept", ok);
+    undo_step(0);
+    ok = tk_has(t, 60) && !tk_has(t, 62) && undo_said("UNDO", "PASS 2");
+    bad += check("(#55)   UNDO again: pass 2 gone, pass 1 kept", ok);
+    undo_step(1);
+    ok = tk_has(t, 62) && !tk_has(t, 64) && undo_said("REDO", "PASS 2");
+    undo_step(1);
+    ok &= tk_has(t, 64) && undo_said("REDO", "PASS 3");
+    bad += check("(#55)   REDO, REDO: passes 2 and 3 back", ok);
+    undo_step(0); undo_step(0); undo_step(0);
+    ok = !tk_has(t, 60) && !tk_has(t, 62) && !tk_has(t, 64) && undo_said("UNDO", "RECORDING");
+    bad += check("(#55)   the oldest, RECORDING: pass 1 too, the track as armed", ok);
+    seq_stop();
+
+    t = rp_armed(8);
+    n0 = undo_n;
+    rp_note(t, 60); rp_steps(t, 8);                   /* pass 1 */
+    rp_steps(t, 8);                                   /* pass 2: nothing */
+    rp_steps(t, 4); rp_note(t, 64); rp_steps(t, 4);   /* pass 3 */
+    ok = undo_n == n0 + 2u;
+    undo_step(0);
+    ok &= tk_has(t, 60) && !tk_has(t, 64) && undo_said("UNDO", "PASS 3");
+    undo_step(0);
+    ok &= !tk_has(t, 60) && undo_said("UNDO", "RECORDING");
+    bad += check("(#55)   a pass with nothing recorded takes no undo: pass 3, then RECORDING", ok);
+    seq_stop();
+
+    t = rp_armed(8);
+    rp_steps(t, 2); rp_note(t, 62); rp_steps(t, 5);   /* pass 1: step 3; now its last step, the first half looked at */
+    while (t->seq_pos <= step_samples(t, div_samples((uint32_t)t->p[P_SDIV]), t->seq_idx) / 2u)
+        seq_tick(t, CTL);
+    rp_note(t, 65);                                   /* early for pass 2: into step 1 (the main loop not there yet) */
+    while (t->seq_idx == 7u)
+        seq_tick(t, CTL);
+    rec_pass_poll();
+    ok = tk_has(t, 65) && t->step[0].note[0] == 65;
+    undo_step(0);
+    ok &= !tk_has(t, 65) && tk_has(t, 62) && undo_said("UNDO", "PASS 2");
+    bad += check("(#55)   a note played early for the next pass, the main loop late: undone with that pass", ok);
+    seq_stop();
+
+    t = rp_armed(8);
+    rp_note(t, 60); rp_steps(t, 8);
+    rp_steps(t, 3); t->p[P_REV] = 77; motion_capture(t, P_REV, 77); rp_steps(t, 5);   /* pass 2: a knob only */
+    rp_steps(t, 8);
+    undo_step(0);
+    ok = motion_count(t) == 0u && tk_has(t, 60) && undo_said("UNDO", "PASS 2");
+    seq_stop();
+    t = rp_armed(8);
+    n0 = undo_n;
+    knobs_set(1);
+    rp_note(t, 60); rp_steps(t, 8);
+    rp_steps(t, 3); motion_capture(t, P_REV, 77); rp_steps(t, 5);
+    ok &= undo_n == n0 + 1u && motion_count(t) == 0u;
+    knobs_set(0);
+    bad += check("(#55)   a knob move recorded is a pass; with KNOBS OFF none", ok);
+    seq_stop();
+
+    t = rp_armed(16);
+    for (i = 0; i < 9u; i++) {                        /* passes 1..9, a note each in step i + 1 */
+        rp_steps(t, i); rp_note(t, 60 + i); rp_steps(t, 16 - i);
+    }
+    for (steps = 0; steps < 10u && tk_has(t, 60); steps++)
+        undo_step(0);
+    ok = steps == 6u && !tk_has(t, 60) && !tk_has(t, 63) && undo_said("UNDO", "RECORDING");
+    bad += check("(#55)   9 passes: the last 5 one by one, then RECORDING (the first 4): REC_PASS_MAX copies", ok);
+    seq_stop();
+
+    t = rp_armed(8);
+    rp_note(t, 60); rp_steps(t, 8);
+    rp_steps(t, 2); rp_note(t, 62); rp_steps(t, 6);
+    rp_steps(t, 1);
+    undo_step(0);                                     /* pass 2 undone, REC off */
+    rp_note(t, 67); rp_steps(t, 7);                   /* played now: TAKES logs it */
+    take_commit(0);
+    ok = tk_has(t, 60) && !tk_has(t, 62) && tk_has(t, 67);
+    bad += check("(#55)   after the UNDO the keys are logged again: TAKE puts the pass played into the track", ok);
+    seq_stop();
+    return bad;
+}
+
 int main(void)
 {
     int bad = motion_recording() + motion_capacity() + probability_playback() + compact_project() + fun7_89() + loads_and_song() + repeat_mode();
@@ -1344,5 +1466,6 @@ int main(void)
     bad += feel();                                    /* Skiff: FEEL (seq.c feel_of) */
     bad += knobs();                                   /* Skiff #23: KNOBS OFF (motion.c motion_capture) */
     bad += step_gates();                              /* Skiff: a step's own GATE (a lock) */
+    bad += rec_passes();                              /* Skiff #55: an undo per REC pass (ui_input.c) */
     printf("%s\n", bad ? "MOTION TEST FAILED" : "motion/chance/compact storage tests passed"); return bad != 0;
 }

@@ -344,7 +344,8 @@ Felucca) first, and lists what it converted.
   a bar (MENU › CONTROL › RETURN), or stay where they are with OCT+ (2.0)
 - **TAKE** (SHIFT + SAVE): keep the last loop you played, notes and knob moves, on the track, after the fact
 - **Undo:** SAVE held, 8 levels across the tracks (sound loads, takes, clears, tools, recording passes,
-  automation edits); OCT− and OCT+ step through them while the undo box shows
+  automation edits); OCT− and OCT+ step through them while the undo box shows. Overdubbing, each loop pass that
+  recorded something is its own undo (UNDO PASS 3, then PASS 2, …, RECORDING); undo while recording stops REC first
 - **Parameter locks and automation:** hold a step and turn a knob to lock it; knob moves recorded live; SEQ ›
   AUTOMATION lists them all to edit, move or delete
 - **SEQ TOOLS** (hold SEQ): CLEAR, REVERSE, SHIFT < / >, RANDOM, COOK, and (1.3) EUCLID (hits spread over the steps,
@@ -460,7 +461,9 @@ by the keys, with what each key is in Skiff.
   LOCKED), the button closes it. A locked FX layer latches its effects
 - **SAVE** tapped: its pages (PRESETS, USER, PATTERNS, PROJECT); **held**: undo. **SHIFT + SAVE**: TAKE
 - **REC** arms the selected track the moment it is pressed; on an armed track it disarms every track (its light is on
-  while any track is armed). **SHIFT + REC** opens the REC layer:
+  while any track is armed). Live, every pass that recorded notes or knob moves is one undo: SAVE held takes back the
+  last pass (and disarms, if REC is still on), again the one before, OCT+ redoes; a recording keeps its last 6 passes
+  apart, older ones go back together with its start (RECORDING). **SHIFT + REC** opens the REC layer:
   F3 held clears the track's sequence, then CLICK, COUNT-IN, CLICK LEVEL, FEEL; C4 KNOBS OFF keeps knob turns out
   of REC's automation (they still change the sound, and TAKE still writes them)
 - **EDIT** opens the EDIT pages everywhere; on NOTES with REC armed it clears the cursor step
