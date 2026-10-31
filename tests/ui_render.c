@@ -1228,6 +1228,11 @@ static void setup(int s)
                                      1800.0 * sin(6.2831853 * i / 33.3 + 1.9));
         scope_w = 0;
         song.master_q12 = MASTER_FULL;
+        song.cpu_q8 = 108;                           /* (#57) its corners: CPU 42 %, PK 71 %, three dropouts just now */
+        audio_max_us = (HALF_US * 71u + 99u) / 100u;
+        cpu_shown.started = 1;
+        cpu_shown.sampled_ms = fm1_ms - CPU_SAMPLE_MS;
+        felucca_dbg.late = 3;
         ui.home = 1;
         ui.home_scope = 1;
         break;

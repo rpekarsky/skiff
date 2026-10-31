@@ -20,7 +20,8 @@ struct felucca_dbg {
     uint32_t stage, page, home;           /* where the main loop is (breadcrumbs) */
     uint32_t prev_stage, prev_page, prev_home, prev_rst, prev_frames;   /* as found at boot */
 } felucca_dbg __attribute__((section(".noinit")));
-static volatile uint32_t audio_halves, audio_max_us;
+static volatile uint32_t audio_halves;
+static volatile uint32_t audio_max_us;                 /* the longest half since the HOME scope last took it (ui_graph.c) */
 static volatile uint32_t t5_nested_ticks;              /* TIMER4 ticks TIMER5 spent nested in this ISR (main.c) */
 static uint32_t audio_cpu_rem;                         /* keep the fractional IIR step: no low-load bias */
 #define SCOPE_N 512u
@@ -128,7 +129,7 @@ void fm1_alnk0_irq(void)                       /* via isr_alnk0 (hal/fm1_isr.S) 
         if (us > audio_max_us)
             audio_max_us = us;
         {
-            uint32_t load = song.cpu_q8 * (CPU_AVG - 1u) + (us * 256u) / (HALF_FRAMES * 1000000u / FS) + audio_cpu_rem;
+            uint32_t load = song.cpu_q8 * (CPU_AVG - 1u) + (us * 256u) / HALF_US + audio_cpu_rem;
             song.cpu_q8 = load / CPU_AVG;
             audio_cpu_rem = load % CPU_AVG;
         }

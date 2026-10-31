@@ -104,7 +104,7 @@ b60fb8852132f1bc AMBER_home_fit32
 b8853f834e405530 AMBER_home_fit_pats
 fe69f787d3bc7510 AMBER_home_idle
 aa36ea7f475697d0 AMBER_home_lists
-696b18e9f36a387c AMBER_home_scope
+ffdcb9b56d7927d5 AMBER_home_scope
 b3bc103f282d1310 AMBER_insert_crush
 9f00e1d9822b001e AMBER_insert_flanger
 0e52114252bc1e39 AMBER_insert_fuzz
@@ -363,7 +363,7 @@ beb117c2655603d3 BLUE-STN_head_rec_other
 05c1bd645bc76a87 BLUE-STN_home_fit_pats
 c2bcf1e109a9a448 BLUE-STN_home_idle
 b707a6fe24453ce9 BLUE-STN_home_lists
-8cde45a20a6b74d4 BLUE-STN_home_scope
+cf173f8d619a1a83 BLUE-STN_home_scope
 281eaf7407e06623 BLUE-STN_insert_crush
 63ca286a4599bc86 BLUE-STN_insert_flanger
 cae612109b6a7642 BLUE-STN_insert_fuzz
@@ -622,7 +622,7 @@ f119a3f3a83703ca CRYPT_home_fit64
 615383aa21d48b20 CRYPT_home_fit_pats
 44e9fb8bdccd4356 CRYPT_home_idle
 24966d118f103b6e CRYPT_home_lists
-a404a7312536852e CRYPT_home_scope
+42f026603d6985f4 CRYPT_home_scope
 3c5e423113390812 CRYPT_insert_crush
 fa0a172434386c2e CRYPT_insert_flanger
 e373c08b3adf0209 CRYPT_insert_fuzz
@@ -879,7 +879,7 @@ fcafbe568f7372bd CUSTOM_CRYPT_home_fit64
 7e4b1d50cc72f8ee CUSTOM_CRYPT_home_fit_pats
 534c1855da2f2d0a CUSTOM_CRYPT_home_idle
 d003869d1c89934c CUSTOM_CRYPT_home_lists
-228e073e0223efe3 CUSTOM_CRYPT_home_scope
+55cd62115d721ef9 CUSTOM_CRYPT_home_scope
 714e18f14a6fdbd5 CUSTOM_CRYPT_insert_crush
 6620ddbd1a3e9b22 CUSTOM_CRYPT_insert_flanger
 8ac14a488dc8b53e CUSTOM_CRYPT_insert_fuzz
@@ -1136,7 +1136,7 @@ e2460cfec063adb7 CUSTOM_LCD_home
 65741c05ef335d96 CUSTOM_LCD_home_fit_pats
 c15ec049adacb8c0 CUSTOM_LCD_home_idle
 b45f378bf46ba287 CUSTOM_LCD_home_lists
-32ecfbc67e59178c CUSTOM_LCD_home_scope
+3290917fff4df7ab CUSTOM_LCD_home_scope
 c995ba1dbfa8de77 CUSTOM_LCD_insert_crush
 9aab76135d08bd0a CUSTOM_LCD_insert_flanger
 8a2e0164df877024 CUSTOM_LCD_insert_fuzz
@@ -1393,7 +1393,7 @@ e045e77501fe23dd CUSTOM_NEON_head_rec_other
 2e868061da5822b0 CUSTOM_NEON_home_fit_pats
 2d48ab192d00a658 CUSTOM_NEON_home_idle
 151db9e2e88dd899 CUSTOM_NEON_home_lists
-1ad5e0d336a3c9dd CUSTOM_NEON_home_scope
+39c2a14d862ce339 CUSTOM_NEON_home_scope
 07ad7e1a543fda5c CUSTOM_NEON_insert_crush
 edca8aae92e498a0 CUSTOM_NEON_insert_flanger
 227b142a97f1c475 CUSTOM_NEON_insert_fuzz
@@ -1650,7 +1650,7 @@ e71a73e4fc25b946 CUSTOM_QUARK_home_fit64
 0067e220ae3416b4 CUSTOM_QUARK_home_fit_pats
 53d00a94aa1409c7 CUSTOM_QUARK_home_idle
 7959bde90571382e CUSTOM_QUARK_home_lists
-54fc82c443398c0a CUSTOM_QUARK_home_scope
+e5121b2b6039e2be CUSTOM_QUARK_home_scope
 aa6209de17ec06d3 CUSTOM_QUARK_insert_crush
 bd0ef9828f9784aa CUSTOM_QUARK_insert_flanger
 729b1cc0ea922e60 CUSTOM_QUARK_insert_fuzz
@@ -1907,7 +1907,7 @@ fe440eaee9b34ea0 CUSTOM_SKIFF_head_rec_other
 29e399d57e05ae9f CUSTOM_SKIFF_home_fit_pats
 9b8739a1b0a42504 CUSTOM_SKIFF_home_idle
 2be67af47ab9b220 CUSTOM_SKIFF_home_lists
-1e59942747099269 CUSTOM_SKIFF_home_scope
+84c66eaaee168335 CUSTOM_SKIFF_home_scope
 5ddfd27087a7be99 CUSTOM_SKIFF_insert_crush
 cdfdd3670d4cdc52 CUSTOM_SKIFF_insert_flanger
 44ccdf1484b4c79c CUSTOM_SKIFF_insert_fuzz
@@ -2166,7 +2166,7 @@ ca29826ddb9d88f8 GAMEBOY_home_fit64
 a3523077801dd6dd GAMEBOY_home_fit_pats
 3ca3ac7647a138ca GAMEBOY_home_idle
 b25621da2c520057 GAMEBOY_home_lists
-d6c057d5b822dd23 GAMEBOY_home_scope
+86d1f38a57be4d56 GAMEBOY_home_scope
 329c3b898be97bf8 GAMEBOY_insert_crush
 f322ef1b83501178 GAMEBOY_insert_flanger
 04736494345a5727 GAMEBOY_insert_fuzz
@@ -2423,7 +2423,7 @@ ca99d0a3250f60dd HI-CON_home
 b8c353be67e28d74 HI-CON_home_fit_pats
 154e8846a842dc9a HI-CON_home_idle
 8341d63f5ce8861e HI-CON_home_lists
-ea20ce9da2a6265b HI-CON_home_scope
+806fc627ead8f6af HI-CON_home_scope
 6719374f2c2ef4d6 HI-CON_insert_crush
 26f2cd3933359bbc HI-CON_insert_flanger
 ded62899a7c0420d HI-CON_insert_fuzz
@@ -4995,7 +4995,7 @@ cd4e1ff99663c4b9 LCD-NIGHT_home_fit64
 fc0c6ca3a375933a LCD-NIGHT_home_fit_pats
 c2887ee383b2451c LCD-NIGHT_home_idle
 7472531cfc04c2db LCD-NIGHT_home_lists
-186bf149d2519750 LCD-NIGHT_home_scope
+079770d9ced12d47 LCD-NIGHT_home_scope
 90c4e06fce63c203 LCD-NIGHT_insert_crush
 33c7d19369d610b6 LCD-NIGHT_insert_flanger
 9dec48cf58557d98 LCD-NIGHT_insert_fuzz
@@ -5254,7 +5254,7 @@ bda3d2ff0a974615 LCD_home_fit32
 f43575e7346ecec3 LCD_home_fit_pats
 58715ef103ffe394 LCD_home_idle
 ff2e780022fdeb1c LCD_home_lists
-f6a0ae330807cbe3 LCD_home_scope
+af6b05f072b631ba LCD_home_scope
 3f00a17d601e020e LCD_insert_crush
 24de34ae795c9ef5 LCD_insert_flanger
 f2d3bb883529705e LCD_insert_fuzz
@@ -5513,7 +5513,7 @@ a24215bb291c4670 NEON_home_fit64
 5320166ab44e5bb9 NEON_home_fit_pats
 9625e13fab4a3873 NEON_home_idle
 f01dd097a1ceeb79 NEON_home_lists
-cb873ba8a1043e87 NEON_home_scope
+e96ac062918395d4 NEON_home_scope
 6ee8f3173c40024b NEON_insert_crush
 b2ebd662b23e8f1c NEON_insert_flanger
 9c668dc1643342ea NEON_insert_fuzz
@@ -5770,7 +5770,7 @@ b180f63859c451c9 PAPER_home_fit64
 4a6b113ad5b7c5a1 PAPER_home_fit_pats
 d220660948dd13d3 PAPER_home_idle
 5d765520ce17414b PAPER_home_lists
-f0541f5084201a0c PAPER_home_scope
+e839304c8d06d937 PAPER_home_scope
 f72f4454a2ea1049 PAPER_insert_crush
 da6bbc9fec7ea861 PAPER_insert_flanger
 934bb0779497ff73 PAPER_insert_fuzz
@@ -6035,7 +6035,7 @@ a2bee3d680c0ef89 QUARK_home_fit64
 9d13997d7a9e7895 QUARK_home_fit_pats
 c4c698f7274a38c4 QUARK_home_idle
 e73acf4a631264ca QUARK_home_lists
-f95a43862cf34ced QUARK_home_scope
+09519cf1af175274 QUARK_home_scope
 01496d011addc190 QUARK_insert_crush
 20796e415f29ae76 QUARK_insert_flanger
 d2edf8528a8b245e QUARK_insert_fuzz
@@ -6294,7 +6294,7 @@ c03f4d80d00c5525 SKIFF_home_fit32
 5809e117f29bb445 SKIFF_home_fit_pats
 df0b780f44dfba18 SKIFF_home_idle
 5bba7cd55ddfc8c3 SKIFF_home_lists
-8c39e158c49d1826 SKIFF_home_scope
+c41b7b6d43c406df SKIFF_home_scope
 799322818f8f72b7 SKIFF_insert_crush
 4fc775ee0e3938b8 SKIFF_insert_flanger
 0ef399be9e9ac0a0 SKIFF_insert_fuzz

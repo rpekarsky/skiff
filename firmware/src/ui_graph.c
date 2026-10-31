@@ -1522,6 +1522,80 @@ static void graph_title(void)
 
 #include "ui_home.c"                                  /* Skiff: HOME's four tracks (graph_tracks, home_sig) */
 
+/* (#57) the HOME scope's CPU readout: the audio's load (MENU > CPU's), the longest half since the last sample (its peak,
+ * falling slowly so a spike stays readable) and the dropouts since power-on (audio.c late: the DMA overtook the render),
+ * marked in REC's colour for a while after one. Sampled every CPU_SAMPLE_MS in the main loop, so the figures don't
+ * flicker; the audio ISR only keeps its maximum, as before */
+#define CPU_SAMPLE_MS 250u
+#define CPU_PEAK_FALL 2u                              /* %, a sample */
+#define CPU_XRUN_MARK_MS 2000u
+#define CPU_BAND_H 20
+static struct {
+    uint32_t sampled_ms, late_base, late_seen, xrun_ms;
+    uint16_t avg, peak;
+    uint8_t xrun_marked, started;
+} cpu_shown __attribute__((section(".pool")));        /* (.pool: not among the globals the audio ISR reaches) */
+#define CPU_TEXT 24
+
+static uint16_t pct_shown(uint32_t pct) { return (uint16_t)(pct > 999u ? 999u : pct); }
+static uint32_t cpu_xruns(void) { return cpu_shown.late_seen - cpu_shown.late_base; }
+static void cpu_sample(void)
+{
+    uint32_t now = fm1_ms, half_max_us, peak;
+    if (!cpu_shown.started) {
+        cpu_shown.late_base = cpu_shown.late_seen = felucca_dbg.late;
+        cpu_shown.started = 1;
+    } else if (now - cpu_shown.sampled_ms < CPU_SAMPLE_MS)
+        return;
+    cpu_shown.sampled_ms = now;
+    fm1_irq_off();
+    half_max_us = audio_max_us;
+    audio_max_us = 0;
+    fm1_irq_on();
+    peak = half_max_us * 100u / HALF_US;
+    if (peak + CPU_PEAK_FALL < cpu_shown.peak)
+        peak = cpu_shown.peak - CPU_PEAK_FALL;
+    cpu_shown.peak = pct_shown(peak);
+    cpu_shown.avg = pct_shown(song.cpu_q8 * 100u / 256u);
+    if (felucca_dbg.late != cpu_shown.late_seen) {
+        cpu_shown.late_seen = felucca_dbg.late;
+        cpu_shown.xrun_ms = now;
+    }
+    cpu_shown.xrun_marked = cpu_xruns() && now - cpu_shown.xrun_ms < CPU_XRUN_MARK_MS;
+}
+static uint32_t cpu_shown_sig(void)
+{
+    return cpu_shown.avg * 7919u + cpu_shown.peak * 104729u + cpu_xruns() * 1299709u + cpu_shown.xrun_marked;
+}
+
+static void cpu_corner_texts(char *load, char *xrun)   /* "CPU 42 %  PK 71 %" (MENU > CPU's "42 %"), "XRUN 0" */
+{
+    str_cpy(load, "CPU ", CPU_TEXT);
+    fmt_int(load + str_len(load), cpu_shown.avg);
+    str_cpy(load + str_len(load), " %  PK ", CPU_TEXT - str_len(load));
+    fmt_int(load + str_len(load), cpu_shown.peak);
+    str_cpy(load + str_len(load), " %", CPU_TEXT - str_len(load));
+    str_cpy(xrun, "XRUN ", CPU_TEXT);
+    fmt_int(xrun + str_len(xrun), (int32_t)cpu_xruns());
+}
+static int scope_cpu_shown(void) { return ui.home && ui.home_scope && strip_kind() == SK_NONE; }
+/* bottom right, on a patch of the panel over whatever the scope drew there; LCD: top right (the EQ's 100 1K 10K are at
+ * its foot) */
+static void scope_cpu_readout(void)
+{
+    char load[CPU_TEXT], xrun[CPU_TEXT];
+    int32_t band = ux.h1n ? 0 : (int32_t)cv_h - CPU_BAND_H, y = band + CAP_IN(S, CPU_BAND_H);
+    int32_t xr = PANEL_X0 + PANEL_W - 4, xw, x;
+    cpu_corner_texts(load, xrun);
+    xw = text_w(&AF_S, xrun);
+    x = xr - xw - 10 - text_w(&AF_S, load);
+    cv_rect(x - 4, band + 2, xr + 4 - (x - 4), CPU_BAND_H - 4, T_SURF);
+    cv_text_on(x, y, &AF_S, load, T_MID, T_SURF);
+    if (cpu_shown.xrun_marked)
+        cv_rect(xr - xw - 3, y + AF_S_CAP_Y - 3, xw + 6, AF_S_CAP_H + 6, T_REC);
+    cv_text_r(xr, y, &AF_S, xrun, cpu_shown.xrun_marked ? T_SURF : T_MID, cpu_shown.xrun_marked ? T_REC : T_SURF);
+}
+
 /* (Skiff U5) an EDIT page of ANALOG (its own graphs: ui_pgraph.c graph_osc, graph_flt) */
 static int analog_page(const page_t *pg, const track_t *t)
 {
@@ -1534,7 +1608,7 @@ static uint32_t graph_signature(void)
     const track_t *t = TSEL;
     uint32_t h = 2166136261u, i;
     if (ui.home)                                     /* scope: redraw every other frame; Skiff's tracks: on a change */
-        return ui.home_scope || strip_kind() == SK_SCOPE ? h ^ (ui.frame / 2u) : home_sig();
+        return ui.home_scope || strip_kind() == SK_SCOPE ? h ^ (ui.frame / 2u) ^ cpu_shown_sig() : home_sig();
     h ^= (uint32_t)pg->graph * 131u + TSEL->eng_req + song.sel * 7777u + ui.page * 1291u;
     if (strip_kind() == SK_TITLE)                    /* MENU > LARGE: the page's title (its engine, its number) */
         return h ^ 0x5A17u;
@@ -2479,7 +2553,8 @@ static void graph_scope(uint16_t c)
     if (ux.crypt) {                                  /* (Skiff N8) CRYPT: the sound burns: fire up from the foot as tall
                                                       * as the wave there (ember, amber, gold, its tips flame), flickering;
                                                       * behind it a skull, its eyes as bright as the sound is loud */
-        int32_t foot = (int32_t)cv_h - 3, top = 6, k, loud = peak > 24000 ? 100 : peak * 100 / 24000;
+        int32_t foot = (int32_t)cv_h - 3, top = 6, k;
+        int32_t loud = peak > 24000 ? 100 : peak * 100 / 24000;
         if (cv_h >= H_GRAPH)
             cr_spritez(120 - 13, 10, SPR_SKULL, ux_mix(T_DIM, T_SURF, 35),
                        loud < 50 ? ux_mix(T_SURF, CR_EMBER, loud * 2) : ux_mix(CR_EMBER, CR_FLAME, (loud - 50) * 2), 3);
@@ -2530,6 +2605,7 @@ static void draw_graph(void)
     uint32_t sig;
     int32_t pad = graph_pad();                       /* (Skiff) BLOCKS: the panel 16 px taller (ui.c foot_less): ADSR and
                                                       * LFO grow into it, the fixed layouts sit centred, pad lower */
+    cpu_sample();
     if (!ui.home && pg->graph == GR_TRK) {
         draw_tracks();
         return;
@@ -2569,6 +2645,8 @@ static void draw_graph(void)
             graph_scope(c);
         else
             graph_tracks();                          /* Skiff: the four tracks (ui_home.c) */
+        if (scope_cpu_shown())
+            scope_cpu_readout();
     } else {
         switch (pg->graph) {
         case GR_ADSR:

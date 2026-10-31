@@ -106,7 +106,8 @@ static void lcd_blit(uint32_t x, uint32_t y, uint32_t w, uint32_t h, const uint1
     for (j = 0; j < h && y + j < 240u; j++)
         for (i = 0; i < w && x + i < 240u; i++) host_screen[(y + j) * 240u + x + i] = p[j * w + i];
 }
-static struct { uint32_t stage; } felucca_dbg;
+static struct { uint32_t stage, late; } felucca_dbg;   /* audio.c: what the UI reads of it */
+static volatile uint32_t audio_max_us;
 #define FELUCCA_FLASH 0
 #ifndef FELUCCA_VERSION
 #define FELUCCA_VERSION "TEST"
@@ -210,6 +211,8 @@ static void ui_power_on(void)
     memset(motion_locked, 0, sizeof motion_locked);
     motion_base_valid = motion_full = 0;
     memset(snd_said, 0, sizeof snd_said);               /* (.bss at power-on: nothing said yet) */
+    memset(&cpu_shown, 0, sizeof cpu_shown);            /* (.bss at power-on: the HOME scope's CPU not sampled yet) */
+    felucca_dbg.late = audio_max_us = 0;
     memset(&scrn, 0, sizeof scrn);                        /* MENU > SCREEN OFF: on, idle from now (main.c) */
     scrn.idle = fm1_ms;
     kb_asleep = 0;
@@ -9020,6 +9023,46 @@ static int px_in(int32_t x0, int32_t y0, int32_t x1, int32_t y1, uint16_t c)   /
                 return 1;
     return 0;
 }
+/* (#57) the HOME scope's CPU readout (bottom right), sampled every CPU_SAMPLE_MS: MENU > CPU's load, the longest half's
+ * share (falling CPU_PEAK_FALL a sample), the dropouts since power-on; a new one marks XRUN in REC's colour for
+ * CPU_XRUN_MARK_MS */
+static int scope_corner_texts_are(const char *load, const char *xrun)
+{
+    char l[CPU_TEXT], x[CPU_TEXT];
+    cpu_corner_texts(l, x);
+    return str_eq(l, load) && str_eq(x, xrun);
+}
+static int xrun_marked_on_screen(int32_t band_y) { return px_in(180, band_y + 2, 228, band_y + 17, T_REC); }
+static int test_scope_cpu(void)
+{
+    static uint16_t first[240 * CPU_BAND_H];
+    int32_t band_y;
+    int ok;
+    ui_power_on();
+    felucca_dbg.late = 5;                               /* (dropouts of before: not counted) */
+    song.cpu_q8 = 108;
+    audio_max_us = (HALF_US * 71u + 99u) / 100u;
+    press(B_HOME);
+    band_y = (int32_t)(graph_y() + graph_h()) - CPU_BAND_H;
+    memcpy(first, host_screen + band_y * 240, sizeof first);
+    ok = ui.home_scope && scope_corner_texts_are("CPU 42 %  PK 71 %", "XRUN 0") &&
+         px_in(90, band_y + 2, 228, band_y + 17, T_MID) && !xrun_marked_on_screen(band_y);
+    song.cpu_q8 = 200;
+    frame();
+    ok &= scope_corner_texts_are("CPU 42 %  PK 71 %", "XRUN 0");   /* (until the next sample) */
+    frames(CPU_SAMPLE_MS);
+    ok &= scope_corner_texts_are("CPU 78 %  PK 69 %", "XRUN 0") &&
+          memcmp(first, host_screen + band_y * 240, sizeof first) != 0;
+    felucca_dbg.late += 2;
+    frames(CPU_SAMPLE_MS);
+    ok &= scope_corner_texts_are("CPU 78 %  PK 67 %", "XRUN 2") && cpu_shown.xrun_marked && xrun_marked_on_screen(band_y);
+    frames(CPU_XRUN_MARK_MS + CPU_SAMPLE_MS);
+    ok &= scope_corner_texts_are("CPU 78 %  PK 51 %", "XRUN 2") && !cpu_shown.xrun_marked &&
+          !xrun_marked_on_screen(band_y);
+    song.cpu_q8 = 0;
+    return check("#57 the HOME scope's CPU readout: CPU, its peak falling, XRUN since power-on, marked REC after a dropout",
+                 ok);
+}
 static int test_blocks(void)
 {
     int bad = 0, ok;
@@ -10070,6 +10113,7 @@ int main(void)
     bad += test_grid();
     bad += test_home_footer();
     bad += test_home_names();
+    bad += test_scope_cpu();
     bad += test_scope_master();
     bad += test_clock_wait();
     bad += test_grid_rows();
