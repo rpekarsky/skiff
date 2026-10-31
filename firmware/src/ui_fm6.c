@@ -1164,11 +1164,14 @@ static void fm_ph_arc(int32_t r, int32_t ph, int32_t d, int32_t w, uint16_t c)
     }
 }
 /* the push into ring i's operator now, from its ghost at phase gh: its modulators' shares, the positive ones forward
- * and the negative back, a turn each way at most; the feedback's outside the ring */
+ * and the negative back, a turn each way at most; the feedback's outside the ring. None on a silent operator: the
+ * engine skips it, its dot stays on the ghost */
 static void fm_ph_sector(const fm_sim_t *s, const fm_chain_t *ch, const fm_pm_t *m, uint32_t i, int32_t gh)
 {
     uint32_t op = ch->ring[i], j, all_lit = (ch->sel | ch->up) >> op & 1u;
     int32_t r = fm_ph_radius(ch, i), fwd = 0, back = 0;
+    if (m->gain[5u - op] < FM6_THRESH)
+        return;
     if (s->fb && fm6_fb_op(s->alg) == op) {
         fm_ph_arc(r + 3, gh, clamp(m->in[5u - op], -(1 << 24), 1 << 24), 2, T_TRK(op));
         return;
