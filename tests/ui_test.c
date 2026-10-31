@@ -3319,7 +3319,7 @@ static double wave_vs_voice(const uint8_t *v, uint32_t note, int32_t block, int8
     for (i = 0; i < 4000u; i += CTL)
         track_render(TSEL, b, CTL);
     for (j = 0; j < FM_WF_NP; j++) {
-        uint32_t x = (uint32_t)x0 + j * period / (FM_WF_NP - 1u), k = (uint32_t)s0 + (x >> 8);
+        uint32_t x = (uint32_t)x0 + j * FM_WF_PERIODS * period / (FM_WF_NP - 1u), k = (uint32_t)s0 + (x >> 8);
         double r = y[k] + (double)(y[k + 1u] - y[k]) * (x & 255u) / 256.0;
         y[j] = (int32_t)r;
         num += r * pts[j];
@@ -3345,7 +3345,7 @@ static int test_fm6_wave(void)
     fm6_unpack(FM6_INIT, v);
     off = wave_vs_voice(v, 60, 689, pts);
     for (j = 0; j < FM_WF_NP; j++) {
-        double d = fabs(pts[j] - 127.0 * sin(6.283185307 * j / (FM_WF_NP - 1u))) / 127.0;
+        double d = fabs(pts[j] - 127.0 * sin(6.283185307 * FM_WF_PERIODS * j / (FM_WF_NP - 1u))) / 127.0;
         sine = d > sine ? d : sine;
     }
     bad += check("(#20w) WAVE, INIT's OP1: the voice's period (2 %) and a sine from its zero phase up (3 %)",
@@ -3367,7 +3367,7 @@ static int test_fm6_wave(void)
     v[4u * FP_OP + FP_FC] = 2;
     off = wave_vs_voice(v, 60, 689, pts);
     for (sine = 0, j = 0; j < FM_WF_NP; j++) {
-        double d = fabs(pts[j] - 127.0 * sin(6.283185307 * j / (FM_WF_NP - 1u))) / 127.0;
+        double d = fabs(pts[j] - 127.0 * sin(6.283185307 * FM_WF_PERIODS * j / (FM_WF_NP - 1u))) / 127.0;
         sine = d > sine ? d : sine;
     }
     bad += check("(#20w) WAVE, OP2 at x2 into OP1: the voice's period, not a sine", off < 0.02 && sine > 0.2);
@@ -3389,13 +3389,13 @@ static int test_fm6_wave(void)
         ok = fm6_last[tr].note == 50u && fm6_last[tr].vel == 80u && fm6_last[tr].held_ms == 300u && !fm6_last[tr].down;
         for (i = 0; i < 64 && (i < 2 || fm_wf.done < FM_WF_NS); i++)
             frame();
-        ok &= fm_wf.note == 50u && fm_wf.vel == 80u && fm_wf.held == 300 * 1378 / 1000 && fm_wf.done == FM_WF_NS && i > 2;
+        ok &= fm_wf.note == 50u && fm_wf.vel == 80u && fm_wf.held == 300 * 1378 / 1000 && fm_wf.done == FM_WF_NS;
         trk_note_on(TSEL, 50, 80);
         track_render(TSEL, b, CTL);
         ok &= fm6_last[tr].held_ms == 300u && fm6_last[tr].down;
         trk_note_off(TSEL, 50);
         (void)fm_wave_set(0);
-        bad += check("(#20w) WAVE plays the track's last note (D3 at 80 held 0.3 s), over a few frames; its next note-on keeps it", ok);
+        bad += check("(#20w) WAVE plays the track's last note (D3 at 80 held 0.3 s); its next note-on keeps it", ok);
     }
     return bad;
 }
