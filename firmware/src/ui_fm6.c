@@ -49,7 +49,7 @@ static const char *const FM_HZ[4] = {"1", "10", "100", "1K"};          /* a fixe
 
 static uint8_t fm_wave __attribute__((section(".pool")));       /* (#20w) the panel WAVE, not the envelopes; not saved */
 static uint32_t fm_wave_t0 __attribute__((section(".pool")));   /* (fm1_ms) WAVE's operator bars' clock from 0 */
-#define FM_WF_NS 48                                     /* WAVE's slices at most (fm_wf_tune.slices drawn) */
+#define FM_WF_NS 56                                     /* WAVE's slices at most (fm_wf_tune.slices drawn) */
 #define FM_WF_NP 64                                     /* a slice's points over fm_wf_tune.periods periods */
 #define FM_WF_SMOOTH_MAX 8
 typedef struct {                                        /* (#20t, test build) SHIFT + KNOB 1..4 on WAVE; not saved */
@@ -1073,7 +1073,7 @@ static void fm_lfo(const fm_sim_t *s, uint16_t c)
 #define FM_WF_W 131
 #define FM_WF_Y0 100
 #define FM_WF_AMP 17                                    /* a slice's half height */
-#define FM_WF_DEPTH_X 85                                /* the back slice: 85 px right of the front one, 51 up */
+#define FM_WF_DEPTH_X 85                                /* the back slice at most 85 px right of the front one, 51 up */
 #define FM_WF_DEPTH_Y 51
 
 static int32_t fm_wf_engine_note(const fm_sim_t *s) { return clamp(fm_wf.note + s->q[FP_TRNSP] - 24, 0, 127); }
@@ -1232,8 +1232,14 @@ static void fm_wf_render(fm_sim_t *s, const track_t *t)
     }
     fm_wf.ticks += fm1_ticks() - t0;
 }
-static int32_t fm_wf_x(uint32_t j, int32_t i) { return FM_WF_X0 + (int32_t)j * FM_WF_DEPTH_X / (fm_wf_cfg()->slices - 1) + i * FM_WF_W / (FM_WF_NP - 1); }
-static int32_t fm_wf_y(uint32_t j, int32_t v) { return FM_WF_Y0 - (int32_t)j * FM_WF_DEPTH_Y / (fm_wf_cfg()->slices - 1) - v * FM_WF_AMP / 127; }
+/* a slice further back: a whole pixel step right and up (a fractional one draws a staircase), at least 1 */
+static int32_t fm_wf_shift(int32_t depth)
+{
+    int32_t step = depth / (fm_wf_cfg()->slices - 1);
+    return step > 1 ? step : 1;
+}
+static int32_t fm_wf_x(uint32_t j, int32_t i) { return FM_WF_X0 + (int32_t)j * fm_wf_shift(FM_WF_DEPTH_X) + i * FM_WF_W / (FM_WF_NP - 1); }
+static int32_t fm_wf_y(uint32_t j, int32_t v) { return FM_WF_Y0 - (int32_t)j * fm_wf_shift(FM_WF_DEPTH_Y) - v * FM_WF_AMP / 127; }
 /* slice j: under its line the panel (it hides the slices behind); the front one wider */
 static void fm_wf_draw_slice(const int8_t *v, uint32_t j, uint16_t c)
 {
@@ -1264,7 +1270,7 @@ static uint16_t fm_wf_ink(uint32_t j, uint16_t c)
 static void fm_wf_axis(void)                            /* (under the slices' left ends) */
 {
     int32_t foot = FM_WF_Y0 + FM_WF_AMP + 2;
-    cv_line(FM_WF_X0 - 2, foot, FM_WF_X0 - 2 + FM_WF_DEPTH_X, foot - FM_WF_DEPTH_Y, FM_GUIDE);
+    cv_line(FM_WF_X0 - 2, foot, fm_wf_x(fm_wf_cfg()->slices - 1u, 0) - 2, fm_wf_y(fm_wf_cfg()->slices - 1u, -127) + 2, FM_GUIDE);
 }
 /* the carrier the bars show: the picked operator, else the first one it feeds */
 static uint32_t fm_wf_carrier(const fm_sim_t *s)
