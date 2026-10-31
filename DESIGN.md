@@ -364,6 +364,8 @@ The colours differ in lightness as well as hue, and always appear with the track
   - The knob just turned is a whole accent tile, with everything on it in INK.
   - Card icons are dropped, except MOTION's mark. Values snap: no rolling digits.
 - **Graphs** are drawn in the selected track's colour.
+- **The scope** (HOME tapped on HOME, MENU › LARGE's HOME strip, an engine's EDIT without a chart) draws the mix as at MASTER full (#18): `audio.c` keeps taking it after MASTER (nothing more in the audio ISR) and `ui_graph.c` divides MASTER back out at draw time, so turning the volume down does not shrink the wave. Below the knob's ~6 % it stops compensating (the picture shrinks again rather than blowing up a few quantisation steps). The limiter and soft clip still act at the real level: a mix that the limiter squeezes at MASTER full shows its unlimited peaks at a low MASTER.
+- **The scope's CPU readout** (#57; HOME tapped on HOME, bottom right on a patch of the panel; THEME LCD top right, its EQ's 100 1K 10K being at the foot; not LARGE's strip, where the wave fills the height): CPU (MENU › CPU's load, `song.cpu_q8`), PK (the longest half buffer since the last sample, as a share of the half; shown falling 2 % a sample so a spike stays readable) and XRUN (`felucca_dbg.late` since power-on: the DMA overtook the render, a click), in REC's colour for 2 s after a new one (LCD: inverted). The main loop samples them every 250 ms (`ui_graph.c` `cpu_sample`): it takes and clears `audio_max_us` with interrupts off for two instructions; the audio ISR does nothing new; its state lives in `.pool`, so the globals the audio ISR reaches keep their addresses (in the one translation unit a shift recompiled the ISR differently: tests/target_budget.py read +179 %). On the FM-1 with 2 CORES the load is the audio core's, wait for the second core included: the render's critical path, the thing a dropout follows.
 - **Dialogs** (`ui_blocks.c`):
   - A SURF tile, square, over the page dimmed, as the mockup's: the page drawn again with every colour 70 % of the way to BG (`confirm_backdrop`; the header stays itself, so REC shows).
   - The question, then what it is about: a name, or a sequence's steps and notes.
@@ -411,7 +413,7 @@ open BG (never inside a 1 px stroke, so the letters on an inverted band stay who
 the cards' gauges in segments, unlit ones ghost; the header's printed MID rule; the dialog a double ink frame. HOME's
 scope (HOME tapped on HOME, MENU > LARGE's strip too) is an equalizer: 16 bands log-spaced 86 Hz to 11 kHz, 14
 segments 3 dB apart, from a 512-point fixed-point FFT of the scope's snapshot in the main loop (Hann window, the
-snapshot scaled to its peak, so MASTER doesn't shrink it); a bar falls a segment a redraw, its peak held 16 redraws.
+snapshot at MASTER full as the scope's, then scaled to its peak, so a quiet sound reaches the top too); a bar falls a segment a redraw, its peak held 16 redraws.
 THEME CUSTOM over the LCD look: the user's colours in the same four tones (theirs BG, SURF to TEXT 12 %, MID, TEXT).
 **LCD NIGHT** (the PO's pick of CUSTOM over LCD with tests/ui_render.c's dusk set, pinned as it shows): LCD's look
 (`ux.h1n`) inverted, navy and pale ink. BG 16,24,32, TEXT 242,232,216; SURF 28,40,54 only for its ghost (SURF to TEXT

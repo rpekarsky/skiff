@@ -25,8 +25,8 @@ static void hn_window(int32_t w, int32_t h)
 
 /* HOME's scope as the LCD's equalizer: the output's spectrum in HN_BANDS bands, log-spaced from 86 Hz to 11 kHz (bins
  * of a 512-point FFT of the scope's 22.05 kHz snapshot, in the main loop at redraw), each a column of HN_ROWS segments
- * 3 dB apart, the loudest band of a pure tone at the top (the snapshot scaled to its peak first: MASTER doesn't shrink
- * it). A bar falls a segment a redraw; its peak stays lit HN_HOLD redraws, then falls too */
+ * 3 dB apart, the loudest band of a pure tone at the top (the snapshot at MASTER full, as the scope's, then scaled to
+ * its peak). A bar falls a segment a redraw; its peak stays lit HN_HOLD redraws, then falls too */
 #define HN_FFT 512u
 #define HN_BANDS 16u
 #define HN_ROWS 14
@@ -69,9 +69,9 @@ static void hn_fft(void)
 static void hn_spectrum(uint8_t *lv)
 {
     uint32_t w = scope_w, i, k;
-    int32_t peak = 1500, gain;
+    int32_t peak = 1500, gain, unmaster = scope_unmaster_q8();
     for (i = 0; i < HN_FFT; i++) {
-        int32_t v = scope_buf[(w + i) & (SCOPE_N - 1u)];
+        int32_t v = scope_at_full_master(w + i, unmaster);
         hn_re[i] = (int16_t)v;
         if (v < 0)
             v = -v;

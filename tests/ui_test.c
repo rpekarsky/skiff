@@ -106,7 +106,8 @@ static void lcd_blit(uint32_t x, uint32_t y, uint32_t w, uint32_t h, const uint1
     for (j = 0; j < h && y + j < 240u; j++)
         for (i = 0; i < w && x + i < 240u; i++) host_screen[(y + j) * 240u + x + i] = p[j * w + i];
 }
-static struct { uint32_t stage; } felucca_dbg;
+static struct { uint32_t stage, late; } felucca_dbg;   /* audio.c: what the UI reads of it */
+static volatile uint32_t audio_max_us;
 #define FELUCCA_FLASH 0
 #ifndef FELUCCA_VERSION
 #define FELUCCA_VERSION "TEST"
@@ -210,6 +211,8 @@ static void ui_power_on(void)
     memset(motion_locked, 0, sizeof motion_locked);
     motion_base_valid = motion_full = 0;
     memset(snd_said, 0, sizeof snd_said);               /* (.bss at power-on: nothing said yet) */
+    memset(&cpu_shown, 0, sizeof cpu_shown);            /* (.bss at power-on: the HOME scope's CPU not sampled yet) */
+    felucca_dbg.late = audio_max_us = 0;
     memset(&scrn, 0, sizeof scrn);                        /* MENU > SCREEN OFF: on, idle from now (main.c) */
     scrn.idle = fm1_ms;
     kb_asleep = 0;
@@ -1061,6 +1064,61 @@ static int test_home_footer(void)
         ok &= ui.home && !memcmp(ref + foot_y() * 240, host_screen + foot_y() * 240, 240u * foot_h() * sizeof *ref);
     }
     return check("#3 HOME after SEQ's first page (NOTES, a drum grid): the footer as after any other page", ok);
+}
+
+/* (#18) the scope draws the mix as at MASTER full: audio.c takes it after MASTER (fx.c mix_block's gain, below), the
+ * same music at MASTER 100 % and 10 % (the knob's square law: Q12 4088 and 40) is the same picture to a pixel's
+ * rounding, on HOME and in MENU > LARGE's strip; at 10 % the wave is there, not a flat line */
+static void scope_after_master(uint32_t master_q12, int sound)
+{
+    uint32_t i;
+    for (i = 0; i < SCOPE_N; i++) {
+        int32_t mix = sound ? (int32_t)(12000.0 * sin(6.2831853 * i / 100.0) + 4500.0 * sin(6.2831853 * i / 50.0 + 0.7))
+                            : 0;
+        scope_buf[i] = (int16_t)(((mix >> 2) * (int32_t)master_q12) >> 10);
+    }
+    scope_w = 0;
+    song.master_q12 = master_q12;
+}
+
+static uint32_t scope_pixels_differ(const uint16_t *ref)
+{
+    uint32_t i, n = 0, from = graph_y() * 240u, to = from + graph_h() * 240u;
+    for (i = from; i < to; i++)
+        n += host_screen[i] != ref[i];
+    return n;
+}
+
+static void scope_draw(uint32_t master_q12, int sound)
+{
+    scope_after_master(master_q12, sound);
+    ui.force = 1;
+    frame();
+}
+
+static int test_scope_master(void)
+{
+    static uint16_t full[240 * 240], flat[240 * 240];
+    uint32_t k, ok = 1, mq = song.master_q12;
+    const uint32_t loud = master_of_pot(1023u), quiet = master_of_pot(102u);
+    for (k = 0; k < 2u; k++) {
+        uint32_t rounding, wave;
+        ui_power_on();
+        ui_prefs = k ? PREF_LARGE : 0u;
+        if (!k)
+            press(B_HOME);
+        scope_draw(loud, 1);
+        memcpy(full, host_screen, sizeof full);
+        scope_draw(quiet, 0);
+        memcpy(flat, host_screen, sizeof flat);
+        scope_draw(quiet, 1);
+        rounding = scope_pixels_differ(full);
+        wave = scope_pixels_differ(flat);
+        ok &= ui.home && ui.home_scope == !k && rounding * 10u < wave;
+    }
+    ui_prefs = 0;
+    song.master_q12 = mq;
+    return check("#18 the scope at MASTER 10 % draws the music as at 100 % (HOME, LARGE's strip), not a flat line", ok);
 }
 
 /* (#22) HOME without its lanes (MENU > LARGE's tall cards; the scope, HOME tapped on HOME): the footer names the track's
@@ -8965,6 +9023,46 @@ static int px_in(int32_t x0, int32_t y0, int32_t x1, int32_t y1, uint16_t c)   /
                 return 1;
     return 0;
 }
+/* (#57) the HOME scope's CPU readout (bottom right), sampled every CPU_SAMPLE_MS: MENU > CPU's load, the longest half's
+ * share (falling CPU_PEAK_FALL a sample), the dropouts since power-on; a new one marks XRUN in REC's colour for
+ * CPU_XRUN_MARK_MS */
+static int scope_corner_texts_are(const char *load, const char *xrun)
+{
+    char l[CPU_TEXT], x[CPU_TEXT];
+    cpu_corner_texts(l, x);
+    return str_eq(l, load) && str_eq(x, xrun);
+}
+static int xrun_marked_on_screen(int32_t band_y) { return px_in(180, band_y + 2, 228, band_y + 17, T_REC); }
+static int test_scope_cpu(void)
+{
+    static uint16_t first[240 * CPU_BAND_H];
+    int32_t band_y;
+    int ok;
+    ui_power_on();
+    felucca_dbg.late = 5;                               /* (dropouts of before: not counted) */
+    song.cpu_q8 = 108;
+    audio_max_us = (HALF_US * 71u + 99u) / 100u;
+    press(B_HOME);
+    band_y = (int32_t)(graph_y() + graph_h()) - CPU_BAND_H;
+    memcpy(first, host_screen + band_y * 240, sizeof first);
+    ok = ui.home_scope && scope_corner_texts_are("CPU 42 %  PK 71 %", "XRUN 0") &&
+         px_in(90, band_y + 2, 228, band_y + 17, T_MID) && !xrun_marked_on_screen(band_y);
+    song.cpu_q8 = 200;
+    frame();
+    ok &= scope_corner_texts_are("CPU 42 %  PK 71 %", "XRUN 0");   /* (until the next sample) */
+    frames(CPU_SAMPLE_MS);
+    ok &= scope_corner_texts_are("CPU 78 %  PK 69 %", "XRUN 0") &&
+          memcmp(first, host_screen + band_y * 240, sizeof first) != 0;
+    felucca_dbg.late += 2;
+    frames(CPU_SAMPLE_MS);
+    ok &= scope_corner_texts_are("CPU 78 %  PK 67 %", "XRUN 2") && cpu_shown.xrun_marked && xrun_marked_on_screen(band_y);
+    frames(CPU_XRUN_MARK_MS + CPU_SAMPLE_MS);
+    ok &= scope_corner_texts_are("CPU 78 %  PK 51 %", "XRUN 2") && !cpu_shown.xrun_marked &&
+          !xrun_marked_on_screen(band_y);
+    song.cpu_q8 = 0;
+    return check("#57 the HOME scope's CPU readout: CPU, its peak falling, XRUN since power-on, marked REC after a dropout",
+                 ok);
+}
 static int test_blocks(void)
 {
     int bad = 0, ok;
@@ -9828,8 +9926,10 @@ static int test_h1n_eq(void)
     static const uint16_t BIN[3] = {2, 23, 200};      /* 86 Hz, 990 Hz, 8.6 kHz */
     static const uint8_t BAND[3] = {0, 8, 15};
     uint8_t lv[HN_BANDS];
-    uint32_t t, i, k;
+    uint8_t at_full[HN_BANDS];
+    uint32_t t, i, k, mq = song.master_q12;
     int bad = 0, ok = 1;
+    song.master_q12 = MASTER_FULL;
     for (t = 0; t < 6u; t++) {
         for (i = 0; i < SCOPE_N; i++)
             scope_buf[i] = (int16_t)((t < 3u ? 20000.0 : 4000.0) * sin(6.2831853 * BIN[t % 3u] * i / SCOPE_N));
@@ -9844,6 +9944,20 @@ static int test_h1n_eq(void)
     for (k = 0; k < HN_BANDS; k++)
         ok &= !lv[k];
     bad += check("(#29) LCD EQ: a tone in its band at the top (loud or quiet), its far bands low, silence dark", ok);
+    for (t = 0; t < 2u; t++) {                        /* (fx.c mix_block's MASTER on the music, as audio.c takes it) */
+        uint32_t master = master_of_pot(t ? 102u : 1023u);
+        for (i = 0; i < SCOPE_N; i++) {
+            int32_t mix = (int32_t)(12000.0 * sin(6.2831853 * 23 * i / SCOPE_N) + 3000.0 * sin(6.2831853 * 200 * i / SCOPE_N));
+            scope_buf[i] = (int16_t)(((mix >> 2) * (int32_t)master) >> 10);
+        }
+        song.master_q12 = master;
+        hn_spectrum(t ? lv : at_full);
+    }
+    ok = 1;
+    for (k = 0; k < HN_BANDS; k++)
+        ok &= lv[k] + 1u >= at_full[k] && lv[k] <= at_full[k] + 1u;
+    song.master_q12 = MASTER_FULL;
+    bad += check("(#18) LCD EQ: the music at MASTER 10 % lights the bands as at 100 %, to a segment", ok);
     for (i = 0; i < SCOPE_N; i++)
         scope_buf[i] = (int16_t)(20000.0 * sin(6.2831853 * 23 * i / SCOPE_N));
     cv_begin(240, H_GRAPH, T_BG);
@@ -9859,6 +9973,7 @@ static int test_h1n_eq(void)
     hn_eq();
     ok &= hn_peak[8] == HN_ROWS - 1;
     bad += check("(#29) LCD EQ: the bar falls a segment a redraw, its peak held HN_HOLD redraws, then falling", ok);
+    song.master_q12 = mq;
     return bad;
 }
 /* MENU > DISPLAY > POPUP TIME: DEFAULT (each box its own, stored 0), 0.1 .. 2.7 s for the TAKE box and the undo box;
@@ -9998,6 +10113,8 @@ int main(void)
     bad += test_grid();
     bad += test_home_footer();
     bad += test_home_names();
+    bad += test_scope_cpu();
+    bad += test_scope_master();
     bad += test_clock_wait();
     bad += test_grid_rows();
     bad += test_mixer_no_flash();
