@@ -996,8 +996,7 @@ static void fm_lfo(const fm_sim_t *s, uint16_t c)
 #define FM_PH_WARM 64                                   /* steps before it (the feedback settles) */
 #define FM_PH_CX 53
 #define FM_PH_CY 73
-#define FM_PH_R 41                                      /* the outermost ring; the innermost 9 */
-#define FM_PH_AMP 34                                    /* the trace's full scale */
+#define FM_PH_R 41                                      /* the outermost ring (the innermost 9); the trace's full scale */
 #define FM_PH_TX 102                                    /* the trace's newest column */
 typedef struct {
     int32_t rel[6], gain[6];                            /* (FM6_ALG's order) speed against the carrier's Q16; output Q24 */
@@ -1230,18 +1229,27 @@ static int8_t fm_ph_height(const fm_pm_t *m, uint32_t car, int32_t full)
     for (k = 0; k < 6u; k++)
         if (car >> k & 1u)
             sum += m->out[5u - k];
-    return (int8_t)(full ? (sum >> 8) * FM_PH_AMP / full : 0);
+    return (int8_t)(full ? (sum >> 8) * FM_PH_R / full : 0);
 }
-/* the last turn up to virtual tick now, a column every other step: the output of the chain's carriers (those in carrying) and of
- * all of them; carrier c's ghost and its deepest push. Leaves m at tick now. 1: carrier c's dot runs back */
+static uint32_t fm_ph_sounding(const fm_sim_t *s, const fm_pm_t *m)   /* the carriers above FM6_THRESH */
+{
+    uint32_t k, car = 0;
+    for (k = 0; k < 6u; k++)
+        if ((s->car >> k & 1u) && m->gain[5u - k] >= FM6_THRESH)
+            car |= 1u << k;
+    return car;
+}
+/* the last turn up to virtual tick now, a column every other step: the output of the chain's carriers (those in
+ * carrying) and of all of them; carrier c's ghost and its deepest push. Leaves m at tick now. 1: c's dot runs back */
 static int fm_ph_trace(fm_pm_t *m, const fm_sim_t *s, uint32_t carrying, uint32_t c, uint32_t now, fm_ph_trace_t *tr)
 {
     int32_t steps = FM_PH_COLS * 2 + FM_PH_WARM, push;
-    uint32_t t0 = now - (uint32_t)(steps - 1) * FM_PH_STEP, i, k, kc = 5u - c;
-    int32_t full = 0;
+    uint32_t t0 = now - (uint32_t)(steps - 1) * FM_PH_STEP, i, k, kc = 5u - c, sounding = fm_ph_sounding(s, m);
+    int32_t full = 0, ghost_amp;
     for (k = 0; k < 6u; k++)
-        if ((s->car >> k & 1u) && m->gain[5u - k] >= FM6_THRESH)
+        if (sounding >> k & 1u)
             full += m->gain[5u - k] >> 8;
+    ghost_amp = (sounding >> c & 1u) ? (m->gain[kc] >> 8) * FM_PH_R / full : 0;   /* (its share of the output) */
     tr->peak = 0;
     for (i = 0; i < (uint32_t)steps; i++) {
         int32_t ago = steps - 1 - (int32_t)i;
@@ -1255,7 +1263,7 @@ static int fm_ph_trace(fm_pm_t *m, const fm_sim_t *s, uint32_t carrying, uint32_
         if (!(ago & 1)) {
             tr->wave[ago / 2] = fm_ph_height(m, s->car & carrying, full);
             tr->all[ago / 2] = fm_ph_height(m, s->car, full);
-            tr->ghost[ago / 2] = (int8_t)((fm6_sin(fm_pm_phase(m, kc, t)) * FM_PH_AMP + 16384) >> 15);
+            tr->ghost[ago / 2] = (int8_t)((fm6_sin(fm_pm_phase(m, kc, t)) * ghost_amp + 16384) >> 15);
         }
     }
     return fm_ph_runs_back(m, tr->was, kc, now);
@@ -1272,7 +1280,7 @@ static void fm_ph_wave(const fm_ph_trace_t *tr, uint16_t c)
         fm_seg2(FM_PH_TX + i - 1, FM_PH_CY - tr->wave[i - 1], FM_PH_TX + i, FM_PH_CY - tr->wave[i], 2, c);
 }
 /* ring i's dots: the ghost where it is pushed, the dot (REC's hot end while it runs back); the carrier's height across
- * to the trace when the trace is its alone */
+ * to the trace when it is the only one sounding (the trace then its height exactly) */
 static void fm_ph_dots(const fm_chain_t *ch, const fm_pm_t *m, const fm_ph_trace_t *tr, uint32_t i, uint32_t now,
                        int link, const uint16_t *sh, uint16_t c)
 {
@@ -1299,7 +1307,7 @@ static void fm_phase_panel(const fm_sim_t *s, const uint16_t *sh, uint16_t c)
     fm_pm_init(&m, s, car);
     fm_ph_chain(s, &ch);
     carrying = ch.sel | ch.down;                       /* (their outputs carry the picked one's) */
-    alone = (s->car & carrying) == 1u << car;
+    alone = fm_ph_sounding(s, &m) == 1u << car;
     now = (uint32_t)((uint64_t)(fm1_ms - fm_ph_t0) * FM_PH_TURN / 1000u);
     back = fm_ph_trace(&m, s, carrying, car, now, &tr);
     fm_ph_wave(&tr, c);
