@@ -83,7 +83,7 @@ Things to avoid:
 - **What it says:**
   - **BLOCKS:** the TAKE box sits over the panel for about 2 s. It shows the track's number on its colour, TAKE KEPT, what went in (14 NOTES, 3 KNOB MOVES; AUTOMATION FULL when the moves found no room), and [SAVE] HOLD TO UNDO. A newer message, an undo for example, ends it.
   - **Views with no panel for the box** (a layer, LARGE's tall cards, the MIXER): TAKE T1 in the header, then HOLD [SAVE]: UNDO (U4: one wording for the undo hint).
-  - **Partial:** TAKE PARTIAL (TAKE T1 PARTIAL in the header) when more than about 128 notes in the pass overflowed the log; TAKE PARTIAL PASS (TAKE T1 PARTIAL PASS) when it took the pass playing.
+  - **Partial:** TAKE PARTIAL (TAKE T1 PARTIAL in the header) when more than about 128 notes in the pass overflowed the log.
   - NOTHING PLAYED, DISARM REC FOR A TAKE, or on a chain PLAY ONE LOOP FIRST, when there is nothing to take (U4: the way out, not just the problem).
 - **Hint:** while HOME is held, the header says [SAVE] TAKE.
 

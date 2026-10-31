@@ -236,7 +236,7 @@ static void take_commit(uint32_t k)
     track_t *t = &trk[k % NTRK];
     uint32_t len = t->p[P_SLEN] > 0 ? (uint32_t)t->p[P_SLEN] : 1u, want, i, e, b0, b1, j, chain = 0, tied = 0, mine;
     uint32_t notes = 0, moves = 0, full = 0, from, cur = take_pass[k % NTRK];
-    int own = rec_poly(t), part_pass;                 /* ((2.0, #25) notes overlap: each held note its own tie) */
+    int own = rec_poly(t);                            /* ((2.0, #25) notes overlap: each held note its own tie) */
     step_t tmp[NSTEP];
     char b[24];
     if (len > NSTEP)
@@ -258,7 +258,6 @@ static void take_commit(uint32_t k)
                 take_part(k, j, chain_pl[k % NTRK] + j - b0, tmp, &notes, &moves, &full);
     }
     from = chain ? chain_pl[k % NTRK] : want;
-    part_pass = !chain && want == cur;
     memcpy(tmp, t->step, sizeof tmp);
     if (own)                                          /* ((2.0) unfolded: a note played into a long one goes beside it) */
         ed_open(tmp, t, len);
@@ -297,7 +296,7 @@ static void take_commit(uint32_t k)
         take_box.trk = (uint8_t)(k % NTRK);
         take_box.gen++;
         take_box.kind = 0;
-        str_cpy(take_box.title, take_lost[k % NTRK] > from ? "TAKE PARTIAL" : part_pass ? "TAKE PARTIAL PASS" : "TAKE KEPT",
+        str_cpy(take_box.title, take_lost[k % NTRK] > from ? "TAKE PARTIAL" : "TAKE KEPT",
                 sizeof take_box.title);
         take_box.line[0] = 0;
         if (notes)
@@ -315,6 +314,6 @@ static void take_commit(uint32_t k)
     str_cpy(b, "TAKE T", sizeof b);
     b[6] = (char)('1' + k % NTRK);
     b[7] = 0;
-    ui_say(b, take_lost[k % NTRK] > from ? " PARTIAL" : part_pass ? " PARTIAL PASS" : full ? " AUTO FULL" : "");
+    ui_say(b, take_lost[k % NTRK] > from ? " PARTIAL" : full ? " AUTO FULL" : "");
     str_cpy(ui.msg2, "HOLD [SAVE]: UNDO", sizeof ui.msg2);
 }
