@@ -1715,6 +1715,7 @@ static uint32_t graph_signature(void)
         for (i = 0; i < NTRK; i++)
             h = (h ^ (bank_cur(i) | bank_next(i) << 8 | (uint32_t)trk_pid[i] << 16)) * 16777619u;
         h = (h ^ (sg.entry * 40503u + song_pick() * 769u + bank_gen() * 2654435761u)) * 16777619u;   /* ((2.0) COPY+) */
+        h ^= (uint32_t)song_removing(song.sel % NTRK) * 3266489917u;
     }
     if (pg->scope == SC_ENGINE && (ENGINES[t->eng_req % NENGINES] == &ENG_WHEEL || t->eng_req % NENGINES == ENGI_FM6 ||
                                    (FELUCCA_FM4 && t->eng_req % NENGINES == ENGI_DIGITAL)))
@@ -1957,6 +1958,17 @@ static sg_band_t sg_band(uint16_t col)
         return (sg_band_t){T_RAISE, T_TEXT, T_SURF, T_TEXT, T_MID, T_INK, T_BG};
     return (sg_band_t){col, T_INK, ux_mix(col, T_INK, 35), T_INK, T_INK, col, ux_mix(T_BG, col, 35)};
 }
+/* (#13) the entry dragged past A (REMOVE): its tile left of the grid, a trash can for its number (1-bit: every theme) */
+static void song_trash(int32_t x, int32_t y)
+{
+    int32_t rib;
+    cv_rect(x, y, SG_W, SG_TH, T_TEXT);
+    cv_rect(x + 5, y + 2, 3, 1, T_INK);
+    cv_rect(x + 2, y + 3, 9, 1, T_INK);
+    cv_frame(x + 3, y + 5, 7, SG_TH - 7, T_INK);
+    for (rib = 0; rib < 2; rib++)
+        cv_rect(x + 5 + 2 * rib, y + 7, 1, SG_TH - 11, T_INK);
+}
 static void graph_song(void)
 {
     uint16_t g0 = T_BG;
@@ -1965,7 +1977,7 @@ static void graph_song(void)
     cv_bg = T_BG;
     for (pos = 0, k = 0; k < NTRK; pos++, k++) {        /* ((Skiff U3, N1) every track) */
         int32_t y = SG_Y(pos), ty = y + 2;
-        int band = k == song.sel % NTRK, cb = band;
+        int band = k == song.sel % NTRK, cb = band, out = song_removing(k);
         uint16_t col = T_TRK(k);
         sg_band_t bd = sg_band(col);
         uint16_t g = cb ? bd.ground : g0, lit = cb ? bd.mark : col;
@@ -2009,7 +2021,7 @@ static void graph_song(void)
                         z = p + 1u < NENT && ((cm >> (p + 1u)) & 1u) ? ((cs >> (p + 1u)) & 1u ? 10 : 13) : 14;
                 cv_rect(SG_X(p) + a, y, z - a + 1, SG_H, bx);
             }
-        for (p = 0; p < NENT; p++) {
+        for (p = (uint32_t)out; p < NENT; p++) {               /* (#13) REMOVE: A left empty, the entry out of the grid */
             int32_t x = SG_X(p);
             int cpy = p >= cp && p < cp + cn,        /* ((2.0) COPY+'s copy here: of its chain's part p - cp) */
                 in = (int)((cm >> p) & 1u);          /* (on a chain's box: it the ground, the marks the track's colour) */
@@ -2067,6 +2079,8 @@ static void graph_song(void)
             for (r = 0; r + 1u < reps && r < 3u; r++)
                 cv_rect(x + 1 + 3 * (int32_t)r, ty + SG_TH + 1, 2, 1, mk);
         }
+        if (out)
+            song_trash(SG_X(0) - SG_W - 2, ty);
     }
 }
 /* SEQ > AUTOMATION (ui_events.c; 1.1.5's AUTO LIST): the track's records around the one selected, a row each: the kind

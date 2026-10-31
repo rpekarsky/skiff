@@ -2110,10 +2110,10 @@ static int song_clear_at(uint32_t k, uint32_t e)
 static void song_clear(uint32_t e) { (void)song_clear_at(song.sel % NTRK, e); }
 
 /* ---- (#13) SEQ > SONG, SHIFT + KNOB 1: the selected entry dragged along its track's list, the entries between shifting
- * a place, as clips reorder; dragged past A or P and SHIFT let go, it is unlinked: the entry empties, its pattern stays
- * in the pool (KNOB 2 picks it again). No undo step, as no list edit has one. The audio ISR never reads an entry index
- * (launch_q carries the staged steps themselves), so the indices are remapped without a critical section; a song's
- * next staged from the old order is staged again by song_poll (its list changed) ---- */
+ * a place, as clips reorder; dragged past A and SHIFT let go, it is unlinked: the entries after it close up, its
+ * pattern stays in the pool (KNOB 2 picks it again). Each drag is one undo step (UNDO_LIST: undo_list_swap). The audio
+ * ISR never reads an entry index (launch_q carries the staged steps themselves), so the indices are remapped without a
+ * critical section; a song's next staged from the old order is staged again by song_poll (its list changed) ---- */
 static void scene_entry_put(uint32_t s, uint32_t k, uint32_t code)   /* code: scene_trk's, 0 none, 1..16 */
 {
     uint32_t at = k < 4u ? 3u * s : 50u + 2u * s, n = k < 4u ? 3u : 2u, sh = 5u * (k < 4u ? k : k - 4u), v = 0, i;
@@ -2157,28 +2157,68 @@ static void ent_move(uint32_t k, uint32_t from, uint32_t to)
             scene_entry_put(s, k, index_after_move(e, from, to) + 1u);
     bk.gen++;
 }
-/* .. the track on it plays on, on a pattern no entry names (pool_refs keeps it from CLEAR UNUSED) */
-static void ent_unlink(uint32_t k, uint32_t e)
+/* entry e unlinked, the entries after it closing up (P empties); what it took into a (its undo). The track on it plays
+ * on, on a pattern no entry names (pool_refs keeps it from CLEAR UNUSED) */
+static void ent_remove(uint32_t k, uint32_t e, list_act_t *a)
 {
+    const uint32_t last = NENT - 1u;
     launch_t *q = &launch_q[k];
     uint32_t s;
-    memset(lists.ent[k][e], 0, 2);
-    memset(lists.snd[k][e], 0, 2);
-    if (q->armed && !q->adv && q->slot == e) {
+    ent_move(k, e, last);
+    memcpy(a->row, lists.ent[k][last], 2);
+    memcpy(a->snd, lists.snd[k][last], 2);
+    memset(lists.ent[k][last], 0, 2);
+    memset(lists.snd[k][last], 0, 2);
+    if (q->armed && !q->adv && q->slot == last) {
         q->armed = 0;
         RING_PUBLISH();
     }
-    if (chain_go[k] == e + 1u)
+    if (chain_go[k] == last + 1u)
         chain_go[k] = 0;
+    a->scenes = 0;
     for (s = 0; s < SCENES; s++)
-        if (scene_used(s) && scene_slot(s, k) == e)
+        if (scene_used(s) && scene_slot(s, k) == last) {
+            a->scenes |= (uint16_t)(1u << s);
             scene_entry_put(s, k, 0);
+        }
     bk.gen++;
 }
-/* pos: where the knob has taken the entry, -1 past A and NENT past P (REMOVE) */
+static void ent_restore(uint32_t k, uint32_t e, const list_act_t *a)
+{
+    const uint32_t last = NENT - 1u;
+    uint32_t s;
+    memcpy(lists.ent[k][last], a->row, 2);
+    memcpy(lists.snd[k][last], a->snd, 2);
+    for (s = 0; s < SCENES; s++)
+        if (((a->scenes >> s) & 1u) && scene_used(s))
+            scene_entry_put(s, k, last + 1u);
+    ent_move(k, last, e);
+}
+/* (ui.c undo_swap) a drag undone, or done again; an unlink's undo refused while an entry has taken P's place */
+static int undo_list_swap(undo_t *c)
+{
+    list_act_t *a = &c->list;
+    uint32_t k = (c->trk - 1u) % NTRK;
+    if (a->undone && a->removed)
+        ent_remove(k, a->from, a);
+    else if (a->undone)
+        ent_move(k, a->from, a->to);
+    else if (!a->removed)
+        ent_move(k, a->to, a->from);
+    else if (ent_on(k, NENT - 1u)) {
+        ui_message("P IS TAKEN: CAN'T UNDO");
+        return 0;
+    } else
+        ent_restore(k, a->from, a);
+    a->undone ^= 1u;
+    ui.force = 1;
+    return 1;
+}
+/* pos: where the knob has taken the entry, -1 past A (REMOVE) */
 static struct { uint8_t on, k, from; int8_t pos; } sdrag __attribute__((section(".pool")));
 static uint32_t drag_at(void) { return (uint32_t)clamp(sdrag.pos, 0, NENT - 1); }
-static int drag_out(void) { return sdrag.pos < 0 || sdrag.pos >= (int32_t)NENT; }
+static int drag_out(void) { return sdrag.pos < 0; }
+static int song_removing(uint32_t k) { return sdrag.on && sdrag.k == k && drag_out(); }
 static void drag_name(char *b)                     /* the dragged entry's pattern ("02") or REST (b: 5 bytes) */
 {
     uint32_t id = ent_pat(sdrag.k, drag_at());
@@ -2200,7 +2240,23 @@ static void drag_say(const char *verb)             /* "MOVE 02 TO D", "MOVED RES
     }
     ui_message(b);
 }
-/* KNOB 1 turned s with SHIFT held on SONG: 1 taken (a SHIFT combo, an empty entry's too: nothing to drag) */
+/* the drag's undo step, its name and its entry's pattern said in the undo box ("UNDO T1 MOVE 02") */
+static list_act_t *drag_undo_take(const char *name)
+{
+    uint32_t id = ent_pat(sdrag.k, drag_at());
+    undo_label = name;
+    undo_push(UNDO_LIST);
+    undo.trk = (uint8_t)(sdrag.k + 1u);
+    undo.what = UNDO_LIST;
+    undo.keep = 0;
+    undo.pid = (uint8_t)(id == PAT_NONE ? 0u : id + 1u);
+    memset(&undo.list, 0, sizeof undo.list);
+    undo.list.from = sdrag.from;
+    undo.list.to = (uint8_t)drag_at();
+    return &undo.list;
+}
+/* KNOB 1 turned s with SHIFT held on SONG: 1 taken (a SHIFT combo, an empty entry's too: nothing to drag). Past P it
+ * stops at P: only past A removes */
 static int song_drag(int32_t s)
 {
     uint32_t k = song.sel % NTRK, was;
@@ -2218,7 +2274,7 @@ static int song_drag(int32_t s)
         sg.pick = 0;
     }
     was = drag_at();
-    sdrag.pos = (int8_t)clamp(sdrag.pos + s, -1, NENT);
+    sdrag.pos = (int8_t)clamp(sdrag.pos + s, -1, NENT - 1);
     if (drag_at() != was)
         ent_move(k, was, drag_at());
     sg.entry = (uint8_t)drag_at();
@@ -2231,28 +2287,15 @@ static int song_drag(int32_t s)
     str_cpy(ui.msg2, "LET GO: UNLINK", sizeof ui.msg2);
     return 1;
 }
-/* each frame (ui_input): the drag goes on while SHIFT is held on SONG, its track selected. SHIFT let go ends it, a
- * REMOVE unlinking the entry; SONG or the track left while held ends it too, a REMOVE cancelled (the entry stays at
- * the end it was dragged to) */
-static void song_drag_poll(int shift, int on_song)
+/* SHIFT let go past A: the entry unlinked, said */
+static void drag_unlink(void)
 {
-    uint32_t k = sdrag.k, id;
+    uint32_t k = sdrag.k, id = ent_pat(k, drag_at());
+    list_act_t *act = drag_undo_take("UNLINK");
     char b[24], n[5];
-    if (!sdrag.on || (shift && on_song && song.sel % NTRK == k))
-        return;
-    sdrag.on = 0;
-    if (!drag_out()) {
-        if (drag_at() != sdrag.from)
-            drag_say("MOVED ");
-        return;
-    }
-    if (shift) {
-        ui_message("REMOVE CANCELLED");
-        return;
-    }
-    id = ent_pat(k, drag_at());
     drag_name(n);
-    ent_unlink(k, drag_at());
+    act->removed = 1;
+    ent_remove(k, drag_at(), act);
     b[0] = 'T';
     b[1] = (char)('1' + k);
     b[2] = ' ';
@@ -2262,6 +2305,27 @@ static void song_drag_poll(int shift, int on_song)
     if (id != PAT_NONE)
         str_cpy(ui.msg2, "STAYS IN THE POOL", sizeof ui.msg2);
     ui.force = 1;
+}
+/* each frame (ui_input): the drag goes on while SHIFT is held on SONG, its track selected. SHIFT let go ends it, a
+ * REMOVE unlinking the entry; SONG or the track left while held ends it too, a REMOVE cancelled (the entry stays at A,
+ * where it was dragged) */
+static void song_drag_poll(int shift, int on_song)
+{
+    int moved;
+    if (!sdrag.on || (shift && on_song && song.sel % NTRK == sdrag.k))
+        return;
+    sdrag.on = 0;
+    if (drag_out() && !shift) {
+        drag_unlink();
+        return;
+    }
+    moved = drag_at() != sdrag.from;
+    if (moved)
+        (void)drag_undo_take("MOVE");
+    if (drag_out())
+        ui_message("REMOVE CANCELLED");
+    else if (moved)
+        drag_say("MOVED ");
 }
 
 /* ---- the editor's backup (editor_backup.c): each chunk an object, ids 16..31 ---- */

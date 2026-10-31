@@ -10114,21 +10114,40 @@ static int test_song_move(void)
     frame();
     ok &= !ui.menu && !ui.home && cur_page()->graph == GR_SONG && msg_is("MOVED 01 TO C");
     bad += check("(#13) SONG: SHIFT + KNOB 1 drags A to C (B C A), said; a SHIFT combo: the map goes, no MENU let go", ok);
+    undo_step(0);
+    ok = undo_is("UNDO T1 MOVE 01") && ent_pat(k, 0) == a && ent_pat(k, 2) == c && lists.cur[k] == 2u;
+    press(B_OCTUP);
+    ok &= undo_is("REDO T1 MOVE 01") && ent_pat(k, 0) == b && ent_pat(k, 2) == a && lists.cur[k] == 1u;
+    bad += check("  the move one undo step (UNDO T1 MOVE 01), OCT+ in the window redoes it", ok);
     btn_down(B_HOME);
     frame();
-    turn(EN_K1, 20);                                 /* A (now on C) past P: REMOVE; back: in at P; past again */
-    ok = a == 0u && msg_is("REMOVE 01") && ent_pat(k, 15) == a && ent_pat(k, 2) == PAT_NONE;
-    turn(EN_K1, -1);
-    ok &= msg_is("MOVE 01 TO P");
-    turn(EN_K1, 1);
+    turn(EN_K1, 20);                                 /* A (now on C) past P: it stops at P */
+    ok = msg_is("MOVE 01 TO P") && ent_pat(k, 15) == a && ent_pat(k, 2) == PAT_NONE;
     btn_up(B_HOME);
     frame();
-    ok &= !ent_on(k, 15) && pool_used(a) && ent_pat(k, 0) == b && ent_pat(k, 1) == c && !ui.menu && !ui.home &&
-          msg_is("T1 01 UNLINKED");
-    turn(EN_K1, -1);
-    ok &= sg.entry == 14u && ent_pat(k, 0) == b;
-    bad += check("  past P: REMOVE (turned back: in at P); let go: A unlinked, 01 still kept; KNOB 1 alone the entry", ok);
-    turn(EN_K1, -15);                                /* B (02) past A, then ALGO to T2 with HOME still held */
+    ok &= msg_is("MOVED 01 TO P") && ent_pat(k, 15) == a && !ui.menu;
+    bad += check("  past P: clamped at P, no REMOVE; let go: moved", ok);
+    btn_down(B_HOME);
+    frame();
+    turn(EN_K1, -20);                                /* back past A: REMOVE, the trash can left of the grid */
+    frame();
+    {
+        int32_t tx = SG_X(0) - SG_W - 2, ty = (int32_t)graph_y() + SG_Y(k) + 2;
+        ok = msg_is("REMOVE 01") && ent_pat(k, 0) == a && lg_px(tx + 1, ty + 1) == T_TEXT &&
+             lg_px(tx + 6, ty + 3) == T_INK && lg_px(tx + 5, ty + 9) == T_INK;
+    }
+    btn_up(B_HOME);
+    frame();
+    ok &= ent_pat(k, 0) == b && ent_pat(k, 1) == c && !ent_on(k, 2) && !ent_on(k, 15) && pool_used(a) && !ui.menu &&
+          !ui.home && msg_is("T1 01 UNLINKED");
+    bad += check("  past A: REMOVE, a trash can out of the grid; let go: A unlinked, no empty cell left, 01 still kept",
+                 ok);
+    undo_step(0);
+    ok = undo_is("UNDO T1 UNLINK 01") && ent_pat(k, 15) == a && ent_pat(k, 0) == b && !ent_on(k, 2);
+    press(B_OCTUP);
+    ok &= undo_is("REDO T1 UNLINK 01") && !ent_on(k, 15) && ent_pat(k, 1) == c;
+    bad += check("  the unlink one undo step (UNDO T1 UNLINK 01, A back at P), redone", ok);
+    turn(EN_K1, -16);                                /* B (02) past A, then ALGO to T2 with HOME still held */
     btn_down(B_HOME);
     frame();
     turn(EN_K1, -1);
