@@ -1018,8 +1018,10 @@ typedef struct {
     uint32_t alg, fbs;
 } fm_pm_t;
 typedef struct {
-    uint8_t op[6], depth[6], feed[6];                   /* outermost first (OP k+1 as k); 0 on the path, else the depth */
-    uint32_t n, lit;                                    /* above the picked one; who feeds it. Bit k: OP k+1 on the path */
+    uint8_t op[6];                                      /* the rings' operators, outermost first (OP k+1 as k) */
+    uint8_t depth[6];                                   /* 0 on the path, else how far above the picked one */
+    uint8_t feed[6];                                    /* bit k: OP k+1 modulates it */
+    uint32_t n, lit;                                    /* how many; bit k: OP k+1 the picked one or on its path */
     int32_t cx, cy, r, step;
 } fm_rings_t;
 
@@ -1162,11 +1164,13 @@ static void fm_ph_arc(const fm_rings_t *g, uint32_t i, int32_t a, int32_t d, int
     }
 }
 /* ring i's sector from its ghost: its modulators' shares stacked, the positive ones ahead, the negative behind; or
- * its feedback */
+ * its feedback. None on a silent ring: no dot there to push */
 static void fm_ph_sector(const fm_rings_t *g, const fm_pm_t *m, uint32_t i, int32_t ghost, int fed_back)
 {
     uint32_t k = g->op[i], j, drawn = 0;
     int32_t ahead = 0, behind = 0;
+    if (m->gain[5u - k] < FM6_THRESH)
+        return;
     if (fed_back) {
         fm_ph_arc(g, i, ghost, m->in[5u - k], 2, T_TRK(k), 1);
         return;
