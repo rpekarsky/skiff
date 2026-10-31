@@ -3298,6 +3298,8 @@ static double wave_vs_voice(const uint8_t *v, uint32_t note, int32_t block, int8
     fm6_adopt(tr);
     fm6_last[tr] = (fm6_last_t){(uint8_t)note, 100, 0, 0, 0, 2000};
     fm_ops(&s, TSEL);
+    (void)fm_wf_cfg();
+    fm_wf_tune.smooth = 1;                              /* (one period against the voice's: SMOOTH's mean is not it) */
     fm_wf_begin(&s, 1);
     while (fm_wf.b < block)
         fm_wf_step(&s);
