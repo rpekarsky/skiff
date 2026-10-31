@@ -437,9 +437,9 @@ The notes live in **patterns**, and a project says which ones each track plays:
 - **Moving an entry:** hold SHIFT and turn KNOB 1: the entry travels with the knob and the ones between shift a place
   (MOVE 02 TO E; a REST: MOVE REST TO E), its REPS and sound with it; the track's place, a launch staged and the
   scenes follow it, playing too; past P it stops at P. Turned past A it says REMOVE and its tile leaves the grid, a
-  trash can on it: let SHIFT go there and the entry is **unlinked** (T1 02 UNLINKED): it leaves the list, the ones
-  after it close up (no empty cell stays), and its pattern stays in the pool, unused (pick its number on KNOB 2 to put
-  it back; SAVE › PATTERNS › UNUSED clears such ones). Turn back while SHIFT is held to keep it; leaving SONG or
+  trash can on it, the others shown closed up already (#51c): let SHIFT go there and the entry is **unlinked** (T1 02
+  UNLINKED): it leaves the list, the ones after it close up (no empty cell stays), and its pattern stays in the pool,
+  unused (pick its number on KNOB 2 to put it back; SAVE › PATTERNS › UNUSED clears such ones). Turn back while SHIFT is held to keep it; leaving SONG or
   changing track with SHIFT still held cancels the REMOVE. A track on that entry plays on. Each move and each unlink
   is one undo step (UNDO T1 MOVE 02, UNDO T1 UNLINK 02), redo too.
 - **An entry's sound** (2.0): when the track comes onto it, the entry loads its sound, as PRESETS or USER would (a

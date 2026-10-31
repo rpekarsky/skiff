@@ -10355,8 +10355,19 @@ static int test_song_move(void)
     frame();
     {
         int32_t tx = SG_X(0) - SG_W - 2, ty = (int32_t)graph_y() + SG_Y(k) + 2;
+        uint16_t ground = lg_px(SG_X(NENT - 1u) + 1, ty + 1);
         ok = msg_is("REMOVE 01") && ent_pat(k, 0) == a && lg_px(tx + 1, ty + 1) == T_TEXT &&
              lg_px(tx + 6, ty + 3) == T_INK && lg_px(tx + 5, ty + 9) == T_INK;
+        ok &= lg_px(SG_X(0) + 1, ty + 1) != ground && lg_px(SG_X(1) + 1, ty + 1) != ground &&
+              lg_px(SG_X(2) + 1, ty + 1) == ground;
+        bad += check("  (#51c) REMOVE shown: 02 and 03 drawn already in A and B, C and P empty", ok);
+        turn(EN_K1, 1);
+        frame();
+        ok = lg_px(SG_X(2) + 1, ty + 1) != ground && !song_removing(k);
+        turn(EN_K1, -1);
+        frame();
+        bad += check("  (#51c) the drag back in: the entries back in their places", ok);
+        ok = lg_px(SG_X(2) + 1, ty + 1) == ground;
     }
     btn_up(B_HOME);
     frame();
