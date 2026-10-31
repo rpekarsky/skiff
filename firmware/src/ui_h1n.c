@@ -99,7 +99,7 @@ static void hn_spectrum(uint8_t *lv)
 
 static void hn_eq(void)
 {
-    static const char *const MARK[HN_BANDS] = {[0] = "100", [8] = "1K"};   /* (#57: 10K's place, the CPU readout) */
+    static const char *const MARK[HN_BANDS] = {[0] = "100", [8] = "1K", [15] = "10K"};
     uint8_t lv[HN_BANDS];
     int marks = cv_h >= H_GRAPH;                      /* (MENU > LARGE's strip: no room for them) */
     int32_t pitch = ((int32_t)cv_h - (marks ? 30 : 6)) / HN_ROWS, gap = pitch > 4 ? 2 : 1;

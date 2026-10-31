@@ -123,8 +123,8 @@ loader 7,859 B (the limit: 7,936 B, below).
   the settings keep it once it rests 1.5 s, so it comes back at power-on. MENU > AUDIO > MASTER START: LAST (the
   default) as left; SAFE at most 20 %, the sound rising from silence over 1 s.
 - **The extra buttons:** KNOB BANK is SHIFT, as HOME held but on a button of its own: the map, + BT for TAKE, and
-  + a layer's button to lock that layer, + K5 on SEQ › SONG to move the selected entry (past A or P: REMOVE, the entry
-  unlinked when it is let go, its pattern kept in the pool; held for that, KNOB BANK is no UNDO tap). Held and let go, it does nothing (HOME still taps home, and held opens MENU).
+  + a layer's button to lock that layer, + K5 on SEQ › SONG to move the selected entry (past A: REMOVE, the entry
+  unlinked when it is let go, its pattern kept in the pool; each one undo step; held for that, KNOB BANK is no UNDO tap). Held and let go, it does nothing (HOME still taps home, and held opens MENU).
   A tap of KNOB BANK is UNDO and a tap of FADER BANK is REDO, as BT held and OCT+ in the undo window: the same undo
   box, NOTHING TO UNDO / REDO when there is none, and OCT- / OCT+ or more taps go on from there. A tap is let go
   before HOLD TIME with nothing else used meanwhile (a button, a key, a knob, a pad, a fader), and KNOB BANK's
@@ -147,13 +147,16 @@ loader 7,859 B (the limit: 7,936 B, below).
   Elsewhere they are the selected track's 16 steps of the page shown. A tap sets an empty step to the last note
   played, at the pad's velocity, or clears a set one; on a DRUM track it toggles the selected lane's hit. A run of
   taps is one undo (`PAD STEPS`). The colours follow the screen's step tiles: an empty step faint white, a step in the
-  track's colour, a tie at half, the edited step white. A pad has one LED, so the playing step can't get the
+  track's colour, a tie at half, the edited step white. A pad takes only the hue of the theme's track colour, its
+  brightness is the pad's own (a dark or pale theme still lights the pads fully); a theme whose tracks are grey (LCD,
+  LCD NIGHT) lights them in the SKIFF colours. A pad has one LED, so the playing step can't get the
   mockup's ring: it shows half way to white instead. MENU > DISPLAY > PAD LIGHT dims every pad colour to 75, 50 or
   25 % (lit steps dim most, an empty step stays visible). MENU > DISPLAY > PAD FOLLOW sets
   which steps they show while playing: PAGE (the default) the 16 the playhead is in; OFF the screen's page; ROW the
   two rows of 8, the playhead's on top and the 8 it plays next below (REV the row before, PING the way it goes),
-  moving up a row every 8 steps. Stopped, and on the DRUM grid, they show the screen's page; while a pad is held the
-  view stays, so a tap always hits the step under the finger.
+  moving up a row every 8 steps (a pattern of 16 steps or fewer stays put, as PAGE). Stopped, and on the DRUM
+  grid, they show the screen's page; while a pad is held the view stays, so a tap always hits the step under the
+  finger.
 - **Faders:** a mixer for the four tracks the screen shows (T1..T4, or the six-track window). SHIFT + FADER
   BANK steps LEVEL, PAN, REVERB and DELAY, and the header names the bank. A fader takes over only once it reaches the value,
   and again after something else has set it, so nothing jumps. Fader 1..4 is T1..T4 while one of them is selected,

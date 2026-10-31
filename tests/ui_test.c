@@ -9311,45 +9311,45 @@ static int px_in(int32_t x0, int32_t y0, int32_t x1, int32_t y1, uint16_t c)   /
                 return 1;
     return 0;
 }
-/* (#57) the HOME scope's CPU readout (bottom right), sampled every CPU_SAMPLE_MS: MENU > CPU's load, the longest half's
- * share (falling CPU_PEAK_FALL a sample), the dropouts since power-on; a new one turns the line into
- * DROP n / load, in REC's colour, for CPU_XRUN_MARK_MS */
+/* (#57) the HOME scope's CPU readout (the footer's line, right, where a page's n/m goes), sampled every
+ * CPU_SAMPLE_MS: MENU > CPU's load, the longest half's share (falling CPU_PEAK_FALL a sample), the dropouts since
+ * power-on; a new one turns the line into DROP n / load, in REC's colour, for CPU_XRUN_MARK_MS */
 static int scope_corner_text_is(const char *want)
 {
     char line[CPU_TEXT];
     cpu_line_text(line);
     return str_eq(line, want);
 }
-static int xrun_marked_on_screen(int32_t band_y) { return px_in(180, band_y + 2, 228, band_y + 17, T_REC); }
+static int32_t foot_top(void) { return (int32_t)foot_y(); }
+static int32_t foot_bottom(void) { return (int32_t)(foot_y() + foot_h()) - 1; }
+static int xrun_marked_in_foot(void) { return px_in(150, foot_top(), 232, foot_bottom(), T_REC); }
 static int test_scope_cpu(void)
 {
-    static uint16_t first[240 * CPU_BAND_H];
-    int32_t band_y;
+    static uint16_t first[240 * H_FOOT];
+    int32_t scope_bottom;
     int ok;
     ui_power_on();
     felucca_dbg.late = 5;                               /* (dropouts of before: not counted) */
     song.cpu_q8 = 108;
     audio_max_us = (HALF_US * 71u + 99u) / 100u;
     press(B_HOME);
-    band_y = (int32_t)(graph_y() + graph_h()) - CPU_BAND_H;
-    memcpy(first, host_screen + band_y * 240, sizeof first);
-    ok = ui.home_scope && scope_corner_text_is("CPU 42/71 %") &&
-         px_in(150, band_y + 2, 228, band_y + 17, T_MID) && !xrun_marked_on_screen(band_y);
+    scope_bottom = (int32_t)(graph_y() + graph_h()) - 20;
+    memcpy(first, host_screen + foot_top() * 240, 240u * foot_h() * 2u);
+    ok = ui.home_scope && scope_corner_text_is("CPU 42/71 %") && px_in(150, foot_top(), 232, foot_bottom(), T_MID) &&
+         !xrun_marked_in_foot() && !px_in(150, scope_bottom + 2, 228, scope_bottom + 17, T_MID);
     song.cpu_q8 = 200;
     frame();
     ok &= scope_corner_text_is("CPU 42/71 %");   /* (until the next sample) */
     frames(CPU_SAMPLE_MS);
-    ok &= scope_corner_text_is("CPU 78/69 %") &&
-          memcmp(first, host_screen + band_y * 240, sizeof first) != 0;
+    ok &= scope_corner_text_is("CPU 78/69 %") && memcmp(first, host_screen + foot_top() * 240, 240u * foot_h() * 2u) != 0;
     felucca_dbg.late += 2;
     frames(CPU_SAMPLE_MS);
-    ok &= scope_corner_text_is("DROP 2 / 78%") && cpu_shown.xrun_marked && xrun_marked_on_screen(band_y);
+    ok &= scope_corner_text_is("DROP 2 / 78%") && cpu_shown.xrun_marked && xrun_marked_in_foot();
     frames(CPU_XRUN_MARK_MS + CPU_SAMPLE_MS);
-    ok &= scope_corner_text_is("CPU 78/51 %") && !cpu_shown.xrun_marked &&
-          !xrun_marked_on_screen(band_y);
+    ok &= scope_corner_text_is("CPU 78/51 %") && !cpu_shown.xrun_marked && !xrun_marked_in_foot();
     song.cpu_q8 = 0;
-    return check("#57 the HOME scope's CPU readout: CPU, its peak falling, DROP n / load inverted for 2 s after a dropout",
-                 ok);
+    return check("#57 the HOME scope's CPU readout, in the footer: CPU, its peak falling, DROP n / load inverted for 2 s "
+                 "after a dropout", ok);
 }
 static int test_blocks(void)
 {
@@ -10114,21 +10114,40 @@ static int test_song_move(void)
     frame();
     ok &= !ui.menu && !ui.home && cur_page()->graph == GR_SONG && msg_is("MOVED 01 TO C");
     bad += check("(#13) SONG: SHIFT + KNOB 1 drags A to C (B C A), said; a SHIFT combo: the map goes, no MENU let go", ok);
+    undo_step(0);
+    ok = undo_is("UNDO T1 MOVE 01") && ent_pat(k, 0) == a && ent_pat(k, 2) == c && lists.cur[k] == 2u;
+    press(B_OCTUP);
+    ok &= undo_is("REDO T1 MOVE 01") && ent_pat(k, 0) == b && ent_pat(k, 2) == a && lists.cur[k] == 1u;
+    bad += check("  the move one undo step (UNDO T1 MOVE 01), OCT+ in the window redoes it", ok);
     btn_down(B_HOME);
     frame();
-    turn(EN_K1, 20);                                 /* A (now on C) past P: REMOVE; back: in at P; past again */
-    ok = a == 0u && msg_is("REMOVE 01") && ent_pat(k, 15) == a && ent_pat(k, 2) == PAT_NONE;
-    turn(EN_K1, -1);
-    ok &= msg_is("MOVE 01 TO P");
-    turn(EN_K1, 1);
+    turn(EN_K1, 20);                                 /* A (now on C) past P: it stops at P */
+    ok = msg_is("MOVE 01 TO P") && ent_pat(k, 15) == a && ent_pat(k, 2) == PAT_NONE;
     btn_up(B_HOME);
     frame();
-    ok &= !ent_on(k, 15) && pool_used(a) && ent_pat(k, 0) == b && ent_pat(k, 1) == c && !ui.menu && !ui.home &&
-          msg_is("T1 01 UNLINKED");
-    turn(EN_K1, -1);
-    ok &= sg.entry == 14u && ent_pat(k, 0) == b;
-    bad += check("  past P: REMOVE (turned back: in at P); let go: A unlinked, 01 still kept; KNOB 1 alone the entry", ok);
-    turn(EN_K1, -15);                                /* B (02) past A, then ALGO to T2 with HOME still held */
+    ok &= msg_is("MOVED 01 TO P") && ent_pat(k, 15) == a && !ui.menu;
+    bad += check("  past P: clamped at P, no REMOVE; let go: moved", ok);
+    btn_down(B_HOME);
+    frame();
+    turn(EN_K1, -20);                                /* back past A: REMOVE, the trash can left of the grid */
+    frame();
+    {
+        int32_t tx = SG_X(0) - SG_W - 2, ty = (int32_t)graph_y() + SG_Y(k) + 2;
+        ok = msg_is("REMOVE 01") && ent_pat(k, 0) == a && lg_px(tx + 1, ty + 1) == T_TEXT &&
+             lg_px(tx + 6, ty + 3) == T_INK && lg_px(tx + 5, ty + 9) == T_INK;
+    }
+    btn_up(B_HOME);
+    frame();
+    ok &= ent_pat(k, 0) == b && ent_pat(k, 1) == c && !ent_on(k, 2) && !ent_on(k, 15) && pool_used(a) && !ui.menu &&
+          !ui.home && msg_is("T1 01 UNLINKED");
+    bad += check("  past A: REMOVE, a trash can out of the grid; let go: A unlinked, no empty cell left, 01 still kept",
+                 ok);
+    undo_step(0);
+    ok = undo_is("UNDO T1 UNLINK 01") && ent_pat(k, 15) == a && ent_pat(k, 0) == b && !ent_on(k, 2);
+    press(B_OCTUP);
+    ok &= undo_is("REDO T1 UNLINK 01") && !ent_on(k, 15) && ent_pat(k, 1) == c;
+    bad += check("  the unlink one undo step (UNDO T1 UNLINK 01, A back at P), redone", ok);
+    turn(EN_K1, -16);                                /* B (02) past A, then ALGO to T2 with HOME still held */
     btn_down(B_HOME);
     frame();
     turn(EN_K1, -1);

@@ -75,6 +75,7 @@ static void song_oct(void);                    /* .. SEQ > SONG's OCT+ OCT- and 
 static void song_back(void);
 static int song_drag(int32_t s);               /* ((#13) .. SHIFT + KNOB 1: the entry dragged) */
 static void song_drag_poll(int shift, int on_song);
+static int song_removing(uint32_t k);           /* ((#13) .. track k's entry dragged past A: REMOVE) */
 static void song_clear(uint32_t e);
 static int song_clear_at(uint32_t k, uint32_t e);
 static uint32_t song_clear_text(uint32_t e, char l[3][32], int *gone);
@@ -1417,8 +1418,16 @@ static int seq_is_empty(const track_t *t)
  * takes the copy too (UNDO_MOT: SAVE held puts the track's motion back, the sound and the steps stay; motion_undo_take).
  * A sound load keeps the track's motion on the parameters every engine has (load_end, motion.c motion_sound_loaded);
  * a pattern load drops it all (the steps it was on are gone) */
-enum { UNDO_SOUND = 1, UNDO_PAT = 2, UNDO_MOT = 4, UNDO_KIT = 8 };   /* (UNDO_KIT, Skiff phase 7: INIT on DRUM-X,
-                                                                     * the project's kit: sound_init) */
+enum { UNDO_SOUND = 1, UNDO_PAT = 2, UNDO_MOT = 4, UNDO_KIT = 8, UNDO_LIST = 16 };   /* (UNDO_KIT, Skiff phase 7: INIT
+                                                    * on DRUM-X, the project's kit: sound_init; (#13) UNDO_LIST: bank.c) */
+/* (#13) a SONG drag of a track's entry (bank.c song_drag_poll): kept as the act, not the list, so that undoing it
+ * remaps the entry each reference names (ent_move) as the drag did. removed: the entry was unlinked, row / snd / scenes
+ * what it took with it (the scenes that named it, a bit each) */
+typedef struct {
+    uint8_t from, to, removed, undone;
+    uint8_t row[2], snd[2];
+    uint16_t scenes;
+} list_act_t;
 typedef struct {
     uint8_t trk;                 /* track + 1, 0 = nothing to undo */
     uint8_t keep;                /* the track is as the last load left it (undo.after): a next load keeps the copy */
@@ -1429,7 +1438,10 @@ typedef struct {
     uint8_t fm6[FP_SIZE + 1u];   /* patch is the track's own, not a factory one */
     dx_lane_t dx[DV_NLANE];      /* (Skiff phase 7, UNDO_KIT) the DRUM-X kit as it was */
     int16_t p[P_COUNT];
-    step_t step[NSTEP];
+    union {
+        step_t step[NSTEP];
+        list_act_t list;         /* UNDO_LIST's whole copy (pid: its pattern + 1, 0 a REST) */
+    };
     motion_store_t motion_backup; /* one track only, swaps with the shared event pool on undo */
     uint8_t pat_empty;           /* (#58) pattern pid was empty in the pool when this copy went there: back, it empties
                                   * it again (bank.c undo_pool_swap) */
@@ -1824,11 +1836,14 @@ static int undo_in_pool(const undo_t *c)          /* (#58) c's pattern part goes
     return (c->what & (UNDO_PAT | UNDO_MOT)) && c->pid != trk_pid[(c->trk - 1u) % NTRK];
 }
 static int undo_pool_swap(undo_t *c);             /* (bank.c) */
+static int undo_list_swap(undo_t *c);
 static int undo_swap(undo_t *c)
 {
     track_t *t = &trk[(c->trk - 1u) % NTRK];
     uint32_t i, own_pattern = c->pid == trk_pid[trk_index(t)];
     motion_store_t current_motion;
+    if (c->what & UNDO_LIST)
+        return undo_list_swap(c);
     if (undo_in_pool(c) && !undo_pool_swap(c))
         return 0;
     if (own_pattern) {                            /* (another's automation is that pattern's: a sound copy leaves it) */
@@ -1901,9 +1916,21 @@ static int undo_swap(undo_t *c)
  * the window again (ui.undo_w: ui_input.c takes OCT- / OCT+ while it is open): the undo box says what and how far back
  * (BLOCKS, ui_take.c), else the header */
 static void pat_num(char *b, uint32_t id);
-/* the undo box's word for copy c: its name; a track's clear with the pattern it was on, "CLEAR PATTERN 05" (b: 20) */
+/* the undo box's word for copy c: its name; a track's clear with the pattern it was on, "CLEAR PATTERN 05"; (#13) a
+ * SONG drag with its entry's, "MOVE 02", "UNLINK REST" (b: 20) */
 static const char *undo_name(const undo_t *c, char *b)
 {
+    uint32_t n;
+    if (c->what & UNDO_LIST) {
+        str_cpy(b, c->name, 20);
+        n = str_len(b);
+        b[n++] = ' ';
+        if (c->pid)
+            pat_num(b + n, c->pid - 1u);
+        else
+            str_cpy(b + n, "REST", 20 - n);
+        return b;
+    }
     if (c->name != UNDO_PAT_CLEAR || !c->pid)
         return c->name;
     str_cpy(b, "CLEAR PATTERN ", 20);

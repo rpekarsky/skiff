@@ -660,6 +660,8 @@ static void draw_foot(void)
         sig += str_hash(0x4C45u, ln);
     }
     sig += ret * 0x2E7B5u;
+    if (scope_cpu_shown())                             /* ((#57) the CPU readout at the right) */
+        sig += cpu_shown_sig();
     if (!ui.force && sig == ui.foot_sig)
         return;
     ui.foot_sig = sig;
@@ -748,6 +750,8 @@ static void draw_foot(void)
         int32_t r = 232, tx, ex, need = text_w(&AF_S, pn), ew = text_w(&AF_S, ename);
         ex = 8 + 16 + 5 + (ew < 80 ? ew : 80);        /* (where the engine's name ends) */
         tx = r - text_w(&AF_S, ti) - (pi != ICON_NONE ? 16 : 0);
+        if (scope_cpu_shown())
+            tx = foot_cpu_readout(r, ly);
         (void)need;
         if (home_lanes() && !ui_hints_off)             /* Skiff BLOCKS on HOME: the lanes name the sounds; the hint */
 #if BOARD_SMK37

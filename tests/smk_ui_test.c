@@ -371,7 +371,17 @@ static int test_pad_taps(void)
     return bad;
 }
 
-static uint32_t rgb_of(uint16_t c565, uint32_t q) { return smk_rgb(c565, q); }
+static uint32_t rgb_of(uint32_t k, uint32_t q) { return smk_trk_rgb(k, q); }
+static uint32_t rgb_max(uint32_t c)
+{
+    uint32_t r = c >> 16, g = (c >> 8) & 255u, b = c & 255u;
+    return r > g ? (r > b ? r : b) : (g > b ? g : b);
+}
+static uint32_t rgb_scaled(uint16_t c565, uint32_t q)   /* the pads' colour before hue-only: each component times q */
+{
+    uint32_t r = (c565 >> 11) * 255u / 31u, g = ((c565 >> 5) & 63u) * 255u / 63u, b = (c565 & 31u) * 255u / 31u;
+    return (r * q >> 8) << 16 | (g * q >> 8) << 8 | (b * q >> 8);
+}
 static int test_pad_colours(void)
 {
     int bad = 0;
@@ -387,10 +397,19 @@ static int test_pad_colours(void)
     t->step[3].time = ST_NOTE;
     t->step[4].time = ST_TIE;
     frame();
-    col = rgb_of(T_TRK(0), SMK_PAD_FULL);
+    col = rgb_of(0, SMK_PAD_FULL);
     bad += check("SMK pad colours: a step the track's colour, empty faint, a tie half, past LEN dark",
-                 host_pad[3] == col && host_pad[0] == SMK_PAD_FAINT && host_pad[4] == rgb_of(T_TRK(0), SMK_PAD_FULL / 2u) &&
+                 host_pad[3] == col && host_pad[0] == SMK_PAD_FAINT && host_pad[4] == rgb_of(0, SMK_PAD_FULL / 2u) &&
                  host_pad[12] == 0u);
+    bad += check("SMK pad colours: SKIFF's T1 (a full component) as before", col == rgb_scaled(T_TRK(0), SMK_PAD_FULL));
+    palette_set(UI_LCD_INDEX);
+    frame();
+    bad += check("SMK pad colours, LCD (grey ink): a lit pad bright, the track's SKIFF hue, each track its own",
+                 host_pad[3] == rgb_of(0, SMK_PAD_FULL) && rgb_max(host_pad[3]) == 255u * SMK_PAD_FULL >> 8 &&
+                 rgb_max(rgb_of(1, SMK_PAD_FULL)) == 255u * SMK_PAD_FULL >> 8 && rgb_of(1, SMK_PAD_FULL) != host_pad[3] &&
+                 host_pad[0] == SMK_PAD_FAINT);
+    palette_set(UI_SKIFF_INDEX);
+    frame();
     song.playing = 1;
     t->seq_idx = 3;
     frame();
@@ -438,11 +457,11 @@ static int test_perf_breath(void)
     sel_set(0);
     peak = breath_peak(LAYER_PERF, &floor_top);
     bad += check("(#43) [ARP] PERFORM: a pattern to launch breathes up to half a lit pad, in the track's hue",
-                 peak == rgb_of(T_TRK(0), SMK_PAD_FULL / 2u));
+                 peak == rgb_of(0, SMK_PAD_FULL / 2u));
     bad += check("(#43) [ARP] PERFORM: it still breathes (its darkest well under its peak)",
                  floor_top * 4u < top_channel(peak));
     peak = breath_peak(LAYER_SCL, &floor_top);
-    bad += check("(#43) another layer's breathing keys: up to a lit pad, as before", peak == rgb_of(T_TRK(0), SMK_PAD_FULL));
+    bad += check("(#43) another layer's breathing keys: up to a lit pad, as before", peak == rgb_of(0, SMK_PAD_FULL));
     return bad;
 }
 /* (wishlist #5) MENU > DISPLAY > PAD LIGHT: 100 % the pads as they were; dimmer, lit dims most, an empty step stays
@@ -451,7 +470,7 @@ static int test_pad_light(void)
 {
     int bad = 0, ok = 1;
     track_t *t;
-    uint32_t i, full[3], lit = 0xFFFu, tie = 0, faint = 0, col = rgb_of(T_TRK(0), SMK_PAD_FULL);
+    uint32_t i, full[3], lit = 0xFFFu, tie = 0, faint = 0, col = rgb_of(0, SMK_PAD_FULL);
     smk_power_on();
     sel_set(0);
     t = TSEL;
@@ -575,16 +594,18 @@ static int test_pad_follow(void)
     bad += check("SMK PAD FOLLOW ROW FWD: the playhead's 8 on top, the next 8 below, the first after the last",
                  rows_are(SMK_PF_ROW, 5, 32, DIR_FWD, 0, 0, 8) && rows_are(SMK_PF_ROW, 13, 32, DIR_FWD, 0, 8, 16) &&
                  rows_are(SMK_PF_ROW, 31, 32, DIR_FWD, 0, 24, 0) && rows_are(SMK_PF_ROW, 17, 20, DIR_FWD, 0, 16, 0) &&
-                 rows_are(SMK_PF_ROW, 9, 12, DIR_FWD, 0, 8, 0) && rows_are(SMK_PF_ROW, 2, 12, DIR_FWD, 0, 0, 8));
+                 rows_are(SMK_PF_ROW, 9, 24, DIR_FWD, 0, 8, 16) && rows_are(SMK_PF_ROW, 17, 24, DIR_FWD, 0, 16, 0));
     bad += check("SMK PAD FOLLOW ROW REV: the row before below, the last after the first",
                  rows_are(SMK_PF_ROW, 13, 32, DIR_REV, 0, 8, 0) && rows_are(SMK_PF_ROW, 3, 32, DIR_REV, 0, 0, 24) &&
                  rows_are(SMK_PF_ROW, 3, 20, DIR_REV, 0, 0, 16));
     bad += check("SMK PAD FOLLOW ROW PING: the way it goes, back at either end",
                  rows_are(SMK_PF_ROW, 13, 32, DIR_PING, 0, 8, 16) && rows_are(SMK_PF_ROW, 29, 32, DIR_PING, 0, 24, 16) &&
                  rows_are(SMK_PF_ROW, 13, 32, DIR_PING, 1, 8, 0) && rows_are(SMK_PF_ROW, 3, 32, DIR_PING, 1, 0, 8));
-    bad += check("SMK PAD FOLLOW ROW RAND: as FWD; one row: the bottom dark",
-                 rows_are(SMK_PF_ROW, 29, 32, DIR_RAND, 0, 24, 0) && rows_are(SMK_PF_ROW, 3, 8, DIR_FWD, 0, 0, SMK_PF_NONE) &&
-                 rows_are(SMK_PF_ROW, 3, 5, DIR_REV, 0, 0, SMK_PF_NONE));
+    bad += check("SMK PAD FOLLOW ROW RAND: as FWD", rows_are(SMK_PF_ROW, 29, 32, DIR_RAND, 0, 24, 0));
+    bad += check("SMK PAD FOLLOW ROW, LEN 16 or less: as PAGE, steps 1..16 stay put (LEN 24 still rows)",
+                 rows_are(SMK_PF_ROW, 13, 16, DIR_FWD, 0, 0, 8) && rows_are(SMK_PF_ROW, 13, 16, DIR_PING, 1, 0, 8) &&
+                 rows_are(SMK_PF_ROW, 3, 8, DIR_FWD, 0, 0, 8) && rows_are(SMK_PF_ROW, 3, 5, DIR_REV, 0, 0, 8) &&
+                 rows_are(SMK_PF_ROW, 13, 24, DIR_FWD, 0, 8, 16));
 
     bad += check("SMK MENU > PAD FOLLOW: a DISPLAY row after PAD LIGHT (ten with POPUP TIME, CLOSE), OFF PAGE ROW, PAGE by default",
                  MI_TAB[MI_PADF] == MTAB_DISPLAY && MI_PADF == MI_PADL + 1u && mtab_rows(MTAB_DISPLAY) == 10u &&
@@ -599,7 +620,7 @@ static int test_pad_follow(void)
         t->step[i].note[0] = 60;
         t->step[i].time = ST_NOTE;
     }
-    col = rgb_of(T_TRK(0), SMK_PAD_FULL);
+    col = rgb_of(0, SMK_PAD_FULL);
     song.playing = 1;
     t->seq_idx = 17;
     menu_put(MI_PADF, SMK_PF_OFF);
