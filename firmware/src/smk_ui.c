@@ -30,10 +30,27 @@ static int smk_pads_keys(void)                     /* 1: the pads are the white 
 #define SMK_PAD_FAINT 0x0A0A0Au                     /* an empty step */
 #define SMK_PAD_PERF_OPTION (SMK_PAD_FULL / 2u)     /* (#43) [ARP] PERFORM's other patterns breathe up to half a lit
                                                      * pad: at full they read as the one playing */
-static uint32_t smk_rgb(uint16_t c565, uint32_t q)  /* a screen colour as a pad's 0xRRGGBB, q /256 of full */
+/* (PO 31.10) a pad takes only the hue from the theme's track colour, the brightness from the logic: the colour scaled so
+ * its brightest component is q /256 of full. A near-grey track colour (LCD's ink) has no hue to give: the track's SKIFF
+ * colour instead, so the tracks stay apart */
+#define SMK_PAD_GREY 32u                            /* a colour's components this close: grey */
+static uint32_t smk_rgb(uint16_t c565, uint32_t q)  /* a screen colour as a pad's 0xRRGGBB */
 {
     uint32_t r = (c565 >> 11) * 255u / 31u, g = ((c565 >> 5) & 63u) * 255u / 63u, b = (c565 & 31u) * 255u / 31u;
-    return (r * q >> 8) << 16 | (g * q >> 8) << 8 | (b * q >> 8);
+    uint32_t hi = r > g ? (r > b ? r : b) : (g > b ? g : b), scale;
+    if (!hi)
+        return 0;
+    scale = (q * 255u + hi - 1u) / hi;              /* (rounded up: a full component scales by q exactly, as before) */
+    return (r * scale >> 8) << 16 | (g * scale >> 8) << 8 | (b * scale >> 8);
+}
+static uint32_t smk_trk_rgb(uint32_t k, uint32_t q)
+{
+    uint16_t c = T_TRK(k);
+    uint32_t r = c >> 11 << 1, g = (c >> 5) & 63u, b = (c & 31u) << 1;
+    uint32_t hi = r > g ? (r > b ? r : b) : (g > b ? g : b), lo = r < g ? (r < b ? r : b) : (g < b ? g : b);
+    if ((hi - lo) * 4u < SMK_PAD_GREY)                /* (6-bit components here: 255 / 63 ~ 4) */
+        c = UI_TRACKS[UI_SKIFF_INDEX][k % UI_NTRK];
+    return smk_rgb(c, q);
 }
 static uint32_t smk_mixw(uint32_t c, uint32_t t)   /* c toward the pads' white by t /256 */
 {
@@ -118,7 +135,7 @@ static uint32_t smk_pad_step(uint32_t p) { return (uint32_t)smk_pf_row[p >> 3 & 
 static void smk_pads_steps(void)
 {
     const track_t *t = TSEL;
-    uint32_t p, len = (uint32_t)t->p[P_SLEN], col = smk_rgb(T_TRK(song.sel), SMK_PAD_FULL);
+    uint32_t p, len = (uint32_t)t->p[P_SLEN], col = smk_trk_rgb(song.sel, SMK_PAD_FULL);
     uint32_t mode = smk_pad_steps ? smk_pf_mode() : SMK_PF_OFF;
     uint32_t ph = song.playing && t->seq_idx < len ? t->seq_idx : SMK_PF_NONE;
     int edit = !ui.home && !ui.menu && step_page(cur_page()->graph), drum = drum_track(t);
@@ -134,7 +151,7 @@ static void smk_pads_steps(void)
         if (drum)
             c = (step_lanes(st) >> ui.lane) & 1u ? col : SMK_PAD_FAINT;
         else
-            c = step_on(st) ? col : step_tie(st) ? smk_rgb(T_TRK(song.sel), SMK_PAD_FULL / 2u) : SMK_PAD_FAINT;
+            c = step_on(st) ? col : step_tie(st) ? smk_trk_rgb(song.sel, SMK_PAD_FULL / 2u) : SMK_PAD_FAINT;
         if (edit && i >= sel_lo() && i <= sel_hi() && !song.playing)   /* ((2.0) the selection's range) */
             c = SMK_PAD_WHITE << 16 | SMK_PAD_WHITE << 8 | SMK_PAD_WHITE;
         if (i == ph)
@@ -148,8 +165,8 @@ static void smk_pads_steps(void)
  * the steps */
 static void smk_pads_out(const uint8_t *nl, const uint8_t *nd, const uint8_t *nb, const uint8_t *nm)
 {
-    uint32_t w, k, col = smk_rgb(T_TRK(song.sel), SMK_PAD_FULL);
-    uint32_t option_col = ui.layer == LAYER_PERF ? smk_rgb(T_TRK(song.sel), SMK_PAD_PERF_OPTION) : col;
+    uint32_t w, k, col = smk_trk_rgb(song.sel, SMK_PAD_FULL);
+    uint32_t option_col = ui.layer == LAYER_PERF ? smk_trk_rgb(song.sel, SMK_PAD_PERF_OPTION) : col;
     if (!smk_pads_keys() || grid_on()) {
         smk_pads_steps();
         return;
@@ -159,7 +176,7 @@ static void smk_pads_out(const uint8_t *nl, const uint8_t *nd, const uint8_t *nb
         if (key_black(k))
             continue;
         c = (nl[q >> 3] & b) ? col : (nb[q >> 3] & b) ? smk_breath(option_col) :
-            (nm[q >> 3] & b) ? smk_rgb(T_TRK(song.sel), SMK_PAD_FULL / 3u) : (nd[q >> 3] & b) ? SMK_PAD_FAINT : 0u;
+            (nm[q >> 3] & b) ? smk_trk_rgb(song.sel, SMK_PAD_FULL / 3u) : (nd[q >> 3] & b) ? SMK_PAD_FAINT : 0u;
         smk_pad_put(w++, c);
     }
 }

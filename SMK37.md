@@ -147,7 +147,9 @@ loader 7,859 B (the limit: 7,936 B, below).
   Elsewhere they are the selected track's 16 steps of the page shown. A tap sets an empty step to the last note
   played, at the pad's velocity, or clears a set one; on a DRUM track it toggles the selected lane's hit. A run of
   taps is one undo (`PAD STEPS`). The colours follow the screen's step tiles: an empty step faint white, a step in the
-  track's colour, a tie at half, the edited step white. A pad has one LED, so the playing step can't get the
+  track's colour, a tie at half, the edited step white. A pad takes only the hue of the theme's track colour, its
+  brightness is the pad's own (a dark or pale theme still lights the pads fully); a theme whose tracks are grey (LCD,
+  LCD NIGHT) lights them in the SKIFF colours. A pad has one LED, so the playing step can't get the
   mockup's ring: it shows half way to white instead. MENU > DISPLAY > PAD LIGHT dims every pad colour to 75, 50 or
   25 % (lit steps dim most, an empty step stays visible). MENU > DISPLAY > PAD FOLLOW sets
   which steps they show while playing: PAGE (the default) the 16 the playhead is in; OFF the screen's page; ROW the
