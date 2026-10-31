@@ -535,6 +535,7 @@ const PAL_BUILTIN = [
   ["AMBER", 0xfeac, 0xf60a, 0x28a0, 0x59a1, 0x28a0, 0x59a1, 0x59a1, 0x59a1, 0x59a1, 0x59a1, 0x59a1],
   ["BLUE-STN", 0x110b, 0x196e, 0xef7f, 0x955e, 0xffdf, 0x955e, 0x955e, 0x955e, 0x955e, 0x955e, 0x955e],
   ["LCD GRAIN", 0xd73e, 0xd73e, 0x10ea, 0x10ea, 0x10ea, 0x10ea, 0x10ea, 0x10ea, 0x10ea, 0x10ea, 0x10ea],
+  ["LCD GREEN", 0xb5d4, 0xb5d4, 0x1903, 0x1903, 0x1903, 0x1903, 0x1903, 0x1903, 0x1903, 0x1903, 0x1903],
 ].map(([name, ...c]) => ({ name, c }));
 const rgb8 = (c) => [(c >> 11) * 255 / 31 | 0, ((c >> 5) & 63) * 255 / 63 | 0, (c & 31) * 255 / 31 | 0];   /* (as the generator's) */
 const hex565 = (c) => "#" + rgb8(c).map((x) => x.toString(16).padStart(2, "0")).join("");
@@ -5950,16 +5951,18 @@ function applyCustom(c) {
 function renderPreferences(force = false) {
   const d = dev, p = d && d.preferences;
   const LOOK = { SKIFF: "dark", "HI-CON": "dark", PAPER: "light", CRYPT: "crypt", NEON: "neon", QUARK: "quark", LCD: "h1n",
-    "LCD NIGHT": "h1n", GAMEBOY: "light", AMBER: "light", "BLUE-STN": "dark", "LCD GRAIN": "h1n" };   /* (Skiff 1.0) */
+    "LCD NIGHT": "h1n", GAMEBOY: "light", AMBER: "light", "BLUE-STN": "dark", "LCD GRAIN": "h1n",
+    "LCD GREEN": "h1n" };   /* (Skiff 1.0) */
   const cu = p && p.palettes[p.state.palette] === "CUSTOM" && p.colors && p.colors.stored ? p.colors : null;
-  /* (#29) LCD NIGHT wears LCD's look in its own colours, as CUSTOM over LCD does */
-  const night = !cu && p && p.palettes[p.state.palette] === "LCD NIGHT" ? PAL_BUILTIN.find((b) => b.name === "LCD NIGHT") : null;
+  /* (#29) LCD NIGHT, (#66) LCD GREEN wear LCD's look in their own colours, as CUSTOM over LCD does */
+  const themeName = p && p.palettes[p.state.palette];
+  const ownLcd = !cu && (themeName === "LCD NIGHT" || themeName === "LCD GREEN") ? PAL_BUILTIN.find((b) => b.name === themeName) : null;
   const lk = cu && LOOK[(PAL_BUILTIN[cu.look] || {}).name];
   const look = !p ? null : cu ? (["crypt", "neon", "quark", "h1n"].includes(lk) ? lk : luma565(cu.c[0]) > 128 ? "light" : "dark") :
     LOOK[p.palettes[p.state.palette]];                                                     /* unit's THEME; none: the system's */
   if (look) document.documentElement.dataset.theme = look;
   else delete document.documentElement.dataset.theme;
-  applyCustom(cu ? cu.c : night ? night.c : null);
+  applyCustom(cu ? cu.c : ownLcd ? ownLcd.c : null);
   $("device-display").hidden = !p || !(p.state.caps & 7);
   $("device-presets").hidden = !p || !(p.state.caps & 8);
   if (!p) { renderPreferences.sig = null; return; }
