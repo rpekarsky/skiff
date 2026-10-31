@@ -478,7 +478,10 @@ by the keys, with what each key is in Skiff.
   dropout (a click) the line turns red and reads **DROP 3 / 89%** (dropouts since power-on, the load); the figures change
   4 times a second
 - **The header**, on every page: for 2 s after a dropout it says **AUDIO DROP** in red at the right (over a message said
-  before it, not over a newer one or a dialog)
+  before it, not over a newer one or a dialog). When the pattern memory is over half full, a small two-row meter sits
+  before the battery: the top row the pattern numbers taken (of 64), the bottom row's six segments the patterns changed
+  while playing that wait for STOP to be saved (all six taken: PATTERNS FULL / STOP TO SAVE). A row turns red near full
+  (58 numbers, 5 waiting)
 - Hold FX, GLO, SEL, EDIT, ARP or SEQ for its layer; **SHIFT + the button** (or the button held, then HOME) keeps it open (the header says
   LOCKED), the button closes it. A locked FX layer latches its effects
 - **SAVE** tapped: its pages (PRESETS, USER, PATTERNS, PROJECT); **held**: undo. **SHIFT + SAVE**: TAKE

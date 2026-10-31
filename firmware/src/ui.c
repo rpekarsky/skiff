@@ -58,6 +58,8 @@ static uint32_t pool_alloc(void);
 static uint32_t pool_alloc_after(uint32_t orig);   /* ((2.0, #34) a copy's number: bank.c) */
 static uint32_t pool_alloc_beside(uint32_t k, uint32_t e);   /* ((#14) NEW's) */
 static int pool_free(uint32_t id);
+static uint32_t pool_taken(void);                /* ((#62) the header's memory meter: bank.c) */
+static uint32_t pend_taken(void);
 static uint32_t bank_cur(uint32_t k);
 static uint32_t bank_gen(void);
 static void entry_ui(uint32_t e);

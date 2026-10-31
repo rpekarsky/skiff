@@ -63,6 +63,7 @@ static void draw_head_blocks(void)
     int32_t x, lx;
     uint16_t ic;
     int mark = head_mark(mk);                        /* ((Skiff phase 5) SONG ON, the pattern edited) */
+    mem_fill_t mem = mem_fill();
     project_cur_name(pn);                            /* (HOME's title) */
     if (song.playing) {                              /* (in time: REV, PING, RAND count up too) */
         fmt_int(pos, (int32_t)(seq_at(t) / 16u) + 1);
@@ -81,7 +82,8 @@ static void draw_head_blocks(void)
           (uint32_t)(song.octave + 8) * 11u +
           (uint32_t)batt_shown() * 7777u + 0xB10C5u +
           str_hash(9u + (uint32_t)ui.home, ui.shift ? "SHIFT" : ui.home ? pn : page_head()) +   /* (the title) */
-          (mark ? str_hash(3u + song.sel, mk) : 0u) + project_mark() * 104729u + (uint32_t)drop * 0xD809u;
+          (mark ? str_hash(3u + song.sel, mk) : 0u) + project_mark() * 104729u + (uint32_t)drop * 0xD809u +
+          mem_meter_sig(mem);
     ui.roll_bpm = song.g[G_BPM];                      /* (no rolling digits: none left to finish in another style) */
     ui.roll[ROLL_BPM].from[0] = 0;
     if (!ui.force && sig == ui.head_sig)
@@ -143,12 +145,19 @@ static void draw_head_blocks(void)
     } else {                                           /* the page's title at the right, as the mockup's (HOME: the */
         int32_t r = HEAD_BAT_X - 4;                     /* project's name); the battery after it, at every level (#5), */
         char h[16];                                     /* the octave or the song row before it while they matter */
+        int32_t letter_box_w = project_mark() ? 14 + 8 : 0;
         draw_battery(HEAD_BAT_X);
+        if (mem_meter_shown(mem)) {
+            r -= MEM_W;
+            draw_mem_meter(r, mem);
+            r -= 6;
+        }
         str_cpy(h, ui.shift ? "SHIFT" : ui.home ? pn : page_head(), sizeof h);   /* ((U5) SHIFT's map) */
         x = r;
         if (h[0]) {
             GFX_HOOK_ALIGN(0, 0, 0, H_HEAD, AL_V, "header text on its middle");
-            x = cv_text_r(r, HEAD_SY, &AF_S, h, T_MID, T_BG) - 8;
+            x = cv_free_text_r(r, HEAD_SY, &AF_S, h, T_MID, T_BG, r - (lx + 8) - letter_box_w) - 8;   /* ((#62) a long
+                                                        * name before the memory meter: ellipsised, clear of the BPM) */
         }
         if ((id = project_mark()) != 0u) {            /* ((Skiff U3, A2) the project: its letter in a box before the
                                                         * title, a dot on its corner while it changed since saved or

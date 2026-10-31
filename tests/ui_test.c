@@ -9391,6 +9391,47 @@ static int test_head_drop(void)
     return check("#62 AUDIO DROP in the header on a page not HOME, gone 2 s on; over an older message, not a newer one, "
                  "not over a dialog", ok);
 }
+/* (#62) the pattern memory's meter before the header's battery: shown over half the pool's ids or half the waiting
+ * slots taken, a row REC from 90 % of the ids / 5 of 6 slots */
+static void mem_fill_as(uint32_t ids, uint32_t waiting)
+{
+    uint32_t id, i;
+    for (id = 0; id < NPAT; id++)
+        bk.len[id] = (uint8_t)(id < ids ? 16u : 0u);
+    for (i = 0; i < PEND_N; i++)
+        pend_id[i] = (uint8_t)(i < waiting ? i : PAT_NONE);
+    frame();
+}
+static int32_t mem_x(void) { return HEAD_BAT_X - 4 - MEM_W; }
+static int mem_pool_row_is(uint16_t c) { return px_in(mem_x(), 8, mem_x() + MEM_W - 1, 10, c); }
+static int mem_wait_row_is(uint16_t c) { return px_in(mem_x(), 13, mem_x() + MEM_W - 1, 15, c); }
+static int mem_meter_drawn(void) { return mem_pool_row_is(T_LINE) || mem_pool_row_is(T_MID) || mem_pool_row_is(T_REC); }
+static int test_mem_meter(void)
+{
+    int ok;
+    ui_power_on();
+    settings.palette = UI_SKIFF_INDEX; palette_set(UI_SKIFF_INDEX);
+    ui.force = 1; frame();
+    mem_fill_as(NPAT / 2u, PEND_N / 2u);
+    ok = ui.home && !mem_meter_shown(mem_fill()) && !mem_meter_drawn();
+    mem_fill_as(NPAT / 2u + 1u, 0);
+    ok &= mem_meter_shown(mem_fill()) && mem_pool_row_is(T_MID) && !mem_pool_row_is(T_REC) &&
+          mem_wait_row_is(T_LINE) && !mem_wait_row_is(T_MID);
+    mem_fill_as(57, 0);
+    ok &= mem_pool_row_is(T_MID) && !mem_pool_row_is(T_REC);
+    mem_fill_as(58, 0);
+    ok &= mem_pool_row_is(T_REC) && !mem_wait_row_is(T_REC);
+    mem_fill_as(10, PEND_N / 2u + 1u);
+    ok &= mem_fill().ids == 10u && mem_fill().waiting == 4u && mem_wait_row_is(T_MID) && !mem_wait_row_is(T_REC) &&
+          mem_pool_row_is(T_MID) && !mem_pool_row_is(T_REC);
+    mem_fill_as(10, PEND_N - 1u);
+    ok &= mem_wait_row_is(T_REC) && mem_wait_row_is(T_LINE) && !mem_pool_row_is(T_REC);
+    mem_fill_as(0, PEND_N);
+    ok &= mem_fill().ids == PEND_N && mem_wait_row_is(T_REC) && !mem_wait_row_is(T_LINE);
+    ui_power_on();
+    return check("#62 the header's pattern memory meter: over half the pool or half the waiting slots, REC from 58 of "
+                 "64 ids / 5 of 6 slots", ok);
+}
 static int test_blocks(void)
 {
     int bad = 0, ok;
@@ -10797,6 +10838,7 @@ int main(void)
     bad += test_home_names();
     bad += test_scope_cpu();
     bad += test_head_drop();
+    bad += test_mem_meter();
     bad += test_scope_master();
     bad += test_scope_track();
     bad += test_home_meters();

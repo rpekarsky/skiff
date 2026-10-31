@@ -61,7 +61,6 @@ static uint8_t bk_rec[BK_REC] __attribute__((section(".pool")));   /* a track's 
 /* (phase 5) keeping edits: a pattern changed while playing waits here for the next quiet stop (pat_flush_one), and every
  * read of it sees this copy first. PEND_N records, each its pool id (PAT_NONE: the slot free); a record all 0: the
  * pattern is to be emptied */
-#define PEND_N NTRK                                /* (one a track: every track can have one staged, stage_entry) */
 static uint8_t pend_id[PEND_N] __attribute__((section(".pool")));   /* (.pool: not among the globals the audio ISR reaches) */
 static uint8_t pend_rec[PEND_N][BK_REC] __attribute__((section(".pool")));
 /* each track's pattern as it came in or was last kept (a hash of it packed): a copy unchanged since is not kept, so
@@ -380,10 +379,18 @@ static int pat_keep_now(uint32_t id, const uint8_t *r)
 {
     return pat_keep_rec(id, r) && (transport_busy() || pat_flush_one() || pat_keep_rec(id, r));
 }
+static uint32_t pend_taken(void) { return PEND_N - pend_free(); }   /* ((#62) the header's memory meter) */
 /* the autosave's round may wait for its gap (project.c): 0 nothing waiting, 1 some, 2 no slot free (not to wait) */
 static uint32_t keep_waiting(void) { return pend_free() == PEND_N ? 0u : pend_free() ? 1u : 2u; }
 /* an empty id, none waiting either */
 static int pool_free(uint32_t id) { return !pool_used(id) && pend_at(id) == PEND_N; }
+static uint32_t pool_taken(void)                   /* ((#62) the header's memory meter) */
+{
+    uint32_t id, n = 0;
+    for (id = 0; id < BK_POOL; id++)
+        n += !pool_free(id);
+    return n;
+}
 /* the first free id; NPAT: the pool full */
 static uint32_t pool_alloc(void)
 {

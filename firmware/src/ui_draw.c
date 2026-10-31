@@ -199,6 +199,29 @@ static void head_group(int32_t r, int32_t lim)
         cv_text(r - nw, HEAD_MY, &AF_M, b, T_THEME);
     }
 }
+/* (#62) the pattern memory's meter before the battery, once the pool's ids (NPAT) or the waiting slots (PEND_N: none
+ * free is PATTERNS FULL / STOP TO SAVE while playing) are over half taken: the pool the top row, the slots the bottom
+ * row's segments; a row near full in REC's colour */
+#define MEM_SEG 2                                      /* a waiting slot's segment, 1 px between two */
+#define MEM_W (PEND_N * (MEM_SEG + 1) - 1)
+#define MEM_ROW_H 3
+#define MEM_ROW_GAP 2
+typedef struct { uint32_t ids, waiting; } mem_fill_t;
+static mem_fill_t mem_fill(void) { return (mem_fill_t){pool_taken(), pend_taken()}; }
+static int mem_pool_near_full(mem_fill_t m) { return m.ids * 10u >= NPAT * 9u; }
+static int mem_wait_near_full(mem_fill_t m) { return m.waiting + 1u >= PEND_N; }
+static int mem_meter_shown(mem_fill_t m) { return m.ids * 2u > NPAT || m.waiting * 2u > PEND_N; }
+static uint32_t mem_meter_sig(mem_fill_t m) { return mem_meter_shown(m) ? m.ids * 257u + m.waiting * 65537u + 1u : 0u; }
+static void draw_mem_meter(int32_t x, mem_fill_t m)
+{
+    int32_t y = (H_HEAD - 2 * MEM_ROW_H - MEM_ROW_GAP) / 2, wait_y = y + MEM_ROW_H + MEM_ROW_GAP;
+    uint32_t s;
+    cv_rect(x, y, MEM_W, MEM_ROW_H, T_LINE);
+    cv_rect(x, y, (int32_t)(m.ids * MEM_W / NPAT), MEM_ROW_H, mem_pool_near_full(m) ? T_REC : T_MID);
+    for (s = 0; s < PEND_N; s++)
+        cv_rect(x + (int32_t)s * (MEM_SEG + 1), wait_y, MEM_SEG, MEM_ROW_H,
+                s >= m.waiting ? T_LINE : mem_wait_near_full(m) ? T_REC : T_MID);
+}
 /* (Skiff 1.3, from Felucca 1.6.1 #251) MENU > LARGE: a tall card sets its value in one face over everything its knob
  * can show (L where every value fits L, else M, else S: tall_face), so turning it never changes the value's size.
  * BLOCKS' tiles keep a face per value (the user's pick: most of their knobs would lose the big V face). card_span (what the knob shows: fn's text and unit of each value lo..hi)
