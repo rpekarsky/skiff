@@ -1723,7 +1723,7 @@ static int test_menu_tabs(void)
     bad += check("MENU tabs: DISPLAY CONTROL AUDIO SYSTEM MIDI ((1.3) MIDI appended), rows in a run, 6 shown fit the page; "
                  "tab gaps constant (S, LARGE)",
                  ok && MTAB_COUNT == 5u && str_eq(MTAB_NAME[0], "DISPLAY") && str_eq(MTAB_NAME[MTAB_MIDI], "MIDI") &&
-                 mtab_rows(MTAB_DISPLAY) == 9u && mtab_rows(MTAB_CONTROL) == 8u && mtab_rows(MTAB_AUDIO) == 7u &&   /* (#27, POPUP TIME, CLOSE; (2.0) RETURN; PRESETS KNOB; #32; #53) */
+                 mtab_rows(MTAB_DISPLAY) == 9u && mtab_rows(MTAB_CONTROL) == 8u && mtab_rows(MTAB_AUDIO) == 6u &&   /* (#27, POPUP TIME, CLOSE; (2.0) RETURN; PRESETS KNOB; #53) */
                  mtab_rows(MTAB_SYSTEM) == 6u + FELUCCA_CDC && mtab_rows(MTAB_MIDI) == 10u);   /* ((Skiff) SYSTEM: CPU
                                                          * CLOCK; (Skiff 2.0) USB SERIAL with the console only) */
 
@@ -7309,12 +7309,15 @@ static int test_click_menu(void)
     turn(EN_PRESET, 1); ok &= ui.menu_sel == MI_COUNTIN;
     turn(EN_K4, 1); ok &= cin_bars == 1u;
     turn(EN_K4, 1); ok &= cin_bars == 2u;
-    turn(EN_PRESET, 1); ok &= ui.menu_sel == MI_TUNE;     /* ((U3) TUNE) */
-    turn(EN_PRESET, 1); ok &= ui.menu_sel == MI_MSTART;   /* ((Skiff #32) MASTER START, AUDIO's last) */
+    turn(EN_PRESET, 1); ok &= ui.menu_sel == MI_TUNE;     /* ((U3) TUNE, AUDIO's last: (#62) no MASTER START, the
+                                                         * FM-1's MASTER is a pot) */
     turn(EN_PRESET, 1); ok &= ui.menu_sel == MI_LOWCUT;   /* (wraps within AUDIO) */
     press(B_HOME);
     ok &= !ui.menu;
-    bad += check("MENU > AUDIO: PRESETS to CLICK, CLICK LEVEL, COUNT-IN; knobs / OCT step them, applied at once", ok);
+    for (i = 0; i < MI_COUNT; i++)
+        ok &= !str_eq(MI_NAME[i], "MASTER START");
+    bad += check("MENU > AUDIO: PRESETS to CLICK, CLICK LEVEL, COUNT-IN, TUNE (no MASTER START on the FM-1); knobs / OCT "
+                 "step them, applied at once", ok);
     {
         sks_t p;
         persist_t q;                                    /* ((2.0) a record of before: PER3) */
@@ -8498,8 +8501,7 @@ static int test_u4(void)
     menu_put(MI_CLK, 1);
     ok &= CLK320_SET;
     menu_put(MI_PKNOB, 1);
-    menu_put(MI_MSTART, 1);
-    ok &= PRESETS_PAN_SET && MASTER_SAFE_SET;
+    ok &= PRESETS_PAN_SET;
     menu_put(MI_COLOR, UI_LCD_NIGHT_INDEX);
     SHARED_BYTE = REC_KNOBS_OFF;
     menu_put(MI_POPUP, 12);
@@ -8515,9 +8517,9 @@ static int test_u4(void)
     press(B_OCTUP);
     bad += check("U4 A3: HINTS OFF hides the layer's first-tap hint; RESET SETTINGS asks, then the MENU's defaults (TUNE 0, LEDS DIM HI, HINTS ON, "
                  "(Skiff) CPU CLOCK 360 MHZ, (wishlist #38) PRESETS KNOB PRESETS, (#29) THEME SKIFF, (#23) REC KNOBS ON, "
-                 "(#32) MASTER START LAST, (#27) POPUP TIME DEFAULT, POPUP CLOSE TIMER)",
+                 "(#27) POPUP TIME DEFAULT, POPUP CLOSE TIMER)",
                  ok && !ui_hints_off && song.g[G_TUNE] == 0 && settings_leds == LEDS_DIM && !CLK320_SET && msg_is("SETTINGS RESET") &&
-                 !PRESETS_PAN_SET && menu_get(MI_COLOR) == UI_SKIFF_INDEX && SHARED_BYTE == 0u && !MASTER_SAFE_SET &&
+                 !PRESETS_PAN_SET && menu_get(MI_COLOR) == UI_SKIFF_INDEX && SHARED_BYTE == 0u &&
                  !popup_time() && !ui.popup_on_input);
     ui_power_on();
     return bad;

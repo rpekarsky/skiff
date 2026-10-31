@@ -400,6 +400,7 @@ static void smk_master_poll(void)                    /* K1: its level said while
     }
 }
 
+#define MASTER_SAFE_POT 205u                         /* (MENU > AUDIO > MASTER START SAFE) K1's 20 % */
 /* power-on, the settings read (persist_boot), before master_boot: MASTER where it was left */
 static void smk_ui_boot(void)
 {

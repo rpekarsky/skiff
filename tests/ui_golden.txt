@@ -140,7 +140,7 @@ ae076c0bbebae158 AMBER_lfo
 59aae4cea4c29d67 AMBER_lfo_2
 59ea61d33df87334 AMBER_lfo_run
 59b9f705491457de AMBER_menu
-cd689df88bb8e9e5 AMBER_menu_audio
+bca8493de8dc3de9 AMBER_menu_audio
 ef7b5964e2ca6642 AMBER_menu_end
 80f488726c933739 AMBER_menu_hold
 5aeffe1f1609330f AMBER_menu_leds
@@ -149,7 +149,7 @@ ef7b5964e2ca6642 AMBER_menu_end
 3e27e2544227d19b AMBER_menu_popup
 931f6cae8abcda6c AMBER_menu_presets_knob
 a7e615a4d06a96c9 AMBER_menu_slide
-ae883d3a04541f09 AMBER_menu_speaker
+d9c52a515de8a195 AMBER_menu_speaker
 43c90a7077fb35c9 AMBER_menu_system
 bacee2cbf922623d AMBER_message
 583c80a0594e16ca AMBER_message_key
@@ -404,7 +404,7 @@ e0feaed2739cd090 BLUE-STN_learn
 0eb012fa05fae54e BLUE-STN_lfo_2
 498a161c7947d2a3 BLUE-STN_lfo_run
 933e592e37c462ab BLUE-STN_menu
-353cc0d9a8f3325a BLUE-STN_menu_audio
+77e2b1dfd7d661be BLUE-STN_menu_audio
 438bb875488ea749 BLUE-STN_menu_end
 13462d344efa9aaf BLUE-STN_menu_hold
 f4dd63e0888d0e31 BLUE-STN_menu_leds
@@ -413,7 +413,7 @@ f4dd63e0888d0e31 BLUE-STN_menu_leds
 3fab9f5f8480a925 BLUE-STN_menu_popup
 128ccdd98e8745d5 BLUE-STN_menu_presets_knob
 577046de72b2c608 BLUE-STN_menu_slide
-21004d4a7bed4939 BLUE-STN_menu_speaker
+d8921576e0d3cbad BLUE-STN_menu_speaker
 692f8cc4a38a0337 BLUE-STN_menu_system
 07f10c79ced81568 BLUE-STN_message
 09370c09834fc262 BLUE-STN_message_key
@@ -668,7 +668,7 @@ de6b1d343ff71af3 CRYPT_learn_cc
 39d5c33d65c45c53 CRYPT_lfo_2
 590324c2a94c99bc CRYPT_lfo_run
 1a6424ed6b485a64 CRYPT_menu
-7918c6414640ea3e CRYPT_menu_audio
+13798c4a560210b0 CRYPT_menu_audio
 10fe9d7434586a47 CRYPT_menu_end
 42ae02670a2cac97 CRYPT_menu_hold
 82019c95ef0019dc CRYPT_menu_leds
@@ -677,7 +677,7 @@ de6b1d343ff71af3 CRYPT_learn_cc
 2a7092387b293423 CRYPT_menu_popup
 018e06e67c8e033f CRYPT_menu_presets_knob
 43498b21139b12d4 CRYPT_menu_slide
-ae83e73be0f6291a CRYPT_menu_speaker
+40c734ce81e68b80 CRYPT_menu_speaker
 b2484abda1bd3135 CRYPT_menu_system
 f059811e03980f18 CRYPT_message
 77ddd99ea0900fe4 CRYPT_message_key
@@ -930,7 +930,7 @@ a898b5e6c27dc007 CUSTOM_CRYPT_learn_cc
 7f41ed3f8a65befc CUSTOM_CRYPT_lfo_2
 4d76402ae25bc651 CUSTOM_CRYPT_lfo_run
 c48bfd932b6b684f CUSTOM_CRYPT_menu
-74a1b473d8530bba CUSTOM_CRYPT_menu_audio
+7571fb1cc1d251ea CUSTOM_CRYPT_menu_audio
 7041aa118e8f7d45 CUSTOM_CRYPT_menu_end
 ff943e4327ba232a CUSTOM_CRYPT_menu_hold
 a65cd70b061bee99 CUSTOM_CRYPT_menu_leds
@@ -939,7 +939,7 @@ a65cd70b061bee99 CUSTOM_CRYPT_menu_leds
 c8d98e4136a4582d CUSTOM_CRYPT_menu_popup
 590f5514fc66b05a CUSTOM_CRYPT_menu_presets_knob
 1ac767326e6f3902 CUSTOM_CRYPT_menu_slide
-1fb80eca3db9b9b9 CUSTOM_CRYPT_menu_speaker
+e7259fa3118f8889 CUSTOM_CRYPT_menu_speaker
 4cd49a750dd448be CUSTOM_CRYPT_menu_system
 5bf8b8d9afbe3df4 CUSTOM_CRYPT_message
 dce96075ae9e36ea CUSTOM_CRYPT_message_key
@@ -1192,7 +1192,7 @@ f6729bb6f52e6cc4 CUSTOM_LCD_lfo
 167bdee00e7ba4cb CUSTOM_LCD_lfo_2
 ae25b0aa8677d08c CUSTOM_LCD_lfo_run
 c1fe619e72b60ede CUSTOM_LCD_menu
-ee5b1af1def4f2a3 CUSTOM_LCD_menu_audio
+3dd83a0d08eeff51 CUSTOM_LCD_menu_audio
 f2e6b90120fcf5c8 CUSTOM_LCD_menu_end
 83e592d5e84acac6 CUSTOM_LCD_menu_hold
 67e98a15e81319be CUSTOM_LCD_menu_leds
@@ -1201,7 +1201,7 @@ f2e6b90120fcf5c8 CUSTOM_LCD_menu_end
 f5db46081a08ead7 CUSTOM_LCD_menu_popup
 d86fb82c54ec49e9 CUSTOM_LCD_menu_presets_knob
 3a1b2c818e18e77a CUSTOM_LCD_menu_slide
-2e895aca9150381b CUSTOM_LCD_menu_speaker
+8db7e4f69ed552f5 CUSTOM_LCD_menu_speaker
 e71b42f1a2223b41 CUSTOM_LCD_menu_system
 312e330060924af4 CUSTOM_LCD_message
 97b8e337b74fd106 CUSTOM_LCD_message_key
@@ -1454,7 +1454,7 @@ b4b744fb1c40aabf CUSTOM_NEON_layer_rec
 53abf964495f1d5e CUSTOM_NEON_lfo_2
 00d9299754fbafe9 CUSTOM_NEON_lfo_run
 87aba37280cc9dee CUSTOM_NEON_menu
-7f8f013e37965bdb CUSTOM_NEON_menu_audio
+d80d8e61bc8ed9a1 CUSTOM_NEON_menu_audio
 1fa15f2c69b1fdae CUSTOM_NEON_menu_end
 dd68cedf03d4e487 CUSTOM_NEON_menu_hold
 64308195e49e9ef0 CUSTOM_NEON_menu_leds
@@ -1463,7 +1463,7 @@ dd68cedf03d4e487 CUSTOM_NEON_menu_hold
 0d4b36b33a2bd8cf CUSTOM_NEON_menu_popup
 08a6687cc6234f18 CUSTOM_NEON_menu_presets_knob
 028a7d9fd4a8f4ba CUSTOM_NEON_menu_slide
-1e69bd1a2f35830d CUSTOM_NEON_menu_speaker
+212dc0d4ca4d0aab CUSTOM_NEON_menu_speaker
 e4e02a48353c1b4f CUSTOM_NEON_menu_system
 dbd886698a3b79cf CUSTOM_NEON_message
 d2a7a7a4994934e5 CUSTOM_NEON_message_key
@@ -1716,7 +1716,7 @@ ac847610cba94008 CUSTOM_QUARK_layer_rec_set
 df7746a2df2d0e0e CUSTOM_QUARK_lfo_2
 6946749073a2257b CUSTOM_QUARK_lfo_run
 5b75d762760cd38b CUSTOM_QUARK_menu
-83e957c439ef35c5 CUSTOM_QUARK_menu_audio
+c01600409b4eb157 CUSTOM_QUARK_menu_audio
 5c529065d454c472 CUSTOM_QUARK_menu_end
 94ecf969fdcda23d CUSTOM_QUARK_menu_hold
 41a65d42b88c9bd3 CUSTOM_QUARK_menu_leds
@@ -1725,7 +1725,7 @@ c43b84572f022e38 CUSTOM_QUARK_menu_midi
 b34dd596b5a189f3 CUSTOM_QUARK_menu_popup
 64e4ff6aeefe823a CUSTOM_QUARK_menu_presets_knob
 509935179cba59b8 CUSTOM_QUARK_menu_slide
-8f83d3ec809d6006 CUSTOM_QUARK_menu_speaker
+646019b4679a9810 CUSTOM_QUARK_menu_speaker
 6f7d2ad1ee8ebc20 CUSTOM_QUARK_menu_system
 0c21ac4b45fe5837 CUSTOM_QUARK_message
 b5c024e4991bc104 CUSTOM_QUARK_message_key
@@ -1978,7 +1978,7 @@ baf5b38c15c777a2 CUSTOM_SKIFF_learn_cc
 ad69a376598c172c CUSTOM_SKIFF_lfo_2
 9ef17d682898289f CUSTOM_SKIFF_lfo_run
 d3991bc7a7391e7d CUSTOM_SKIFF_menu
-04eed70376251301 CUSTOM_SKIFF_menu_audio
+961a7afccb84dadf CUSTOM_SKIFF_menu_audio
 6af403a75f7df920 CUSTOM_SKIFF_menu_end
 ad5e284a0221b94b CUSTOM_SKIFF_menu_hold
 1da035eb905597e0 CUSTOM_SKIFF_menu_leds
@@ -1987,7 +1987,7 @@ d470db2259cdc7c8 CUSTOM_SKIFF_menu_midi
 44af6038ed0ae321 CUSTOM_SKIFF_menu_popup
 8b2eceee2078dbfa CUSTOM_SKIFF_menu_presets_knob
 21f5b39ab1571c36 CUSTOM_SKIFF_menu_slide
-dad67c21004e4361 CUSTOM_SKIFF_menu_speaker
+93fa55876d9455ab CUSTOM_SKIFF_menu_speaker
 79177e1e5556b29c CUSTOM_SKIFF_menu_system
 3783d38ed463c05b CUSTOM_SKIFF_message
 3336e7840845ec40 CUSTOM_SKIFF_message_key
@@ -2242,7 +2242,7 @@ f104b1de76bfc95a GAMEBOY_learn_cc
 957b76a7a4447f15 GAMEBOY_lfo_2
 90b046ceb9c49b31 GAMEBOY_lfo_run
 73aa0f7d1a723ed9 GAMEBOY_menu
-33453f529b3b6d10 GAMEBOY_menu_audio
+4a614dde7b1b440e GAMEBOY_menu_audio
 d2a1869029f385eb GAMEBOY_menu_end
 de68926d3226005c GAMEBOY_menu_hold
 3d093d1c4b8ad119 GAMEBOY_menu_leds
@@ -2251,7 +2251,7 @@ c38c1b680a3edd0e GAMEBOY_menu_midi_scroll
 457d96b4b9edebf9 GAMEBOY_menu_popup
 9513014e896f7835 GAMEBOY_menu_presets_knob
 6ea316c277f228a4 GAMEBOY_menu_slide
-e3edbc99e1d5c28f GAMEBOY_menu_speaker
+0e2bd73a3636d245 GAMEBOY_menu_speaker
 e5616a96b5657686 GAMEBOY_menu_system
 ed7c061f7d9684c6 GAMEBOY_message
 a02e99e6e7543ebb GAMEBOY_message_key
@@ -2504,7 +2504,7 @@ e13cd0851bd59d68 HI-CON_lfo
 7feace1cf30cbea7 HI-CON_lfo_2
 db0a013ae397195a HI-CON_lfo_run
 e6ae4f9903a83d56 HI-CON_menu
-ab26d1e135df2635 HI-CON_menu_audio
+0e690f616dbd2081 HI-CON_menu_audio
 760d01c1e4f5c52a HI-CON_menu_end
 82c5856964ed2560 HI-CON_menu_hold
 f106ab635f045406 HI-CON_menu_leds
@@ -2513,7 +2513,7 @@ f106ab635f045406 HI-CON_menu_leds
 a230fa225d4e6403 HI-CON_menu_popup
 44895ede2527e639 HI-CON_menu_presets_knob
 ddccfce734c94edf HI-CON_menu_slide
-034899a6116e3ecd HI-CON_menu_speaker
+278400b4b5d84a49 HI-CON_menu_speaker
 b38f6fbbec1709d1 HI-CON_menu_system
 b6a837f8d43ce70c HI-CON_message
 dd867693bc8e1e8c HI-CON_message_key
@@ -2766,7 +2766,7 @@ ee8e86681d11379d LARGE_AMBER_layer_scl_peek
 c3d14511b58040ee LARGE_AMBER_lfo_2
 898d3c769dc00abc LARGE_AMBER_lfo_run
 e1527b1320c22209 LARGE_AMBER_menu
-6d7898522fc64539 LARGE_AMBER_menu_audio
+6fd6e501dc2a1a0d LARGE_AMBER_menu_audio
 ef7b5964e2ca6642 LARGE_AMBER_menu_end
 6f612d9c0c15b758 LARGE_AMBER_menu_hold
 a6fe43e243db934b LARGE_AMBER_menu_leds
@@ -2775,7 +2775,7 @@ f97d50ea63c74436 LARGE_AMBER_menu_midi_scroll
 f27a7a4dbb18888d LARGE_AMBER_menu_popup
 8696d28976d4e56d LARGE_AMBER_menu_presets_knob
 d9b115d285cd30c7 LARGE_AMBER_menu_slide
-7032ca595d1710a0 LARGE_AMBER_menu_speaker
+f8d4320ff8ab97e4 LARGE_AMBER_menu_speaker
 d5f9ce65f00f7d01 LARGE_AMBER_menu_system
 da5ae21abb2a6926 LARGE_AMBER_message
 55f2776a36a2f751 LARGE_AMBER_message_key
@@ -3028,7 +3028,7 @@ fce2ac98f3b755cf LARGE_BLUE-STN_lfo
 87f8fe34341c4edd LARGE_BLUE-STN_lfo_2
 031a199b96ebedde LARGE_BLUE-STN_lfo_run
 d4a554eeac121bc1 LARGE_BLUE-STN_menu
-d9ef905dadcb5d00 LARGE_BLUE-STN_menu_audio
+e3199e0b75a337d0 LARGE_BLUE-STN_menu_audio
 438bb875488ea749 LARGE_BLUE-STN_menu_end
 7f1821195096f5c2 LARGE_BLUE-STN_menu_hold
 4a533e0885368296 LARGE_BLUE-STN_menu_leds
@@ -3037,7 +3037,7 @@ bd1d965ce019609b LARGE_BLUE-STN_menu_midi_scroll
 11feb4c63727714a LARGE_BLUE-STN_menu_popup
 1ccf0c1ac22255d5 LARGE_BLUE-STN_menu_presets_knob
 b5b26ed2aca92ba1 LARGE_BLUE-STN_menu_slide
-8943ca2733735c47 LARGE_BLUE-STN_menu_speaker
+f2f62008e898992f LARGE_BLUE-STN_menu_speaker
 ac96d5c9decb652a LARGE_BLUE-STN_menu_system
 c841f8d089adaca0 LARGE_BLUE-STN_message
 5e1e97c4ad449132 LARGE_BLUE-STN_message_key
@@ -3290,7 +3290,7 @@ acbe0f5cbaeaaa48 LARGE_CRYPT_layer_seq_tools_drum
 0ce3f93aa58523a6 LARGE_CRYPT_lfo_2
 c577497f7ac9bf98 LARGE_CRYPT_lfo_run
 c3d41b253a6e4480 LARGE_CRYPT_menu
-4621adc7aa639e81 LARGE_CRYPT_menu_audio
+997e38bc3c0e902f LARGE_CRYPT_menu_audio
 10fe9d7434586a47 LARGE_CRYPT_menu_end
 e14426404c4ea203 LARGE_CRYPT_menu_hold
 26939c882d46d43b LARGE_CRYPT_menu_leds
@@ -3299,7 +3299,7 @@ d47ac5628508678d LARGE_CRYPT_menu_midi_scroll
 afb940ada58cbfb3 LARGE_CRYPT_menu_popup
 08530593ad97b13c LARGE_CRYPT_menu_presets_knob
 0062b1266aecc680 LARGE_CRYPT_menu_slide
-04cedceebc6db48a LARGE_CRYPT_menu_speaker
+d5d8a3a16934b954 LARGE_CRYPT_menu_speaker
 203d3eefe4b2cabb LARGE_CRYPT_menu_system
 4d6f87d5dff33691 LARGE_CRYPT_message
 fac042d787a09f05 LARGE_CRYPT_message_key
@@ -3552,7 +3552,7 @@ aa4cbe944c8d0348 LARGE_GAMEBOY_lfo
 85c84aa20ff98ab0 LARGE_GAMEBOY_lfo_2
 72331879c4cb04ed LARGE_GAMEBOY_lfo_run
 67c1f7e06347a8a0 LARGE_GAMEBOY_menu
-154523b1816f2a06 LARGE_GAMEBOY_menu_audio
+99f8a469611f4cac LARGE_GAMEBOY_menu_audio
 d2a1869029f385eb LARGE_GAMEBOY_menu_end
 3ea0283a8c8a73b8 LARGE_GAMEBOY_menu_hold
 04ab322d9bc43d97 LARGE_GAMEBOY_menu_leds
@@ -3561,7 +3561,7 @@ d2a1869029f385eb LARGE_GAMEBOY_menu_end
 3c69484e2bd455c0 LARGE_GAMEBOY_menu_popup
 fe2385741bb202ba LARGE_GAMEBOY_menu_presets_knob
 03477c1b6ae79a71 LARGE_GAMEBOY_menu_slide
-7ed004a0dfa4c958 LARGE_GAMEBOY_menu_speaker
+aab61dec05154cde LARGE_GAMEBOY_menu_speaker
 1ebf6d38f242e5fe LARGE_GAMEBOY_menu_system
 0afb62fdf4c24046 LARGE_GAMEBOY_message
 210f44a504188767 LARGE_GAMEBOY_message_key
@@ -3814,7 +3814,7 @@ c27f75fc5bbffe0d LARGE_LCD-NIGHT_learn_cc
 ed4acf5a61b86fdb LARGE_LCD-NIGHT_lfo_2
 df534f82ea215044 LARGE_LCD-NIGHT_lfo_run
 725f3b59c4df599b LARGE_LCD-NIGHT_menu
-95af87ce240c892b LARGE_LCD-NIGHT_menu_audio
+36a086ae4a198b1d LARGE_LCD-NIGHT_menu_audio
 cc2ce64ba1169238 LARGE_LCD-NIGHT_menu_end
 8c5bf58c5a2cefd1 LARGE_LCD-NIGHT_menu_hold
 9fee26f640dc0ea6 LARGE_LCD-NIGHT_menu_leds
@@ -3823,7 +3823,7 @@ cc2ce64ba1169238 LARGE_LCD-NIGHT_menu_end
 dff6c19e72536921 LARGE_LCD-NIGHT_menu_popup
 513c2e98c33c73eb LARGE_LCD-NIGHT_menu_presets_knob
 90e1e2825cf91a8e LARGE_LCD-NIGHT_menu_slide
-598b16a4015fe284 LARGE_LCD-NIGHT_menu_speaker
+1b7d260ec382e84e LARGE_LCD-NIGHT_menu_speaker
 a6daa2edbbc2d1a6 LARGE_LCD-NIGHT_menu_system
 08b4189471d20f5b LARGE_LCD-NIGHT_message
 140c1b2a08408e1d LARGE_LCD-NIGHT_message_key
@@ -4076,7 +4076,7 @@ d139281c97596cc0 LARGE_LCD_lfo
 68ed53824c1233aa LARGE_LCD_lfo_2
 2c27bbb7004aba40 LARGE_LCD_lfo_run
 9d260b331b3da196 LARGE_LCD_menu
-7b53d4cdbef39e8a LARGE_LCD_menu_audio
+0a6b0601b9b70558 LARGE_LCD_menu_audio
 0c8c9cb120dd7d12 LARGE_LCD_menu_end
 1afc414aca576ab0 LARGE_LCD_menu_hold
 3605976ea220e4f7 LARGE_LCD_menu_leds
@@ -4085,7 +4085,7 @@ fdc22648b25bb819 LARGE_LCD_menu_midi_scroll
 c29415d90f1bd73f LARGE_LCD_menu_popup
 40f4eb2bfb72ce43 LARGE_LCD_menu_presets_knob
 7f31f166800df2a5 LARGE_LCD_menu_slide
-0011e288c33e47ca LARGE_LCD_menu_speaker
+dd778134cd318194 LARGE_LCD_menu_speaker
 17b449c8bc8aaf1f LARGE_LCD_menu_system
 04f923ad6e71cf19 LARGE_LCD_message
 fb1b6799b8857ba5 LARGE_LCD_message_key
@@ -4338,7 +4338,7 @@ ab779ce6ced20584 LARGE_NEON_lfo
 7536fffdf8561dd6 LARGE_NEON_lfo_2
 ce562c2323829291 LARGE_NEON_lfo_run
 6e4f26d621983d5b LARGE_NEON_menu
-7958240131185ad4 LARGE_NEON_menu_audio
+55c0f661168513bc LARGE_NEON_menu_audio
 341de54bbd125f4f LARGE_NEON_menu_end
 16be5a3071cc21dc LARGE_NEON_menu_hold
 19cf09c157008478 LARGE_NEON_menu_leds
@@ -4347,7 +4347,7 @@ ce562c2323829291 LARGE_NEON_lfo_run
 be562bce113f6151 LARGE_NEON_menu_popup
 5ffd9a5c8fc85911 LARGE_NEON_menu_presets_knob
 d21416ddd75860fc LARGE_NEON_menu_slide
-98de84e29e0aa47c LARGE_NEON_menu_speaker
+23e01ae50e6dea64 LARGE_NEON_menu_speaker
 ba8e79b8ebd4534e LARGE_NEON_menu_system
 f1e44f0fb93486b5 LARGE_NEON_message
 1378f60e21886e52 LARGE_NEON_message_key
@@ -4600,7 +4600,7 @@ c23e3347b12c7414 LARGE_QUARK_learn
 de813790f630626f LARGE_QUARK_lfo_2
 ab9f39da03a2a1e9 LARGE_QUARK_lfo_run
 240f4fc81379a47e LARGE_QUARK_menu
-5256abee48a52796 LARGE_QUARK_menu_audio
+c086c40a30de7ada LARGE_QUARK_menu_audio
 ac2f4fdadbba3255 LARGE_QUARK_menu_end
 f9f7124355f054c7 LARGE_QUARK_menu_hold
 9ff09831dc1c606c LARGE_QUARK_menu_leds
@@ -4609,7 +4609,7 @@ f9f7124355f054c7 LARGE_QUARK_menu_hold
 668c801a70c5fd65 LARGE_QUARK_menu_popup
 505eb07af3729607 LARGE_QUARK_menu_presets_knob
 f744c4a44482634c LARGE_QUARK_menu_slide
-fe4678e393371f24 LARGE_QUARK_menu_speaker
+95c6ac3cd43cccdc LARGE_QUARK_menu_speaker
 b381163863b2e7b0 LARGE_QUARK_menu_system
 9fb5f0771dda86e5 LARGE_QUARK_message
 3375af2beb2b9bb0 LARGE_QUARK_message_key
@@ -4862,7 +4862,7 @@ b085672c1fa6f756 LARGE_SKIFF_layer_scl_peek
 f3fe49eba858609c LARGE_SKIFF_lfo_2
 5f1e0fd603b31c8c LARGE_SKIFF_lfo_run
 e25c5f8bf9623973 LARGE_SKIFF_menu
-40a504469ace7881 LARGE_SKIFF_menu_audio
+052f29050ddabbcd LARGE_SKIFF_menu_audio
 f27412ab6d3f8348 LARGE_SKIFF_menu_end
 f5cb818c73a674ae LARGE_SKIFF_menu_hold
 4717f22f53901a60 LARGE_SKIFF_menu_leds
@@ -4871,7 +4871,7 @@ f5cb818c73a674ae LARGE_SKIFF_menu_hold
 a27aea2c8df11c0f LARGE_SKIFF_menu_popup
 6385bc82a046f893 LARGE_SKIFF_menu_presets_knob
 521d70af43832fed LARGE_SKIFF_menu_slide
-da8625231b14a289 LARGE_SKIFF_menu_speaker
+0b38aa13c5bbda49 LARGE_SKIFF_menu_speaker
 251fb4b6cb5a7568 LARGE_SKIFF_menu_system
 4bb1023225c812fa LARGE_SKIFF_message
 1b1043a3bfaa7c1f LARGE_SKIFF_message_key
@@ -5126,7 +5126,7 @@ df2db0ce93ad8184 LCD-NIGHT_layer_scl_peek
 1e2490188e13716f LCD-NIGHT_lfo_2
 f43ebdacd1bfa7dc LCD-NIGHT_lfo_run
 8a26971504281931 LCD-NIGHT_menu
-2fa02225d9b107ae LCD-NIGHT_menu_audio
+2216efe1cc9b4648 LCD-NIGHT_menu_audio
 cc2ce64ba1169238 LCD-NIGHT_menu_end
 67ffacdc0d6abcad LCD-NIGHT_menu_hold
 8994fe3a3afb6c11 LCD-NIGHT_menu_leds
@@ -5135,7 +5135,7 @@ b8356f826793f6fe LCD-NIGHT_menu_midi
 731b4b2d643af9bd LCD-NIGHT_menu_popup
 c01d0f6cf333da1e LCD-NIGHT_menu_presets_knob
 73b2ab550919e355 LCD-NIGHT_menu_slide
-f148e0cbee014d76 LCD-NIGHT_menu_speaker
+c30face9a3632bb4 LCD-NIGHT_menu_speaker
 1bab2854c81a3f19 LCD-NIGHT_menu_system
 8c5b65539cbc2ad0 LCD-NIGHT_message
 0b4ded71de974466 LCD-NIGHT_message_key
@@ -5390,7 +5390,7 @@ c5dc3cfe248e8079 LCD_lfo
 e50a57938fe4960f LCD_lfo_2
 47a433c642c58214 LCD_lfo_run
 9df92804e1a7bf20 LCD_menu
-c122f945b04c516c LCD_menu_audio
+8fa50a43fbcc815a LCD_menu_audio
 0c8c9cb120dd7d12 LCD_menu_end
 03eada370df68055 LCD_menu_hold
 d957cca1e41f1461 LCD_menu_leds
@@ -5399,7 +5399,7 @@ d957cca1e41f1461 LCD_menu_leds
 a94d4c11e87806e4 LCD_menu_popup
 6e7f27605ab679d2 LCD_menu_presets_knob
 96999292625da890 LCD_menu_slide
-1e091cdd22c4fe1e LCD_menu_speaker
+443393af01b03a2c LCD_menu_speaker
 fb3eb2808d429eae LCD_menu_system
 a2ecd977767839e4 LCD_message
 a8aaba2eb6836ffe LCD_message_key
@@ -5654,7 +5654,7 @@ f817bbac39f0050f NEON_learn
 580f44d95e4bb59e NEON_lfo_2
 b24506ed402e7f9a NEON_lfo_run
 18d9041560e38f31 NEON_menu
-88d993be55594993 NEON_menu_audio
+8b7c68f1d2a15bdf NEON_menu_audio
 341de54bbd125f4f NEON_menu_end
 a78fca33ff0a5c91 NEON_menu_hold
 68a200dc9c348e38 NEON_menu_leds
@@ -5663,7 +5663,7 @@ e56003e194b2ab8c NEON_menu_midi
 af50cd892270b620 NEON_menu_popup
 ddc29d6e6ad5f9c7 NEON_menu_presets_knob
 3dc77ca1b1488066 NEON_menu_slide
-1de20154a977868e NEON_menu_speaker
+4334ae321b1e509a NEON_menu_speaker
 a71e5b6f2ab2f6dd NEON_menu_system
 24870bcff14d4992 NEON_message
 1b2ffbfcac4b3b19 NEON_message_key
@@ -5916,7 +5916,7 @@ a46b6176fce2f061 PAPER_layer_seq_tools_drum
 d8d75ba22a8b1616 PAPER_lfo_2
 8356232d55bb9ff3 PAPER_lfo_run
 626c0ea3cf5551d8 PAPER_menu
-5d797adc00b06514 PAPER_menu_audio
+87ac14c818cdaeec PAPER_menu_audio
 c3f57331be1187a5 PAPER_menu_end
 273927e36e4a70e0 PAPER_menu_hold
 80225e7e4a6959da PAPER_menu_leds
@@ -5925,7 +5925,7 @@ ec2db8cb8d487139 PAPER_menu_midi
 9fd84e6140e0ea3b PAPER_menu_popup
 20320566141ef1dd PAPER_menu_presets_knob
 4df78d8085ee9a69 PAPER_menu_slide
-bd1873b2362370a0 PAPER_menu_speaker
+7843a4eb2e47b4c0 PAPER_menu_speaker
 ea170af85d9e57ba PAPER_menu_system
 a38b5fa688016385 PAPER_message
 827cec2d6ed2313d PAPER_message_key
@@ -6186,7 +6186,7 @@ e2f0c3d67134512a QUARK_learn
 b10ee0ffd2a09c4f QUARK_lfo_2
 a9f1b00d3018657c QUARK_lfo_run
 11f80bda2d9254c9 QUARK_menu
-e8763faddbbde673 QUARK_menu_audio
+ca5f7709b66d4e0b QUARK_menu_audio
 ac2f4fdadbba3255 QUARK_menu_end
 b9e93c7024c1dca1 QUARK_menu_hold
 417ff91462d3cd84 QUARK_menu_leds
@@ -6195,7 +6195,7 @@ c67f50d0ca928916 QUARK_menu_midi
 ce5419bf1d5bdb17 QUARK_menu_popup
 0432e3648be0685d QUARK_menu_presets_knob
 52b1ff1f50ec1851 QUARK_menu_slide
-4d29e9c003ba9753 QUARK_menu_speaker
+8a8b2b47f5764e03 QUARK_menu_speaker
 e06ad69b548dbe5a QUARK_menu_system
 679d4c3a04e07ddf QUARK_message
 84e458996168b75e QUARK_message_key
@@ -6450,7 +6450,7 @@ abd2bc9e09b83e45 SKIFF_lfo
 6b25aaebe406a6f1 SKIFF_lfo_2
 a26dcca10a7c3264 SKIFF_lfo_run
 b54f826a11ef45c6 SKIFF_menu
-d1339478066ebb22 SKIFF_menu_audio
+2bf18d6c666dc45e SKIFF_menu_audio
 f27412ab6d3f8348 SKIFF_menu_end
 0a2e9b9bfcce57eb SKIFF_menu_hold
 09230f6a46ef6326 SKIFF_menu_leds
@@ -6459,7 +6459,7 @@ de2bd40c0e594a11 SKIFF_menu_midi
 2096cebd1b800d96 SKIFF_menu_popup
 a5a4972548322edb SKIFF_menu_presets_knob
 a79484ee57354033 SKIFF_menu_slide
-89787339bae6ae90 SKIFF_menu_speaker
+281d7aa71b71ac38 SKIFF_menu_speaker
 61deedf2fba34a97 SKIFF_menu_system
 801a17c60c47ffab SKIFF_message
 572804fa7bfb137e SKIFF_message_key

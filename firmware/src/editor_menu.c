@@ -32,8 +32,8 @@ static const uint8_t ED_MENU[][2] = {
 #endif
     {MI_PHEAD, 19},                                    /* (Skiff #27) PLAYHEAD, a row of DISPLAY */
     {MI_RETURN, 20},                                   /* (2.0, D 2A) RETURN, a row of CONTROL */
-    {MI_MSTART, 21},                                   /* (Skiff #32) MASTER START, a row of AUDIO */
 #if BOARD_SMK37
+    {MI_MSTART, 21},                                   /* (Skiff #32) MASTER START, a row of AUDIO (SMK-37 only) */
     {MI_PADF, 22},                                     /* (SMK-37, wishlist #42) PAD FOLLOW, a row of DISPLAY */
     {MI_PADL, 23},                                     /* (SMK-37) PAD LIGHT, a row of DISPLAY */
 #endif

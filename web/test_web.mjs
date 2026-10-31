@@ -250,11 +250,11 @@ async function editorMock() {
   }
   if (!E.readDeviceMenu) console.log(`${"editor: MENU settings (this editor has none)".padEnd(64)} skip`);
   else {   /* the MENU settings (1.0.4): INFO 4E 01 count, MENU_DESC (72), MENU_SET (73) */
-    ok(info.menuCount === 20 && info.menuCount === E.MENU.length,
-       "editor: INFO advertises the MENU settings (4E 01 20: Skiff's; STYLE and FX LATCH gone, (#27) PLAYHEAD, (2.0) RETURN, (#32) MASTER START, (#53) SHARED WARN)");
+    ok(info.menuCount === 19 && info.menuCount === E.MENU.length,
+       "editor: INFO advertises the MENU settings (4E 01 19: Skiff's; STYLE and FX LATCH gone, (#27) PLAYHEAD, (2.0) RETURN, (#53) SHARED WARN)");
     const items = await E.readDeviceMenu(rq, info);
     const byName = (n) => items.find((d) => d.name === n);
-    ok(items.length === 20 && items.map((d) => d.id).join() === E.MENU.map((x) => x.id).join() &&
+    ok(items.length === 19 && items.map((d) => d.id).join() === E.MENU.map((x) => x.id).join() &&
        items.map((d) => d.name).join() === E.MENU.map((x) => x.name).join() &&
        items.every((d) => d.kind === 0 && d.min === 0 && d.names.length === d.max - d.min + 1) &&
        items[0].name === "THEME" && eq(items[0].names, prefs.palettes) && items[0].value === m.state.palette &&
@@ -263,7 +263,7 @@ async function editorMock() {
        "editor: MENU_DESC lists every setting, its value names and value");
     ok(items.every((d, i) => d.tab === E.MENU[i].tab && d.tabName === E.MENU_TABS[d.tab]),
        "editor: MENU_DESC gives each setting's tab on the device, after its names");
-    ok(E.parse[E.CMD.MENU_DESC](await rq(E.req.menuDesc(20))).id === 127, "editor: MENU_DESC past the list answers id 127");
+    ok(E.parse[E.CMD.MENU_DESC](await rq(E.req.menuDesc(19))).id === 127, "editor: MENU_DESC past the list answers id 127");
     let r = E.parse[E.CMD.MENU_SET](await rq(E.req.menuSet(4, 3)));
     ok(r.rc === 0 && r.id === 4 && r.value === 3 && E.parse[E.CMD.MENU_DESC](await rq(E.req.menuDesc(3))).value === 3,
        "editor: MENU_SET round trip (LEDS INV)");
