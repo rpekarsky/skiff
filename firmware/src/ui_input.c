@@ -486,6 +486,52 @@ static int32_t accel(uint32_t role, int32_t s, int32_t range)
     return s * (int32_t)m;
 }
 
+/* (#68) a knob is about to change track t's sound (a value of a sound page, HOME's, the mix, FM6's patch, the DRUM-X
+ * kit): the undo copy of the track as it is, named by the page. Turns under 1 s apart are one run; a later run on the
+ * track with nothing changed on it since (no other undo copy, track_sig) goes into the same copy, so tweaking does not
+ * turn the ring over. None while REC records: the pass's copy has the turns (#55). sound_undo_done after the change */
+static void undo_copy_track(undo_t *c, track_t *t);
+static const char UNDO_SOUND_EDIT[] = "SOUND", UNDO_MIX[] = "MIX";
+static int sound_undo_ours(const track_t *t)
+{
+    return !(song.playing && song.rec) && undo_n && !undo_back && undo.keep && (undo.what & UNDO_EDIT) &&
+           undo.trk == trk_index(t) + 1u;
+}
+static void sound_undo_take(track_t *t, const char *name)
+{
+    if (song.playing && song.rec)
+        return;
+    if (sound_undo_ours(t) && (fm1_ms - undo.t_ms < 1000u || track_sig(t) == undo.after)) {
+        if (undo.name != name)
+            undo.name = UNDO_SOUND_EDIT;                /* (runs on several pages: what they all are) */
+        return;
+    }
+    undo_label = name;
+    undo_push(UNDO_SOUND);
+    undo_copy_track(&undo, t);
+    undo.what = UNDO_SOUND | UNDO_EDIT;
+    if (t->eng_req % NENGINES == ENGI_DRUMX) {
+        memcpy(undo.dx, dx_kit, sizeof undo.dx);
+        undo.what |= UNDO_KIT;
+    }
+    undo.keep = 1;
+}
+static void sound_undo_done(track_t *t)
+{
+    if (!sound_undo_ours(t))
+        return;
+    undo.after = track_sig(t);
+    undo.t_ms = fm1_ms;
+}
+static void sound_set(track_t *t, int16_t *vp, int32_t v, const char *name)
+{
+    if (*vp == v)
+        return;
+    sound_undo_take(t, name);
+    *vp = (int16_t)v;
+    sound_undo_done(t);
+}
+
 /* MIXER page: KNOB 1 LEVEL, 2 PAN, 3 REV send, 4 MUTE of the selected track (right = ON, left = OFF: the
  * track itself is ALGORITHM's, on every page). Pattern length stays on SEQ. */
 static void tracks_edit(uint32_t slot, int32_t steps)
@@ -495,7 +541,7 @@ static void tracks_edit(uint32_t slot, int32_t steps)
     const param_desc_t *d;
     switch (slot) {
     case 3:
-        t->p[P_MUTE] = (int16_t)(steps > 0);
+        sound_set(t, &t->p[P_MUTE], steps > 0, UNDO_MIX);
         ml_knob(t, P_MUTE);                             /* ((1.3) MIDI LEARN: picked) */
         return;
     case 0:
@@ -511,7 +557,7 @@ static void tracks_edit(uint32_t slot, int32_t steps)
         d = &TP[P_PAN];
         break;
     }
-    *vp = (int16_t)clamp(*vp + accel(EN_K1 + slot, steps, d->max - d->min), d->min, d->max);
+    sound_set(t, vp, clamp(*vp + accel(EN_K1 + slot, steps, d->max - d->min), d->min, d->max), UNDO_MIX);
     motion_capture(t, (uint32_t)(vp - t->p), *vp);
     ml_knob(t, (uint32_t)(vp - t->p));
 }
@@ -522,7 +568,7 @@ static void track_value_turn(uint32_t id, uint32_t enc, const char *name, int32_
 {
     track_t *t = TSEL;
     const param_desc_t *d = &TP[id];
-    t->p[id] = (int16_t)clamp(t->p[id] + accel(enc, s, d->max - d->min), d->min, d->max);
+    sound_set(t, &t->p[id], clamp(t->p[id] + accel(enc, s, d->max - d->min), d->min, d->max), UNDO_MIX);
     motion_capture(t, id, t->p[id]);
     ml_knob(t, id);
     say_track_value(song.sel, id, name);
@@ -1607,7 +1653,10 @@ static void edit_param(uint32_t slot, int32_t steps)
     v = param_turn(d, *vp, accel(EN_K1 + slot, steps, d->fmt == F_ENUM ? 0 : d->max - d->min));
     if (vp == &TSEL->p[P_DKSRC] && v == (int32_t)(song.sel % NTRK) + 1)   /* (Skiff) DUCK BY: never the track itself */
         v = v == d->max ? *vp : v + (steps > 0 ? 1 : -1);
-    *vp = (int16_t)v;
+    if (pg->fam != FAM_SEQ && vp >= TSEL->p && vp < TSEL->p + P_COUNT)
+        sound_set(TSEL, vp, v, pg->title);              /* ((#68) not PATTERN's: the pattern's values) */
+    else
+        *vp = (int16_t)v;
     if (pg->scope != SC_GLOBAL) {
         motion_capture(TSEL, (uint32_t)(vp - TSEL->p), *vp);
         ml_knob(TSEL, (uint32_t)(vp - TSEL->p));        /* ((1.3) MIDI LEARN: picked) */
@@ -2022,7 +2071,6 @@ static rec_pass_t rpass[NTRK];
 static undo_t rec_pend;
 static uint8_t rec_pend_k = NTRK;
 
-static void undo_copy_track(undo_t *c, track_t *t);
 static uint32_t undo_age(uint32_t slot) { return (undo_top + UNDO_N - slot) % UNDO_N; }
 static undo_t *undo_aged(uint32_t age) { return &undo_ring[(undo_top + UNDO_N - age) % UNDO_N]; }
 static void undo_remove(uint32_t age)                   /* (0: the newest; the newer ones move down into its place) */
@@ -2828,7 +2876,8 @@ static void ui_input(void)
         } else if (ui.home) {
             int16_t *vp;
             const param_desc_t *d = home_param(k, &vp);
-            *vp = (int16_t)param_turn(d, *vp, accel(EN_K1 + k, s, d->fmt == F_ENUM ? 0 : d->max - d->min));
+            sound_set(TSEL, vp, param_turn(d, *vp, accel(EN_K1 + k, s, d->fmt == F_ENUM ? 0 : d->max - d->min)),
+                      UNDO_SOUND_EDIT);
             motion_capture(TSEL, (uint32_t)(vp - TSEL->p), *vp);
             ml_knob(TSEL, (uint32_t)(vp - TSEL->p));
         } else {

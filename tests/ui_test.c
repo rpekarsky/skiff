@@ -9612,6 +9612,7 @@ static int test_blocks(void)
     press(B_HOME);                                     /* a take (one note, pass 1): the TAKE box, the header quiet */
     song.rec = 0;
     take_clear();
+    undo_clear();                                      /* ((#68) the knobs turned above: copies of their own) */
     take_pass[0] = 2;
     take_ev[0] = (take_ev_t){1, 0, 0, 60, 100};
     take_ev_n = 1;
@@ -10692,6 +10693,92 @@ static int test_undo_levels(void)
     return bad;
 }
 
+/* (#68) the sound's knob edits undo: the first turn takes the copy, turns under 1 s apart are one step, a later run on
+ * the track with nothing between goes into it too; another undo copy between splits; none while REC records */
+static int16_t *su_value(uint32_t k)                  /* KNOB k's value on the page */
+{
+    int16_t *vp = 0;
+    (void)page_desc(cur_page(), k, &vp);
+    return vp;
+}
+static int test_sound_undo(void)
+{
+    int bad = 0, ok;
+    uint32_t i, tr;
+    int16_t *vp, v0, v1, lv0;
+    uint8_t was[FP_SIZE + 1u];
+    ui_power_on();
+    go_title("ENV"); frame();
+    vp = su_value(0);
+    v0 = *vp;
+    for (i = 0; i < 4u; i++)
+        turn(EN_K1, 1);
+    v1 = *vp;
+    ok = v1 == v0 + 4 && undo_n == 1u;
+    hold(B_SAVE);
+    ok &= *vp == v0 && undo_is("UNDO T1 ENV");
+    press(B_OCTUP);
+    ok &= *vp == v1 && undo_is("REDO T1 ENV") && !undo_back;
+    bad += check("(#68) a run of ENV's KNOB 1 is one undo step (UNDO T1 ENV), the value back; REDO brings it again", ok);
+    ui_power_on();
+    go_title("ENV"); frame();
+    vp = su_value(0);
+    v0 = *vp;
+    turn(EN_K1, 2);
+    frames(1500);
+    turn(EN_K1, 2);
+    go_title("MIXER"); frame();
+    lv0 = TSEL->p[P_LEVEL];
+    turn(EN_K1, -5);
+    ok = undo_n == 1u && *vp == v0 + 4 && TSEL->p[P_LEVEL] == lv0 - 5;
+    hold(B_SAVE);
+    ok &= *vp == v0 && TSEL->p[P_LEVEL] == lv0 && undo_is("UNDO T1 SOUND");
+    bad += check("(#68)   later runs with nothing between, MIXER's LEVEL too: the same step (SOUND), all back", ok);
+    ui_power_on();
+    go_title("ENV"); frame();
+    vp = su_value(0);
+    v0 = *vp;
+    turn(EN_K1, 2);
+    undo_act(0, 5, 60, "X");
+    turn(EN_K1, 2);
+    frames(1500);
+    undo_act(1, 5, 61, "Y");
+    turn(EN_K1, 2);
+    ok = undo_n == 5u && *vp == v0 + 6;
+    undo_step(0);
+    ok &= *vp == v0 + 4;
+    undo_step(0);
+    undo_step(0);
+    ok &= *vp == v0 + 2 && trk[0].step[5].n;
+    bad += check("(#68)   another undo copy between (this track's or another's): a step of its own", ok);
+    ui_power_on();
+    go_title("ENV"); frame();
+    vp = su_value(0);
+    v0 = *vp;
+    song.rec = 1;
+    song.playing = 1;
+    turn(EN_K1, 3);
+    ok = !undo_n && *vp == v0 + 3;
+    song.rec = song.playing = 0;
+    bad += check("(#68)   REC recording: the turns take no copy (the pass's undo has them)", ok);
+    ui_power_on();
+    ui_prefs |= PREF_BPM_LOCK;
+    tr = trk_index(TSEL);
+    set_engine_of(TSEL, ENGI_FM6);
+    undo_clear();
+    go_title("OPERATOR"); frame();
+    memcpy(was, fm6_patch[tr], sizeof was);
+    turn(EN_K1, -40);                                  /* (OUTPUT to 0) */
+    turn(EN_K1, -1);
+    ok = undo_n == 1u && memcmp(fm6_patch[tr], was, FP_SIZE) && TSEL->p[P_E7] == FM6_OWN;
+    hold(B_SAVE);
+    ok &= !memcmp(fm6_patch[tr], was, FP_SIZE) && TSEL->p[P_E7] == 0 && undo_is("UNDO T1 OPERATOR");
+    ui_prefs &= ~PREF_BPM_LOCK;
+    bad += check("(#68)   FM6 OPERATOR: the patch edit undone (SLOT F1 again), a turn at the end takes nothing", ok);
+    ui_power_on();
+    return bad;
+}
+
 /* (Skiff phase 6) six tracks on the layers: GLO's SOLO T5 and T6 on C4 and D4 (#11) and their MUTEs on D#4 and F#4; T5
  * selected, KNOB 4 its LEVEL (the four shown: T2 .. T5), OCT- every track's mute and level back; PERFORM's black keys 5
  * and 6; EDIT on T5: PHYS's key says why, KNOB 1 never lands on PHYS or GRAIN */
@@ -11102,6 +11189,7 @@ int main(void)
     bad += test_style();
     bad += test_blocks();
     bad += test_undo_levels();
+    bad += test_sound_undo();                         /* (#68) knob edits of the sound undo */
     bad += test_pool();                               /* Skiff phase 5: SAVE > PATTERNS, the pool view */
     bad += test_perform();                            /* Skiff: the PERFORM layer (live switching) */
     bad += test_undo_background();                    /* Skiff #58: UNDO into a pattern in the pool */

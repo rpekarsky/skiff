@@ -197,6 +197,7 @@ static void fm_knob(uint32_t pg, uint32_t k, int32_t s)
     const fm_field_t *f = &FM_F[pg & 1u][w][k & 3u];
     uint8_t v[FP_SIZE + 1u];
     int32_t d = s > 0 ? 1 : -1, x;
+    uint32_t zeroed = P_COUNT;                          /* (the EDIT value folded into the patch) */
     if (!f->label || t->eng_req % NENGINES != ENGI_FM6)
         return;
     i = fm_at(pg, f);
@@ -212,18 +213,24 @@ static void fm_knob(uint32_t pg, uint32_t k, int32_t s)
     }
     case FMF_ALG:                                       /* what plays, into the patch; ALGO (EDIT 1) to PAT */
         v[FP_ALG] = (uint8_t)clamp((int32_t)fm6_alg_of(t) + accel(EN_K1 + k, s, 32), 0, 31);
-        t->p[P_E0] = 0;
+        zeroed = P_E0;
         break;
     case FMF_FB:                                        /* the same: FEEDBACK (EDIT 1) to 0 */
         v[FP_FB] = (uint8_t)clamp(clamp((int32_t)v[FP_FB] + t->p[P_E1], 0, 7) + d, 0, 7);
-        t->p[P_E1] = 0;
+        zeroed = P_E1;
         break;
     default:
         v[i] = (uint8_t)clamp((int32_t)v[i] + (mx > 7u ? accel(EN_K1 + k, s, (int32_t)mx) : d), 0, (int32_t)mx);
         break;
     }
+    if (!memcmp(v, fm6_patch[tr], FP_SIZE) && (zeroed == P_COUNT || !t->p[zeroed]))
+        return;
+    sound_undo_take(t, cur_page()->title);
+    if (zeroed < P_COUNT)
+        t->p[zeroed] = 0;
     fm6_set_patch(tr, v);
     dropped = fm6_edited(tr);
+    sound_undo_done(t);
     if (dropped) {
         char msg[] = "F0* DROPPED";
         msg[1] = (char)('0' + dropped);

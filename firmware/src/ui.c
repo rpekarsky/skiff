@@ -1426,8 +1426,10 @@ static int seq_is_empty(const track_t *t)
  * takes the copy too (UNDO_MOT: SAVE held puts the track's motion back, the sound and the steps stay; motion_undo_take).
  * A sound load keeps the track's motion on the parameters every engine has (load_end, motion.c motion_sound_loaded);
  * a pattern load drops it all (the steps it was on are gone) */
-enum { UNDO_SOUND = 1, UNDO_PAT = 2, UNDO_MOT = 4, UNDO_KIT = 8, UNDO_LIST = 16 };   /* (UNDO_KIT, Skiff phase 7: INIT
-                                                    * on DRUM-X, the project's kit: sound_init; (#13) UNDO_LIST: bank.c) */
+enum { UNDO_SOUND = 1, UNDO_PAT = 2, UNDO_MOT = 4, UNDO_KIT = 8, UNDO_LIST = 16, UNDO_EDIT = 32 };   /* (UNDO_KIT,
+                                                    * Skiff phase 7: INIT on DRUM-X, the project's kit: sound_init; (#13)
+                                                    * UNDO_LIST: bank.c; (#68) UNDO_EDIT: knobs' sound edits, the mix
+                                                    * too: ui_input.c sound_undo_take) */
 /* (#13) a SONG drag of a track's entry (bank.c song_drag_poll): kept as the act, not the list, so that undoing it
  * remaps the entry each reference names (ent_move) as the drag did. removed: the entry was unlinked, row / snd / scenes
  * what it took with it (the scenes that named it, a bit each) */
@@ -1727,7 +1729,7 @@ static void load_begin(track_t *t, uint32_t what)
     if (undo_depth++)
         return;
     motion_restore(t);
-    if (undo_n && !undo_back && undo.keep && undo.trk == i + 1u && !(undo.what & UNDO_MOT) &&
+    if (undo_n && !undo_back && undo.keep && undo.trk == i + 1u && !(undo.what & (UNDO_MOT | UNDO_EDIT)) &&
         track_sig(t) == undo.after) {
         if ((what & UNDO_KIT) && !(undo.what & UNDO_KIT))
             memcpy(undo.dx, dx_kit, sizeof undo.dx);   /* ((phase 7) the kit as it was, if not held already) */
@@ -1775,7 +1777,7 @@ static void load_end(track_t *t)
  * values): part of that load, the copy from before it stays */
 static void load_extend(track_t *t)
 {
-    if (undo_n && !undo_back && undo.keep && undo.trk == trk_index(t) + 1u && !(undo.what & UNDO_MOT) &&
+    if (undo_n && !undo_back && undo.keep && undo.trk == trk_index(t) + 1u && !(undo.what & (UNDO_MOT | UNDO_EDIT)) &&
         fm1_ms - undo.t_ms < 1500u) {
         undo.after = track_sig(t);
         undo.t_ms = fm1_ms;
@@ -1820,7 +1822,8 @@ static void motion_undo_done(track_t *t)
 
 /* a copy and its track change places: what its loads changed (c->what). The sound: engine, preset and its
  * parameters (not param_kept); the pattern: the steps and LEN DIV SWING GATE; the track's motion. The mix (LEVEL PAN
- * MUTE) stays: no load changes it. Swapped again, the track is back: one copy is its undo and its redo.
+ * MUTE) stays: no load changes it ((#68) a knobs' copy, UNDO_EDIT, swaps every value but the pattern's). Swapped
+ * again, the track is back: one copy is its undo and its redo.
  * (Skiff phase 5) the steps and the motion are the pattern's (the track's are kept as the pattern it is on): (#58) a
  * copy taken on another pattern than the track's now swaps them with that pattern in the pool instead (bank.c
  * undo_pool_swap), its sound with the track's as ever. 0: nothing changed (AUTOMATION FULL, PATTERNS FULL) */
@@ -1845,6 +1848,7 @@ static int undo_in_pool(const undo_t *c)          /* (#58) c's pattern part goes
 }
 static int undo_pool_swap(undo_t *c);             /* (bank.c) */
 static int undo_list_swap(undo_t *c);
+static int pattern_value(uint32_t i) { return (i >= P_SLEN && i <= P_SGATE) || i == P_DIR; }
 static int undo_swap(undo_t *c)
 {
     track_t *t = &trk[(c->trk - 1u) % NTRK];
@@ -1875,7 +1879,7 @@ static int undo_swap(undo_t *c)
         c->preset = pr;
         c->user = u;
         for (i = 0; i < P_COUNT; i++)
-            if (!param_kept(i)) {
+            if (!param_kept(i) || ((c->what & UNDO_EDIT) && !pattern_value(i))) {
                 int16_t v = t->p[i];
                 t->p[i] = c->p[i];
                 c->p[i] = v;

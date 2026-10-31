@@ -43,37 +43,42 @@ static void dx_knob(uint32_t k, int32_t s)
 {
     uint32_t l = dx_ui_lane & 7u, w = dx_ui_win % DX_NWIN, i = DX_WIN[w][k & 3u][1];
     dx_lane_t *L = &dx_kit[l];
-    int32_t d = s > 0 ? 1 : -1;
+    uint8_t *field = &L->mode;
+    int32_t d = s > 0 ? 1 : -1, v;
     switch (DX_WIN[w][k & 3u][0]) {
     case DXK_A:
-    case DXK_B: {
-        uint8_t *v = DX_WIN[w][k & 3u][0] == DXK_A ? L->a : L->b;
-        v[i] = (uint8_t)clamp(v[i] + accel(EN_K1 + k, s, 127), 0, 127);
+    case DXK_B:
+        field = (DX_WIN[w][k & 3u][0] == DXK_A ? L->a : L->b) + i;
+        v = clamp(*field + accel(EN_K1 + k, s, 127), 0, 127);
         break;
-    }
     case DXK_LEVEL: {                                   /* (as any knob: its automation too) */
         const param_desc_t *pd = &TP[P_LN0 + l];
         int16_t *vp = &TSEL->p[P_LN0 + l];
-        *vp = (int16_t)param_turn(pd, *vp, accel(EN_K1 + k, s, pd->max - pd->min));
+        sound_set(TSEL, vp, param_turn(pd, *vp, accel(EN_K1 + k, s, pd->max - pd->min)), cur_page()->title);
         motion_capture(TSEL, P_LN0 + l, *vp);
-        break;
+        return;
     }
     case DXK_DRV:
-        L->mode = (uint8_t)(s > 0 ? L->mode | DX_DRIVE : L->mode & ~DX_DRIVE);
+        v = s > 0 ? *field | DX_DRIVE : *field & ~DX_DRIVE;
         break;
     case DXK_WAVE:
-        L->mode = (uint8_t)((L->mode & ~3u) | (uint32_t)clamp((int32_t)(L->mode & 3u) + d, 0, 3));
+        v = (*field & ~3u) | (uint32_t)clamp((int32_t)(*field & 3u) + d, 0, 3);
         break;
     case DXK_FILT:
-        L->mode = (uint8_t)((L->mode & ~0x0Cu) | (uint32_t)clamp((int32_t)((L->mode >> 2) & 3u) + d, 0, DXF_HP) << 2);
+        v = (*field & ~0x0Cu) | (uint32_t)clamp((int32_t)((*field >> 2) & 3u) + d, 0, DXF_HP) << 2;
         break;
     case DXK_SNAP:
-        L->mode = (uint8_t)(s > 0 ? L->mode | 0x10u : L->mode & ~0x10u);
+        v = s > 0 ? *field | 0x10u : *field & ~0x10u;
         break;
     default:                                            /* PSHP */
-        L->mode = (uint8_t)((L->mode & ~0x60u) | (uint32_t)clamp((int32_t)((L->mode >> 5) & 3u) + d, 0, 3) << 5);
+        v = (*field & ~0x60u) | (uint32_t)clamp((int32_t)((*field >> 5) & 3u) + d, 0, 3) << 5;
         break;
     }
+    if ((uint8_t)v == *field)
+        return;
+    sound_undo_take(TSEL, cur_page()->title);
+    *field = (uint8_t)v;
+    sound_undo_done(TSEL);
 }
 
 /* the four cards: the window's */
