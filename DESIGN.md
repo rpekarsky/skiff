@@ -424,7 +424,7 @@ segments 3 dB apart, from a 512-point fixed-point FFT of the scope's snapshot in
 snapshot at MASTER full as the scope's, then scaled to its peak, so a quiet sound reaches the top too); a bar falls a segment a redraw, its peak held 16 redraws.
 THEME CUSTOM over the LCD look: the user's colours in the same four tones (theirs BG, SURF to TEXT 12 %, MID, TEXT).
 **LCD NIGHT** (the PO's pick of CUSTOM over LCD with tests/ui_render.c's dusk set, pinned as it shows): LCD's look
-(`ux.h1n`) inverted, navy and pale ink. BG 16,24,32, TEXT 242,232,216; SURF 28,40,54 only for its ghost (SURF to TEXT
+(`ux.h1n`) inverted, navy and pale ink, without the dot grid on the ground (#29, PO: day LCD keeps it). BG 16,24,32, TEXT 242,232,216; SURF 28,40,54 only for its ghost (SURF to TEXT
 12 %); THEME and the tracks the MID tone 156,149,148 (where the dusk's orange and most tracks snapped), ACCENT the ink.
 
 **THEME CUSTOM** (#27, @tradiuz; after Felucca 1.6's CUSTOM palette; design/mock_c27.py, mockups/c27_sheet.png): the

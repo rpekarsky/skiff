@@ -296,6 +296,8 @@ static void cv_lcd_rows(uint32_t x, uint32_t y, uint32_t r0)
         }
         cv_px[i] = out;
     }
+    if (!ux.light)                                   /* (#29) LCD NIGHT: no dot grid */
+        return;
     for (r = r0 + (3u - (y + r0) % 3u) % 3u; r < cv_h; r += 3u) {
         uint16_t *p = cv_px + r * cv_w, *up = r > r0 ? p - cv_w : p, *dn = r + 1u < cv_h ? p + cv_w : p;
         for (i = (3u - x % 3u) % 3u; i < cv_w; i += 3u)
