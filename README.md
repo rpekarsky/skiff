@@ -427,6 +427,8 @@ The notes live in **patterns**, and a project says which ones each track plays:
   first). A tile with a sound has its corner cut, and with nothing picked the footer names the entry's sound.
 - **Playing an entry** (SEQ › SONG's OCT+, a PERFORM key, a scene, or a double-click in the editor) switches at once
   when stopped, and when playing at the **LAUNCH** point: the track's pass end (LOOP), the next BAR, BEAT, or NOW.
+  On the SMK-37, < and > step to the entry before and after; an empty one becomes a REST, which turns into a new
+  pattern once something is recorded into it (SMK37.md).
 - **SONG ON:** while playing, each track moves to its next entry once the current one's REPS are played, at its own
   pass end; an empty entry between two patterns is a **rest**, silent for its REPS passes of the track's length
   (1.2.1); the empty ones after the last end the list, and after the last comes the first. KNOB 2 also picks

@@ -1646,11 +1646,75 @@ static int song_chain(void)
     return bad;
 }
 
+/* ---- (#50) SMK's < >: an empty entry becomes a REST, the track on it; recorded into: a new pattern (entry_step) ---- */
+static int msg_is(const char *s) { return ui.msg_t && str_eq(ui.msg, s); }
+static int arrow_rest(void)
+{
+    int bad = 0, ok;
+    uint32_t used, id;
+    track_t *t = &trk[0];
+    fresh();
+    simple(0, 60, 8, DIR_REV);                    /* A: 8 steps, 1/32, SWING 60, backwards, GATE 90; the track on it */
+    t->p[P_SDIV] = 3;
+    t->p[P_SSWING] = 60;
+    t->p[P_SGATE] = 90;
+    bank_put(0, 0, 0);
+    used = pool_count();
+    entry_step(1);
+    ok = lists.cur[0] == 1u && ent_rest(0, 1) && !trk_pid[0] && seq_is_empty(t) && msg_is("LOADED T1 B") &&
+         str_eq(ui.msg2, "NEW REST");
+    ok &= t->p[P_SLEN] == 8 && t->p[P_SDIV] == 3 && t->p[P_SSWING] == 60 && t->p[P_DIR] == DIR_REV &&
+          t->p[P_SGATE] == TP[P_SGATE].def;
+    bad += check("(#50) > onto an empty entry: a REST there, the track on it (A's LEN DIV SWING DIR, GATE default)", ok);
+    entry_step(1);
+    ok = lists.cur[0] == 2u && ent_rest(0, 2) && pool_count() == used && pend_free() == PEND_N && keep_all() == 0 &&
+         pool_count() == used;
+    entry_step(-1);
+    entry_step(-1);
+    ok &= lists.cur[0] == 0u && trk_pat(0) == ent_pat(0, 0) && ent_rest(0, 1) && ent_rest(0, 2);
+    bad += check("  > again: another REST (no pattern, nothing waiting); < back to A, the RESTs stay", ok);
+    entry_step(-1);
+    ok = lists.cur[0] == 0u && msg_is("FIRST ENTRY");
+    entry_step(1);
+    t->step[0] = (step_t){{50}, 1, ST_NOTE, 0, 100};
+    ok &= keep_all() == 0 && (id = ent_pat(0, 1)) != PAT_NONE && !ent_rest(0, 1) && pool_count() == used + 1u &&
+          trk_pat(0) == id && pat_read(id, bk_rec) == 0 && bk_rec[2] == 8 + 64 && bk_rec[3] == 3 + 64;
+    bad += check("  a note put into the REST: kept as a new pattern (the first free number), B names it, A's LEN DIV", ok);
+
+    fresh();
+    simple(0, 40, 12, DIR_FWD);                   /* A, the track on it; playing, LOOP */
+    bank_put(0, 0, 0);
+    used = pool_count();
+    ui_launch = LAUNCH_LOOP;
+    transport_req = 1;
+    events_block(1);
+    lv_next(3);
+    entry_step(1);
+    ok = bank_next(0) == 1u && lists.cur[0] == 0u && ent_rest(0, 1) && msg_is("T1 B AT LOOP END") &&
+         str_eq(ui.msg2, "NEW REST") && pool_count() == used && pend_free() == PEND_N;
+    bad += check("(#50) playing: > makes the REST and stages it for LAUNCH; no pattern, no waiting slot", ok);
+    lv_next(9);
+    lv_next(1);
+    bank_poll();
+    ok = lists.cur[0] == 1u && !trk_pid[0] && seq_is_empty(t) && t->p[P_SLEN] == 12 && pend_free() == PEND_N;
+    t->step[2] = (step_t){{90}, 1, ST_NOTE, 0, 100};   /* (recorded into it) */
+    entry_step(-1);
+    lv_next(12);
+    bank_poll();
+    ok &= lists.cur[0] == 0u && (id = ent_pat(0, 1)) != PAT_NONE && pend_at(id) < PEND_N && pool_count() == used + 1u;
+    bad += check("  at the loop's end on the REST, A's LEN; recorded into, then left: kept, B names the new pattern", ok);
+    transport_req = 2;
+    events_block(1);
+    bank_poll();
+    return bad;
+}
+
 int main(void)
 {
     int bad = layout() + fidelity() + keep() + entries() + staged_all() + last_track() + torn() + wear_and_wrap() +
               playing() + live() + scenes() + scenes_six() + song_test() + song_six() + song_rest() + song_once() +
-              song_chain() + song_sound() + song_same() + song_next_edit() + migrate() + dx_kit_project();
+              song_chain() + song_sound() + song_same() + song_next_edit() + migrate() + dx_kit_project() +
+              arrow_rest();
     printf("%s\n", bad ? "BANK TEST FAILED" : "pattern bank tests passed");
     return bad != 0;
 }

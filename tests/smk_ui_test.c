@@ -4,7 +4,8 @@
  *   PADS     on HOME the step taps, in a layer and the DRUM grid the white keys; a tap sets a step to the last note
  *            (its velocity), again clears it, one undo a run; DRUM: the lane; past LEN nothing; the colours (A).
  *   FADERS   the four tracks shown, taking over once they reach the value, FADER BANK (its LED), the window.
- *   ENTRIES  > and < the selected track's entry after and before, the first's end said.
+ *   ENTRIES  > and < the selected track's entry after and before, the first's end said; (#50) an empty one becomes
+ *            a REST.
  *   KEYS     the outer keys' notes and velocity (KEY VELOCITY), out of the TRS jack too; the curves.
  *   MENU     KEY VELOCITY in CONTROL, no LEDS row, the editor's rows; USR2 / USR3 not offered.
  *   WHEELS   the wheels and the pedal as MIDI in on the selected track's channel, back to rest on a switch.
@@ -456,6 +457,13 @@ static int test_entries(void)
     press_id(SMK_BTN_LEFT);
     press_id(SMK_BTN_LEFT);
     bad += check("SMK < on A: FIRST ENTRY, nowhere", lists.cur[0] == 0u && msg_is("FIRST ENTRY"));
+    press_id(SMK_BTN_RIGHT);
+    press_id(SMK_BTN_RIGHT);
+    press_id(SMK_BTN_RIGHT);
+    bad += check("(#50) SMK > past the last pattern: a REST there, the track on it (D)", lists.cur[0] == 3u &&
+                 ent_rest(0, 3) && seq_is_empty(TSEL) && str_eq(ui.msg2, "NEW REST"));
+    press_id(SMK_BTN_RIGHT);
+    bad += check("(#50) SMK > again: another REST (E)", lists.cur[0] == 4u && ent_rest(0, 4));
     return bad;
 }
 

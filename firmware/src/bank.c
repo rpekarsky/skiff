@@ -1588,6 +1588,29 @@ static int entry_go(uint32_t k, uint32_t e)
     return rc;
 }
 static void entry_ui(uint32_t e) { (void)entry_go(song.sel % NTRK, e); }
+/* (#50) SMK's < >: the selected track to the entry before / after the one it is on, or is staged for. An empty one
+ * there becomes a REST first, so the arrows always move and a pattern can be recorded in live: steps put into a REST
+ * make it a new pattern (trk_name). Nowhere to keep what the track had (PATTERNS FULL): the entry stays empty */
+static void entry_step(int dir)
+{
+    uint32_t k = song.sel % NTRK;
+    const launch_t *q = &launch_q[k];
+    int32_t e = (int32_t)(q->armed && !q->adv ? q->slot : lists.cur[k]) % (int32_t)NENT + dir;
+    if (e < 0 || e >= (int32_t)NENT) {
+        ui_message(dir < 0 ? "FIRST ENTRY" : "LAST ENTRY");
+        return;
+    }
+    if (ent_on(k, (uint32_t)e)) {
+        (void)entry_go(k, (uint32_t)e);
+        return;
+    }
+    lists.ent[k][e][0] = (uint8_t)PAT_REST;
+    bk.gen++;
+    if (entry_go(k, (uint32_t)e) == 4)
+        lists.ent[k][e][0] = 0;
+    else
+        str_cpy(ui.msg2, "NEW REST", sizeof ui.msg2);
+}
 /* (phase 5) SAVE > PATTERNS, the pool view: how many use pattern id: the entries naming it (the lists, the saved
  * projects), and a track on it that no entry of its names (0: it can be cleared) */
 static uint32_t pool_refs(uint32_t id)

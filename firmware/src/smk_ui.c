@@ -266,14 +266,8 @@ static void smk_buttons(void)
         smk_fbank = (uint8_t)((smk_fbank + 1u) % 4u);
         ui_say("FADERS ", SMK_FB_N[smk_fbank]);
     }
-    if (pr & (1u << SMK_BTN_LEFT | 1u << SMK_BTN_RIGHT)) {   /* the selected track's entry before / after */
-        uint32_t k = song.sel % NTRK, base = launch_q[k].armed && !launch_q[k].adv ? launch_q[k].slot : lists.cur[k];
-        int32_t e = (int32_t)base % (int32_t)NENT + ((pr >> SMK_BTN_RIGHT) & 1u ? 1 : -1);
-        if (e < 0 || e >= (int32_t)NENT)
-            ui_message(e < 0 ? "FIRST ENTRY" : "LAST ENTRY");
-        else
-            (void)entry_go(k, (uint32_t)e);
-    }
+    if (pr & (1u << SMK_BTN_LEFT | 1u << SMK_BTN_RIGHT))
+        entry_step((pr >> SMK_BTN_RIGHT) & 1u ? 1 : -1);
 }
 
 static void smk_master_poll(void)                    /* K1: its level said while it moves, kept once it rests */
