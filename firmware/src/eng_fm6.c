@@ -316,18 +316,18 @@ static void fm6_spread(uint32_t alg, int32_t dtun, int32_t *dt)
     }
 }
 
-/* the patch through E0..E6 (audio ISR; cheap when nothing changed) */
-static void fm6_sync(const track_t *t)
+/* the patch through E0..E6 (audio ISR; cheap when nothing changed). 1: it changed */
+static int fm6_sync(const track_t *t)
 {
     uint32_t tr = (uint32_t)(t - trk), k;
     const int16_t *e = &t->p[P_E0];
     if (tr >= NTRK)
-        return;
+        return 0;
     if (fm6_eff[tr].ok && fm6_eff[tr].gen == fm6_pgen[tr]) {
         for (k = 0; k < 7u && fm6_eff[tr].e[k] == e[k]; k++)
             ;
         if (k == 7u)
-            return;
+            return 0;
     }
     fm6_eff[tr].gen = fm6_pgen[tr];
     memcpy(fm6_eff[tr].p, fm6_patch[tr], FP_SIZE);
@@ -343,6 +343,7 @@ static void fm6_sync(const track_t *t)
         fm6_lfo_reset(&fm6_lfo[tr], p);
     }
     fm6_eff[tr].ok = 1;
+    return 1;
 }
 
 /* --------------------------------------------------------------- voice --- */
@@ -362,7 +363,7 @@ static void fm6_note_on(track_t *t, voice_t *v)
     const uint8_t *p;
     if (!n)
         return;
-    fm6_sync(t);
+    (void)fm6_sync(t);
     p = fm6_eff[tr].p;
     fm6_note_init(n, p, (int32_t)v->note + p[FP_TRNSP] - 24, v->mvel ? v->mvel : v->vel,
                   (!v->env && !v->env_out) || !n->live);    /* from silence: phases and gains from 0 */
@@ -385,10 +386,17 @@ static __attribute__((noinline)) void fm6_key_up(uint32_t tr, uint32_t voice)
 
 static void fm6_block(track_t *t)       /* once a block and part: the macros, the LFO */
 {
-    uint32_t tr = (uint32_t)(t - trk);
+    uint32_t tr = (uint32_t)(t - trk), i;
     if (tr >= NTRK)
         return;
-    fm6_sync(t);
+    if (fm6_sync(t))
+        for (i = 0; i < FM6_POLY; i++) {        /* (#69) the sounding notes follow the edit */
+            voice_t *v = &t->v[i];
+            fm6_note_t *n = fm6_note_of(t, v);
+            const uint8_t *p = fm6_eff[tr].p;
+            if (n && n->live)
+                fm6_note_retune(n, p, (int32_t)v->note + p[FP_TRNSP] - 24, v->mvel ? v->mvel : v->vel);
+        }
     fm6_lfo_v[tr] = fm6_lfo_sample(&fm6_lfo[tr]);
     fm6_lfo_d[tr] = fm6_lfo_delay(&fm6_lfo[tr]);
 }
