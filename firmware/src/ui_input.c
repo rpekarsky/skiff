@@ -2311,6 +2311,7 @@ static uint32_t smk_bank_taps(uint32_t pressed, uint32_t notes, uint32_t knob_mo
 }
 #endif
 static int fm_wave_set(int on);                         /* (#20w) ui_fm6.c */
+static int shift_pair_turn(uint32_t k, int32_t s);      /* (wishlist #60c) after SHEETS */
 /* (Skiff 2.0) SHIFT held (HOME; the SMK's KNOB BANK too), and a combo of it taken: no HOME tap, no MENU after (the
  * caller drops ui_input's home_long) */
 static uint32_t shift_t0(void)                         /* its press time | 1, | 2 once a combo used it (or held) */
@@ -2815,7 +2816,8 @@ static void ui_input(void)
             ui.hot_t = 40;
         }
         if (shift_held()) {                             /* a SHIFT combo: (#13) SONG's KNOB 1 drags the entry, (wishlist
-                                                         * #60) else KNOB 1..4 are the selected track's channel strip */
+                                                         * #60c) a page or window with a pair turns the pair's, (#60)
+                                                         * else KNOB 1..4 are the selected track's channel strip */
             shift_mark();
             home_long = 0;
 #if BOARD_SMK37
@@ -2823,7 +2825,7 @@ static void ui_input(void)
 #endif
             if (song_move_knob(k))
                 (void)song_drag(s);
-            else
+            else if (!shift_pair_turn(k, s))
                 track_value_turn(CHANNEL_P[k], EN_K1 + k, CHANNEL_N[k], s);
         } else if (ui.home) {
             int16_t *vp;
@@ -2947,4 +2949,67 @@ static const sheet_t *sheet_of(uint32_t g)
         if (SHEETS[i].graph == g)
             return &SHEETS[i];
     return 0;
+}
+
+/* (wishlist #60c) the sets shown in two halves: SHIFT + KNOB 1..4 on one half turn the other's. A page's half by its
+ * KNOB 1 parameter, a sheet's by its window */
+static const uint8_t PAGE_PAIRS[][2] = {
+    {P_LRATE, P_LSYNC}, {P_ITYPE, P_IMIX}, {P_E0, P_E4}, {P_VOICE, P_ALLOC}, {P_AMODE, P_ASWING},
+};
+static const uint8_t WINDOW_PAIRS[][3] = {
+    {GR_FMOP, FMW_ENV1, FMW_ENV2}, {GR_FMOP, FMW_KEYS, FMW_MORE}, {GR_FMALL, FMW_PITCH1, FMW_PITCH2},
+    {GR_FMALL, FMW_LFO, FMW_DEPTH},
+};
+static int track_page_starts(uint32_t i, uint32_t id)
+{
+    return (PAGES[i].scope == SC_TRACK || PAGES[i].scope == SC_ENGINE) && PAGES[i].id[0] == id;
+}
+static uint32_t pair_of(const uint8_t *pair, uint32_t half)   /* the other half, or 0xFF */
+{
+    return pair[0] == half ? pair[1] : pair[1] == half ? pair[0] : 0xFFu;
+}
+static uint32_t page_pair(void)                         /* the shown page's pair's index in PAGES, or 0xFF */
+{
+    uint32_t i, j, other, id = PAGES[ui.page].id[0];
+    if (!track_page_starts(ui.page, id))
+        return 0xFFu;
+    for (i = 0; i < sizeof PAGE_PAIRS / sizeof PAGE_PAIRS[0]; i++) {
+        other = pair_of(PAGE_PAIRS[i], id);
+        for (j = 0; other != 0xFFu && j < NPAGES; j++)
+            if (track_page_starts(j, other) && page_visible(j))
+                return j;
+    }
+    return 0xFFu;
+}
+/* the byte that picks what the knobs turn (ui.page, a sheet's window) and its value for the pair; 0: no pair here */
+static uint8_t *shift_pair_of(uint8_t *pair)
+{
+    const sheet_t *sh = sheet_of(PAGES[ui.page].graph);
+    uint32_t i, other;
+    if (ui.home || page_over)
+        return 0;
+    if (!sh) {
+        other = page_pair();
+        *pair = (uint8_t)other;
+        return other == 0xFFu ? 0 : &ui.page;
+    }
+    for (i = 0; i < sizeof WINDOW_PAIRS / sizeof WINDOW_PAIRS[0]; i++) {
+        other = pair_of(WINDOW_PAIRS[i] + 1, *sh->win % sh->nwin);
+        if (WINDOW_PAIRS[i][0] == sh->graph && other != 0xFFu) {
+            *pair = (uint8_t)other;
+            return sh->win;
+        }
+    }
+    return 0;
+}
+static int shift_pair_turn(uint32_t k, int32_t s)
+{
+    uint8_t pair, *at = shift_pair_of(&pair), shown;
+    if (!at)
+        return 0;
+    shown = *at;
+    *at = pair;
+    edit_param(k, s);
+    *at = shown;
+    return 1;
 }

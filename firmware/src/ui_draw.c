@@ -825,6 +825,7 @@ static int song_move_knob(uint32_t k)
 {
     return k == 0u && !ui.home && cur_page()->graph == GR_SONG;
 }
+static uint8_t *shift_pair_of(uint8_t *pair);          /* (wishlist #60c) ui_input.c */
 /* (wishlist #60) SHIFT held: KNOB 1..4 are the selected track's LEVEL PAN REVERB DELAY (ui_input.c), as MIXER's cards */
 static void channel_columns(void)
 {
@@ -849,16 +850,11 @@ static void channel_columns(void)
                     RATIO(d, v), param_icon(d, v));
     }
 }
-static void draw_columns(void)
+static void page_columns(void)
 {
     uint32_t c;
     char val[12];
     const char *unit;
-    (void)motion_mask(song.sel, card_mot_mask);       /* (PLAY OFF: no scan) */
-    if (shift_channel) {
-        channel_columns();
-        return;
-    }
     if (ui.home) {
         for (c = 0; c < 4u; c++) {
             int16_t *vp;
@@ -1188,6 +1184,26 @@ static void draw_columns(void)
                     card_dead(cur_page(), c) ? VR_DIM : VR_LIVE,
                     d->fmt == F_ENUM && d->max < 2 ? -1 : RATIO(d, enum_rank(d, *vp)), param_icon(d, *vp));
     }
+}
+/* (wishlist #60c) SHIFT held on a half of a set: the other half's cards */
+static int shift_pair_columns(void)
+{
+    uint8_t pair, *at = shift_pair_of(&pair), shown;
+    if (!at)
+        return 0;
+    shown = *at;
+    *at = pair;
+    page_columns();
+    *at = shown;
+    return 1;
+}
+static void draw_columns(void)
+{
+    (void)motion_mask(song.sel, card_mot_mask);       /* (PLAY OFF: no scan) */
+    if (!shift_channel)
+        page_columns();
+    else if (!shift_pair_columns())
+        channel_columns();
 }
 
 

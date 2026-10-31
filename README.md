@@ -484,7 +484,10 @@ by the keys, with what each key is in Skiff.
   (58 numbers, 5 waiting)
 - **SHIFT + KNOB 1..4**, on every page: the selected track's **LEVEL, PAN, REVERB, DELAY** (the header says
   `T1 REVERB 30%`, REC records it). While SHIFT is held the four cards show them; let go, the page's come back. On
-  SEQ › SONG, SHIFT + KNOB 1 stays MOVE
+  SEQ › SONG, SHIFT + KNOB 1 stays MOVE. On a page or window that shows half of a set, SHIFT + KNOB 1..4 turn the
+  other half instead, its cards shown while SHIFT is held, without leaving the page: LFO ⇄ LFO 2, INSERT ⇄ INSERT 2,
+  EDIT 1 ⇄ EDIT 2, VOICE ⇄ VOICE 2, ARP ⇄ ARP 2; FM6's OPERATOR ENV 1 ⇄ ENV 2 (RATE 1/2, LEVEL 1/2 ⇄ RATE 3/4,
+  LEVEL 3/4) and KEYS ⇄ MORE, ALL OPS' PITCH 1 ⇄ PITCH 2 and LFO ⇄ DEPTH
 - Hold FX, GLO, SEL, EDIT, ARP or SEQ for its layer; **SHIFT + the button** (or the button held, then HOME) keeps it open (the header says
   LOCKED), the button closes it. A locked FX layer latches its effects
 - **SAVE** tapped: its pages (PRESETS, USER, PATTERNS, PROJECT); **held**: undo. **SHIFT + SAVE**: TAKE

@@ -10478,6 +10478,75 @@ static int test_shift_channel(void)
     return bad;
 }
 
+/* (wishlist #60c) SHIFT + KNOB 1..4 on a half of a set (ui_input.c PAGE_PAIRS, WINDOW_PAIRS): the other half's knobs and
+ * cards, the window or page shown staying; no pair (OPERATOR's TONE): the channel strip */
+static int test_shift_pairs(void)
+{
+    int bad = 0, ok;
+    uint32_t tr, op = 5u * FP_OP;
+    uint8_t was[FP_SIZE + 1u];
+    int16_t level, trig;
+    ui_power_on();
+    tr = trk_index(TSEL);
+    set_engine_of(TSEL, ENGI_FM6);
+    go_title("OPERATOR");
+    fm_ui[0] = 0; fm_ui[1] = FMW_ENV1;
+    frame();
+    ok = card_is(0, "RATE 1");
+    btn_down(B_HOME);
+    frames(400);
+    ok &= card_is(0, "RATE 3") && card_is(1, "LEVEL 3") && card_is(2, "RATE 4") && card_is(3, "LEVEL 4");
+    memcpy(was, fm6_patch[tr], sizeof was);
+    level = TSEL->p[P_LEVEL];
+    turn(EN_K1, -2);
+    ok &= fm6_patch[tr][op + FP_R1 + 2] < was[op + FP_R1 + 2] && fm6_patch[tr][op + FP_R1] == was[op + FP_R1] &&
+          TSEL->p[P_LEVEL] == level && fm_ui[1] == FMW_ENV1 && card_is(0, "RATE 3");
+    btn_up(B_HOME);
+    frame();
+    ok &= !ui.menu && !ui.home && fm_ui[1] == FMW_ENV1 && card_is(0, "RATE 1");
+    bad += check("(wishlist #60c) SHIFT on OPERATOR's ENV 1: the cards RATE 3 .. LEVEL 4, KNOB 1 turns RATE 3; let go, "
+                 "ENV 1 back", ok);
+
+    go_title("ALL OPS");
+    fm_ui[2] = FMW_PITCH2;
+    btn_down(B_HOME);
+    frames(400);
+    ok = card_is(0, "RATE 1") && card_is(1, "PITCH 1");
+    memcpy(was, fm6_patch[tr], sizeof was);
+    turn(EN_K2, 1);
+    ok &= fm6_patch[tr][FP_PL1] == was[FP_PL1] + 1u && fm6_patch[tr][FP_PL1 + 2] == was[FP_PL1 + 2];
+    btn_up(B_HOME);
+    frame();
+    bad += check("(wishlist #60c)   ALL OPS' PITCH 2: its pair the other way, PITCH 1 (KNOB 2)", ok);
+
+    go_title("OPERATOR");
+    fm_ui[1] = FMW_TONE;
+    btn_down(B_HOME);
+    frames(400);
+    ok = card_is(0, "LEVEL") && card_is(3, "DELAY");
+    level = TSEL->p[P_LEVEL];
+    turn(EN_K1, -1);
+    ok &= TSEL->p[P_LEVEL] == level - 1;
+    btn_up(B_HOME);
+    frame();
+    ok &= card_is(0, "OUTPUT");
+    bad += check("(wishlist #60c)   OPERATOR's TONE, no pair: the channel strip (#60)", ok);
+
+    set_engine_of(TSEL, 0);
+    go_title("LFO");
+    btn_down(B_HOME);
+    frames(400);
+    ok = card_is(0, track_desc(TSEL, P_LSYNC)->label) && card_is(1, track_desc(TSEL, P_LTRIG)->label);
+    trig = TSEL->p[P_LTRIG];
+    turn(EN_K2, 1);
+    ok &= TSEL->p[P_LTRIG] != trig && str_eq(cur_page()->title, "LFO");
+    btn_up(B_HOME);
+    frame();
+    ok &= card_is(0, track_desc(TSEL, P_LRATE)->label);
+    bad += check("(wishlist #60c)   LFO: LFO 2's SYNC TRIG POLARITY ENV SYNC (KNOB 2 TRIG), the page stays LFO", ok);
+    return bad;
+}
+
 /* (2.0, #44, the user's pick 3A and the join sheet's A) a chain on SONG and NOTES (playing it: tests/bank_test.c
  * song_chain): KNOB 3 has CHAIN below 1x on an entry with one after it, right again a number (SPLIT); NOTES' header
  * names the chain and the part (A-B · 02), its title and START count the steps on through it; stopped, PRESETS past
@@ -11110,6 +11179,7 @@ int main(void)
     bad += test_song_chain();                         /* (2.0, #44) a chain on SONG and NOTES */
     bad += test_song_move();                          /* (#13) SONG: SHIFT + KNOB 1 drags an entry */
     bad += test_shift_channel();                      /* (wishlist #60) SHIFT + KNOB 1..4: the channel strip */
+    bad += test_shift_pairs();                        /* (wishlist #60c) SHIFT + KNOB 1..4: a half's pair */
     bad += test_song_pick_memory();                   /* (#54) KNOB 2 on an empty entry: the last pick */
     bad += test_duck_page();                          /* Skiff: FX > DUCK */
     bad += test_p9_pages();                           /* (Skiff phase 9) FX > DRIVE, ENV 2 */

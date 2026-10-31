@@ -276,7 +276,7 @@ static uint32_t fm_wf_note_sig(void)
 static uint32_t fm_sig(void)
 {
     return (fm6_pgen[fm_tr()] + 1u) * 2246822519u ^ (fm_ui[0] + fm_ui[1] * 7u + fm_ui[2] * 49u) * 40503u ^
-           (ui.hot_t ? ui.hot_col + 1u : 0u) * 65537u ^
+           (ui.hot_t ? ui.hot_col + 1u : 0u) * 65537u ^ shift_channel * 3266489917u ^
            (fm_wave ? (fm_wf_note_sig() + fm_wf.done + fm1_ms / FM_WF_BAR_MS + 1u) * 2654435761u : 0u);
 }
 /* (#20w) SHIFT + SELECT on an FM6 sheet: its panel WAVE (on) or the envelopes (0). 0: not on one */
@@ -694,9 +694,13 @@ static void fm_handles(const fm_env_line_t *l, uint32_t hot, int32_t (*y)(int32_
         if (l->end[j] != 0xFFu)
             fm_ring(FM_X0 + l->x[l->end[j]], y(l->v[l->end[j]]), j == hot);
 }
-/* the stage a window's hot knob moves (ENV 1: K1 K2 stage 1, K3 K4 stage 2; ENV 2: 3, 4), 0xFF: none */
+/* the stage window w's hot knob moves (ENV 1: K1 K2 stage 1, K3 K4 stage 2; ENV 2: 3, 4; (wishlist #60c) SHIFT held:
+ * its pair's), 0xFF: none */
 static uint32_t fm_hot_stage(uint32_t w)
 {
+    uint8_t pair;
+    if (shift_channel && shift_pair_of(&pair))
+        w = pair;
     if (!ui.hot_t || (w != 1u && w != 2u))
         return 0xFFu;
     return (w - 1u) * 2u + ui.hot_col / 2u;
@@ -933,7 +937,7 @@ static void fm_pitch(const fm_sim_t *s, uint16_t c, uint32_t w)
     cv_rect(FM_X0, FM_GY + FM_GH / 2, FM_XW, 1, FM_GUIDE);
     for (j = 1; j < l.n; j++)
         fm_seg2(FM_X0 + l.x[j - 1u], fm_pitch_y(l.v[j - 1u]), FM_X0 + l.x[j], fm_pitch_y(l.v[j]), 2, c);
-    fm_handles(&l, ui.hot_t && (w == 1u || w == 2u) ? (w - 1u) * 2u + ui.hot_col / 2u : 0xFFu, fm_pitch_y);
+    fm_handles(&l, fm_hot_stage(w), fm_pitch_y);
     fm_range_labels();
     cv_text_on(10, FM_CY + CAP_IN(S, 12), &AF_S, flat ? "NO PITCH MOVEMENT" : "PITCH OVER THE NOTE", T_MID, T_SURF);
     fm_caption(s, 0);
