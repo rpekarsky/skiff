@@ -1293,7 +1293,7 @@ static int test_shift(void)
 }
 
 /* (#20 with #38, #39) KNOB BANK held and let go within a tap's time with a K4 turn between, on OPERATOR: 1 if it
- * undid (a tap's UNDO), PHASE toggled, the MENU opened, or (PRESETS KNOB PAN) no sound was loaded */
+ * undid (a tap's UNDO), WAVE toggled, the MENU opened, or (PRESETS KNOB PAN) no sound was loaded */
 static int kb_k4_goes_wrong(uint32_t pan_mode)
 {
     uint32_t kb = 1u << SMK_BTN_KNOB_BANK, phase, preset;
@@ -1302,7 +1302,7 @@ static int kb_k4_goes_wrong(uint32_t pan_mode)
     set_engine_of(TSEL, ENGI_FM6);
     go_page(GR_FMOP);
     frames((UNDO_WIN + 1u) * 16u);                    /* (an undo window still open would read as a tap's) */
-    phase = fm_phase;
+    phase = fm_wave;
     preset = TSEL->preset;
     fm1_in.buttons |= kb;
     frame();
@@ -1313,10 +1313,10 @@ static int kb_k4_goes_wrong(uint32_t pan_mode)
     undid = ui.undo_w || msg_is("NOTHING TO UNDO");
     frames(100);
     menu_put(MI_PKNOB, 0);
-    return undid || fm_phase != phase || ui.menu || (pan_mode && TSEL->preset == preset);
+    return undid || fm_wave != phase || ui.menu || (pan_mode && TSEL->preset == preset);
 }
 
-/* (#20) SHIFT + K2 on an FM6 sheet: its panel PHASE (right), the envelopes (left); (#39) a KNOB BANK tap there is
+/* (#20w) SHIFT + K2 on an FM6 sheet: its panel WAVE (right), the envelopes (left); (#39) a KNOB BANK tap there is
  * UNDO, as everywhere, the panel left alone */
 static int test_phase(void)
 {
@@ -1327,32 +1327,32 @@ static int test_phase(void)
     go_page(GR_FMOP);
     frame();
     press_id(SMK_BTN_KNOB_BANK);
-    ok = fm_phase == 0u && TSEL->eng_req % NENGINES != ENGI_FM6;
+    ok = fm_wave == 0u && TSEL->eng_req % NENGINES != ENGI_FM6;
     press_id(SMK_BTN_FADER_BANK);
     go_page(GR_FMOP);
     frame();
-    bad += check("SMK KNOB BANK tapped on OPERATOR: UNDO (the engine's change), not PHASE; FADER BANK: REDO",
-                 ok && TSEL->eng_req % NENGINES == ENGI_FM6 && fm_phase == 0u);
+    bad += check("SMK KNOB BANK tapped on OPERATOR: UNDO (the engine's change), not WAVE; FADER BANK: REDO",
+                 ok && TSEL->eng_req % NENGINES == ENGI_FM6 && fm_wave == 0u);
     frames((UNDO_WIN + 1u) * 16u);
     fm1_in.buttons |= kb;
     frames(400);
     fm1_in.buttons &= ~kb;
     frame();
-    bad += check("SMK KNOB BANK held past SHIFT's map and let go: nothing", fm_phase == 0u && !ui.menu);
+    bad += check("SMK KNOB BANK held past SHIFT's map and let go: nothing", fm_wave == 0u && !ui.menu);
     fm1_in.buttons |= kb;
     frame();
     host_enc[panel.enc[EN_K1]] += panel.dir[EN_K1];
     frame();
     fm1_in.buttons &= ~kb;
     frame();
-    bad += check("SMK KNOB BANK with KNOB 1 turned: no tap", fm_phase == 0u && !msg_is("NOTHING TO UNDO"));
+    bad += check("SMK KNOB BANK with KNOB 1 turned: no tap", fm_wave == 0u && !msg_is("NOTHING TO UNDO"));
     fm1_in.buttons |= kb;
     frame();
     host_enc[panel.enc[EN_SELECT]] += panel.dir[EN_SELECT];
     frame();
     fm1_in.buttons &= ~kb;
     frame();
-    bad += check("SMK KNOB BANK + K2 right: PHASE (the window stays), no UNDO on let-go", fm_phase == 1u && fm_ui[1] == 0u &&
+    bad += check("SMK KNOB BANK + K2 right: WAVE (the window stays), no UNDO on let-go", fm_wave == 1u && fm_ui[1] == 0u &&
                  !ui.undo_w);
     fm1_in.buttons |= kb;
     frame();
@@ -1360,7 +1360,7 @@ static int test_phase(void)
     frame();
     fm1_in.buttons &= ~kb;
     frame();
-    bad += check("SMK KNOB BANK + K2 left: the envelopes, no UNDO", fm_phase == 0u && cur_page()->graph == GR_FMOP &&
+    bad += check("SMK KNOB BANK + K2 left: the envelopes, no UNDO", fm_wave == 0u && cur_page()->graph == GR_FMOP &&
                  !ui.undo_w);
     bad += check("SMK KNOB BANK + K4 at once: no tap, no UNDO (PRESETS KNOB PRESETS: the sheet's K4)", !kb_k4_goes_wrong(0));
     bad += check("SMK KNOB BANK + K4 at once: no tap, no UNDO (PRESETS KNOB PAN: the sound loaded, kept)",

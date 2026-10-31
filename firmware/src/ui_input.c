@@ -2310,7 +2310,7 @@ static uint32_t smk_bank_taps(uint32_t pressed, uint32_t notes, uint32_t knob_mo
     return taps;
 }
 #endif
-static int fm_phase_set(int on);                        /* (#20) ui_fm6.c */
+static int fm_wave_set(int on);                         /* (#20w) ui_fm6.c */
 /* (Skiff 2.0) SHIFT held (HOME; the SMK's KNOB BANK too), and a combo of it taken: no HOME tap, no MENU after (the
  * caller drops ui_input's home_long) */
 static uint32_t shift_t0(void)                         /* its press time | 1, | 2 once a combo used it (or held) */
@@ -2778,8 +2778,8 @@ static void ui_input(void)
             ui.bpm_t = 40;                              /* the header's BPM lights up; no message over the header */
         } else if (lay) {
             ;                                           /* (another layer held: not the page under it) */
-        } else if (!ui.home && shift_held() && fm_phase_set(s > 0)) {   /* (#20) SHIFT + SELECT on an FM6 sheet: */
-            shift_mark();                               /* right PHASE, left the envelopes */
+        } else if (!ui.home && shift_held() && fm_wave_set(s > 0)) {    /* (#20w) SHIFT + SELECT on an FM6 sheet: */
+            shift_mark();                               /* right WAVE, left the envelopes */
             home_long = 0;
         } else if (!ui.home) {
             select_turn(s);

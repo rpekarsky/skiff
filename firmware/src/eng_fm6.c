@@ -55,6 +55,11 @@ static struct {                                  /* the patch through the macros
     int32_t dt[6];                               /* DTUN: per operator, Q24 log2 */
 } fm6_eff[NTRK];
 static fm6_lfo_t fm6_lfo[NTRK];
+typedef struct {                                 /* (#20w) the last note a track played, for the editor's waterfall */
+    uint8_t note, vel, voice, down;              /* (vel 0: none yet) */
+    uint32_t on_ms, held_ms;                     /* (fm1_ms) held_ms: how long it was held; while down, the note before's */
+} fm6_last_t;
+static fm6_last_t fm6_last[NTRK] __attribute__((section(".pool")));   /* (the voices write it, the main loop reads) */
 static int32_t fm6_lfo_v[NTRK], fm6_lfo_d[NTRK]; /* this block's LFO value and delay (Q24) */
 
 /* ------------------------------------------------------- patch formats --- */
@@ -297,12 +302,25 @@ static void fm6_macro(uint8_t *p, uint32_t alg, const int16_t *e)
     }
 }
 
+/* DTUN (0..127) on the carriers of algorithm alg, dt[k] per operator (Q24 log2): OP1 first, the carriers 0, +1, -1, +2,
+ * -2, +3 steps apart, up to 12 cents a step (1 cent = 13981); the modulators 0. The audio ISR's copy (fm6_sync) and
+ * (#20w) the editor's waterfall (ui_fm6.c) */
+static void fm6_spread(uint32_t alg, int32_t dtun, int32_t *dt)
+{
+    static const int8_t SPREAD[6] = {0, 1, -1, 2, -2, 3};
+    uint32_t car = fm6_carriers(alg), n = 0, k;
+    int32_t step = clamp(dtun, 0, 127) * (12 * 13981) / 127;
+    for (k = 0; k < 6u; k++) {
+        uint32_t ki = 5u - k;
+        dt[ki] = (car >> ki & 1u) ? SPREAD[n++] * step : 0;
+    }
+}
+
 /* the patch through E0..E6 (audio ISR; cheap when nothing changed) */
 static void fm6_sync(const track_t *t)
 {
-    uint32_t tr = (uint32_t)(t - trk), k, car, n = 0;
+    uint32_t tr = (uint32_t)(t - trk), k;
     const int16_t *e = &t->p[P_E0];
-    int32_t step;
     if (tr >= NTRK)
         return;
     if (fm6_eff[tr].ok && fm6_eff[tr].gen == fm6_pgen[tr]) {
@@ -320,16 +338,7 @@ static void fm6_sync(const track_t *t)
         uint32_t alg = e[0] >= 1 && e[0] <= 32 ? (uint32_t)e[0] - 1u : p[FP_ALG] & 31u;
         fm6_eff[tr].alg = (uint8_t)alg;
         fm6_eff[tr].fb = (uint8_t)clamp(p[FP_FB] + e[1], 0, 7);
-        car = fm6_carriers(alg);
-        step = clamp(e[6], 0, 127) * (12 * 13981) / 127;    /* DTUN: up to 12 cents a step (1 cent = 13981) */
-        for (k = 0; k < 6u; k++) {                           /* OP1 first: carriers in their order */
-            uint32_t ki = 5u - k;
-            fm6_eff[tr].dt[ki] = 0;
-            if ((car >> ki) & 1u) {                          /* carriers 0, +1, -1, +2, -2, +3 steps apart */
-                static const int8_t SPREAD[6] = {0, 1, -1, 2, -2, 3};
-                fm6_eff[tr].dt[ki] = SPREAD[n++] * step;
-            }
-        }
+        fm6_spread(alg, e[6], fm6_eff[tr].dt);
         fm6_macro(p, alg, e);
         fm6_lfo_reset(&fm6_lfo[tr], p);
     }
@@ -358,6 +367,20 @@ static void fm6_note_on(track_t *t, voice_t *v)
     fm6_note_init(n, p, (int32_t)v->note + p[FP_TRNSP] - 24, v->mvel ? v->mvel : v->vel,
                   (!v->env && !v->env_out) || !n->live);    /* from silence: phases and gains from 0 */
     fm6_lfo_key(&fm6_lfo[tr]);
+    if (tr < NTRK)
+        fm6_last[tr] = (fm6_last_t){v->note, (uint8_t)(v->mvel ? v->mvel : v->vel), (uint8_t)(v - t->v), 1, fm1_ms,
+                                    fm6_last[tr].held_ms};
+}
+
+/* (out of line: inlined into fm6_render it moved the render's loops, +68 % on the ISR budget's count) */
+static __attribute__((noinline)) void fm6_key_up(uint32_t tr, uint32_t voice)
+{
+    uint32_t held;
+    if (tr >= NTRK || fm6_last[tr].voice != voice || !fm6_last[tr].down)
+        return;
+    held = fm1_ms - fm6_last[tr].on_ms;
+    fm6_last[tr].held_ms = held ? held : 1u;
+    fm6_last[tr].down = 0;
 }
 
 static void fm6_block(track_t *t)       /* once a block and part: the macros, the LFO */
@@ -392,8 +415,10 @@ static void fm6_render(track_t *t, voice_t *v, int32_t *out, uint32_t len, const
     if (!n || !n->live || len != FM6_N)
         return;
     p = fm6_eff[tr].p;
-    if (!v->gate && n->down)
+    if (!v->gate && n->down) {
         fm6_note_key(n, p, 0);
+        fm6_key_up(tr, (uint32_t)(v - t->v));
+    }
     lf = fm6_note_logfreq(m->pitch16 + (p[FP_TRNSP] - 24) * 16, m->fine);
     fb = clamp(fm6_eff[tr].fb + ((m->shape - (64 << 8)) >> 11), 0, 7);
     lvl = clamp(t->p[P_E2], -64, 63) * 24 + clamp(m->cutoff >> 8, -150, 150) * 16;   /* microsteps */

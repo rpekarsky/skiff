@@ -524,9 +524,10 @@ static int32_t fm6_note_logfreq(int32_t pitch16, int32_t fine)
 /* one block (msfa note compute): the LFO's value and delay (Q24), the note's log2 frequency, the patch's
  * algorithm and feedback (already through the macros), dt[k]: a pitch offset per operator (Q24),
  * modlvl: a level offset of the operators that are not carriers (Q24 log2). Writes out (Q24); 0 = silent
- * (out untouched) */
-static int fm6_note_compute(fm6_note_t *n, const uint8_t *p, int32_t *out, int32_t lfo_val, int32_t lfo_delay,
-                             int32_t logfreq, uint32_t alg, int32_t fb, const int32_t *dt, int32_t modlvl)
+ * (out untouched). Always inline: (#20w) the editor's waterfall runs it too (ui_fm6.c), and a second caller would leave
+ * it out of the voice's render as a call */
+static inline __attribute__((always_inline)) int fm6_note_compute(fm6_note_t *n, const uint8_t *p, int32_t *out,
+    int32_t lfo_val, int32_t lfo_delay, int32_t logfreq, uint32_t alg, int32_t fb, const int32_t *dt, int32_t modlvl)
 {
     uint32_t pmd = (uint32_t)((p[FP_LPMD] % 100u) * 165u >> 6) * (uint32_t)lfo_delay;   /* Q32 */
     int32_t senslfo = FM6_PMS[p[FP_LPMS] & 7u] * (lfo_val - (1 << 23));
