@@ -3135,15 +3135,15 @@ static int test_fm6_lab(void)
     turn(EN_SELECT, -1);                                /* back: OPERATOR's foot */
     ok &= str_eq(cur_page()->title, "OPERATOR") && fm_ui[1] == 4u;
     bad += check("SELECT: OPERATOR's windows (ENV 1 RATE 2, MORE BREAK), past its foot ALL OPS's top, back its foot", ok);
-    btn_down(B_HOME); frame();                          /* (#20) SHIFT + SELECT: the panel PHASE, the window kept */
+    btn_down(B_HOME); frame();                          /* (#20w) SHIFT + SELECT: the panel WAVE, the window kept */
     turn(EN_SELECT, 1);
     btn_up(B_HOME); frame();
-    ok = fm_phase == 1u && fm_ui[1] == 4u && str_eq(cur_page()->title, "OPERATOR") && !ui.home && !ui.menu;
+    ok = fm_wave == 1u && fm_ui[1] == 4u && str_eq(cur_page()->title, "OPERATOR") && !ui.home && !ui.menu;
     btn_down(B_HOME); frame();
     turn(EN_SELECT, -1);
     btn_up(B_HOME); frame();
-    ok &= fm_phase == 0u && fm_ui[1] == 4u && str_eq(cur_page()->title, "OPERATOR") && !ui.home && !ui.menu;
-    bad += check("(#20) HOME + SELECT on OPERATOR: right PHASE, left the envelopes; the window stays, no HOME, no MENU", ok);
+    ok &= fm_wave == 0u && fm_ui[1] == 4u && str_eq(cur_page()->title, "OPERATOR") && !ui.home && !ui.menu;
+    bad += check("(#20w) HOME + SELECT on OPERATOR: right WAVE, left the envelopes; the window stays, no HOME, no MENU", ok);
     go_title("ALL OPS"); fm_ui[2] = 0; frame();
     TSEL->p[P_E0] = 5; TSEL->p[P_E1] = 2;               /* EDIT 1's ALGO and FEEDBACK over the patch's 5 and 3 */
     turn(EN_K1, 1);
@@ -3259,6 +3259,127 @@ static int test_fm6_lab(void)
         int16_t b0 = song.g[G_BPM];
         turn(EN_SELECT, 1);
         bad += check("BPM LOCK OFF: OPERATOR's rows still on SELECT", fm_ui[1] == 1u && song.g[G_BPM] == b0);
+    }
+    return bad;
+}
+
+/* (#20w) FM6 WAVE can't lie: a slice (fm_wf_slice, the waterfall's period) against the voice's own output for the
+ * same note at the same moment (trk_note_on, track_render: the audio path), sample for sample at the slice's points,
+ * the best gain between them; the worst point off by at most 2 % of full height. The patches the PHASE view got wrong
+ * on the unit: one sine carrier, ALG 32's OP6 alone with FEEDBACK 5 (a saw: at 6 and 7 the voice itself
+ * repeats no period, a noise), OP2 at x2 into OP1; and a bell's x3.51 */
+static double wave_vs_voice(const uint8_t *v, uint32_t note, int32_t block, int8_t *pts)
+{
+    static int32_t y[40000];
+    static fm_sim_t s;
+    uint32_t tr = trk_index(TSEL), period, j, i;
+    uint64_t at;
+    int32_t b[CTL], s0, x0;
+    double num = 0, den = 0, gain, worst = 0, dc = 0;
+    fm6_set_patch(tr, v);
+    fm6_adopt(tr);
+    fm6_last[tr] = (fm6_last_t){(uint8_t)note, 100, 0, 0, 0, 2000};
+    fm_ops(&s, TSEL);
+    fm_wf_begin(&s, 1);
+    while (fm_wf.b < block)
+        fm_wf_step(&s);
+    (void)fm_wf_slice(&s, TSEL, pts);
+    period = (uint32_t)((1ull << 32) / (uint32_t)fm6_freq(fm6_note_logfreq(fm_wf_engine_note(&s) * 16, 0)));
+    at = (((uint64_t)block * FM6_N + FM_WF_WARM) << 8) + period - 1u;
+    at = at / period * period;
+    s0 = (int32_t)(at >> 8) - FM_WF_WARM;
+    x0 = (FM_WF_WARM << 8) + (int32_t)(at & 255u);
+    trk_note_on(TSEL, note, 100);
+    for (i = 0; i < sizeof y / sizeof y[0]; i += CTL) {
+        uint32_t k;
+        memset(b, 0, sizeof b);
+        track_render(TSEL, b, CTL);
+        for (k = 0; k < CTL; k++) {                     /* (fm6_render's DC blocker undone: its 7 Hz high-pass leads */
+            y[i + k] = b[k] + (int32_t)dc;              /* C4 by 0.7 samples; WAVE draws the operators' sum) */
+            dc += b[k] / 1024.0;
+        }
+    }
+    trk_note_off(TSEL, note);
+    for (i = 0; i < 4000u; i += CTL)
+        track_render(TSEL, b, CTL);
+    for (j = 0; j < FM_WF_NP; j++) {
+        uint32_t x = (uint32_t)x0 + j * period / (FM_WF_NP - 1u), k = (uint32_t)s0 + (x >> 8);
+        double r = y[k] + (double)(y[k + 1u] - y[k]) * (x & 255u) / 256.0;
+        y[j] = (int32_t)r;
+        num += r * pts[j];
+        den += r * r;
+    }
+    gain = den > 0 ? num / den : 0;
+    for (j = 0; j < FM_WF_NP; j++) {
+        double d = fabs(pts[j] - gain * y[j]) / 127.0;
+        worst = d > worst ? d : worst;
+    }
+    return den > 0 ? worst : 1.0;
+}
+static int test_fm6_wave(void)
+{
+    int bad = 0, ok;
+    uint8_t v[FP_SIZE + 1u];
+    int8_t pts[FM_WF_NP];
+    uint32_t j;
+    double off, sine = 0, rise = 0, fall = 0;
+    ui_power_on();
+    host_preset(TSEL, ENGI_FM6, 0);                     /* (the voices render now, not at the audio ISR's next block) */
+    TSEL->p[P_E7] = FM6_OWN;
+    fm6_unpack(FM6_INIT, v);
+    off = wave_vs_voice(v, 60, 689, pts);
+    for (j = 0; j < FM_WF_NP; j++) {
+        double d = fabs(pts[j] - 127.0 * sin(6.283185307 * j / (FM_WF_NP - 1u))) / 127.0;
+        sine = d > sine ? d : sine;
+    }
+    bad += check("(#20w) WAVE, INIT's OP1: the voice's period (2 %) and a sine from its zero phase up (3 %)",
+                 off < 0.02 && sine < 0.03);
+    v[FP_OL] = 99;                                      /* (OP6) */
+    v[5u * FP_OP + FP_OL] = 0;
+    v[FP_ALG] = 31;
+    v[FP_FB] = 5;
+    off = wave_vs_voice(v, 60, 689, pts);
+    for (j = 1; j < FM_WF_NP; j++) {
+        int32_t d = pts[j] - pts[j - 1u];
+        rise = d > rise ? d : rise;
+        fall = -d > fall ? -d : fall;
+    }
+    bad += check("(#20w) WAVE, ALG 32's OP6 with FEEDBACK 5: the voice's period, a saw (one edge 3x steeper than the other)",
+                 off < 0.02 && (fall > 3 * rise || rise > 3 * fall));
+    fm6_unpack(FM6_INIT, v);
+    v[4u * FP_OP + FP_OL] = 80;                         /* (OP2 into OP1, ALG 1) */
+    v[4u * FP_OP + FP_FC] = 2;
+    off = wave_vs_voice(v, 60, 689, pts);
+    for (sine = 0, j = 0; j < FM_WF_NP; j++) {
+        double d = fabs(pts[j] - 127.0 * sin(6.283185307 * j / (FM_WF_NP - 1u))) / 127.0;
+        sine = d > sine ? d : sine;
+    }
+    bad += check("(#20w) WAVE, OP2 at x2 into OP1: the voice's period, not a sine", off < 0.02 && sine > 0.2);
+    v[4u * FP_OP + FP_FC] = 3;
+    v[4u * FP_OP + FP_FF] = 17;
+    ok = wave_vs_voice(v, 72, 300, pts) < 0.02 && wave_vs_voice(v, 72, 1100, pts) < 0.02;
+    bad += check("(#20w) WAVE, OP2 at x3.51 into OP1 (a bell), C5 at 0.2 s and 0.8 s: the voice's period", ok);
+    {   /* the note it shows: the track's last, held as long as it was; again at the key's next note-on, kept */
+        int32_t b[CTL], i;
+        uint32_t tr = trk_index(TSEL);
+        go_title("OPERATOR");
+        (void)fm_wave_set(1);
+        trk_note_on(TSEL, 50, 80);
+        track_render(TSEL, b, CTL);
+        fm1_ms += 300u;
+        trk_note_off(TSEL, 50);
+        for (i = 0; i < 8; i++)
+            track_render(TSEL, b, CTL);
+        ok = fm6_last[tr].note == 50u && fm6_last[tr].vel == 80u && fm6_last[tr].held_ms == 300u && !fm6_last[tr].down;
+        for (i = 0; i < 64 && (i < 2 || fm_wf.done < FM_WF_NS); i++)
+            frame();
+        ok &= fm_wf.note == 50u && fm_wf.vel == 80u && fm_wf.held == 300 * 1378 / 1000 && fm_wf.done == FM_WF_NS && i > 2;
+        trk_note_on(TSEL, 50, 80);
+        track_render(TSEL, b, CTL);
+        ok &= fm6_last[tr].held_ms == 300u && fm6_last[tr].down;
+        trk_note_off(TSEL, 50);
+        (void)fm_wave_set(0);
+        bad += check("(#20w) WAVE plays the track's last note (D3 at 80 held 0.3 s), over a few frames; its next note-on keeps it", ok);
     }
     return bad;
 }
@@ -10806,6 +10927,7 @@ int main(void)
     bad += test_name();
     bad += test_edit_cycle();
     bad += test_fm6_lab();
+    bad += test_fm6_wave();
 #if FELUCCA_SLICE
     bad += test_slices();
     bad += test_samples_page();

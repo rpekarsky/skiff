@@ -660,7 +660,8 @@ static void state(void)                          /* a playing song with steps on
 {
     uint32_t i;
     ui_power_on();
-    fm_phase = 0;
+    fm_wave = 0;
+    memset(fm6_last, 0, sizeof fm6_last);
     if (large_on) ui_prefs |= PREF_LARGE;
     song.playing = 1;
     song.g[G_BPM] = 124;
@@ -848,7 +849,7 @@ enum { S_HOME, S_HOME_IDLE, S_MESSAGE, S_MESSAGE_KEY, S_MESSAGE_NOFILE, S_PRESET
        S_MOD_GRID, S_VOICE2, S_VOICE2_UNI, S_ARP_ON, S_ARP2, S_EDIT_FLT, S_GLOBAL_SWING, S_VOICE_GLIDE,   /* (Skiff U5) */
        S_SHIFT_ENV, S_SHIFT_STEP, S_SHIFT_HOME, S_SHIFT_HOME_LOCK, S_LFO_RUN, S_HOME_SCOPE,
        S_FM_TONE, S_FM_ENV, S_FM_KEYS, S_FM_ALGO, S_FM_PITCH, S_FM_LFO, S_FM_INIT,   /* (FM6 LAB) */
-       S_FM_PHASE_LOW, S_FM_PHASE_HIGH, S_FM_PHASE_FB, S_SHIFT_FM,                           /* (#20) */
+       S_FM_WAVE_PLUCK, S_FM_WAVE_PAD, S_FM_WAVE_SAW, S_FM_WAVE_BELL, S_SHIFT_FM,             /* (#20w) */
        S_DRIVE_SOFT, S_DRIVE_HARD, S_DRIVE_FOLD, S_DRIVE_CRUSH, S_DRIVE_FUZZ, S_INS_FUZZ, S_INS_CRUSH, S_INS_FLANG,
        S_MENU_MIDI, S_MENU_MIDI_SCROLL, S_LEARN, S_LEARN_CC, S_LFO2, S_ENV2, S_LANES_TUNE, S_REVERB_HALL, S_CHORUS_FB,
        S_CHORUS_FLANGER, S_CHORUS_PHASER, S_PRESETS_BASS,                                     /* (Skiff phase 9) */
@@ -894,8 +895,8 @@ static const char *const S_NAME[S_COUNT] = {"home", "home_idle", "message", "mes
     "six_home", "six_song", "six_perform", "six_mixer", "six_glo", "six_fx", "six_edit", "six_edit_said",
     "mod_grid", "voice_2", "voice_2_uni", "arp_on", "arp_2", "edit_flt", "global_swing", "voice_glide",
     "shift_env", "shift_step", "shift_home", "shift_home_lock", "lfo_run", "home_scope",
-    "fm_op_tone", "fm_op_env", "fm_op_keys", "fm_all_algo", "fm_all_pitch", "fm_all_lfo", "fm_init", "fm_phase_low",
-    "fm_phase_high", "fm_phase_fb", "shift_fm",
+    "fm_op_tone", "fm_op_env", "fm_op_keys", "fm_all_algo", "fm_all_pitch", "fm_all_lfo", "fm_init", "fm_wave_pluck",
+    "fm_wave_pad", "fm_wave_saw", "fm_wave_bell", "shift_fm",
     "drive_soft", "drive_hard", "drive_fold", "drive_crush", "drive_fuzz", "insert_fuzz", "insert_crush", "insert_flanger",
     "menu_midi", "menu_midi_scroll", "learn", "learn_cc", "lfo_2", "env_2", "lanes_tune", "reverb_hall", "chorus_feedback",
     "chorus_flanger", "chorus_phaser", "presets_bass", "song_rest", "song_rest_pick",
@@ -910,7 +911,8 @@ static void mock_state(int s)
 {
     uint32_t i;
     ui_power_on();
-    fm_phase = 0;
+    fm_wave = 0;
+    memset(fm6_last, 0, sizeof fm6_last);
     if (large_on) ui_prefs |= PREF_LARGE;
     usb.config = 0;
     song.batt_raw = 600;
@@ -1556,34 +1558,47 @@ static void setup(int s)
         go_title("OPERATOR");
         ui.shift = 1;
         break;
-    case S_FM_PHASE_LOW:                            /* (#20) PHASE: INIT's OP1 under OP2 a little (MOD LVL -24), OP1 */
-    case S_FM_PHASE_HIGH:                           /* picked on TONE; OP2 deep at x3, picked, on ALL OPS; ALG 1's */
-    case S_FM_PHASE_FB: {                           /* OP3 under OP4 < 5 < 6 with FEEDBACK 6, OP4 picked */
-        uint32_t i = s - S_FM_PHASE_LOW, tr = trk_index(TSEL);
+    case S_FM_WAVE_PLUCK:                           /* (#20w) WAVE, ALG 1's OP2 into OP1: C3 at 110 held 0.4 s, both */
+    case S_FM_WAVE_PAD:                             /* decaying fast, OP2 faster (the pluck); C4 at 90 held 2 s, both */
+    case S_FM_WAVE_SAW:                             /* swelling, OP2 at x2 (the pad); ALG 32's OP6 alone, FEEDBACK 5, */
+    case S_FM_WAVE_BELL: {                          /* no note played yet (the saw); OP2 at x3.51 into OP1, C5 (the bell) */
+        static const uint8_t RATE[4][2][4] = {{{99, 50, 35, 60}, {99, 60, 40, 60}}, {{35, 30, 50, 30}, {30, 25, 50, 30}},
+                                              {{99, 99, 99, 99}, {99, 99, 99, 99}}, {{99, 30, 25, 30}, {99, 40, 30, 40}}};
+        static const uint8_t LEVEL[4][2][4] = {{{99, 70, 0, 0}, {99, 40, 0, 0}}, {{99, 90, 85, 0}, {99, 80, 75, 0}},
+                                               {{99, 99, 99, 0}, {99, 99, 99, 0}}, {{99, 0, 0, 0}, {99, 0, 0, 0}}};
+        static const fm6_last_t NOTE[4] = {{48, 110, 0, 0, 0, 400}, {60, 90, 0, 0, 0, 2000}, {0, 0, 0, 0, 0, 0},
+                                           {72, 100, 0, 0, 0, 1000}};
+        uint32_t i = s - S_FM_WAVE_PLUCK, tr = trk_index(TSEL), k, j;
         uint8_t v[FP_SIZE + 1u];
         eng(ENGI_FM6);
         fm6_unpack(FM6_INIT, v);
-        if (s == S_FM_PHASE_FB) {
-            static const uint8_t OL[4] = {99, 80, 72, 70};
-            uint32_t k;
-            for (k = 0; k < 4u; k++) {
-                v[(3u - k) * FP_OP + FP_OL] = OL[k];
-                v[(3u - k) * FP_OP + FP_FC] = (uint8_t)(1u + k / 2u);
+        for (k = 0; k < 2u; k++)
+            for (j = 0; j < 4u; j++) {
+                v[(5u - k) * FP_OP + FP_R1 + j] = RATE[i][k][j];
+                v[(5u - k) * FP_OP + FP_L1 + j] = LEVEL[i][k][j];
             }
-            v[FP_FB] = 6;
+        if (s == S_FM_WAVE_SAW) {
+            v[5u * FP_OP + FP_OL] = 0;
+            v[FP_OL] = 99;
+            v[FP_ALG] = 31;
+            v[FP_FB] = 5;
         } else {
-            v[4u * FP_OP + FP_OL] = s == S_FM_PHASE_LOW ? 80 : 92;
-            v[4u * FP_OP + FP_FC] = s == S_FM_PHASE_LOW ? 1 : 3;
-            TSEL->p[P_E2] = s == S_FM_PHASE_LOW ? -24 : 0;
+            v[4u * FP_OP + FP_OL] = s == S_FM_WAVE_PAD ? 70 : s == S_FM_WAVE_BELL ? 88 : 85;
+            v[4u * FP_OP + FP_FC] = s == S_FM_WAVE_PAD ? 2 : s == S_FM_WAVE_BELL ? 3 : 1;
+            v[4u * FP_OP + FP_FF] = s == S_FM_WAVE_BELL ? 17 : 0;
         }
         fm6_set_patch(tr, v);
         fm6_adopt(tr);
-        fm_ui[0] = (uint8_t)(s == S_FM_PHASE_LOW ? 0 : s == S_FM_PHASE_HIGH ? 1 : 3);
-        go_title(i ? "ALL OPS" : "OPERATOR");
+        fm6_last[tr] = NOTE[i];
+        fm_ui[0] = (uint8_t)(s == S_FM_WAVE_SAW ? 5 : 0);
+        go_title(i & 1u ? "ALL OPS" : "OPERATOR");
         fm_ui[1] = FMW_TONE;
         fm_ui[2] = FMW_ALGO;
-        (void)fm_phase_set(1);
-        fm_ph_t0 = fm1_ms - 300u - 450u * i;
+        (void)fm_wave_set(1);
+        fm_ops(&fm_panel_sim, TSEL);                /* (rendered whole now; the UI does a few slices a frame) */
+        fm_wf_begin(&fm_panel_sim, fm_wf_key(&fm_panel_sim, TSEL));
+        while (fm_wf.done < FM_WF_NS)
+            fm_wf_render(&fm_panel_sim, TSEL);
         break;
     }
     case S_DX_SOUND:                                /* (Skiff phase 8) EDIT > SOUND, DRUM-X's sheet on track 6 as the */
