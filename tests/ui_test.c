@@ -158,7 +158,7 @@ static void ui_power_on(void)
     memset(&ui, 0, sizeof ui);
     shift_channel = 0;
     memset(fm_ui, 0, sizeof fm_ui);               /* ((FM6 LAB) .pool: OPERATOR 1 on TONE, the envelopes not WAVE) */
-    fm_wave = 0;
+    fm_view = FM_VIEW_ENVELOPES;
     memset(&nsel, 0, sizeof nsel);                /* ((Skiff 2.0) no selection, FEEL's tiles on CHANCE) */
     clip.n = 0;                                   /* (.. nothing copied) */
     cin_left = cin_total = 0;                     /* (no count-in) */

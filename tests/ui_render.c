@@ -1766,7 +1766,7 @@ static void setup(int s)
         fm_ui[1] = FMW_OSC;
         if (s == S_FM_PHASE)
             break;
-        (void)fm_wave_set(1);
+        fm_view = FM_VIEW_WAVE;
         fm_wave_t0 = fm1_ms - 300u;
         fm_ops(&fm_panel_sim, TSEL);
         fm_wf_begin(&fm_panel_sim, fm_wf_key(&fm_panel_sim, TSEL));
