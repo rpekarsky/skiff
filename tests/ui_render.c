@@ -878,7 +878,7 @@ enum { S_HOME, S_HOME_IDLE, S_MESSAGE, S_MESSAGE_KEY, S_MESSAGE_NOFILE, S_PRESET
        S_HOME_FIT_PATS,                                                                       /* (#34 with #41) */
        S_HOME_METER, S_HOME_METER_FIT,      /* (#59) */
        S_HOME_SCOPE_TRACK, S_PAGE_SCOPE_TRACK,                                                /* (#59b) */
-       S_HOME_SPECTRUM, S_FM_SPECTRUM,                                                        /* (#71, #71b) */
+       S_HOME_SPECTRUM, S_FM_SPECTRUM, S_FM_SPECTRUM_TUNE, S_SHIFT_SPECTRUM,                  /* (#71, #71b) */
        S_MENU_POPUP,
        S_HEAD_MEMORY,                                                                         /* (#62) */
        S_MOCK_HOME, S_MOCK_PRESETS, S_MOCK_SEQ, S_MOCK_DRUM, S_MOCK_MIXER, S_MOCK_DIALOG, S_MOCK_MENU, S_COUNT };
@@ -914,7 +914,7 @@ static const char *const S_NAME[S_COUNT] = {"home", "home_idle", "message", "mes
     "chorus_flanger", "chorus_phaser", "presets_bass", "song_rest", "song_rest_pick",
     "notes_range", "notes_pick", "feel_range", "notes_overlap", "momentary", "pool_empty", "pool_unused", "confirm_empty",
     "song_once", "song_new", "song_copyplus", "song_chain", "song_chain3", "notes_chain", "lane_mix", "lane_mix_dx",
-    "song_sound", "song_sounds", "song_chains", "song_chain_copy", "drum_kit_usr", "lanes_usr", "menu_presets_knob", "presets_knob_level", "shift_level", "shift_strip", "pool_new", "home_lists", "home_fit16", "home_fit24", "home_fit32", "home_fit64", "home_fit_pats", "home_meter", "home_meter_fit", "home_scope_track", "page_scope_track", "home_spectrum", "fm_spectrum", "menu_popup", "head_memory", "mock_home", "mock_presets", "mock_seq", "mock_drum", "mock_mixer", "mock_dialog", "mock_menu"};
+    "song_sound", "song_sounds", "song_chains", "song_chain_copy", "drum_kit_usr", "lanes_usr", "menu_presets_knob", "presets_knob_level", "shift_level", "shift_strip", "pool_new", "home_lists", "home_fit16", "home_fit24", "home_fit32", "home_fit64", "home_fit_pats", "home_meter", "home_meter_fit", "home_scope_track", "page_scope_track", "home_spectrum", "fm_spectrum", "fm_spectrum_tune", "shift_spectrum", "menu_popup", "head_memory", "mock_home", "mock_presets", "mock_seq", "mock_drum", "mock_mixer", "mock_dialog", "mock_menu"};
 
 /* (#71) a second of the spectrum's slices: a saw on A3, its low pass closing from 8 kHz to 600 Hz, the fifth over it
  * coming in halfway, over a faint hiss; each slice from the scope's buffer as it was then */
@@ -1129,20 +1129,30 @@ static void setup(int s)
         ui.home = 1;
         ui.home_scope = HOME_SCOPE_TRACK;
         break;
-    case S_HOME_SPECTRUM:                           /* (#71) a second of a saw on A3, its low pass closing from 8 kHz to
-                                                     * 600 Hz, the fifth over it coming in halfway, over a faint hiss */
-        song.master_q12 = MASTER_FULL;
+    case S_HOME_SPECTRUM:                           /* (#71) a second of a saw on A3, its low pass closing from 8 kHz to */
+    case S_SHIFT_SPECTRUM:                          /* 600 Hz, the fifth over it coming in halfway, over a faint hiss; */
+        song.master_q12 = MASTER_FULL;              /* SHIFT's map over it: + SELECT RANGE */
         ui.home = 1;
         ui.home_scope = HOME_SCOPE_SPECTRUM_MASTER;
+        spec_tune = (spec_tune_t){1, 0, 4};
         spectrum_scene(scope_buf, &scope_w);
+        if (s == S_SHIFT_SPECTRUM)
+            ui.shift = shift_channel = 1;
         break;
-    case S_FM_SPECTRUM: {                           /* (#71b) the FM6 sheet's SPECTRUM: the same second on the track */
+    case S_FM_SPECTRUM:                             /* (#71b) the FM6 sheet's SPECTRUM: the same second on the track; */
+    case S_FM_SPECTRUM_TUNE: {                      /* its SHIFT knobs: RANGE 80 DB, TOP 0 DB, ZOOM Y 150 % */
         static int16_t page_scope[SCOPE_TRK_N];     /* (the pages' scopes in the scenes after show it as before) */
         uint32_t w = scope_trk_w;
         eng(ENGI_FM6);
         go_title("OPERATOR");
         fm_ui[1] = FMW_TONE;
         fm_view = FM_VIEW_SPECTRUM;
+        spec_tune = s == S_FM_SPECTRUM ? (spec_tune_t){1, 0, 4} : (spec_tune_t){2, 1, 6};
+        if (s == S_FM_SPECTRUM_TUNE) {
+            shift_channel = 1;
+            ui.hot_col = 3;
+            ui.hot_t = 30;
+        }
         memcpy(page_scope, scope_trk_buf, sizeof page_scope);
         spectrum_scene(scope_trk_buf, &scope_trk_w);
         memcpy(scope_trk_buf, page_scope, sizeof page_scope);

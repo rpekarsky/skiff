@@ -74,16 +74,18 @@ static void fft_windowed(int32_t gain_q15)
 /* (#71) the SPECTRUM waterfall: HOME's (HOME tapped on HOME past the scopes) and (#71b) the FM6 sheet's panel (ui_fm6.c).
  * Every SPEC_SLICE_MS a slice, the newest FFT_N samples of the scope's sound (the mix at MASTER full, or the selected
  * track) as SPEC_COLS levels on a log frequency axis from bin 1 (43 Hz) to bin 240 (10.3 kHz), 16 columns an octave: a
- * column narrower than a bin read between the two either side of it, a wider one its loudest bin. A level is 64 dB
- * under a full-scale sine, SPEC_Q_DB steps a dB. The newest slice in front, the older crawling back a slice a redraw,
+ * column narrower than a bin read between the two either side of it, a wider one its loudest bin. A level is down to
+ * 85 dB under a full-scale sine, SPEC_Q_DB steps a dB; the height shows RANGE of them (spec_tune). The newest slice in front, the older crawling back a slice a redraw,
  * SPEC_SLICES of them (a second), drawn as WAVE's (ui_wf.c); kept in the FM6 panel's room (ui_fm6.c fm_room_lend): after
  * an FM6 page's envelopes or WAVE, another sound, or a second away, the history starts over */
 #define SPEC_COLS 128u                               /* (x 25 slices: 3200 B of the room's 4608) */
 #define SPEC_SLICES 25u
 #define SPEC_SLICE_MS 40u
-#define SPEC_Q_DB 4
+#define SPEC_Q_DB 3                                  /* (255 levels: 85 dB, room for RANGE 80) */
 #define SPEC_FS_L2 (26 << 16)                         /* a full-scale sine's bin power, log2 Q16: (32767 / 4)^2 */
-#define SPEC_Q_PER_L2 3083                           /* levels a unit of that log2, Q24: SPEC_Q_DB x 3.01 dB */
+#define SPEC_Q_PER_L2 2312                           /* levels a unit of that log2, Q8: SPEC_Q_DB x 3.01 dB */
+#define SPEC_TOP_FALL_Q8 307                         /* AUTO's top falls 10 dB a second: 1.2 levels a slice, Q8 */
+#define SPEC_TOP_LOWEST (255 - 48 * SPEC_Q_DB)       /* and stops 48 dB under full scale: silence's hiss stays low */
 #define SPEC_EDGE0_Q16 64137                         /* column 0's low edge in bins, Q16: 240^(-1/254) */
 #define SPEC_COL_Q16 68426                           /* a column's high edge over its low one, Q16: 240^(1/127) */
 #define SPEC_FILL 30
@@ -92,12 +94,24 @@ typedef struct {                                      /* where a waterfall is dr
     int16_t floor_y;                                  /* the front slice's foot: its axis under it */
     int16_t top_y;                                    /* nothing drawn above */
     int16_t step;                                     /* px a slice further back moves right and up */
-    int16_t amp;                                      /* a slice's 64 dB, px */
+    int16_t amp;                                      /* a slice's RANGE at ZOOM Y 100 %, px */
 } spec_geo_t;
+/* (#71) the height: RANGE dB under the top (never under the levels' own floor), the top full scale or (AUTO) the loudest
+ * column of late, falling 10 dB a second, so a quiet mix or track fills it as a loud one does; ZOOM Y stretches it
+ * (clipped at the top). SHIFT + KNOB 1,
+ * 2, 4 on the FM6 sheet's SPECTRUM (TONE), RANGE also SHIFT + SELECT on HOME's; shared by both, not saved */
+static const uint8_t SPEC_RANGE_DB[3] = {48, 64, 80};
+typedef struct {
+    uint8_t range;                                    /* SPEC_RANGE_DB's */
+    uint8_t top_full_scale;                           /* 0: AUTO */
+    uint8_t zoom_q;                                   /* ZOOM Y in 25 % steps: 2 .. 8 */
+} spec_tune_t;
+static spec_tune_t spec_tune __attribute__((section(".pool")));
 static struct {
     uint32_t tick;                                    /* fm1_ms / SPEC_SLICE_MS when the newest slice was taken */
     uint8_t front;                                    /* its row in the room */
     uint8_t sound;                                    /* what the history is of: 0 the mix, else the track + 1 */
+    uint16_t top;                                     /* AUTO's top level, Q8 */
     spec_geo_t geo;                                   /* the one being drawn */
 } spec __attribute__((section(".pool")));
 static uint8_t *fm_room_lend(int *kept);
@@ -155,6 +169,26 @@ static const uint8_t *spec_row(const uint8_t *room, uint32_t j)
 
 static uint8_t spec_sound(void) { return (uint8_t)(scope_track_view() ? song.sel + 1u : 0u); }
 
+static const spec_tune_t *spec_cfg(void)
+{
+    if (!spec_tune.zoom_q)
+        spec_tune = (spec_tune_t){1, 0, 4};
+    return &spec_tune;
+}
+static int32_t spec_range(void) { return SPEC_RANGE_DB[spec_cfg()->range] * SPEC_Q_DB; }
+static int32_t spec_top_q8(void) { return spec_cfg()->top_full_scale ? 255 << 8 : spec.top; }
+
+/* AUTO's top after ticks: up to the new slice's loudest column at once, else falling */
+static void spec_follow_top(const uint8_t *col, uint32_t ticks)
+{
+    int32_t top = (int32_t)spec.top - (int32_t)(ticks > SPEC_SLICES ? SPEC_SLICES : ticks) * SPEC_TOP_FALL_Q8;
+    uint32_t c;
+    for (c = 0; c < SPEC_COLS; c++)
+        if (col[c] << 8 > top)
+            top = col[c] << 8;
+    spec.top = (uint16_t)(top > SPEC_TOP_LOWEST << 8 ? top : SPEC_TOP_LOWEST << 8);
+}
+
 /* the history, a new slice in front once a tick */
 static const uint8_t *spec_history(void)
 {
@@ -168,6 +202,7 @@ static const uint8_t *spec_history(void)
     spec.sound = spec_sound();
     spec.front = (uint8_t)((spec.front + SPEC_SLICES - 1u) % SPEC_SLICES);
     spec_slice(room + spec.front * SPEC_COLS);
+    spec_follow_top(room + spec.front * SPEC_COLS, tick - spec.tick);
     spec.tick = tick;
     return room;
 }
@@ -179,7 +214,9 @@ static int32_t spec_y256(const void *v, uint32_t j, int32_t col, int32_t w)
     const uint8_t *lv = v;
     uint32_t pos = (uint32_t)col * (SPEC_COLS - 1u) * 256u / (uint32_t)w, i = pos >> 8;
     int32_t a = lv[i], b = lv[i < SPEC_COLS - 1u ? i + 1u : i], level256 = (a << 8) + (b - a) * (int32_t)(pos & 255u);
-    int32_t y = (spec_foot_y(j) << 8) - level256 * spec.geo.amp / 255;
+    int32_t top = spec_top_q8(), floor = top > spec_range() << 8 ? top - (spec_range() << 8) : 0;
+    int32_t over_floor = level256 > floor ? level256 - floor : 0;
+    int32_t y = (spec_foot_y(j) << 8) - over_floor * spec.geo.amp * spec_cfg()->zoom_q / ((top - floor) >> 6);
     return y > spec.geo.top_y << 8 ? y : spec.geo.top_y << 8;
 }
 
@@ -208,7 +245,41 @@ static void spec_draw(const spec_geo_t *g, uint16_t c)
     spec_axis();
 }
 
-/* HOME's: the panel's width, the back slice's 64 dB up to y 4 */
+/* the top and the range, as the FM6 sheet's caption says them: "TOP -12 DB  64 DB" */
+static void spec_scale_text(char *b, uint32_t n)
+{
+    str_cpy(b, "TOP ", n);
+    fmt_int(b + str_len(b), -((255 << 8) - spec_top_q8() + (SPEC_Q_DB << 7)) / (SPEC_Q_DB << 8));
+    str_cpy(b + str_len(b), " DB  ", n - str_len(b));
+    fmt_int(b + str_len(b), SPEC_RANGE_DB[spec_cfg()->range]);
+    str_cpy(b + str_len(b), " DB", n - str_len(b));
+}
+
+/* (#71) SHIFT + SELECT on HOME's SPECTRUM: RANGE. 0: not there */
+static int spec_range_step(int32_t s)
+{
+    char b[8];
+    if (!home_spectrum())
+        return 0;
+    spec_tune.range = (uint8_t)clamp((int32_t)spec_cfg()->range + (s > 0 ? 1 : -1), 0, 2);
+    fmt_int(b, SPEC_RANGE_DB[spec_tune.range]);
+    str_cpy(b + str_len(b), " DB", sizeof b - str_len(b));
+    ui_say("SPECTRUM RANGE ", b);
+    return 1;
+}
+
+/* (#71) SHIFT + KNOB 1..4 over the FM6 sheet's SPECTRUM: RANGE, TOP, (none), ZOOM Y */
+static void spec_tune_turn(uint32_t k, int32_t s)
+{
+    (void)spec_cfg();
+    if (k == 0u)
+        spec_tune.range = (uint8_t)clamp((int32_t)spec_tune.range + s, 0, 2);
+    else if (k == 1u)
+        spec_tune.top_full_scale = s > 0;
+    else if (k == 3u)
+        spec_tune.zoom_q = (uint8_t)clamp((int32_t)spec_tune.zoom_q + s, 2, 8);
+}
+/* HOME's: the panel's width, the back slice's range up to y 4 */
 static void graph_spectrum(uint16_t c)
 {
     const spec_geo_t home = {12, 228, (int16_t)(cv_h - 20), 4, 2, 50};

@@ -2830,7 +2830,10 @@ static void ui_input(void)
                                                          * way); (Skiff phase 8, rule 3) else the pages */
         int sheet = !lay && !ui.home && sheet_of(cur_page()->graph);   /* (Skiff U1) a sheet's rows: SELECT is their
                                                                         * only way, BPM LOCK or not */
-        if (glo || (!(ui_prefs & PREF_BPM_LOCK) && !sheet)) {
+        if (!glo && !lay && shift_held() && spec_range_step(s)) {   /* (#71) SHIFT + SELECT on HOME's SPECTRUM */
+            shift_mark();
+            home_long = 0;
+        } else if (glo || (!(ui_prefs & PREF_BPM_LOCK) && !sheet)) {
             song.g[G_BPM] = (int16_t)clamp(song.g[G_BPM] + accel(EN_SELECT, s, 200), GP[G_BPM].min, GP[G_BPM].max);
             ui.bpm_t = 40;                              /* the header's BPM lights up; no message over the header */
         } else if (lay) {

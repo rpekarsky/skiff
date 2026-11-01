@@ -79,7 +79,8 @@ c94972348b8e3592 AMBER_fm_all_pitch
 745328212d7b985c AMBER_fm_op_env
 5a2a3ca5e763785f AMBER_fm_op_keys
 8773f102bc1cf30e AMBER_fm_op_tone
-b59cd1fe89e07ce5 AMBER_fm_spectrum
+cf165361c60963df AMBER_fm_spectrum
+01796869224fabf6 AMBER_fm_spectrum_tune
 7b4a653a85adb8e8 AMBER_fm_wave_bell
 9b240416cb461e44 AMBER_fm_wave_pad
 dbdc03e1408eae1f AMBER_fm_wave_pluck
@@ -111,7 +112,7 @@ aa36ea7f475697d0 AMBER_home_lists
 9a619b79ee22e90e AMBER_home_meter_fit
 195911b2cef51df6 AMBER_home_scope
 8cf9ffed3ef12830 AMBER_home_scope_track
-5c33467b03bbf4e7 AMBER_home_spectrum
+759249222cde8efd AMBER_home_spectrum
 b3bc103f282d1310 AMBER_insert_crush
 9f00e1d9822b001e AMBER_insert_flanger
 0e52114252bc1e39 AMBER_insert_fuzz
@@ -223,6 +224,7 @@ e76b46d08019bedc AMBER_shift_fm
 bcbe1151de320948 AMBER_shift_home
 e6318739b7bf57b4 AMBER_shift_home_lock
 391832b6410e439a AMBER_shift_level
+d66bf54de1614837 AMBER_shift_spectrum
 a7b7d6a99b6b9f50 AMBER_shift_step
 a4a7b1c3ee94ea8f AMBER_shift_strip
 9c00df6c140cc18b AMBER_six_edit
@@ -347,7 +349,8 @@ bea6effdd82662dc BLUE-STN_fm_init
 46d11b17bbcc40c2 BLUE-STN_fm_op_env
 820c15b9cc42ae34 BLUE-STN_fm_op_keys
 ddd71459650b47bc BLUE-STN_fm_op_tone
-e7d187dee8b9ac00 BLUE-STN_fm_spectrum
+96f5192327535403 BLUE-STN_fm_spectrum
+29c39c57a12c8921 BLUE-STN_fm_spectrum_tune
 ac5dfeefe04bd04f BLUE-STN_fm_wave_bell
 c29d32ff4e760208 BLUE-STN_fm_wave_pad
 91d0df4d89b066ee BLUE-STN_fm_wave_pluck
@@ -379,7 +382,7 @@ b707a6fe24453ce9 BLUE-STN_home_lists
 3a6d3ed92146385d BLUE-STN_home_meter_fit
 41bbf85a13e786ef BLUE-STN_home_scope
 5876ebf6752a3034 BLUE-STN_home_scope_track
-091e5e4d61674a11 BLUE-STN_home_spectrum
+bc68151cb5fefbf5 BLUE-STN_home_spectrum
 281eaf7407e06623 BLUE-STN_insert_crush
 63ca286a4599bc86 BLUE-STN_insert_flanger
 cae612109b6a7642 BLUE-STN_insert_fuzz
@@ -491,6 +494,7 @@ bd4f3aa994330b5b BLUE-STN_shift_env
 9f9b1055a7bd0c46 BLUE-STN_shift_home
 f540ae440cc51d01 BLUE-STN_shift_home_lock
 4434fe573ab667e8 BLUE-STN_shift_level
+491e675526e5d6a0 BLUE-STN_shift_spectrum
 4bb7c2bf960ec608 BLUE-STN_shift_step
 b939e049afd2e8a5 BLUE-STN_shift_strip
 2f2b3a1f86f9d1d2 BLUE-STN_six_edit
@@ -615,7 +619,8 @@ be8eaf5d4f35df5b CRYPT_fm6_alg_32
 65fd15797ef052ae CRYPT_fm_op_env
 f55ef68bdf16cc05 CRYPT_fm_op_keys
 aac8d7598d71aee8 CRYPT_fm_op_tone
-e1ac0ee446a1fbfc CRYPT_fm_spectrum
+0e03742b38c68355 CRYPT_fm_spectrum
+98fe3806268953a5 CRYPT_fm_spectrum_tune
 f4fb97eb8fa1985c CRYPT_fm_wave_bell
 b1f382def7f2c4d1 CRYPT_fm_wave_pad
 9b340f5254b45e55 CRYPT_fm_wave_pluck
@@ -647,7 +652,7 @@ f119a3f3a83703ca CRYPT_home_fit64
 f6437bcb595553c3 CRYPT_home_meter_fit
 52e01eddab5bdd93 CRYPT_home_scope
 d4cdf1d515e5ce2f CRYPT_home_scope_track
-8d85b481251b9921 CRYPT_home_spectrum
+39ba360900450946 CRYPT_home_spectrum
 3c5e423113390812 CRYPT_insert_crush
 fa0a172434386c2e CRYPT_insert_flanger
 e373c08b3adf0209 CRYPT_insert_fuzz
@@ -759,6 +764,7 @@ a56389a2dad19afa CRYPT_shift_env
 5394ca077fe9dec2 CRYPT_shift_home
 c56d39dac0a5193e CRYPT_shift_home_lock
 69fb5712642890ba CRYPT_shift_level
+9ca9edf3aeb613ad CRYPT_shift_spectrum
 6f80d927949754fa CRYPT_shift_step
 7c41e5156e8615f0 CRYPT_shift_strip
 b6ba44eb5bcd5dc8 CRYPT_six_edit
@@ -881,7 +887,8 @@ f71edf4a45b0114e CUSTOM_CRYPT_fm6_alg_05
 4d1c16a2c510e999 CUSTOM_CRYPT_fm_op_env
 ee860116a8bc33c5 CUSTOM_CRYPT_fm_op_keys
 a6339739f64aeea0 CUSTOM_CRYPT_fm_op_tone
-db9cb4743556bf65 CUSTOM_CRYPT_fm_spectrum
+2268e06576edbe61 CUSTOM_CRYPT_fm_spectrum
+24c65d8467277b55 CUSTOM_CRYPT_fm_spectrum_tune
 8b172892c1eac84b CUSTOM_CRYPT_fm_wave_bell
 318d42e57645837b CUSTOM_CRYPT_fm_wave_pad
 7274480aae25bb42 CUSTOM_CRYPT_fm_wave_pluck
@@ -913,7 +920,7 @@ eded1cfea51a2f52 CUSTOM_CRYPT_home_meter
 422abcc422e9a5a9 CUSTOM_CRYPT_home_meter_fit
 e7439e72af1745f6 CUSTOM_CRYPT_home_scope
 8b768aace8a0fdbb CUSTOM_CRYPT_home_scope_track
-951bcbf07432aa1c CUSTOM_CRYPT_home_spectrum
+3ba8f5428d6396fb CUSTOM_CRYPT_home_spectrum
 714e18f14a6fdbd5 CUSTOM_CRYPT_insert_crush
 6620ddbd1a3e9b22 CUSTOM_CRYPT_insert_flanger
 8ac14a488dc8b53e CUSTOM_CRYPT_insert_fuzz
@@ -1025,6 +1032,7 @@ d1f9bbf00077747b CUSTOM_CRYPT_shift_fm
 9198af34609c90aa CUSTOM_CRYPT_shift_home
 df41b0c2399e7bf2 CUSTOM_CRYPT_shift_home_lock
 6398158ea57d3700 CUSTOM_CRYPT_shift_level
+5978b43dcb2164f9 CUSTOM_CRYPT_shift_spectrum
 f1867130f87fefe0 CUSTOM_CRYPT_shift_step
 461ea86b13bcd2c9 CUSTOM_CRYPT_shift_strip
 f39891592b654834 CUSTOM_CRYPT_six_edit
@@ -1147,7 +1155,8 @@ caac02ef02c03aac CUSTOM_LCD_fm_init
 050574bb4676bad1 CUSTOM_LCD_fm_op_env
 231aa8777cc90514 CUSTOM_LCD_fm_op_keys
 ca94420cee020f54 CUSTOM_LCD_fm_op_tone
-cc6b45cee4f7f2bb CUSTOM_LCD_fm_spectrum
+56c58a78c75dd30b CUSTOM_LCD_fm_spectrum
+0cbc0a8bcd7fa35c CUSTOM_LCD_fm_spectrum_tune
 318f4f95c1bd1f5a CUSTOM_LCD_fm_wave_bell
 ef4d45629701d163 CUSTOM_LCD_fm_wave_pad
 f729c58dda587ae2 CUSTOM_LCD_fm_wave_pluck
@@ -1179,7 +1188,7 @@ c8e1b8b9cadbc4fa CUSTOM_LCD_home_meter
 882192bea2403692 CUSTOM_LCD_home_meter_fit
 d9b7ec0f1dfbb200 CUSTOM_LCD_home_scope
 f64bd639012a6d51 CUSTOM_LCD_home_scope_track
-837a3b88823c4ac0 CUSTOM_LCD_home_spectrum
+0c212916b125d5ab CUSTOM_LCD_home_spectrum
 263be494ed2963fb CUSTOM_LCD_insert_crush
 8f6755c31f1ec995 CUSTOM_LCD_insert_flanger
 9848fb9b95eccba2 CUSTOM_LCD_insert_fuzz
@@ -1291,6 +1300,7 @@ dd50fda23efd8d1a CUSTOM_LCD_samples
 20aba6898ef68401 CUSTOM_LCD_shift_home
 be3c3479bae82b8e CUSTOM_LCD_shift_home_lock
 b2ceb1abf8af56d6 CUSTOM_LCD_shift_level
+f6027cc1ed2fe3f7 CUSTOM_LCD_shift_spectrum
 6b57fe4cb5adbdcb CUSTOM_LCD_shift_step
 9dbe20c2417de955 CUSTOM_LCD_shift_strip
 990562142ffb0462 CUSTOM_LCD_six_edit
@@ -1413,7 +1423,8 @@ d29e1a340fcf67d4 CUSTOM_NEON_fm_init
 e4377d0c37ee8ff3 CUSTOM_NEON_fm_op_env
 3e3961872377862e CUSTOM_NEON_fm_op_keys
 e8953ea965fd0651 CUSTOM_NEON_fm_op_tone
-8639d9b1b7d63d98 CUSTOM_NEON_fm_spectrum
+b1f34f078a011f70 CUSTOM_NEON_fm_spectrum
+4ab51bde66a3dcf3 CUSTOM_NEON_fm_spectrum_tune
 636a89b761cff3b5 CUSTOM_NEON_fm_wave_bell
 38b3cf47a7247186 CUSTOM_NEON_fm_wave_pad
 6c78963424245be9 CUSTOM_NEON_fm_wave_pluck
@@ -1445,7 +1456,7 @@ e045e77501fe23dd CUSTOM_NEON_head_rec_other
 4136e73b8d060d7b CUSTOM_NEON_home_meter_fit
 caadb7173bc8d63d CUSTOM_NEON_home_scope
 df0f5a607771fdca CUSTOM_NEON_home_scope_track
-6740822f9d468752 CUSTOM_NEON_home_spectrum
+07b5921492493b78 CUSTOM_NEON_home_spectrum
 07ad7e1a543fda5c CUSTOM_NEON_insert_crush
 edca8aae92e498a0 CUSTOM_NEON_insert_flanger
 227b142a97f1c475 CUSTOM_NEON_insert_fuzz
@@ -1557,6 +1568,7 @@ a990ec98d56257b1 CUSTOM_NEON_shift_fm
 1daa79d6d8f7d75d CUSTOM_NEON_shift_home
 60e0c8877eea2a85 CUSTOM_NEON_shift_home_lock
 054ebf0122dd3dcb CUSTOM_NEON_shift_level
+90e09208df77b335 CUSTOM_NEON_shift_spectrum
 e14fa3c87169e7e3 CUSTOM_NEON_shift_step
 e831993affc720a4 CUSTOM_NEON_shift_strip
 1de6763ad860efe1 CUSTOM_NEON_six_edit
@@ -1679,7 +1691,8 @@ b3f13191befad649 CUSTOM_QUARK_fm_all_algo
 f14878b38a6944f2 CUSTOM_QUARK_fm_op_env
 7448ff707dbf6c59 CUSTOM_QUARK_fm_op_keys
 2f3577a9c45b0b31 CUSTOM_QUARK_fm_op_tone
-e42579ca02f9cc34 CUSTOM_QUARK_fm_spectrum
+61e40f384721c4a7 CUSTOM_QUARK_fm_spectrum
+836ccace9219c679 CUSTOM_QUARK_fm_spectrum_tune
 3e2672801fc7188f CUSTOM_QUARK_fm_wave_bell
 e61f6f03c160d4db CUSTOM_QUARK_fm_wave_pad
 3b9d6a97c2801430 CUSTOM_QUARK_fm_wave_pluck
@@ -1711,7 +1724,7 @@ e71a73e4fc25b946 CUSTOM_QUARK_home_fit64
 8e97b1165ed6596b CUSTOM_QUARK_home_meter_fit
 77c4b546d193b466 CUSTOM_QUARK_home_scope
 7e25cb5f25d0b299 CUSTOM_QUARK_home_scope_track
-dd83d24c185a1c71 CUSTOM_QUARK_home_spectrum
+561e7e94b34132bf CUSTOM_QUARK_home_spectrum
 aa6209de17ec06d3 CUSTOM_QUARK_insert_crush
 bd0ef9828f9784aa CUSTOM_QUARK_insert_flanger
 729b1cc0ea922e60 CUSTOM_QUARK_insert_fuzz
@@ -1823,6 +1836,7 @@ b29006c2a91032ae CUSTOM_QUARK_shift_fm
 22eb512c6c6133da CUSTOM_QUARK_shift_home
 90304ad1f57298f0 CUSTOM_QUARK_shift_home_lock
 c49ac085b43858fe CUSTOM_QUARK_shift_level
+1b01f55115cf7f4f CUSTOM_QUARK_shift_spectrum
 72c139a3ed464214 CUSTOM_QUARK_shift_step
 0d1f6cc84610b860 CUSTOM_QUARK_shift_strip
 b19d819a4fce0c09 CUSTOM_QUARK_six_edit
@@ -1945,7 +1959,8 @@ f89362015ee4b665 CUSTOM_SKIFF_fm_all_pitch
 de57e5c5568374ca CUSTOM_SKIFF_fm_op_env
 fa4f9ae9f33dacd0 CUSTOM_SKIFF_fm_op_keys
 e5b9a7838a14ef65 CUSTOM_SKIFF_fm_op_tone
-48e6818e5b9c42a2 CUSTOM_SKIFF_fm_spectrum
+7196dc79667a0334 CUSTOM_SKIFF_fm_spectrum
+820db7171ea94b40 CUSTOM_SKIFF_fm_spectrum_tune
 fa85b626e65bb119 CUSTOM_SKIFF_fm_wave_bell
 bb35fad770fc81ca CUSTOM_SKIFF_fm_wave_pad
 e7759fb751dfe938 CUSTOM_SKIFF_fm_wave_pluck
@@ -1977,7 +1992,7 @@ fe440eaee9b34ea0 CUSTOM_SKIFF_head_rec_other
 55e25773ae03788f CUSTOM_SKIFF_home_meter_fit
 b80674575e229425 CUSTOM_SKIFF_home_scope
 63401e8367a75497 CUSTOM_SKIFF_home_scope_track
-54a2c8cafb9507bf CUSTOM_SKIFF_home_spectrum
+9a9605eb783cce7d CUSTOM_SKIFF_home_spectrum
 5ddfd27087a7be99 CUSTOM_SKIFF_insert_crush
 cdfdd3670d4cdc52 CUSTOM_SKIFF_insert_flanger
 44ccdf1484b4c79c CUSTOM_SKIFF_insert_fuzz
@@ -2089,6 +2104,7 @@ a27f4e4af82c387d CUSTOM_SKIFF_samples
 db279a0b442b1528 CUSTOM_SKIFF_shift_home
 dc62ad7d30df644a CUSTOM_SKIFF_shift_home_lock
 4b35e365cd99cd24 CUSTOM_SKIFF_shift_level
+821d38e139848ea1 CUSTOM_SKIFF_shift_spectrum
 6ef39fa7a4998512 CUSTOM_SKIFF_shift_step
 df567331811a447c CUSTOM_SKIFF_shift_strip
 0cb656b2b03fcf09 CUSTOM_SKIFF_six_edit
@@ -2213,7 +2229,8 @@ bac119a0a3270189 GAMEBOY_fm6_alg_32
 a7baa4fec47a6eee GAMEBOY_fm_op_env
 d79c8b7ffd418128 GAMEBOY_fm_op_keys
 09caab5857e922df GAMEBOY_fm_op_tone
-2e79570b289460a1 GAMEBOY_fm_spectrum
+dfa8a6177dade40f GAMEBOY_fm_spectrum
+7efeaa6f8ab11735 GAMEBOY_fm_spectrum_tune
 9c35b8ad37f02c7f GAMEBOY_fm_wave_bell
 7cf99a88fa12ccd5 GAMEBOY_fm_wave_pad
 8610eccb3c4eb88b GAMEBOY_fm_wave_pluck
@@ -2245,7 +2262,7 @@ abb530e61b40dbbb GAMEBOY_home_meter
 58c82e35fc9f3bed GAMEBOY_home_meter_fit
 a9d209cc8b88718f GAMEBOY_home_scope
 d5a01818343babfb GAMEBOY_home_scope_track
-eb56a92a00e55e95 GAMEBOY_home_spectrum
+684952ff11ee83c7 GAMEBOY_home_spectrum
 329c3b898be97bf8 GAMEBOY_insert_crush
 f322ef1b83501178 GAMEBOY_insert_flanger
 04736494345a5727 GAMEBOY_insert_fuzz
@@ -2357,6 +2374,7 @@ bdf2e13d04c7eb9c GAMEBOY_samples
 381117a5ff9b8c9d GAMEBOY_shift_home
 2498a959591ec252 GAMEBOY_shift_home_lock
 b9a533c15db63685 GAMEBOY_shift_level
+8ac06e3a87c21e3f GAMEBOY_shift_spectrum
 a3beab960251c292 GAMEBOY_shift_step
 b8f22b73a11e4930 GAMEBOY_shift_strip
 7b614ad305f1e992 GAMEBOY_six_edit
@@ -2479,7 +2497,8 @@ eb6fbd3e57424ee9 HI-CON_fm_all_pitch
 48120c9dd112246c HI-CON_fm_op_env
 d97a49d0eb0174cd HI-CON_fm_op_keys
 f9f9feae340da599 HI-CON_fm_op_tone
-d854e2797d49dca1 HI-CON_fm_spectrum
+b8cb8517b294abc4 HI-CON_fm_spectrum
+525f05df17a4ecbb HI-CON_fm_spectrum_tune
 aee8576667bf33ab HI-CON_fm_wave_bell
 cf87543d595b7e01 HI-CON_fm_wave_pad
 64c3dcb05cf7c954 HI-CON_fm_wave_pluck
@@ -2511,7 +2530,7 @@ b8c353be67e28d74 HI-CON_home_fit_pats
 b5827d41f2c90594 HI-CON_home_meter_fit
 8054e18211c1de18 HI-CON_home_scope
 32795280fa467fb1 HI-CON_home_scope_track
-4cbdf0a09d8056bc HI-CON_home_spectrum
+c991ca5f17ffcff0 HI-CON_home_spectrum
 6719374f2c2ef4d6 HI-CON_insert_crush
 26f2cd3933359bbc HI-CON_insert_flanger
 ded62899a7c0420d HI-CON_insert_fuzz
@@ -2623,6 +2642,7 @@ a51de9ba47a964d2 HI-CON_scl
 7212828223100738 HI-CON_shift_home
 de047f32df301bd6 HI-CON_shift_home_lock
 4575fee939401f29 HI-CON_shift_level
+0f188541ee65e658 HI-CON_shift_spectrum
 1eb24cdd8f1aee3c HI-CON_shift_step
 e591ed5fdb7b7858 HI-CON_shift_strip
 c1f26ec66bb6ec7f HI-CON_six_edit
@@ -2745,7 +2765,8 @@ e46d0ab5e0ba83d8 LARGE_AMBER_fm_init
 ccf7e86652ce73bc LARGE_AMBER_fm_op_env
 67c2a4b94a9e52d9 LARGE_AMBER_fm_op_keys
 ed8de5a852664189 LARGE_AMBER_fm_op_tone
-864540d141159d56 LARGE_AMBER_fm_spectrum
+dd98fdf8d447aa78 LARGE_AMBER_fm_spectrum
+60c5ace758bedb85 LARGE_AMBER_fm_spectrum_tune
 9c39d2792038c8be LARGE_AMBER_fm_wave_bell
 68f32da9dc632c42 LARGE_AMBER_fm_wave_pad
 173438a298d3697c LARGE_AMBER_fm_wave_pluck
@@ -2889,6 +2910,7 @@ f4a9943065ea8e7c LARGE_AMBER_shift_fm
 717b24f9a02d923a LARGE_AMBER_shift_home
 42bcd3b9ad7452de LARGE_AMBER_shift_home_lock
 de5840adeeeb9660 LARGE_AMBER_shift_level
+0c46a277de9a3afd LARGE_AMBER_shift_spectrum
 64542caa6bb59e70 LARGE_AMBER_shift_step
 83fd922438b505cb LARGE_AMBER_shift_strip
 518324b497043436 LARGE_AMBER_six_edit
@@ -3011,7 +3033,8 @@ ea28c8474d731a00 LARGE_BLUE-STN_fm_init
 c32e264aee7f72fb LARGE_BLUE-STN_fm_op_env
 08dd5a770c4eca4f LARGE_BLUE-STN_fm_op_keys
 0e8f0f2f9a18083c LARGE_BLUE-STN_fm_op_tone
-0cb30379eede6714 LARGE_BLUE-STN_fm_spectrum
+73aa5d8e345a0297 LARGE_BLUE-STN_fm_spectrum
+d0a3496fb2ce21a5 LARGE_BLUE-STN_fm_spectrum_tune
 99e3d6e3bcbe3a3f LARGE_BLUE-STN_fm_wave_bell
 e4062a36b1d7c738 LARGE_BLUE-STN_fm_wave_pad
 c398a6e1cd4d871a LARGE_BLUE-STN_fm_wave_pluck
@@ -3155,6 +3178,7 @@ c03f414607367f09 LARGE_BLUE-STN_shift_fm
 423f0bd404ea9bc0 LARGE_BLUE-STN_shift_home
 dff4ef1395972bbb LARGE_BLUE-STN_shift_home_lock
 26280131da838752 LARGE_BLUE-STN_shift_level
+e6756165dfec2d5a LARGE_BLUE-STN_shift_spectrum
 bda1dde78ad7bacc LARGE_BLUE-STN_shift_step
 72078156db664918 LARGE_BLUE-STN_shift_strip
 e444dfc773c05dfe LARGE_BLUE-STN_six_edit
@@ -3277,7 +3301,8 @@ c1442a45708091e2 LARGE_CRYPT_fm_all_lfo
 db38babb0d5fc497 LARGE_CRYPT_fm_op_env
 7fe87fea68684af7 LARGE_CRYPT_fm_op_keys
 be876d0fe2e4efa8 LARGE_CRYPT_fm_op_tone
-6a9cd2b5333a5f22 LARGE_CRYPT_fm_spectrum
+2b249837279454fb LARGE_CRYPT_fm_spectrum
+4f7d1466f664abc8 LARGE_CRYPT_fm_spectrum_tune
 051400e3d073d5d4 LARGE_CRYPT_fm_wave_bell
 ec3511f63b46aa09 LARGE_CRYPT_fm_wave_pad
 e7f42344948dc41b LARGE_CRYPT_fm_wave_pluck
@@ -3421,6 +3446,7 @@ e7df8b1a46824792 LARGE_CRYPT_scl
 19d424a058b44fca LARGE_CRYPT_shift_home
 174279a4fddd2ee6 LARGE_CRYPT_shift_home_lock
 3b27986fe391f7b2 LARGE_CRYPT_shift_level
+28f3923036344d85 LARGE_CRYPT_shift_spectrum
 f84e9fb45bb2952f LARGE_CRYPT_shift_step
 25cff666feaa2732 LARGE_CRYPT_shift_strip
 5dc77129ed89b4db LARGE_CRYPT_six_edit
@@ -3543,7 +3569,8 @@ f6e21d091d9bb032 LARGE_GAMEBOY_fm_all_pitch
 8b7b971b4ac034c9 LARGE_GAMEBOY_fm_op_env
 9d40c2e7920a289d LARGE_GAMEBOY_fm_op_keys
 a0372de6c57c60f7 LARGE_GAMEBOY_fm_op_tone
-def84919a7075d3d LARGE_GAMEBOY_fm_spectrum
+feeb7586a00e2d4b LARGE_GAMEBOY_fm_spectrum
+365cebda726dc486 LARGE_GAMEBOY_fm_spectrum_tune
 d8b73960b64549e7 LARGE_GAMEBOY_fm_wave_bell
 6b6cb3eeeb89545d LARGE_GAMEBOY_fm_wave_pad
 aee030fbdc1f8437 LARGE_GAMEBOY_fm_wave_pluck
@@ -3687,6 +3714,7 @@ f77f4061f208188c LARGE_GAMEBOY_shift_fm
 d2888d0f8782d580 LARGE_GAMEBOY_shift_home
 04d0c12b1ea14343 LARGE_GAMEBOY_shift_home_lock
 92f4043cdbc8d524 LARGE_GAMEBOY_shift_level
+ee43cca1d242165a LARGE_GAMEBOY_shift_spectrum
 0965ae9a685c478d LARGE_GAMEBOY_shift_step
 b5bd995a4722cc69 LARGE_GAMEBOY_shift_strip
 51635153b1276a36 LARGE_GAMEBOY_six_edit
@@ -3809,7 +3837,8 @@ a5f9cccbc9883632 LARGE_LCD-GRAIN_fm_all_lfo
 f2db14533a689457 LARGE_LCD-GRAIN_fm_op_env
 c4bb163a3127b98d LARGE_LCD-GRAIN_fm_op_keys
 44002d41eb8cc705 LARGE_LCD-GRAIN_fm_op_tone
-0c09ae3584c6aa1a LARGE_LCD-GRAIN_fm_spectrum
+838f5588abb5ed07 LARGE_LCD-GRAIN_fm_spectrum
+cd4845421f434a9c LARGE_LCD-GRAIN_fm_spectrum_tune
 6c0b13fb7c4eda77 LARGE_LCD-GRAIN_fm_wave_bell
 3d45a56e216cbc75 LARGE_LCD-GRAIN_fm_wave_pad
 010151a0c3526385 LARGE_LCD-GRAIN_fm_wave_pluck
@@ -3953,6 +3982,7 @@ eb12a5af9f9310bb LARGE_LCD-GRAIN_shift_fm
 dd815fd88015523c LARGE_LCD-GRAIN_shift_home
 2dee95a350615ac9 LARGE_LCD-GRAIN_shift_home_lock
 9585d341f1065f81 LARGE_LCD-GRAIN_shift_level
+2ecdc23769d336b1 LARGE_LCD-GRAIN_shift_spectrum
 9d4131ed7d4eaf92 LARGE_LCD-GRAIN_shift_step
 42298a54e852229c LARGE_LCD-GRAIN_shift_strip
 5678c31c1378be61 LARGE_LCD-GRAIN_six_edit
@@ -4075,7 +4105,8 @@ eac773c221a1dc1b LARGE_LCD-GREEN_fm_all_lfo
 63948747ee823b87 LARGE_LCD-GREEN_fm_op_env
 51f7b9e5a738af4c LARGE_LCD-GREEN_fm_op_keys
 2394cc8fb6177250 LARGE_LCD-GREEN_fm_op_tone
-c9a96d4c699913e5 LARGE_LCD-GREEN_fm_spectrum
+a42abe607ecdda79 LARGE_LCD-GREEN_fm_spectrum
+1078795c58bb2cbc LARGE_LCD-GREEN_fm_spectrum_tune
 e29342bd374da780 LARGE_LCD-GREEN_fm_wave_bell
 427a29c5b10f9793 LARGE_LCD-GREEN_fm_wave_pad
 070b20291a57eed8 LARGE_LCD-GREEN_fm_wave_pluck
@@ -4219,6 +4250,7 @@ c6313f2f60aee221 LARGE_LCD-GREEN_roll_wide
 cbd6989d701bb854 LARGE_LCD-GREEN_shift_home
 c6033d0ecc6cd03d LARGE_LCD-GREEN_shift_home_lock
 73a9cc75613f433f LARGE_LCD-GREEN_shift_level
+43630c4bc09cefbd LARGE_LCD-GREEN_shift_spectrum
 3f2cbb01b470ee4b LARGE_LCD-GREEN_shift_step
 6d4f28d7e426b26f LARGE_LCD-GREEN_shift_strip
 653a29d032552c9e LARGE_LCD-GREEN_six_edit
@@ -4341,7 +4373,8 @@ ac4a0f7ceb93dd68 LARGE_LCD-NIGHT_fm_all_lfo
 84cb51ab42e7b7af LARGE_LCD-NIGHT_fm_op_env
 98975e9827c70864 LARGE_LCD-NIGHT_fm_op_keys
 40735c07d952d6fb LARGE_LCD-NIGHT_fm_op_tone
-f4d729d67c052915 LARGE_LCD-NIGHT_fm_spectrum
+cf1e71c04a9170c9 LARGE_LCD-NIGHT_fm_spectrum
+418cece18dd70d51 LARGE_LCD-NIGHT_fm_spectrum_tune
 e2adc5c65728d258 LARGE_LCD-NIGHT_fm_wave_bell
 c6e7564de26ef909 LARGE_LCD-NIGHT_fm_wave_pad
 6fe642479ddc54b8 LARGE_LCD-NIGHT_fm_wave_pluck
@@ -4485,6 +4518,7 @@ c38adf7805e82416 LARGE_LCD-NIGHT_shift_env
 5e9645b8bb7aed61 LARGE_LCD-NIGHT_shift_home
 958c8ca2f7df31ee LARGE_LCD-NIGHT_shift_home_lock
 b912465fcb6f0bf6 LARGE_LCD-NIGHT_shift_level
+24510b8e2675f597 LARGE_LCD-NIGHT_shift_spectrum
 cbe8bbe4b98238ea LARGE_LCD-NIGHT_shift_step
 8f44b67b52e66c81 LARGE_LCD-NIGHT_shift_strip
 7872c5db351ee3a6 LARGE_LCD-NIGHT_six_edit
@@ -4607,7 +4641,8 @@ f0a80c7467b42aaa LARGE_LCD_fm_all_pitch
 15583491b795374c LARGE_LCD_fm_op_env
 fd40a83c815faa09 LARGE_LCD_fm_op_keys
 a4f88c50225d1753 LARGE_LCD_fm_op_tone
-1a708a6d02da2dbc LARGE_LCD_fm_spectrum
+6615436879261974 LARGE_LCD_fm_spectrum
+545d5e23ce724e58 LARGE_LCD_fm_spectrum_tune
 59d00cb0bad5de87 LARGE_LCD_fm_wave_bell
 3f9a8bf16c6958e6 LARGE_LCD_fm_wave_pad
 1c05aa448cadc15b LARGE_LCD_fm_wave_pluck
@@ -4751,6 +4786,7 @@ bffda9344b2adf0e LARGE_LCD_shift_env
 937f32d5e19a92c1 LARGE_LCD_shift_home
 0232233235a889c7 LARGE_LCD_shift_home_lock
 596e80e3b008fc4a LARGE_LCD_shift_level
+b2067719e63a4c63 LARGE_LCD_shift_spectrum
 6abd29bbd192752d LARGE_LCD_shift_step
 dd62e24f0f116146 LARGE_LCD_shift_strip
 6c8bfc18991d8bec LARGE_LCD_six_edit
@@ -4873,7 +4909,8 @@ eb0e2b35d362ac2c LARGE_NEON_fm_all_algo
 06fa3207f28dd29e LARGE_NEON_fm_op_env
 6b551c7202b8d44b LARGE_NEON_fm_op_keys
 e907f23a21f80365 LARGE_NEON_fm_op_tone
-339dfd605068706f LARGE_NEON_fm_spectrum
+e6528bde2885c45d LARGE_NEON_fm_spectrum
+29fcc8626e4cda42 LARGE_NEON_fm_spectrum_tune
 0457e7eea858313f LARGE_NEON_fm_wave_bell
 a8953e00e03ab291 LARGE_NEON_fm_wave_pad
 586c73909bb3f6c1 LARGE_NEON_fm_wave_pluck
@@ -5017,6 +5054,7 @@ e02da5a978578d09 LARGE_NEON_roll_wide
 c127d46ad0f3bdf6 LARGE_NEON_shift_home
 d98e8e69fe56c506 LARGE_NEON_shift_home_lock
 d92ccbd12118b555 LARGE_NEON_shift_level
+4d6fa0a0474a7f79 LARGE_NEON_shift_spectrum
 02810a4751f6294a LARGE_NEON_shift_step
 2f1b1f82c7632348 LARGE_NEON_shift_strip
 66a3a0645070775e LARGE_NEON_six_edit
@@ -5139,7 +5177,8 @@ d9f3ab5d8029fafe LARGE_QUARK_fm_all_pitch
 cc53661c24e27581 LARGE_QUARK_fm_op_env
 4dff22bbf13405dd LARGE_QUARK_fm_op_keys
 093ca5c8193c19c9 LARGE_QUARK_fm_op_tone
-45587dd5d7e89400 LARGE_QUARK_fm_spectrum
+b13a2f2b9d3c1610 LARGE_QUARK_fm_spectrum
+a7bccb4e6578f0f2 LARGE_QUARK_fm_spectrum_tune
 8fe98a295b958207 LARGE_QUARK_fm_wave_bell
 09b80ad1dbee925b LARGE_QUARK_fm_wave_pad
 2f91b8ad72becb3c LARGE_QUARK_fm_wave_pluck
@@ -5283,6 +5322,7 @@ d1fc66c0e08774f2 LARGE_QUARK_shift_fm
 aaef542429ddc758 LARGE_QUARK_shift_home
 8e59c6c6ab2b268c LARGE_QUARK_shift_home_lock
 d2609a8156207db6 LARGE_QUARK_shift_level
+13afff11872c9d26 LARGE_QUARK_shift_spectrum
 4cd2f114daeb3ef5 LARGE_QUARK_shift_step
 93790c3243bbe481 LARGE_QUARK_shift_strip
 6617dc1a6b298524 LARGE_QUARK_six_edit
@@ -5405,7 +5445,8 @@ c01163483adebea8 LARGE_SKIFF_fm_all_algo
 f3417ba71991d2f5 LARGE_SKIFF_fm_op_env
 26a26b89cf44b4ab LARGE_SKIFF_fm_op_keys
 09ecc813e891c52d LARGE_SKIFF_fm_op_tone
-22b9c1f9a0969bba LARGE_SKIFF_fm_spectrum
+81f1e95b2da49b31 LARGE_SKIFF_fm_spectrum
+c743d09491335386 LARGE_SKIFF_fm_spectrum_tune
 93c47fb8685f5418 LARGE_SKIFF_fm_wave_bell
 94c32bc39928b840 LARGE_SKIFF_fm_wave_pad
 f8fd8d14b642b613 LARGE_SKIFF_fm_wave_pluck
@@ -5549,6 +5590,7 @@ a8cff5d385488c8c LARGE_SKIFF_shift_fm
 3762af3c52ebb9c4 LARGE_SKIFF_shift_home
 f532de338fa3ac2a LARGE_SKIFF_shift_home_lock
 b91a71e89e290578 LARGE_SKIFF_shift_level
+410227ab8c71b1e1 LARGE_SKIFF_shift_spectrum
 48ac36942278270f LARGE_SKIFF_shift_step
 bf34f8cfbf99c27d LARGE_SKIFF_shift_strip
 b17188a85bb69571 LARGE_SKIFF_six_edit
@@ -5673,7 +5715,8 @@ b1ec57713d663711 LCD-GRAIN_fm_init
 236fb961b44b4029 LCD-GRAIN_fm_op_env
 cebde12a4b277159 LCD-GRAIN_fm_op_keys
 93a8ee11114aa84b LCD-GRAIN_fm_op_tone
-1200e39dfa78f594 LCD-GRAIN_fm_spectrum
+bb7daa6e6ebf6f7d LCD-GRAIN_fm_spectrum
+2dcd71e87aaf8318 LCD-GRAIN_fm_spectrum_tune
 d2fe6bdc4997f965 LCD-GRAIN_fm_wave_bell
 99c691b513667b63 LCD-GRAIN_fm_wave_pad
 fdb5c4045af1fd97 LCD-GRAIN_fm_wave_pluck
@@ -5705,7 +5748,7 @@ ea326201d996837a LCD-GRAIN_home_fit16
 ed62a113d9fdf8d0 LCD-GRAIN_home_meter_fit
 82d27ebcd5df5732 LCD-GRAIN_home_scope
 b0f61ccca9966fa7 LCD-GRAIN_home_scope_track
-02fb469dc796d461 LCD-GRAIN_home_spectrum
+b4484cc2629b2db5 LCD-GRAIN_home_spectrum
 32441bdfede458b3 LCD-GRAIN_insert_crush
 324fc2a0be23e340 LCD-GRAIN_insert_flanger
 06214a11188d99d8 LCD-GRAIN_insert_fuzz
@@ -5817,6 +5860,7 @@ b856f9828d07a883 LCD-GRAIN_scl
 47a027ad27d3454e LCD-GRAIN_shift_home
 5f64209af7b742c7 LCD-GRAIN_shift_home_lock
 28586644c47e30a7 LCD-GRAIN_shift_level
+492e459f99b9cbff LCD-GRAIN_shift_spectrum
 ff4d273ef60bd821 LCD-GRAIN_shift_step
 6438564d506e3901 LCD-GRAIN_shift_strip
 4cf9ace0cc58a75e LCD-GRAIN_six_edit
@@ -5941,7 +5985,8 @@ bc12cf6c43a5a9e6 LCD-GREEN_fm_init
 4792c1fb67fb139d LCD-GREEN_fm_op_env
 6758fc3b15249532 LCD-GREEN_fm_op_keys
 c3bab13a12c36c28 LCD-GREEN_fm_op_tone
-8ac19f901b4036ea LCD-GREEN_fm_spectrum
+0ac67f45db23ad16 LCD-GREEN_fm_spectrum
+1ec047c5d2a51c8b LCD-GREEN_fm_spectrum_tune
 d7b9cf7e5e5ebfd2 LCD-GREEN_fm_wave_bell
 775f35720fca89b1 LCD-GREEN_fm_wave_pad
 0668306b19d5d277 LCD-GREEN_fm_wave_pluck
@@ -5973,7 +6018,7 @@ d906691771a8ab94 LCD-GREEN_home_meter
 b99ab2473914f2db LCD-GREEN_home_meter_fit
 e5dd696c17cf9454 LCD-GREEN_home_scope
 afc0ea836a4c13df LCD-GREEN_home_scope_track
-13e1d1d2e31cb22f LCD-GREEN_home_spectrum
+5b5b9c295caa8091 LCD-GREEN_home_spectrum
 72176a54d7148453 LCD-GREEN_insert_crush
 d799e683a9dbd180 LCD-GREEN_insert_flanger
 aa1a5607bd3a2fc8 LCD-GREEN_insert_fuzz
@@ -6085,6 +6130,7 @@ be971cdf9539d6de LCD-GREEN_shift_env
 694740ebfca4cc41 LCD-GREEN_shift_home
 14c2f39387750918 LCD-GREEN_shift_home_lock
 d6a262510e8ef7aa LCD-GREEN_shift_level
+60743160383836c8 LCD-GREEN_shift_spectrum
 13107aac93c2070d LCD-GREEN_shift_step
 f21251d9d85a09ff LCD-GREEN_shift_strip
 34ce9bd9a0465cb6 LCD-GREEN_six_edit
@@ -6209,7 +6255,8 @@ caac02ef02c03aac LCD-NIGHT_fm_init
 433f3c60430b8a99 LCD-NIGHT_fm_op_env
 a56639324c03789c LCD-NIGHT_fm_op_keys
 50dfd374211bfcdc LCD-NIGHT_fm_op_tone
-be0cb407da928553 LCD-NIGHT_fm_spectrum
+f5f4b8077e806143 LCD-NIGHT_fm_spectrum
+054755cdb59e82c4 LCD-NIGHT_fm_spectrum_tune
 7e86d0f92295f7f2 LCD-NIGHT_fm_wave_bell
 61c594c2b2434ceb LCD-NIGHT_fm_wave_pad
 d08c71c571e0100a LCD-NIGHT_fm_wave_pluck
@@ -6241,7 +6288,7 @@ d5c5dd6906e0048e LCD-NIGHT_home_meter
 273e67acea3e44ea LCD-NIGHT_home_meter_fit
 d9b7ec0f1dfbb200 LCD-NIGHT_home_scope
 f64bd639012a6d51 LCD-NIGHT_home_scope_track
-837a3b88823c4ac0 LCD-NIGHT_home_spectrum
+0c212916b125d5ab LCD-NIGHT_home_spectrum
 263be494ed2963fb LCD-NIGHT_insert_crush
 8f6755c31f1ec995 LCD-NIGHT_insert_flanger
 9848fb9b95eccba2 LCD-NIGHT_insert_fuzz
@@ -6353,6 +6400,7 @@ dd50fda23efd8d1a LCD-NIGHT_samples
 20aba6898ef68401 LCD-NIGHT_shift_home
 be3c3479bae82b8e LCD-NIGHT_shift_home_lock
 b2ceb1abf8af56d6 LCD-NIGHT_shift_level
+f6027cc1ed2fe3f7 LCD-NIGHT_shift_spectrum
 6b57fe4cb5adbdcb LCD-NIGHT_shift_step
 9dbe20c2417de955 LCD-NIGHT_shift_strip
 990562142ffb0462 LCD-NIGHT_six_edit
@@ -6477,7 +6525,8 @@ f850e74fec75b730 LCD_fm_init
 baa26ad9f894eaa8 LCD_fm_op_env
 f73a77cb4e670f6d LCD_fm_op_keys
 5cdc5b2c0aa0ee4a LCD_fm_op_tone
-8b84df85bfb9124f LCD_fm_spectrum
+0f17932c66d8c04b LCD_fm_spectrum
+5e5173bcb4826c26 LCD_fm_spectrum_tune
 02c119b1483dbc71 LCD_fm_wave_bell
 c65d4887a2d9a010 LCD_fm_wave_pad
 23c2fe6b5403ba60 LCD_fm_wave_pluck
@@ -6509,7 +6558,7 @@ b7e355ba5c6406b5 LCD_home_meter
 741eb252fd863484 LCD_home_meter_fit
 01b47da685029139 LCD_home_scope
 7c5e5b85c0c2f04e LCD_home_scope_track
-69ed28085b624f4a LCD_home_spectrum
+2aa62c3c3e984e8b LCD_home_spectrum
 467fdeac707ab9c9 LCD_insert_crush
 dd691f466d306f6a LCD_insert_flanger
 66394c416346cdd5 LCD_insert_fuzz
@@ -6621,6 +6670,7 @@ bf0a6cb059419d50 LCD_shift_fm
 c9eee2b1fa7aa1b3 LCD_shift_home
 168683cb43d2b535 LCD_shift_home_lock
 60d62e30b57d2c20 LCD_shift_level
+79dfb7314d4bd0a9 LCD_shift_spectrum
 92f82e623f1876b7 LCD_shift_step
 61fc83a6ccd73138 LCD_shift_strip
 3f81481364f6262f LCD_six_edit
@@ -6745,7 +6795,8 @@ ed58f215e9c10ab9 NEON_fm_all_lfo
 0662686b7097bc94 NEON_fm_op_env
 1d011b3835422bcd NEON_fm_op_keys
 a423bedab28ac490 NEON_fm_op_tone
-67a3af35b8b6c2cb NEON_fm_spectrum
+6588948288dc0eb1 NEON_fm_spectrum
+d9cfc489ff7904cf NEON_fm_spectrum_tune
 bcd970b5916bb8c3 NEON_fm_wave_bell
 6c3fb142db3d20cd NEON_fm_wave_pad
 0d3156a972c9bfed NEON_fm_wave_pluck
@@ -6777,7 +6828,7 @@ bf4a8dc95e3c3068 NEON_home_meter
 12a3915bfede075c NEON_home_meter_fit
 cfeb43a5a661cc21 NEON_home_scope
 7da23ac47fcc42e5 NEON_home_scope_track
-8aba64541ff07ec9 NEON_home_spectrum
+a768015dc4de7519 NEON_home_spectrum
 6ee8f3173c40024b NEON_insert_crush
 b2ebd662b23e8f1c NEON_insert_flanger
 9c668dc1643342ea NEON_insert_fuzz
@@ -6889,6 +6940,7 @@ ad99f7cf940560f7 NEON_shift_fm
 74062c86f983e280 NEON_shift_home
 033cffd6402803b0 NEON_shift_home_lock
 4eb9d52bf945e1b3 NEON_shift_level
+b564484c533d0427 NEON_shift_spectrum
 65dbf5969b9e39dc NEON_shift_step
 f610402ce3f01eb5 NEON_shift_strip
 2e8bb9726cafca47 NEON_six_edit
@@ -7011,7 +7063,8 @@ ff8ffdd46207f5f7 PAPER_env_2
 81ad963c10cb22ae PAPER_fm_op_env
 549ec85b9f310cf6 PAPER_fm_op_keys
 ee310e60136e8956 PAPER_fm_op_tone
-a97310d8501fcf80 PAPER_fm_spectrum
+0227f8e83095e21f PAPER_fm_spectrum
+0c8ac7cbbd74f42a PAPER_fm_spectrum_tune
 eb12277312f6670e PAPER_fm_wave_bell
 a128aeb15776f3f1 PAPER_fm_wave_pad
 31b4f4a0238e9d05 PAPER_fm_wave_pluck
@@ -7043,7 +7096,7 @@ d220660948dd13d3 PAPER_home_idle
 d8fe6fc535766ad1 PAPER_home_meter_fit
 94571adfcc334367 PAPER_home_scope
 4b2f7d6e8f2d6127 PAPER_home_scope_track
-6002f284ed0e8386 PAPER_home_spectrum
+825b6a04f782871d PAPER_home_spectrum
 f72f4454a2ea1049 PAPER_insert_crush
 da6bbc9fec7ea861 PAPER_insert_flanger
 934bb0779497ff73 PAPER_insert_fuzz
@@ -7155,6 +7208,7 @@ d84e4411734a28d3 PAPER_shift_env
 cf5c98c40e5aed83 PAPER_shift_home
 3cbba1b4d9e1c72c PAPER_shift_home_lock
 940bd7d38385db0d PAPER_shift_level
+13b9e2497adfc6a3 PAPER_shift_spectrum
 7e176c98d5deee49 PAPER_shift_step
 be8424b87c143746 PAPER_shift_strip
 9398d2560194e1d1 PAPER_six_edit
@@ -7285,7 +7339,8 @@ bb7e1cad4c8222a0 QUARK_fm_init
 2470a4a47b5d5e49 QUARK_fm_op_env
 c7fc3d3a22528669 QUARK_fm_op_keys
 3df0baa891d68a13 QUARK_fm_op_tone
-c2e558ebc1b16400 QUARK_fm_spectrum
+2ec70a418704e610 QUARK_fm_spectrum
+f7ed44dc13ed1745 QUARK_fm_spectrum_tune
 664e7a942b11ce5d QUARK_fm_wave_bell
 4ee2b2c7bc753b5d QUARK_fm_wave_pad
 ad1e93c35c879b3c QUARK_fm_wave_pluck
@@ -7317,7 +7372,7 @@ e73acf4a631264ca QUARK_home_lists
 e65154c14ddcdd8b QUARK_home_meter_fit
 b5107d1e76c7e4e2 QUARK_home_scope
 c09b198b6d5c6906 QUARK_home_scope_track
-4bff93b56b4d9eec QUARK_home_spectrum
+299457ba82e46cb5 QUARK_home_spectrum
 01496d011addc190 QUARK_insert_crush
 20796e415f29ae76 QUARK_insert_flanger
 d2edf8528a8b245e QUARK_insert_fuzz
@@ -7429,6 +7484,7 @@ e8c698e4a134ebb7 QUARK_scl
 bc58e6ff3d047998 QUARK_shift_home
 46477fdf9328594c QUARK_shift_home_lock
 2950d9b5220ee2f6 QUARK_shift_level
+598ceb79779e8b66 QUARK_shift_spectrum
 76ef002402615a86 QUARK_shift_step
 d0ae127d9e89be3e QUARK_shift_strip
 7ee9d8bdde3c6db8 QUARK_six_edit
@@ -7553,7 +7609,8 @@ e4ae0c52926f7620 SKIFF_fm_all_pitch
 f7ac04f200440d4c SKIFF_fm_op_env
 6abd2d09a6bea80c SKIFF_fm_op_keys
 a13895aae388af84 SKIFF_fm_op_tone
-3587cb314fd202b3 SKIFF_fm_spectrum
+09c5eb61f97921b8 SKIFF_fm_spectrum
+923b549bcd111e18 SKIFF_fm_spectrum_tune
 faa56b0c85192323 SKIFF_fm_wave_bell
 8f3ee4c3192fdb8b SKIFF_fm_wave_pad
 7433b881a6aa88da SKIFF_fm_wave_pluck
@@ -7585,7 +7642,7 @@ df0b780f44dfba18 SKIFF_home_idle
 79a2942abff7d613 SKIFF_home_meter_fit
 e5ed833617ff9df6 SKIFF_home_scope
 9f9cb43823d61fbb SKIFF_home_scope_track
-1cc24f7f0ce3acd3 SKIFF_home_spectrum
+c1722ff7d7ed47bb SKIFF_home_spectrum
 799322818f8f72b7 SKIFF_insert_crush
 4fc775ee0e3938b8 SKIFF_insert_flanger
 0ef399be9e9ac0a0 SKIFF_insert_fuzz
@@ -7697,6 +7754,7 @@ c457554b3e708bb8 SKIFF_shift_fm
 85714533c2651f8c SKIFF_shift_home
 b9588712707be5d2 SKIFF_shift_home_lock
 643054e714ad6050 SKIFF_shift_level
+252bd87597f65d39 SKIFF_shift_spectrum
 2c411f2a6d781b93 SKIFF_shift_step
 369f9aed402a520f SKIFF_shift_strip
 480f03aff8e6dce5 SKIFF_six_edit

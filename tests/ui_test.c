@@ -11228,7 +11228,7 @@ static int test_spectrum_history(void)
 }
 /* (#71b) SHIFT + SELECT on an FM6 sheet steps the panel: the envelopes, WAVE, SPECTRUM (staying there), back the same
  * way; each fills the room afresh as it comes in (no slice of the other's drawn). SHIFT + KNOB 2 on TONE: WAVE's
- * PERIODS, SMOOTH left at 2 */
+ * PERIODS, SMOOTH left at 2; over SPECTRUM the SHIFT knobs are its own */
 static void shift_select(int32_t s)
 {
     btn_down(B_HOME); frame();
@@ -11238,6 +11238,7 @@ static void shift_select(int32_t s)
 static int test_fm6_spectrum_view(void)
 {
     const uint8_t *room;
+    int16_t pan;
     uint32_t i, j, k, sel_col = spec_col_of(23.0);
     int ok, kept;
     ui_power_on();
@@ -11269,6 +11270,14 @@ static int test_fm6_spectrum_view(void)
     }
     shift_select(1);
     ok &= fm_view == FM_VIEW_SPECTRUM && !ui.home && !ui.menu;
+    spec_tune = (spec_tune_t){1, 0, 4};
+    pan = TSEL->p[P_PAN];
+    btn_down(B_HOME); frame();
+    turn(EN_K1, 1); turn(EN_K2, 1); turn(EN_K3, 3); turn(EN_K4, -1);
+    ok &= card_is(0, "RANGE") && card_is(1, "TOP") && card_is(3, "ZOOM Y");
+    btn_up(B_HOME); frame();
+    ok &= spec_tune.range == 2u && spec_tune.top_full_scale && spec_tune.zoom_q == 3u && TSEL->p[P_PAN] == pan;
+    spec_tune = (spec_tune_t){1, 0, 4};
     shift_select(-1);
     ok &= fm_view == FM_VIEW_WAVE && !fm_room_lent && fm_wf.done > 0u && (!fm_wf.whole || fm_wf.whole == fm_wf.done);
     shift_select(-1);
@@ -11276,7 +11285,64 @@ static int test_fm6_spectrum_view(void)
     shift_select(-1);
     ok &= fm_view == FM_VIEW_ENVELOPES && str_eq(cur_page()->title, "OPERATOR") && !ui.home && !ui.menu;
     return check("(#71b) FM6: SHIFT + SELECT steps envelopes, WAVE, SPECTRUM (the track's, no WAVE slice in it) and back; "
-                 "SHIFT + KNOB 2 on WAVE: PERIODS 1 .. 3", ok);
+                 "SHIFT + KNOB 2 on WAVE: PERIODS 1 .. 3; on SPECTRUM K1 K2 K4: RANGE TOP ZOOM Y, K3 nothing", ok);
+}
+/* (#71) the height: a tone 32 dB under full scale stands RANGE - 32 dB of RANGE high with TOP 0 DB (48, 64, 80), at the
+ * top with AUTO; ZOOM Y 200 % twice as high, stopped at the top edge; AUTO's top falls 10 dB a second in silence, to 48 dB
+ * under full scale at most. SHIFT + SELECT on HOME's SPECTRUM steps RANGE (BPM LOCK OFF too: not the tempo) */
+static int32_t spec_height_px(uint8_t level)
+{
+    uint8_t row[SPEC_COLS];
+    memset(row, level, sizeof row);
+    return ((spec.geo.floor_y << 8) - spec_y256(row, 0, 40, spec_width()) + 128) >> 8;
+}
+static int test_spectrum_height(void)
+{
+    static const spec_geo_t g = {12, 228, 120, 4, 2, 50};
+    static const int32_t FIXED_PX[3] = {17, 25, 30};    /* (48, 96, 144 levels over the floor, of 144, 192, 240) */
+    const uint8_t tone = 255 - 32 * SPEC_Q_DB;
+    uint8_t row[SPEC_COLS];
+    int16_t bpm;
+    uint32_t r;
+    int ok = 1;
+    ui_power_on();
+    spec.geo = g;
+    spec_tune = (spec_tune_t){0, 1, 4};
+    for (r = 0; r < 3u; r++) {
+        spec_tune.range = (uint8_t)r;
+        ok &= spec_height_px(tone) == FIXED_PX[r];
+    }
+    spec_tune = (spec_tune_t){1, 0, 4};
+    spec.top = 0;
+    memset(row, tone, sizeof row);
+    spec_follow_top(row, 1);
+    ok &= spec.top == tone << 8 && spec_height_px(tone) == 50 && spec_height_px(0) == 0;
+    spec_tune.zoom_q = 8;
+    ok &= spec_height_px(tone) == 100;
+    spec.geo.top_y = 80;
+    ok &= spec_height_px(tone) == 40;
+    memset(row, 0, sizeof row);
+    spec_follow_top(row, SPEC_SLICES);
+    ok &= abs((int32_t)spec.top - ((tone - 10 * SPEC_Q_DB) << 8)) < 256;
+    spec_follow_top(row, SPEC_SLICES);
+    ok &= spec.top == SPEC_TOP_LOWEST << 8;
+    spec_tune = (spec_tune_t){1, 0, 4};
+    ui_prefs &= ~PREF_BPM_LOCK;
+    go_home();
+    ui.home_scope = HOME_SCOPE_SPECTRUM_MASTER;
+    frame();
+    bpm = song.g[G_BPM];
+    shift_select(1);
+    ok &= spec_tune.range == 2u && msg_is("SPECTRUM RANGE 80 DB");
+    shift_select(1);
+    ok &= spec_tune.range == 2u;
+    shift_select(-1);
+    shift_select(-1);
+    ok &= spec_tune.range == 0u && msg_is("SPECTRUM RANGE 48 DB") && song.g[G_BPM] == bpm && !ui.menu &&
+          ui.home_scope == HOME_SCOPE_SPECTRUM_MASTER;
+    spec_tune = (spec_tune_t){1, 0, 4};
+    return check("(#71) SPECTRUM's height: RANGE 48 / 64 / 80 dB under TOP 0 DB or AUTO (falling 10 dB/s), ZOOM Y; "
+                 "SHIFT + SELECT on HOME: RANGE", ok);
 }
 /* MENU > DISPLAY > POPUP TIME: DEFAULT (each box its own, stored 0), 0.1 .. 2.7 s for the TAKE box and the undo box;
  * the undo window stays UNDO_WIN. POPUP CLOSE: TIMER (stored 0), ON INPUT (the window ends too) */
@@ -11515,6 +11581,7 @@ int main(void)
     bad += test_spectrum_levels();
     bad += test_spectrum_history();
     bad += test_fm6_spectrum_view();
+    bad += test_spectrum_height();
     bad += test_popup_time();
     bad += test_h1n_song_pick();
     bad += test_fm6_charts();

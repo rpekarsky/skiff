@@ -365,13 +365,17 @@ static int fm_view_step(int32_t s)
  * is their pair, #60c): its slices, periods, step right and height. 0: not there */
 static int fm_wf_tuned_here(void)
 {
-    return fm_view == FM_VIEW_WAVE && fm_sheet_shown() && cur_page()->graph == GR_FMOP && fm_ui[1] % FM_NWIN == FMW_TONE;
+    return fm_view != FM_VIEW_ENVELOPES && fm_sheet_shown() && cur_page()->graph == GR_FMOP && fm_ui[1] % FM_NWIN == FMW_TONE;
 }
 static int fm_wf_tune_turn(uint32_t k, int32_t s)
 {
     fm_wf_tune_t *u = &fm_wf_tune;
     if (!fm_wf_tuned_here())
         return 0;
+    if (fm_view == FM_VIEW_SPECTRUM) {                  /* ((#71) SPECTRUM's own: ui_spectrum.c spec_tune) */
+        spec_tune_turn(k, s);
+        return 1;
+    }
     (void)fm_wf_cfg();
     if (k == 0u)
         u->slices = (uint8_t)clamp((int32_t)fm_wf_slices() + s, 8, (int32_t)(FM_WF_BUF / fm_wf_points()));
@@ -409,6 +413,17 @@ static void fm_wf_fader(uint32_t j, uint32_t v)
     ui_say(NAME[j], b);
 }
 #endif
+static void fm_spec_tune_cards(void)
+{
+    const spec_tune_t *u = spec_cfg();
+    char val[8];
+    fmt_int(val, SPEC_RANGE_DB[u->range]);
+    draw_column(0, "RANGE", val, "DB", VR_LIVE, u->range * 500, ICON_AUTO);
+    draw_column(1, "TOP", u->top_full_scale ? "0 DB" : "AUTO", "", VR_LIVE, u->top_full_scale ? 1000 : 0, ICON_AUTO);
+    draw_column(2, "", "", "", VR_THEME, -1, ICON_NONE);
+    fmt_int(val, u->zoom_q * 25);
+    draw_column(3, "ZOOM Y", val, "%", VR_LIVE, (u->zoom_q - 2) * 1000 / 6, ICON_AUTO);
+}
 static int fm_wf_tune_cards(void)
 {
     static const char *const NAME[4] = {"SLICES", "PERIODS", "STEP X", "ZOOM Y"};
@@ -418,6 +433,10 @@ static int fm_wf_tune_cards(void)
     uint32_t c;
     if (!fm_wf_tuned_here())
         return 0;
+    if (fm_view == FM_VIEW_SPECTRUM) {
+        fm_spec_tune_cards();
+        return 1;
+    }
     for (c = 0; c < 4u; c++) {
         char val[8];
         fmt_int(val, v[c]);
@@ -1478,7 +1497,8 @@ static void fm_spectrum_panel(uint16_t c)
     b[6] = (char)('1' + fm_tr());
     spec_draw(&panel, c);
     cv_text_on(10, FM_CY + CAP_IN(S, 12), &AF_S, b, T_MID, T_SURF);
-    cv_text_r(229, FM_CY + CAP_IN(S, 12), &AF_S, "64 DB", T_MID, T_SURF);
+    spec_scale_text(b, sizeof b);
+    cv_text_r(229, FM_CY + CAP_IN(S, 12), &AF_S, b, T_MID, T_SURF);
 }
 static void fm_draw(uint32_t pg, const track_t *t, uint16_t c)
 {
