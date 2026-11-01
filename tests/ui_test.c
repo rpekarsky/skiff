@@ -3196,16 +3196,16 @@ static int test_fm6_lab(void)
         fm6_set_phase(tr, 5u - 2u, 75);
         ok &= phase_card_is("-25", 25 * 1000 / 99) && phase_tab_is(2, "-25") && phase_tab_is(1, "0");
         bad += check("(#72b) PHASE on the card and tab: -50 .. +49 %, +49 on to -50 and back, 75 % of a cycle -25", ok);
-        turn(EN_K2, 1);                                 /* (#73) WAVE: OP3's, SINE .. CAMEL2, at once (fm6_pgen) */
+        turn(EN_K2, 1);                                 /* (#73) WAVE: OP3's, SINE .. SQUARE, at once (fm6_pgen) */
         ok = fm6_op_wave[tr][5u - 2u] == FM6_W_SIN2 && fm6_pgen[tr] != gen;
         turn(EN_K2, -1);
         turn(EN_K2, -1);
         ok &= fm6_op_wave[tr][5u - 2u] == FM6_W_SINE;
         for (i = 0; i < FM6_NWAVE + 1u; i++)
             turn(EN_K2, 1);
-        ok &= fm6_op_wave[tr][5u - 2u] == FM6_W_CAMEL2 && fm6_op_wave[tr][5u - 1u] == FM6_W_SINE;
+        ok &= fm6_op_wave[tr][5u - 2u] == FM6_W_SQUARE && fm6_op_wave[tr][5u - 1u] == FM6_W_SINE;
         ok &= !memcmp(fm6_patch[tr], was, FP_SIZE);
-        bad += check("(#73) WAVE: K2 turns OP3's waveform, SINE to CAMEL2 and no further, the patch untouched", ok);
+        bad += check("(#73) WAVE: K2 turns OP3's waveform, SINE to SQUARE and no further, the patch untouched", ok);
         apply_preset_to(TSEL, 0); frame();
         bad += check("(#72, #73) PHASE and WAVE: 0 and SINE again at a sound load",
                      fm6_op_phase[tr][5u - 2u] == 0u && fm6_op_wave[tr][5u - 2u] == FM6_W_SINE);

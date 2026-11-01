@@ -48,7 +48,8 @@ static const fm_field_t FM_F[2][FM_OP_NWIN][4] = {
 };
 static const char *const FM_CURVE[4] = {"-LIN", "-EXP", "+EXP", "+LIN"};
 static const char *const FM_WAVE[6] = {"TRI", "SAW DN", "SAW UP", "SQUARE", "SINE", "RANDOM"};
-static const char *const FM_OPWAVE[FM6_NWAVE] = {"SINE", "SINE2", "HALF", "HALF2", "ALT", "ALT2", "CAMEL", "CAMEL2"};
+static const char *const FM_OPWAVE[FM6_NWAVE] = {"SINE", "SINE2", "HALF", "HALF2", "ALT", "ALT2", "CAMEL", "CAMEL2",
+                                                     "SAW", "RAMP", "SQUARE"};
 static const char *const FM_HZ[4] = {"1", "10", "100", "1K"};          /* a fixed operator's range (FC & 3) */
 
 static uint8_t fm_wave __attribute__((section(".pool")));       /* (#20w) the panel WAVE, not the envelopes; not saved */

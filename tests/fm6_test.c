@@ -608,10 +608,14 @@ static void cost(void)
 }
 
 /* ---------------------------------------------------------- (#73) waves --- */
-/* waveform w at phase x (0..1 of a cycle), as ymfm's OPZ builds it */
+/* waveform w at phase x (0..1 of a cycle), as ymfm's OPZ builds it; (#73b) SAW, RAMP, SQUARE naive */
 static double wave_model(uint32_t w, double x)
 {
     double y;
+    if (w == FM6_W_SAW || w == FM6_W_RAMP)
+        return (x < 0.5 ? 2 * x : 2 * x - 2) * (w == FM6_W_RAMP ? -1 : 1);
+    if (w == FM6_W_SQUARE)
+        return x < 0.5 ? 1 : -1;
     if (w >= FM6_W_HALF && x >= 0.5)
         return 0;
     y = sin(6.283185307179586 * (w >= FM6_W_ALT ? 2 * x : x));
@@ -674,7 +678,7 @@ static void waves(void)
             worst = d > worst ? d : worst;
         }
     }
-    check("(#73) the eight waveforms over a cycle against their float model: within 0.1 % of full scale", worst < 0.001);
+    check("(#73, #73b) the eleven waveforms over a cycle against their float model: within 0.1 % of full scale", worst < 0.001);
     srand(73);
     for (j = 0; j < 100000u; j++) {
         int32_t ph = (int32_t)((uint32_t)rand() << 16 ^ (uint32_t)rand());
@@ -719,6 +723,13 @@ static void waves(void)
     for (j = FS / 20; j < FS / 10; j++)
         peak = fabs(y[j]) > peak ? fabs(y[j]) : peak;
     check("(#73) OP6 with FEEDBACK 7 at HALF: it sounds, below 2 x VOICE_FS", peak > VOICE_FS / 20 && peak < 2.0 * VOICE_FS);
+    setup(base, 0);                                    /* (#73b) the same at SQUARE: through fm6_op_naive_fb */
+    fm6_set_wave(0, 0, FM6_W_SQUARE);
+    voice_render(60, 100, y, FS / 10, 0);
+    trk_note_off(&trk[0], 60);
+    for (peak = 0, j = FS / 20; j < FS / 10; j++)
+        peak = fabs(y[j]) > peak ? fabs(y[j]) : peak;
+    check("(#73b) OP6 with FEEDBACK 7 at SQUARE: it sounds, below 2 x VOICE_FS", peak > VOICE_FS / 20 && peak < 2.0 * VOICE_FS);
 }
 
 /* ----------------------------------------------------------------- demos --- */

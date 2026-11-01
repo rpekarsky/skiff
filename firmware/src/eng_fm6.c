@@ -186,7 +186,7 @@ static uint32_t fm6_waves_of(const uint8_t *w)
 {
     uint32_t k, waves = 0;
     for (k = 0; k < 6u; k++)
-        waves |= (uint32_t)(w[k] % FM6_NWAVE) << (3u * k);
+        waves |= (uint32_t)(w[k] % FM6_NWAVE) << (4u * k);
     return waves;
 }
 /* (#72b) operator k's PHASE on track tr = pct %. Main loop: the sounding notes glide there from the ISR's next block */
