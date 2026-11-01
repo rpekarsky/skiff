@@ -2994,9 +2994,9 @@ timeout:
  * SHIFT's map) goes through here */
 static const sheet_t SHEETS[] = {
     {GR_DXSND, ENGI_DRUMX, DX_NWIN, &dx_ui_win, dx_knob, dx_cards, dx_sig, graph_dx, dx_title, dx_lane_turn, "DRUM"},
-    {GR_FMOP, ENGI_FM6, FM_NWIN, &fm_ui[1], fm_op_knob, fm_op_cards, fm_sig, graph_fm_op, fm_op_title, fm_op_turn,
+    {GR_FMOP, ENGI_FM6, FM_OP_NWIN, &fm_ui[1], fm_op_knob, fm_op_cards, fm_sig, graph_fm_op, fm_op_title, fm_op_turn,
      "OPERATOR"},
-    {GR_FMALL, ENGI_FM6, FM_NWIN, &fm_ui[2], fm_all_knob, fm_all_cards, fm_sig, graph_fm_all, fm_all_title, fm_op_turn,
+    {GR_FMALL, ENGI_FM6, FM_ALL_NWIN, &fm_ui[2], fm_all_knob, fm_all_cards, fm_sig, graph_fm_all, fm_all_title, fm_op_turn,
      "OPERATOR"},
 };
 static const sheet_t *sheet_of(uint32_t g)

@@ -671,6 +671,7 @@ static void state(void)                          /* a playing song with steps on
     ui_power_on();
     fm_wave = 0;
     memset(fm6_last, 0, sizeof fm6_last);
+    memset(fm6_op_phase, 0, sizeof fm6_op_phase);
     if (large_on) ui_prefs |= PREF_LARGE;
     song.playing = 1;
     song.g[G_BPM] = 124;
@@ -859,6 +860,7 @@ enum { S_HOME, S_HOME_IDLE, S_MESSAGE, S_MESSAGE_KEY, S_MESSAGE_NOFILE, S_PRESET
        S_SHIFT_ENV, S_SHIFT_STEP, S_SHIFT_HOME, S_SHIFT_HOME_LOCK, S_LFO_RUN, S_HOME_SCOPE,
        S_FM_TONE, S_FM_ENV, S_FM_KEYS, S_FM_ALGO, S_FM_PITCH, S_FM_LFO, S_FM_INIT,   /* (FM6 LAB) */
        S_FM_WAVE_PLUCK, S_FM_WAVE_PAD, S_FM_WAVE_SAW, S_FM_WAVE_BELL, S_SHIFT_FM,             /* (#20w) */
+       S_FM_PHASE, S_FM_WAVE_PHASE,                                                           /* (#72) */
        S_DRIVE_SOFT, S_DRIVE_HARD, S_DRIVE_FOLD, S_DRIVE_CRUSH, S_DRIVE_FUZZ, S_INS_FUZZ, S_INS_CRUSH, S_INS_FLANG,
        S_MENU_MIDI, S_MENU_MIDI_SCROLL, S_LEARN, S_LEARN_CC, S_LFO2, S_ENV2, S_LANES_TUNE, S_REVERB_HALL, S_CHORUS_FB,
        S_CHORUS_FLANGER, S_CHORUS_PHASER, S_PRESETS_BASS,                                     /* (Skiff phase 9) */
@@ -907,7 +909,7 @@ static const char *const S_NAME[S_COUNT] = {"home", "home_idle", "message", "mes
     "mod_grid", "voice_2", "voice_2_uni", "arp_on", "arp_2", "edit_flt", "global_swing", "voice_glide",
     "shift_env", "shift_step", "shift_home", "shift_home_lock", "lfo_run", "home_scope",
     "fm_op_tone", "fm_op_env", "fm_op_keys", "fm_all_algo", "fm_all_pitch", "fm_all_lfo", "fm_init", "fm_wave_pluck",
-    "fm_wave_pad", "fm_wave_saw", "fm_wave_bell", "shift_fm",
+    "fm_wave_pad", "fm_wave_saw", "fm_wave_bell", "shift_fm", "fm_op_phase", "fm_wave_phase",
     "drive_soft", "drive_hard", "drive_fold", "drive_crush", "drive_fuzz", "insert_fuzz", "insert_crush", "insert_flanger",
     "menu_midi", "menu_midi_scroll", "learn", "learn_cc", "lfo_2", "env_2", "lanes_tune", "reverb_hall", "chorus_feedback",
     "chorus_flanger", "chorus_phaser", "presets_bass", "song_rest", "song_rest_pick",
@@ -924,6 +926,7 @@ static void mock_state(int s)
     ui_power_on();
     fm_wave = 0;
     memset(fm6_last, 0, sizeof fm6_last);
+    memset(fm6_op_phase, 0, sizeof fm6_op_phase);
     if (large_on) ui_prefs |= PREF_LARGE;
     usb.config = 0;
     song.batt_raw = 600;
@@ -1637,6 +1640,31 @@ static void setup(int s)
         (void)fm_wave_set(1);
         fm_wave_t0 = fm1_ms - 300u - 170u * i;      /* (the bars a moment in) */
         fm_ops(&fm_panel_sim, TSEL);                /* (rendered whole now; the UI does a few slices a frame) */
+        fm_wf_begin(&fm_panel_sim, fm_wf_key(&fm_panel_sim, TSEL));
+        while (fm_wf.done < fm_wf_slices())
+            fm_wf_render(&fm_panel_sim, TSEL);
+        break;
+    }
+    case S_FM_PHASE:                                /* (#72) OPERATOR's PHASE: OP2 at x1 into OP1, OP1 from 25 %, OP2 */
+    case S_FM_WAVE_PHASE: {                         /* from 50 % (the tabs show them); WAVE of it: C3 held 0.4 s */
+        uint32_t tr = trk_index(TSEL);
+        uint8_t v[FP_SIZE + 1u];
+        eng(ENGI_FM6);
+        fm6_unpack(FM6_INIT, v);
+        v[4u * FP_OP + FP_OL] = 85;
+        fm6_set_patch(tr, v);
+        fm6_adopt(tr);
+        fm6_op_phase[tr][5] = 25;
+        fm6_op_phase[tr][4] = 50;
+        fm6_last[tr] = (fm6_last_t){48, 110, 0, 0, 0, 400};
+        fm_ui[0] = 0;
+        go_title("OPERATOR");
+        fm_ui[1] = FMW_PHASE;
+        if (s == S_FM_PHASE)
+            break;
+        (void)fm_wave_set(1);
+        fm_wave_t0 = fm1_ms - 300u;
+        fm_ops(&fm_panel_sim, TSEL);
         fm_wf_begin(&fm_panel_sim, fm_wf_key(&fm_panel_sim, TSEL));
         while (fm_wf.done < fm_wf_slices())
             fm_wf_render(&fm_panel_sim, TSEL);

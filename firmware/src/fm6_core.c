@@ -506,15 +506,22 @@ static void fm6_note_retune(fm6_note_t *n, const uint8_t *p, int32_t note, int32
     }
 }
 
-/* a note-on (msfa note init) of patch p, MIDI note `note` (transposed), velocity vel. fresh: from silence
- * (phases, gains, feedback 0); else a retrigger keeps them, as msfa does */
-static void fm6_note_init(fm6_note_t *n, const uint8_t *p, int32_t note, int32_t vel, int fresh)
+/* (#72) an operator's start phase of pct % of a cycle (Q24) */
+static int32_t fm6_start_phase(uint32_t pct) { return (int32_t)(((pct % 100u) << 24) / 100u); }
+
+/* a note-on (msfa note init) of patch p, MIDI note `note` (transposed), velocity vel. fresh: from silence (gains and
+ * feedback 0, each operator k's phase at start_pct[k] % of a cycle, msfa's 0); else a retrigger keeps them, as msfa
+ * does: a sounding oscillator jumping clicks. A fixed-frequency operator starts at its offset too */
+static void fm6_note_init(fm6_note_t *n, const uint8_t *p, int32_t note, int32_t vel, int fresh,
+                          const uint8_t *start_pct)
 {
     uint32_t k;
     note = note < 0 ? 0 : note > 127 ? 127 : note;
     if (fresh) {
-        for (k = 0; k < 6u; k++)
-            n->op[k].phase = n->op[k].gain_out = 0;
+        for (k = 0; k < 6u; k++) {
+            n->op[k].phase = fm6_start_phase(start_pct[k]);
+            n->op[k].gain_out = 0;
+        }
         n->fb[0] = n->fb[1] = 0;
         n->dc = 0;
     }

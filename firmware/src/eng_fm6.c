@@ -61,6 +61,9 @@ typedef struct {                                 /* (#20w) the last note a track
 } fm6_last_t;
 static fm6_last_t fm6_last[NTRK] __attribute__((section(".pool")));   /* (the voices write it, the main loop reads) */
 static int32_t fm6_lfo_v[NTRK], fm6_lfo_d[NTRK]; /* this block's LFO value and delay (Q24) */
+/* (#72, an experiment) each operator's phase at a fresh note-on, % of a cycle (FM6_ALG's order: the sixth first). Not
+ * in the patch, not saved: 0 again at a sound load (fm6_track_loaded, a project's, power-on) */
+static uint8_t fm6_op_phase[NTRK][6] __attribute__((section(".pool")));
 
 /* ------------------------------------------------------- patch formats --- */
 /* the highest value of each byte of the 155-byte voice */
@@ -230,6 +233,7 @@ static void fm6_track_loaded(const track_t *t)
 {
     uint32_t tr = (uint32_t)(t - trk);
     if (tr < NTRK && t->eng_req == ENGI_FM6) {
+        memset(fm6_op_phase[tr], 0, sizeof fm6_op_phase[tr]);
         fm6_own_ok &= (uint8_t)~(1u << tr);
         fm6_edit_f[tr] = 0;
         if (t->p[P_E7] >= 0 && t->p[P_E7] < (int32_t)FM6_NFACTORY)
@@ -249,6 +253,7 @@ static void fm6_init(void)
         fm6_set_patch(tr, v);
         fm6_slot[tr] = 0xFFu;
     }
+    memset(fm6_op_phase, 0, sizeof fm6_op_phase);
 }
 
 /* main loop: SLOT turned (a knob, the editor, MIDI, motion) -> that factory patch; from OWN the own patch is kept
@@ -366,7 +371,7 @@ static void fm6_note_on(track_t *t, voice_t *v)
     (void)fm6_sync(t);
     p = fm6_eff[tr].p;
     fm6_note_init(n, p, (int32_t)v->note + p[FP_TRNSP] - 24, v->mvel ? v->mvel : v->vel,
-                  (!v->env && !v->env_out) || !n->live);    /* from silence: phases and gains from 0 */
+                  (!v->env && !v->env_out) || !n->live, fm6_op_phase[tr]);   /* from silence */
     fm6_lfo_key(&fm6_lfo[tr]);
     if (tr < NTRK)
         fm6_last[tr] = (fm6_last_t){v->note, (uint8_t)(v->mvel ? v->mvel : v->vel), (uint8_t)(v - t->v), 1, fm1_ms,
