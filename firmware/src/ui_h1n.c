@@ -71,69 +71,25 @@ static void hn_window(int32_t w, int32_t h)
  * of a 512-point FFT of the scope's 22.05 kHz snapshot, in the main loop at redraw), each a column of HN_ROWS segments
  * 3 dB apart, the loudest band of a pure tone at the top (the snapshot at MASTER full, as the scope's, then scaled to
  * its peak). A bar falls a segment a redraw; its peak stays lit HN_HOLD redraws, then falls too */
-#define HN_FFT 512u
 #define HN_BANDS 16u
 #define HN_ROWS 14
 #define HN_HOLD 16u
 static const uint16_t HN_EDGE[HN_BANDS + 1u] = {2, 3, 4, 5, 7, 9, 12, 17, 23, 30, 41, 56, 76, 103, 139, 188, 256};
-static int16_t hn_re[HN_FFT], hn_im[HN_FFT];
 static uint8_t hn_bar[HN_BANDS], hn_peak[HN_BANDS], hn_peak_t[HN_BANDS];
 
-/* in place, radix 2, halved at each of its 9 stages (the magnitudes never grow: no overflow); the twiddles from SINE */
-static void hn_fft(void)
-{
-    uint32_t i, j, k, half;
-    for (i = 1, j = 0; i < HN_FFT; i++) {
-        uint32_t b = HN_FFT >> 1;
-        for (; j & b; b >>= 1)
-            j ^= b;
-        j |= b;
-        if (i < j) {
-            int16_t t = hn_re[i];
-            hn_re[i] = hn_re[j];
-            hn_re[j] = t;
-        }
-    }
-    for (half = 1; half < HN_FFT; half <<= 1)
-        for (k = 0; k < half; k++) {
-            uint32_t a = k * (512u / half);           /* (SINE: 1024 a turn; the angle 2 pi k / (2 half)) */
-            int32_t c = SINE[(a + 256u) & 1023u], s = -SINE[a & 1023u];
-            for (i = k; i < HN_FFT; i += 2u * half) {
-                int32_t tr = (hn_re[i + half] * c - hn_im[i + half] * s) >> 15;
-                int32_t ti = (hn_re[i + half] * s + hn_im[i + half] * c) >> 15;
-                hn_re[i + half] = (int16_t)((hn_re[i] - tr) >> 1);
-                hn_im[i + half] = (int16_t)((hn_im[i] - ti) >> 1);
-                hn_re[i] = (int16_t)((hn_re[i] + tr) >> 1);
-                hn_im[i] = (int16_t)((hn_im[i] + ti) >> 1);
-            }
-        }
-}
-
-/* each band's level in segments (0 .. HN_ROWS) from the scope's last HN_FFT samples, Hann-windowed */
+/* each band's level in segments (0 .. HN_ROWS) from the scope's last FFT_N samples, Hann-windowed (ui_spectrum.c) */
 static void hn_spectrum(uint8_t *lv)
 {
     uint32_t i, k;
-    int32_t peak = 1500, gain;
-    scope_snapshot(hn_re);
-    for (i = 0; i < HN_FFT; i++) {
-        int32_t v = hn_re[i];
-        if (v < 0)
-            v = -v;
-        if (v > peak)
-            peak = v;
-    }
-    gain = (16384 << 15) / peak;
-    for (i = 0; i < HN_FFT; i++) {
-        int32_t x = hn_re[i] * gain >> 15, hann = 32767 - SINE[(2u * i + 256u) & 1023u];
-        hn_re[i] = (int16_t)(x * hann >> 16);
-        hn_im[i] = 0;
-    }
-    hn_fft();
+    int32_t peak;
+    scope_snapshot(fft_re);
+    peak = fft_peak();
+    fft_windowed((16384 << 15) / (peak > 1500 ? peak : 1500));
     for (k = 0; k < HN_BANDS; k++) {
         uint32_t pw = 0;                              /* the power / 64: a band's 68 bins at full scale fit */
         int32_t l2 = 0;
         for (i = HN_EDGE[k]; i < HN_EDGE[k + 1u]; i++)
-            pw += (uint32_t)(hn_re[i] * hn_re[i] + hn_im[i] * hn_im[i]) >> 6;
+            pw += (uint32_t)(fft_re[i] * fft_re[i] + fft_im[i] * fft_im[i]) >> 6;
         for (; pw >= 2u; pw >>= 1)                    /* log2 of the power: 3 dB a step */
             l2++;
         l2 -= 24 - 6 - HN_ROWS;                       /* (a full-scale tone: 4096 in its bin, 2^24) */

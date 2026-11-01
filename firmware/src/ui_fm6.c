@@ -318,7 +318,6 @@ static const char *fm_op_title(void)                 /* the header's: "OPERATOR 
     return t;
 }
 static const char *fm_all_title(void) { return "ALL OPS"; }
-static int32_t fm_log2(uint32_t x);
 /* the note drawn held 1 s, not as long as it was played: HELD 1 S, or SMART while its key is still down (its length
  * not known yet) */
 static int fm_wf_held_1s(const fm6_last_t *l)
@@ -331,7 +330,7 @@ static int fm_wf_held_1s(const fm6_last_t *l)
 static uint32_t fm_wf_note_sig(void)
 {
     const fm6_last_t *l = &fm6_last[fm_tr()];
-    uint32_t held = l->held_ms && !fm_wf_held_1s(l) ? fm_log2(l->held_ms) >> 12 : 0;
+    uint32_t held = l->held_ms && !fm_wf_held_1s(l) ? log2_q16(l->held_ms) >> 12 : 0;
     return l->note | (uint32_t)l->vel << 8 | held << 16;
 }
 /* what the cards and the panel show besides the track's values (ui_graph.c graph_signature hashes those) */
@@ -454,24 +453,14 @@ typedef struct {
     uint8_t q[FP_SIZE + 1u];                            /* the patch through the macros */
 } fm_sim_t;
 
-/* log2 x, Q16 (x > 0): the exponent, the mantissa's log2 ~ f + 0.34 f (1 - f) (within 0.004) */
-static int32_t fm_log2(uint32_t x)
-{
-    int32_t e = 0;
-    uint32_t f;
-    while (x >= 2u << e && e < 31)
-        e++;
-    f = (e > 16 ? x >> (e - 16) : x << (16 - e)) - 65536u;
-    return (e << 16) + (int32_t)f + (int32_t)(((f >> 1) * ((65536u - f) >> 1) >> 14) * 22u >> 6);
-}
 /* block b's column: the held part, the release, each on a log axis (the attack gets room) */
 static int32_t fm_warp(const fm_sim_t *s, int32_t b)
 {
-    int32_t l0 = fm_log2(FM_TAU);
+    int32_t l0 = log2_q16(FM_TAU);
     if (b <= s->held)
-        return (FM_HW - 1) * (fm_log2((uint32_t)b * 256u + FM_TAU) - l0) / (fm_log2((uint32_t)s->held * 256u + FM_TAU) - l0);
-    return FM_HW + (FM_XW - FM_HW - 1) * (fm_log2((uint32_t)(b - s->held) * 256u + FM_TAU) - l0) /
-                       (fm_log2((uint32_t)(s->n - s->held) * 256u + FM_TAU) - l0);
+        return (FM_HW - 1) * (log2_q16((uint32_t)b * 256u + FM_TAU) - l0) / (log2_q16((uint32_t)s->held * 256u + FM_TAU) - l0);
+    return FM_HW + (FM_XW - FM_HW - 1) * (log2_q16((uint32_t)(b - s->held) * 256u + FM_TAU) - l0) /
+                       (log2_q16((uint32_t)(s->n - s->held) * 256u + FM_TAU) - l0);
 }
 static void fm_bp(fm_env_line_t *l, int32_t i, int32_t v)
 {
@@ -1176,7 +1165,7 @@ static uint32_t fm_wf_key(const fm_sim_t *s, const track_t *t)
 /* the block at i / n of span blocks: on the log time axis (fm_warp's), fm_wf_tune.warp of the way from an even one */
 static int32_t fm_wf_unwarp(int32_t span, int32_t i, int32_t n)
 {
-    int32_t l0 = fm_log2(FM_TAU), l = l0 + (fm_log2((uint32_t)span * 256u + FM_TAU) - l0) * i / n;
+    int32_t l0 = log2_q16(FM_TAU), l = l0 + (log2_q16((uint32_t)span * 256u + FM_TAU) - l0) * i / n;
     int32_t on_log = clamp((int32_t)((fm6_mant(l << 8) >> (30 - (l >> 16))) - FM_TAU) / 256, 0, span), even = span * i / n;
     return even + (on_log - even) * fm_wf_cfg()->warp / 100;
 }
@@ -1342,41 +1331,14 @@ static int32_t fm_wf_at_col(const int8_t *v, int32_t col, int32_t w)
     int32_t a = v[i], b = v[i < last ? i + 1u : last];
     return (a << 8) + (b - a) * (int32_t)(pos & 255u);
 }
-/* a pixel of the line covering cover / 256 of it: the ink mixed into the panel under it, a
- * quarter at a time (mostly the panel there); (#29) the LCD looks' four tones take no mix: half covered or not at all */
-static void fm_wf_dot(int32_t x, int32_t y, int32_t cover, const uint16_t *ink)
+static int32_t fm_wf_col_y256(const void *v, uint32_t j, int32_t col, int32_t w)
 {
-    int32_t q = ux.h1n ? (cover >= 128 ? 4 : 0) : (cover * 4 + 128) >> 8;
-    if (q > 0)
-        cv_rect(x, y, 1, 1, ink[(q > 4 ? 4 : q) - 1]);
+    return fm_wf_y256(j, fm_wf_at_col(v, col, w));
 }
-/* slice j, a pixel column at a time: the line smoothed across the rows it falls between, a steep step a solid run; the
- * front one 2 px thick. Under it the lines behind veiled fm_wf_tune.fill % into the panel (0: they show through) */
 static void fm_wf_draw_slice(const int8_t *v, uint32_t j, uint16_t c)
 {
-    int32_t w = fm_wf_width(), left = fm_wf_left(j), half = j ? 128 : 256, col, ya, yb;
-    int32_t foot = fm_wf_y(j, -127) + 2, fill = fm_wf_cfg()->fill;
-    uint16_t ink[4];
-    for (col = 0; col < 4; col++)
-        ink[col] = ux_mix(T_SURF, c, 25 * (col + 1));
-    for (col = 1; fill && col <= w; col++) {
-        yb = fm_wf_y256(j, fm_wf_at_col(v, col, w)) >> 8;
-        cv_veil(left + col, yb + 1, foot, T_SURF, fill);
-    }
-    for (ya = fm_wf_y256(j, v[0] << 8), col = 1; col <= w; col++, ya = yb) {
-        int32_t x = left + col, top, f, lo, hi;
-        yb = fm_wf_y256(j, fm_wf_at_col(v, col, w));
-        lo = (ya < yb ? ya : yb) >> 8;
-        hi = (ya < yb ? yb : ya) >> 8;
-        if (hi - lo > 1)
-            cv_rect(x, lo + 1, 1, hi - lo - 1, ink[3]);
-        top = yb - half;
-        f = top & 255;
-        fm_wf_dot(x, top >> 8, 256 - f, ink);
-        if (!j)
-            cv_rect(x, (top >> 8) + 1, 1, 1, ink[3]);
-        fm_wf_dot(x, (top >> 8) + (j ? 1 : 2), f, ink);
-    }
+    const wf_slice_t s = {v, j, fm_wf_left(j), fm_wf_width(), fm_wf_y(j, -127) + 2, fm_wf_cfg()->fill, fm_wf_col_y256};
+    wf_draw_slice(&s, c);
 }
 /* slice j's ink: the track's colour fading into the panel with depth, the release dimmer (the key up reads from it);
  * (#29) an LCD's ink, the release MID */
@@ -1384,7 +1346,7 @@ static uint16_t fm_wf_ink(uint32_t j, uint16_t c)
 {
     if (ux.h1n)
         return j < fm_wf_held_slices() ? T_TEXT : T_MID;
-    return ux_mix(T_SURF, c, (100 - 70 * (int32_t)j / ((int32_t)fm_wf_slices() - 1)) * (j >= fm_wf_held_slices() ? 3 : 5) / 5);
+    return ux_mix(T_SURF, c, wf_fade(j, fm_wf_slices()) * (j >= fm_wf_held_slices() ? 3 : 5) / 5);
 }
 /* the carrier the bars show: the picked operator, else the first one it feeds */
 static uint32_t fm_wf_carrier(const fm_sim_t *s)
@@ -1488,11 +1450,29 @@ static void fm_scroll(uint32_t w)
     cv_rect(236, 4 + (int32_t)w * h, 2, h, T_MID);
 }
 static fm_sim_t fm_panel_sim __attribute__((section(".pool")));   /* (1.2 KB: off the stack and the ISR's globals) */
+/* (#71) between FM6 pages the panel's room holds HOME's SPECTRUM history (ui_spectrum.c): kept, the spectrum's since it
+ * last asked; an FM6 page takes the room back, its WAVE slices then rendered again */
+static uint8_t fm_room_lent __attribute__((section(".pool")));
+static uint8_t *fm_room_lend(int *kept)
+{
+    *kept = fm_room_lent;
+    fm_room_lent = 1;
+    return (uint8_t *)fm_panel_sim.wave;
+}
+static void fm_room_take_back(void)
+{
+    if (!fm_room_lent)
+        return;
+    fm_room_lent = 0;
+    fm_wf.key = 0;
+    fm_wf.whole = 0;
+}
 static void fm_draw(uint32_t pg, const track_t *t, uint16_t c)
 {
     fm_sim_t *s = &fm_panel_sim;
     uint16_t sh[12];
     uint32_t w = fm_ui[1 + pg] % FM_NWIN;
+    fm_room_take_back();
     fm_ramp(sh);
     if (fm_wave) {
         fm_ops(s, t);

@@ -878,6 +878,7 @@ enum { S_HOME, S_HOME_IDLE, S_MESSAGE, S_MESSAGE_KEY, S_MESSAGE_NOFILE, S_PRESET
        S_HOME_FIT_PATS,                                                                       /* (#34 with #41) */
        S_HOME_METER, S_HOME_METER_FIT,      /* (#59) */
        S_HOME_SCOPE_TRACK, S_PAGE_SCOPE_TRACK,                                                /* (#59b) */
+       S_HOME_SPECTRUM,                                                                       /* (#71) */
        S_MENU_POPUP,
        S_HEAD_MEMORY,                                                                         /* (#62) */
        S_MOCK_HOME, S_MOCK_PRESETS, S_MOCK_SEQ, S_MOCK_DRUM, S_MOCK_MIXER, S_MOCK_DIALOG, S_MOCK_MENU, S_COUNT };
@@ -913,7 +914,7 @@ static const char *const S_NAME[S_COUNT] = {"home", "home_idle", "message", "mes
     "chorus_flanger", "chorus_phaser", "presets_bass", "song_rest", "song_rest_pick",
     "notes_range", "notes_pick", "feel_range", "notes_overlap", "momentary", "pool_empty", "pool_unused", "confirm_empty",
     "song_once", "song_new", "song_copyplus", "song_chain", "song_chain3", "notes_chain", "lane_mix", "lane_mix_dx",
-    "song_sound", "song_sounds", "song_chains", "song_chain_copy", "drum_kit_usr", "lanes_usr", "menu_presets_knob", "presets_knob_level", "shift_level", "shift_strip", "pool_new", "home_lists", "home_fit16", "home_fit24", "home_fit32", "home_fit64", "home_fit_pats", "home_meter", "home_meter_fit", "home_scope_track", "page_scope_track", "menu_popup", "head_memory", "mock_home", "mock_presets", "mock_seq", "mock_drum", "mock_mixer", "mock_dialog", "mock_menu"};
+    "song_sound", "song_sounds", "song_chains", "song_chain_copy", "drum_kit_usr", "lanes_usr", "menu_presets_knob", "presets_knob_level", "shift_level", "shift_strip", "pool_new", "home_lists", "home_fit16", "home_fit24", "home_fit32", "home_fit64", "home_fit_pats", "home_meter", "home_meter_fit", "home_scope_track", "page_scope_track", "home_spectrum", "menu_popup", "head_memory", "mock_home", "mock_presets", "mock_seq", "mock_drum", "mock_mixer", "mock_dialog", "mock_menu"};
 
 /* the scenes of the UI design screens: the state the UI-redesign
  * prototype drew them from (its setup(): two pattern tracks, the drum pattern on track 4, a synthetic scope),
@@ -1102,6 +1103,31 @@ static void setup(int s)
         }
         ui.home = 1;
         ui.home_scope = HOME_SCOPE_TRACK;
+        break;
+    case S_HOME_SPECTRUM:                           /* (#71) a second of a saw on A3, its low pass closing from 8 kHz to
+                                                     * 600 Hz, the fifth over it coming in halfway, over a faint hiss */
+        song.master_q12 = MASTER_FULL;
+        ui.home = 1;
+        ui.home_scope = HOME_SCOPE_SPECTRUM_MASTER;
+        if (fm1_ms < SPEC_SLICES * SPEC_SLICE_MS)     /* (the slices' times from a second ago, none before 0) */
+            fm1_ms = SPEC_SLICES * SPEC_SLICE_MS;
+        for (uint32_t t = 0, seed = 1u, now = fm1_ms; t < SPEC_SLICES; t++) {
+            double cutoff = 8000.0 * pow(600.0 / 8000.0, t / (SPEC_SLICES - 1.0));
+            for (uint32_t i = 0; i < SCOPE_N; i++) {
+                double v = 0.0;
+                for (uint32_t h = 1; h * 220.0 < 11000.0; h++) {
+                    double f = h * 220.0, g = 1.0 / sqrt(1.0 + pow(f / cutoff, 4.0));
+                    v += g * sin(6.2831853 * f * i / 22050.0) / h;
+                    if (t >= SPEC_SLICES / 2u && h * 330.0 < 11000.0)
+                        v += 0.6 * sin(6.2831853 * h * 330.0 * i / 22050.0 + h) / h / sqrt(1.0 + pow(h * 330.0 / cutoff, 4.0));
+                }
+                seed = seed * 1103515245u + 12345u;
+                scope_buf[i] = (int16_t)(6000.0 * v + (double)((seed >> 16) % 61u) - 30.0);
+            }
+            scope_w = 0;
+            fm1_ms = now - (SPEC_SLICES - 1u - t) * SPEC_SLICE_MS;   /* (the clock as it was: the scenes after as before) */
+            spec_history();
+        }
         break;
     case S_HOME_IDLE: song.playing = 0; song.batt_raw = 570; ui.hot_col = 1; ui.hot_t = 30; break;
     case S_MESSAGE: ui_say("LOADED ", "07 A VERY LONG PATTERN NAME"); break;

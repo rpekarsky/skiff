@@ -29,7 +29,11 @@ static int16_t scope_at_full_master(uint32_t i, int32_t unmaster_q8)
 
 /* (#59) HOME's scope tapped twice, (#59b) a track's own pages' always: the selected track as fx.c taps it, before
  * MASTER (nothing to divide out) */
-static int scope_track_view(void) { return !ui.home || ui.home_scope == HOME_SCOPE_TRACK; }
+static int scope_track_view(void)
+{
+    return !ui.home || ui.home_scope == HOME_SCOPE_TRACK || ui.home_scope == HOME_SCOPE_SPECTRUM_TRACK;
+}
+static int home_spectrum(void) { return ui.home && ui.home_scope >= HOME_SCOPE_SPECTRUM_MASTER; }
 
 /* the scope's last SCOPE_N samples, oldest first: the mix at MASTER full, or the selected track */
 static void scope_snapshot(int16_t *snap)
@@ -48,6 +52,8 @@ static void scope_snapshot(int16_t *snap)
         snap[i] = scope_at_full_master(w + i, unmaster);
 }
 
+#include "ui_wf.c"                                    /* (#20w, #71) the waterfalls' slices */
+#include "ui_spectrum.c"                              /* (#29, #71) the scope's FFT, HOME's SPECTRUM */
 #include "ui_h1n.c"                                   /* (Skiff #29) THEME LCD's segments, window and equalizer */
 #define GOY 11                                       /* graphs drawn on a 100 px scale sit at y 11..111 */
 /* the height ADSR and LFO are drawn on: 100 px, or (MENU > LARGE's strip: draw_graph) the strip's ~ 56 */
@@ -1643,6 +1649,8 @@ static uint32_t graph_signature(void)
     const page_t *pg = cur_page();
     const track_t *t = TSEL;
     uint32_t h = 2166136261u, i;
+    if (home_spectrum() && strip_kind() == SK_NONE)   /* (#71) a slice a tick */
+        return h ^ (fm1_ms / SPEC_SLICE_MS) ^ cpu_shown_sig();
     if (ui.home && (ui.home_scope || strip_kind() == SK_SCOPE))   /* scope: redraw every other frame */
         return h ^ (ui.frame / 2u) ^ cpu_shown_sig();
     if (ui.home) {                                   /* Skiff's tracks: on a change */
@@ -2657,10 +2665,14 @@ static uint16_t scope_colour(void) { return scope_track_view() ? T_TRK(song.sel)
 
 static void scope_caption(void)
 {
-    char track[8] = "TRACK 1";
-    const char *what = scope_track_view() ? track : "MASTER";
+    char what[24] = "MASTER";
     int32_t y = 4 + AF_S_CAP_Y;
-    track[6] = (char)('1' + song.sel);
+    if (scope_track_view()) {
+        str_cpy(what, "TRACK 1", sizeof what);
+        what[6] = (char)('1' + song.sel);
+    }
+    if (home_spectrum())                             /* (#71) */
+        str_cpy(what + str_len(what), " SPECTRUM", sizeof what - str_len(what));
     cv_rect(PANEL_X0, y - 2, text_w(&AF_S, what) + 4, AF_S_CAP_H + 4, T_SURF);   /* (CRYPT's fire, NEON's ridge reach it) */
     cv_text(PANEL_X0 + 2, 4, &AF_S, what, scope_track_view() ? scope_colour() : T_MID);
 }
@@ -2712,7 +2724,9 @@ static void draw_graph(void)
         if (!ui.home_scope)
             graph_tracks();                          /* Skiff: the four tracks (ui_home.c) */
         else {
-            if (ux.h1n)
+            if (home_spectrum())
+                graph_spectrum(scope_colour());      /* (#71) */
+            else if (ux.h1n)
                 hn_eq();                             /* (Skiff #29) LCD: the equalizer */
             else
                 graph_scope(scope_colour());

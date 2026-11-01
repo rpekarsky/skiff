@@ -1169,6 +1169,11 @@ static int test_scope_track(void)
     trk_note_on(TSEL, 60, 110);
     ok &= track_scope_blocks(8, &loudest) == 8u * CTL / 2u && loudest > 1000;
     press(B_HOME);
+    ok &= ui.home_scope == HOME_SCOPE_SPECTRUM_MASTER && !scope_trk && track_scope_blocks(4, &loudest) == 0u;
+    press(B_HOME);
+    ok &= ui.home_scope == HOME_SCOPE_SPECTRUM_TRACK && scope_trk == song.sel + 1u &&
+          track_scope_blocks(8, &loudest) == 8u * CTL / 2u && loudest > 1000;
+    press(B_HOME);
     ok &= ui.home && !ui.home_scope && !scope_trk && track_scope_blocks(4, &loudest) == 0u;
     go_title("EDIT 1");
     frame();
@@ -1179,7 +1184,8 @@ static int test_scope_track(void)
     trk_all_off(TSEL);
     trk_all_off(&trk[other]);
     song.master_q12 = mq;
-    return check("#59 HOME on HOME: lanes -> MASTER -> TRACK -> lanes; TRACK taps the selected track only, while shown; "
+    return check("#59 HOME on HOME: lanes -> MASTER -> TRACK -> (#71) their spectra -> lanes; TRACK taps the selected "
+                 "track only, while shown; "
                  "(#59b) a page: always the track, back on HOME the cycle as it was", ok);
 }
 
@@ -11112,6 +11118,114 @@ static int test_h1n_eq(void)
     song.master_q12 = mq;
     return bad;
 }
+/* (#71) HOME's SPECTRUM: a column's place on the log axis, bin 1 .. bin 240 over 64 columns, worked out here on its own */
+static uint32_t spec_col_of(double bin) { return (uint32_t)floor(63.0 * log(bin) / log(240.0) + 0.5); }
+static uint32_t spec_loudest(const uint8_t *col)
+{
+    uint32_t c, at = 0;
+    for (c = 1; c < SPEC_COLS; c++)
+        if (col[c] > col[at])
+            at = c;
+    return at;
+}
+static void spec_tone(double amp, double bin)
+{
+    uint32_t i;
+    for (i = 0; i < SCOPE_N; i++)
+        scope_buf[i] = (int16_t)(amp * sin(6.2831853 * bin * i / SCOPE_N));
+    scope_w = 0;
+}
+/* a bin centred tone peaks in its column at its level (-6 dB and -46 dB under full scale, to 1 dB), 1 kHz too; a saw's
+ * harmonics fall 6 dB an octave; silence is the floor */
+static int test_spectrum_levels(void)
+{
+    static const double BIN[4] = {2.0, 23.0, 200.0, 1000.0 * SCOPE_N / 22050.0};
+    uint8_t col[SPEC_COLS];
+    uint32_t t, c, h, i, mq = song.master_q12;
+    int32_t want;
+    int bad = 0, ok = 1;
+    song.master_q12 = MASTER_FULL;
+    ui.home = 1;
+    ui.home_scope = HOME_SCOPE_SPECTRUM_MASTER;
+    for (t = 0; t < 8u; t++) {
+        double amp = t < 4u ? 16384.0 : 164.0;
+        spec_tone(amp, BIN[t % 4u]);
+        spec_slice(col);
+        want = 255 + (int32_t)floor(SPEC_Q_DB * 20.0 * log10(amp / 32767.0) + 0.5);
+        if (spec_loudest(col) != spec_col_of(BIN[t % 4u]) || (t % 4u < 3u && abs(col[spec_loudest(col)] - want) > SPEC_Q_DB)) {
+            printf("  bin %.2f at %.0f: column %u (want %u), level %u (want %d)\n", BIN[t % 4u], amp, spec_loudest(col),
+                   spec_col_of(BIN[t % 4u]), col[spec_loudest(col)], want);
+            ok = 0;
+        }
+    }
+    memset(scope_buf, 0, sizeof scope_buf);
+    spec_slice(col);
+    for (c = 0; c < SPEC_COLS; c++)
+        ok &= !col[c];
+    bad += check("(#71) SPECTRUM: a tone peaks in its column at its level (-6, -46 dB), 1 kHz too; silence the floor", ok);
+    for (i = 0; i < SCOPE_N; i++) {                 /* (bin 8: 345 Hz; its 31 harmonics under Nyquist, none aliased) */
+        double v = 0.0;
+        for (h = 1; h <= 31u; h++)
+            v += sin(6.2831853 * 8.0 * h * i / SCOPE_N) / h;
+        scope_buf[i] = (int16_t)(9000.0 * v);
+    }
+    spec_slice(col);
+    ok = 1;
+    for (h = 8u; h < 128u; h *= 2u) {
+        int32_t fall = col[spec_col_of(h)] - col[spec_col_of(2u * h)];
+        if (fall < 6 * SPEC_Q_DB - SPEC_Q_DB || fall > 6 * SPEC_Q_DB + SPEC_Q_DB) {
+            printf("  saw: bin %u to %u falls %d levels\n", h, 2u * h, fall);
+            ok = 0;
+        }
+    }
+    bad += check("(#71) SPECTRUM: a saw's harmonics fall 6 dB an octave (to 1 dB), bins 8 .. 128", ok);
+    song.master_q12 = mq;
+    return bad;
+}
+/* (#71) HOME tapped past the scopes: a slice a tick (40 ms), the older crawling back one a frame, none taken on a redraw
+ * within the tick; after an FM6 page the history starts over */
+static int test_spectrum_history(void)
+{
+    static const double BIN[2] = {23.0, 100.0};
+    const uint8_t *room;
+    uint32_t j, k, mq = song.master_q12;
+    int ok, kept;
+    ui_power_on();
+    song.master_q12 = MASTER_FULL;
+    memset(scope_buf, 0, sizeof scope_buf);
+    for (k = 0; k < 3u; k++)
+        press(B_HOME);
+    ok = ui.home_scope == HOME_SCOPE_SPECTRUM_MASTER;
+    fm1_ms = (fm1_ms / SPEC_SLICE_MS + 1u) * SPEC_SLICE_MS;   /* (on a tick: a frame's 16 ms then stay in it) */
+    for (k = 0; k < 4u; k++) {
+        spec_tone(16384.0, BIN[k > 0]);
+        fm1_ms += SPEC_SLICE_MS - 16u;
+        frame();
+    }
+    room = fm_room_lend(&kept);
+    for (j = 0; j < 4u; j++)
+        ok &= spec_loudest(spec_row(room, j)) == spec_col_of(BIN[j < 3u]);
+    ok &= spec_loudest(spec_row(room, 4)) == 0u && !spec_row(room, 4)[0];
+    ui.force = 1;
+    frame();
+    ok &= spec_loudest(spec_row(room, 3)) == spec_col_of(BIN[0]);
+    fm1_ms += SPEC_SLICE_MS - 16u;
+    frame();
+    ok &= spec_loudest(spec_row(room, 4)) == spec_col_of(BIN[0]);
+    sel_set(1);
+    set_engine_of(TSEL, ENGI_FM6);
+    go_title("OPERATOR");
+    frame();
+    go_home();
+    fm1_ms += SPEC_SLICE_MS;
+    frame();
+    ok &= ui.home_scope == HOME_SCOPE_SPECTRUM_MASTER && spec_loudest(spec_row(room, 0)) == spec_col_of(BIN[1]);
+    for (j = 1; j < SPEC_SLICES; j++)
+        ok &= !spec_row(room, j)[spec_col_of(BIN[1])];
+    song.master_q12 = mq;
+    return check("(#71) SPECTRUM: a slice a tick, the older crawling back one a frame, none on a redraw; after an FM6 page "
+                 "the history starts over", ok);
+}
 /* MENU > DISPLAY > POPUP TIME: DEFAULT (each box its own, stored 0), 0.1 .. 2.7 s for the TAKE box and the undo box;
  * the undo window stays UNDO_WIN. POPUP CLOSE: TIMER (stored 0), ON INPUT (the window ends too) */
 static uint32_t popup_take_t(void)
@@ -11346,6 +11460,8 @@ int main(void)
     bad += test_screen_off();
     bad += test_playhead_line();
     bad += test_h1n_eq();
+    bad += test_spectrum_levels();
+    bad += test_spectrum_history();
     bad += test_popup_time();
     bad += test_h1n_song_pick();
     bad += test_fm6_charts();
