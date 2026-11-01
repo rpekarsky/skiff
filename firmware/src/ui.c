@@ -333,10 +333,14 @@ static void fmt_kn(char *b, int32_t k, int32_t n)
 
 #define HOME_SCOPE_MASTER 1u
 #define HOME_SCOPE_TRACK 2u
+#define HOME_SCOPE_SPECTRUM_MASTER 3u
+#define HOME_SCOPE_SPECTRUM_TRACK 4u
+#define HOME_SCOPE_SPECTRUM_HD 5u
 static struct {
     uint8_t home;
     uint8_t home_scope;          /* Skiff: HOME's panel the scope (HOME tapped on HOME) instead of the tracks (ui_home.c):
-                                  * (#59) HOME_SCOPE_MASTER the mix, a second tap HOME_SCOPE_TRACK the selected track */
+                                  * (#59) HOME_SCOPE_MASTER the mix, a second tap HOME_SCOPE_TRACK the selected track,
+                                  * (#71) then their spectra (ui_spectrum.c), the mix's SPECTRUM HD */
     uint8_t take_t;              /* Skiff: the TAKE box's frames left (ui_take.c; a message ends it) */
     uint8_t undo_w;              /* Skiff: the undo window's frames left (ui.c undo_step; a message ends it) */
     uint8_t popup_on_input;      /* MENU > POPUP CLOSE ON INPUT: RAM only, an evaluation setting (popup_time) */

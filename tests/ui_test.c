@@ -1173,6 +1173,13 @@ static int test_scope_track(void)
     trk_note_on(TSEL, 60, 110);
     ok &= track_scope_blocks(8, &loudest) == 8u * CTL / 2u && loudest > 1000;
     press(B_HOME);
+    ok &= ui.home_scope == HOME_SCOPE_SPECTRUM_MASTER && !scope_trk && track_scope_blocks(4, &loudest) == 0u;
+    press(B_HOME);
+    ok &= ui.home_scope == HOME_SCOPE_SPECTRUM_TRACK && scope_trk == song.sel + 1u &&
+          track_scope_blocks(8, &loudest) == 8u * CTL / 2u && loudest > 1000;
+    press(B_HOME);
+    ok &= ui.home_scope == HOME_SCOPE_SPECTRUM_HD && !scope_trk && track_scope_blocks(4, &loudest) == 0u;
+    press(B_HOME);
     ok &= ui.home && !ui.home_scope && !scope_trk && track_scope_blocks(4, &loudest) == 0u;
     go_title("EDIT 1");
     frame();
@@ -1183,7 +1190,8 @@ static int test_scope_track(void)
     trk_all_off(TSEL);
     trk_all_off(&trk[other]);
     song.master_q12 = mq;
-    return check("#59 HOME on HOME: lanes -> MASTER -> TRACK -> lanes; TRACK taps the selected track only, while shown; "
+    return check("#59 HOME on HOME: lanes -> MASTER -> TRACK -> (#71) their spectra, the mix's HD -> lanes; TRACK taps the selected "
+                 "track only, while shown; "
                  "(#59b) a page: always the track, back on HOME the cycle as it was", ok);
 }
 
@@ -3166,11 +3174,11 @@ static int test_fm6_lab(void)
     btn_down(B_HOME); frame();                          /* (#20w) SHIFT + SELECT: the panel WAVE, the window kept */
     turn(EN_SELECT, 1);
     btn_up(B_HOME); frame();
-    ok = fm_wave == 1u && fm_ui[1] == 4u && str_eq(cur_page()->title, "OPERATOR") && !ui.home && !ui.menu;
+    ok = fm_view == FM_VIEW_WAVE && fm_ui[1] == 4u && str_eq(cur_page()->title, "OPERATOR") && !ui.home && !ui.menu;
     btn_down(B_HOME); frame();
     turn(EN_SELECT, -1);
     btn_up(B_HOME); frame();
-    ok &= fm_wave == 0u && fm_ui[1] == 4u && str_eq(cur_page()->title, "OPERATOR") && !ui.home && !ui.menu;
+    ok &= fm_view == FM_VIEW_ENVELOPES && fm_ui[1] == 4u && str_eq(cur_page()->title, "OPERATOR") && !ui.home && !ui.menu;
     bad += check("(#20w) HOME + SELECT on OPERATOR: right WAVE, left the envelopes; the window stays, no HOME, no MENU", ok);
     go_title("ALL OPS"); fm_ui[2] = 0; frame();
     TSEL->p[P_E0] = 5; TSEL->p[P_E1] = 2;               /* EDIT 1's ALGO and FEEDBACK over the patch's 5 and 3 */
@@ -3394,7 +3402,7 @@ static int test_fm6_wave(void)
         int32_t b[CTL], i;
         uint32_t tr = trk_index(TSEL);
         go_title("OPERATOR");
-        (void)fm_wave_set(1);
+        fm_view = FM_VIEW_WAVE;
         trk_note_on(TSEL, 50, 80);
         track_render(TSEL, b, CTL);
         fm1_ms += 300u;
@@ -3409,7 +3417,7 @@ static int test_fm6_wave(void)
         track_render(TSEL, b, CTL);
         ok &= fm6_last[tr].held_ms == 300u && fm6_last[tr].down;
         trk_note_off(TSEL, 50);
-        (void)fm_wave_set(0);
+        fm_view = FM_VIEW_ENVELOPES;
         bad += check("(#20w) WAVE plays the track's last note (D3 at 80 held 0.3 s); its next note-on keeps it", ok);
     }
     return bad;
@@ -11237,6 +11245,314 @@ static int test_h1n_eq(void)
     song.master_q12 = mq;
     return bad;
 }
+/* (#71) HOME's SPECTRUM: a column's place on the log axis, bin 1 .. bin 240 over SPEC_COLS, worked out here on its own */
+static uint32_t spec_col_of(double bin) { return (uint32_t)floor((SPEC_COLS - 1.0) * log(bin) / log(240.0) + 0.5); }
+static uint32_t spec_loudest(const uint8_t *col)
+{
+    uint32_t c, at = 0;
+    for (c = 1; c < SPEC_COLS; c++)
+        if (col[c] > col[at])
+            at = c;
+    return at;
+}
+static void spec_tone(double amp, double bin)
+{
+    uint32_t i;
+    for (i = 0; i < SCOPE_N; i++)
+        scope_buf[i] = (int16_t)(amp * sin(6.2831853 * bin * i / SCOPE_N));
+    scope_w = 0;
+}
+/* a bin centred tone peaks in its column at its level (-6 dB and -46 dB under full scale, to 1 dB), 1 kHz too; a saw's
+ * harmonics fall 6 dB an octave; silence is the floor */
+static int test_spectrum_levels(void)
+{
+    static const double BIN[4] = {2.0, 23.0, 200.0, 1000.0 * SCOPE_N / 22050.0};
+    uint8_t col[SPEC_COLS];
+    uint32_t t, c, h, i, mq = song.master_q12;
+    int32_t want;
+    int bad = 0, ok = 1;
+    song.master_q12 = MASTER_FULL;
+    ui.home = 1;
+    ui.home_scope = HOME_SCOPE_SPECTRUM_MASTER;
+    for (t = 0; t < 8u; t++) {
+        double amp = t < 4u ? 16384.0 : 164.0;
+        spec_tone(amp, BIN[t % 4u]);
+        spec_slice(col);
+        want = 255 + (int32_t)floor(SPEC_Q_DB * 20.0 * log10(amp / 32767.0) + 0.5);
+        if (spec_loudest(col) != spec_col_of(BIN[t % 4u]) || (t % 4u < 3u && abs(col[spec_loudest(col)] - want) > SPEC_Q_DB)) {
+            printf("  bin %.2f at %.0f: column %u (want %u), level %u (want %d)\n", BIN[t % 4u], amp, spec_loudest(col),
+                   spec_col_of(BIN[t % 4u]), col[spec_loudest(col)], want);
+            ok = 0;
+        }
+    }
+    memset(scope_buf, 0, sizeof scope_buf);
+    spec_slice(col);
+    for (c = 0; c < SPEC_COLS; c++)
+        ok &= !col[c];
+    bad += check("(#71) SPECTRUM: a tone peaks in its column at its level (-6, -46 dB), 1 kHz too; silence the floor", ok);
+    for (i = 0; i < SCOPE_N; i++) {                 /* (bin 8: 345 Hz; its 31 harmonics under Nyquist, none aliased) */
+        double v = 0.0;
+        for (h = 1; h <= 31u; h++)
+            v += sin(6.2831853 * 8.0 * h * i / SCOPE_N) / h;
+        scope_buf[i] = (int16_t)(9000.0 * v);
+    }
+    spec_slice(col);
+    ok = 1;
+    for (h = 8u; h < 128u; h *= 2u) {
+        int32_t fall = col[spec_col_of(h)] - col[spec_col_of(2u * h)];
+        if (fall < 6 * SPEC_Q_DB - SPEC_Q_DB || fall > 6 * SPEC_Q_DB + SPEC_Q_DB) {
+            printf("  saw: bin %u to %u falls %d levels\n", h, 2u * h, fall);
+            ok = 0;
+        }
+    }
+    bad += check("(#71) SPECTRUM: a saw's harmonics fall 6 dB an octave (to 1 dB), bins 8 .. 128", ok);
+    song.master_q12 = mq;
+    return bad;
+}
+/* (#71) HOME tapped past the scopes: a slice a tick (40 ms), the older crawling back one a frame, none taken on a redraw
+ * within the tick; after an FM6 page the history starts over */
+static int test_spectrum_history(void)
+{
+    static const double BIN[2] = {23.0, 100.0};
+    const uint8_t *room;
+    uint32_t j, k, mq = song.master_q12;
+    int ok, kept;
+    ui_power_on();
+    song.master_q12 = MASTER_FULL;
+    memset(scope_buf, 0, sizeof scope_buf);
+    for (k = 0; k < 3u; k++)
+        press(B_HOME);
+    ok = ui.home_scope == HOME_SCOPE_SPECTRUM_MASTER;
+    fm1_ms = (fm1_ms / SPEC_SLICE_MS + 1u) * SPEC_SLICE_MS;   /* (on a tick: a frame's 16 ms then stay in it) */
+    for (k = 0; k < 4u; k++) {
+        spec_tone(16384.0, BIN[k > 0]);
+        fm1_ms += SPEC_SLICE_MS - 16u;
+        frame();
+    }
+    room = fm_room_lend(&kept);
+    for (j = 0; j < 4u; j++)
+        ok &= spec_loudest(spec_row(room, j)) == spec_col_of(BIN[j < 3u]);
+    ok &= spec_loudest(spec_row(room, 4)) == 0u && !spec_row(room, 4)[0];
+    ui.force = 1;
+    frame();
+    ok &= spec_loudest(spec_row(room, 3)) == spec_col_of(BIN[0]);
+    fm1_ms += SPEC_SLICE_MS - 16u;
+    frame();
+    ok &= spec_loudest(spec_row(room, 4)) == spec_col_of(BIN[0]);
+    sel_set(1);
+    set_engine_of(TSEL, ENGI_FM6);
+    go_title("OPERATOR");
+    frame();
+    go_home();
+    fm1_ms += SPEC_SLICE_MS;
+    frame();
+    ok &= ui.home_scope == HOME_SCOPE_SPECTRUM_MASTER && spec_loudest(spec_row(room, 0)) == spec_col_of(BIN[1]);
+    for (j = 1; j < SPEC_SLICES; j++)
+        ok &= !spec_row(room, j)[spec_col_of(BIN[1])];
+    song.master_q12 = mq;
+    return check("(#71) SPECTRUM: a slice a tick, the older crawling back one a frame, none on a redraw; after an FM6 page "
+                 "the history starts over", ok);
+}
+/* (#71b) SHIFT + SELECT on an FM6 sheet steps the panel: the envelopes, WAVE, SPECTRUM (staying there), back the same
+ * way; each fills the room afresh as it comes in (no slice of the other's drawn). SHIFT + KNOB 2 on TONE: WAVE's
+ * PERIODS, SMOOTH left at 2; over SPECTRUM the SHIFT knobs are its own */
+static void shift_select(int32_t s)
+{
+    btn_down(B_HOME); frame();
+    turn(EN_SELECT, s);
+    btn_up(B_HOME); frame();
+}
+static int test_fm6_spectrum_view(void)
+{
+    const uint8_t *room;
+    int16_t pan;
+    uint32_t i, j, k, sel_col = spec_col_of(23.0);
+    int ok, kept;
+    ui_power_on();
+    ui_prefs |= PREF_BPM_LOCK;
+    set_engine_of(TSEL, ENGI_FM6);
+    memset(&fm_wf_tune, 0, sizeof fm_wf_tune);          /* (the defaults: test_fm6_wave left its own) */
+    go_title("OPERATOR"); fm_ui[1] = FMW_TONE; frame();
+    shift_select(1);
+    ok = fm_view == FM_VIEW_WAVE && fm_wf_cfg()->periods == 2u;
+    for (k = 0; k < 64u && fm_wf.done < fm_wf_slices(); k++)
+        frame();
+    btn_down(B_HOME); frame();
+    turn(EN_K2, 1);
+    ok &= fm_wf_cfg()->periods == 3u && card_is(1, "PERIODS");
+    turn(EN_K2, -5);
+    btn_up(B_HOME); frame();
+    ok &= fm_wf_cfg()->periods == 1u && fm_wf_cfg()->smooth == 2u && !ui.home && !ui.menu;
+    for (i = 0; i < SCOPE_TRK_N; i++)
+        scope_trk_buf[i] = (int16_t)(16384.0 * sin(6.2831853 * 23.0 * i / SCOPE_TRK_N));
+    scope_trk_w = 0;
+    shift_select(1);
+    ok &= fm_view == FM_VIEW_SPECTRUM;
+    room = fm_room_lend(&kept);
+    for (j = 0; j < SPEC_SLICES; j++) {                 /* (a slice a tick: the tone's, or none yet) */
+        uint32_t lit = 0;
+        for (k = 0; k < SPEC_COLS; k++)
+            lit |= spec_row(room, j)[k];
+        ok &= j ? !lit || spec_loudest(spec_row(room, j)) == sel_col : spec_loudest(spec_row(room, j)) == sel_col;
+    }
+    shift_select(1);
+    ok &= fm_view == FM_VIEW_SPECTRUM && !ui.home && !ui.menu;
+    spec_tune = (spec_tune_t){1, 0, 4};
+    pan = TSEL->p[P_PAN];
+    btn_down(B_HOME); frame();
+    turn(EN_K1, 1); turn(EN_K2, 1); turn(EN_K3, 3); turn(EN_K4, -1);
+    ok &= card_is(0, "RANGE") && card_is(1, "TOP") && card_is(3, "ZOOM Y");
+    btn_up(B_HOME); frame();
+    ok &= spec_tune.range == 2u && spec_tune.top_full_scale && spec_tune.zoom_q == 3u && TSEL->p[P_PAN] == pan;
+    spec_tune = (spec_tune_t){1, 0, 4};
+    shift_select(-1);
+    ok &= fm_view == FM_VIEW_WAVE && !fm_room_lent && fm_wf.done > 0u && (!fm_wf.whole || fm_wf.whole == fm_wf.done);
+    shift_select(-1);
+    ok &= fm_view == FM_VIEW_ENVELOPES;
+    shift_select(-1);
+    ok &= fm_view == FM_VIEW_ENVELOPES && str_eq(cur_page()->title, "OPERATOR") && !ui.home && !ui.menu;
+    return check("(#71b) FM6: SHIFT + SELECT steps envelopes, WAVE, SPECTRUM (the track's, no WAVE slice in it) and back; "
+                 "SHIFT + KNOB 2 on WAVE: PERIODS 1 .. 3; on SPECTRUM K1 K2 K4: RANGE TOP ZOOM Y, K3 nothing", ok);
+}
+/* (#71) the height: a tone 32 dB under full scale stands RANGE - 32 dB of RANGE high with TOP 0 DB (48, 64, 80), at the
+ * top with AUTO; ZOOM Y 200 % twice as high, stopped at the top edge; AUTO's top falls 10 dB a second in silence, to 48 dB
+ * under full scale at most. SHIFT + SELECT on HOME's SPECTRUM steps RANGE (BPM LOCK OFF too: not the tempo) */
+static int32_t spec_height_px(uint8_t level)
+{
+    uint8_t row[SPEC_COLS];
+    memset(row, level, sizeof row);
+    return ((spec.geo.floor_y << 8) - spec_y256(row, 0, 40, spec_width()) + 128) >> 8;
+}
+static int test_spectrum_height(void)
+{
+    static const spec_geo_t g = {12, 228, 120, 4, 2, 50};
+    static const int32_t FIXED_PX[3] = {17, 25, 30};    /* (48, 96, 144 levels over the floor, of 144, 192, 240) */
+    const uint8_t tone = 255 - 32 * SPEC_Q_DB;
+    uint8_t row[SPEC_COLS];
+    int16_t bpm;
+    uint32_t r;
+    int ok = 1;
+    ui_power_on();
+    spec.geo = g;
+    spec_tune = (spec_tune_t){0, 1, 4};
+    for (r = 0; r < 3u; r++) {
+        spec_tune.range = (uint8_t)r;
+        ok &= spec_height_px(tone) == FIXED_PX[r];
+    }
+    spec_tune = (spec_tune_t){1, 0, 4};
+    spec.top = 0;
+    memset(row, tone, sizeof row);
+    spec_follow_top(row, SPEC_COLS, 1);
+    ok &= spec.top == tone << 8 && spec_height_px(tone) == 50 && spec_height_px(0) == 0;
+    spec_tune.zoom_q = 8;
+    ok &= spec_height_px(tone) == 100;
+    spec.geo.top_y = 80;
+    ok &= spec_height_px(tone) == 40;
+    memset(row, 0, sizeof row);
+    spec_follow_top(row, SPEC_COLS, SPEC_SLICES);
+    ok &= abs((int32_t)spec.top - ((tone - 10 * SPEC_Q_DB) << 8)) < 256;
+    spec_follow_top(row, SPEC_COLS, SPEC_SLICES);
+    ok &= spec.top == SPEC_TOP_LOWEST << 8;
+    spec_tune = (spec_tune_t){1, 0, 4};
+    ui_prefs &= ~PREF_BPM_LOCK;
+    go_home();
+    ui.home_scope = HOME_SCOPE_SPECTRUM_MASTER;
+    frame();
+    bpm = song.g[G_BPM];
+    shift_select(1);
+    ok &= spec_tune.range == 2u && msg_is("SPECTRUM RANGE 80 DB");
+    shift_select(1);
+    ok &= spec_tune.range == 2u;
+    shift_select(-1);
+    shift_select(-1);
+    ok &= spec_tune.range == 0u && msg_is("SPECTRUM RANGE 48 DB") && song.g[G_BPM] == bpm && !ui.menu &&
+          ui.home_scope == HOME_SCOPE_SPECTRUM_MASTER;
+    spec_tune = (spec_tune_t){1, 0, 4};
+    return check("(#71) SPECTRUM's height: RANGE 48 / 64 / 80 dB under TOP 0 DB or AUTO (falling 10 dB/s), ZOOM Y; "
+                 "SHIFT + SELECT on HOME: RANGE", ok);
+}
+/* (#71) SPECTRUM HD: the mix's samples into the scope's ring as the audio would write them, gathered every 256 (a frame's
+ * worth and some); tones at HD bins (10.77 Hz each), one or two at a time */
+static uint32_t hd_col_of(double bin) { return (uint32_t)floor((SPEC_HD_COLS - 1.0) * log(bin / 2.0) / log(480.0) + 0.5); }
+static void hd_feed(const double *bin, uint32_t tones, double amp, uint32_t n)
+{
+    uint32_t i, t;
+    for (i = 0; i < n; i++, scope_w++) {
+        double v = 0.0;
+        for (t = 0; t < tones; t++)
+            v += amp * sin(6.2831853 * bin[t] * scope_w / SPEC_HD_N);
+        scope_buf[scope_w & (SCOPE_N - 1u)] = (int16_t)v;
+        if ((i & 255u) == 255u)
+            spec_hd_gather();
+    }
+}
+static uint32_t hd_loudest(const uint8_t *col, uint32_t from, uint32_t to)
+{
+    uint32_t c, at = from;
+    for (c = from; c <= to; c++)
+        if (col[c] > col[at])
+            at = c;
+    return at;
+}
+/* a tone peaks in its column at its level (55 Hz and 1 kHz, -6 dB, to 1 dB); 54 Hz and 86 Hz stand apart, 6 dB over the
+ * dip between them, where the waterfall's bins (43 Hz) run them together; the peak line holds a tone gone, falling 3
+ * levels a spectrum; a frame later than the ring starts the window over */
+static int test_spectrum_hd(void)
+{
+    static const double ONE[2][1] = {{5.0}, {93.0}}, TWO[2] = {5.0, 8.0};
+    const spec_hd_room_t *r;
+    uint8_t col[SPEC_COLS], gen;
+    uint32_t k, a, b, dip, mq = song.master_q12;
+    int32_t want = 255 + (int32_t)floor(SPEC_Q_DB * 20.0 * log10(16384.0 / 32767.0) + 0.5);
+    int ok = 1, kept;
+    ui_power_on();
+    song.master_q12 = MASTER_FULL;
+    ui.home = 1;
+    ui.home_scope = HOME_SCOPE_SPECTRUM_HD;
+    spec_tune = (spec_tune_t){1, 0, 4};
+    r = (const spec_hd_room_t *)fm_room_lend(&kept);
+    for (k = 0; k < 2u; k++) {
+        hd_feed(ONE[k], 1, 16384.0, 2u * SPEC_HD_N);
+        a = hd_loudest(r->level, 0, SPEC_HD_COLS - 1u);
+        if (a != hd_col_of(ONE[k][0]) || abs(r->level[a] - want) > SPEC_Q_DB) {
+            printf("  HD bin %.0f: column %u (want %u), level %u (want %d)\n", ONE[k][0], a, hd_col_of(ONE[k][0]),
+                   r->level[a], want);
+            ok = 0;
+        }
+    }
+    hd_feed(TWO, 2, 8000.0, 2u * SPEC_HD_N);
+    a = hd_loudest(r->level, hd_col_of(4.0), hd_col_of(6.5));
+    b = hd_loudest(r->level, hd_col_of(6.5), hd_col_of(10.0));
+    dip = a;
+    for (k = a; k <= b; k++)
+        dip = r->level[k] < r->level[dip] ? k : dip;
+    ok &= a == hd_col_of(5.0) && b == hd_col_of(8.0) && r->level[a] - r->level[dip] >= 6 * SPEC_Q_DB &&
+          r->level[b] - r->level[dip] >= 6 * SPEC_Q_DB;
+    for (k = 0; k < SCOPE_N; k++)
+        scope_buf[k] = (int16_t)(8000.0 * (sin(6.2831853 * 1.25 * k / SCOPE_N) + sin(6.2831853 * 2.0 * k / SCOPE_N)));
+    spec_slice(col);
+    for (dip = spec_col_of(1.25), k = spec_col_of(1.25); k <= spec_col_of(2.0); k++)
+        dip = col[k] < col[dip] ? k : dip;
+    ok &= col[spec_col_of(1.25)] - col[dip] < 6 * SPEC_Q_DB;
+    a = hd_col_of(93.0);
+    hd_feed(ONE[1], 1, 16384.0, 2u * SPEC_HD_N);
+    memset(scope_buf, 0, sizeof scope_buf);
+    hd_feed(ONE[1], 1, 0.0, SPEC_HD_N);
+    ok &= r->level[a] < want - 40 * SPEC_Q_DB && abs(r->peak[a] - (want - SPEC_HD_PEAK_FALL)) <= SPEC_Q_DB;
+    hd_feed(ONE[1], 1, 0.0, SPEC_HD_N);
+    ok &= abs(r->peak[a] - (want - 2 * SPEC_HD_PEAK_FALL)) <= SPEC_Q_DB;
+    hd_feed(ONE[1], 1, 0.0, SPEC_HD_N - 512u);
+    gen = spec.hd_gen;
+    scope_w += SCOPE_N;                                 /* (the next gather 768 behind: the last 448 kept, 3 x 256 on) */
+    hd_feed(ONE[1], 1, 0.0, 1024u);
+    ok &= spec.hd_gen == gen && spec.hd_n == SPEC_HD_GAP + 768u;
+    hd_feed(ONE[1], 1, 0.0, SPEC_HD_N);
+    ok &= spec.hd_gen == gen + 1u;
+    song.master_q12 = mq;
+    go_home();
+    return check("(#71) SPECTRUM HD: a tone in its column at its level (55 Hz, 1 kHz), 54 + 86 Hz apart (the waterfall "
+                 "merges them), the peak line held and falling, a gap starts the window over", ok);
+}
 /* MENU > DISPLAY > POPUP TIME: DEFAULT (each box its own, stored 0), 0.1 .. 2.7 s for the TAKE box and the undo box;
  * the undo window stays UNDO_WIN. POPUP CLOSE: TIMER (stored 0), ON INPUT (the window ends too) */
 static uint32_t popup_take_t(void)
@@ -11472,6 +11788,11 @@ int main(void)
     bad += test_screen_off();
     bad += test_playhead_line();
     bad += test_h1n_eq();
+    bad += test_spectrum_levels();
+    bad += test_spectrum_history();
+    bad += test_fm6_spectrum_view();
+    bad += test_spectrum_height();
+    bad += test_spectrum_hd();
     bad += test_popup_time();
     bad += test_h1n_song_pick();
     bad += test_fm6_charts();

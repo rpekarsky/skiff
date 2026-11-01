@@ -2368,7 +2368,7 @@ static uint32_t smk_bank_taps(uint32_t pressed, uint32_t notes, uint32_t knob_mo
     return taps;
 }
 #endif
-static int fm_wave_set(int on);                         /* (#20w) ui_fm6.c */
+static int fm_view_step(int32_t s);                     /* (#20w, #71b) ui_fm6.c */
 static int fm_wf_tune_turn(uint32_t k, int32_t s);      /* (#20t) ui_fm6.c */
 static int shift_pair_turn(uint32_t k, int32_t s);      /* (wishlist #60c) after SHEETS */
 /* (Skiff 2.0) SHIFT held (HOME; the SMK's KNOB BANK too), and a combo of it taken: no HOME tap, no MENU after (the
@@ -2706,8 +2706,9 @@ static void ui_input(void)
     if (home == BT_TAP)
         layer_unlock();                                 /* ((Skiff U2) HOME tapped: a locked layer closes, as before) */
     if (home == BT_TAP && ui.home) {                    /* Skiff: HOME on HOME, the tracks -> the scope ((#59) the mix,
-                                                         * then the selected track) -> the tracks (ui_home.c) */
-        ui.home_scope = (uint8_t)((ui.home_scope + 1u) % (HOME_SCOPE_TRACK + 1u));
+                                                         * then the selected track; (#71) then their spectra, the
+                                                         * mix's SPECTRUM HD) -> the tracks (ui_home.c) */
+        ui.home_scope = (uint8_t)((ui.home_scope + 1u) % (HOME_SCOPE_SPECTRUM_HD + 1u));
         ui.force = 1;
     } else if (home == BT_TAP)                          /* HOME acts on release: a hold opens the menu */
         go_home();
@@ -2833,13 +2834,16 @@ static void ui_input(void)
                                                          * way); (Skiff phase 8, rule 3) else the pages */
         int sheet = !lay && !ui.home && sheet_of(cur_page()->graph);   /* (Skiff U1) a sheet's rows: SELECT is their
                                                                         * only way, BPM LOCK or not */
-        if (glo || (!(ui_prefs & PREF_BPM_LOCK) && !sheet)) {
+        if (!glo && !lay && shift_held() && spec_range_step(s)) {   /* (#71) SHIFT + SELECT on HOME's SPECTRUM */
+            shift_mark();
+            home_long = 0;
+        } else if (glo || (!(ui_prefs & PREF_BPM_LOCK) && !sheet)) {
             song.g[G_BPM] = (int16_t)clamp(song.g[G_BPM] + accel(EN_SELECT, s, 200), GP[G_BPM].min, GP[G_BPM].max);
             ui.bpm_t = 40;                              /* the header's BPM lights up; no message over the header */
         } else if (lay) {
             ;                                           /* (another layer held: not the page under it) */
-        } else if (!ui.home && shift_held() && fm_wave_set(s > 0)) {    /* (#20w) SHIFT + SELECT on an FM6 sheet: */
-            shift_mark();                               /* right WAVE, left the envelopes */
+        } else if (!ui.home && shift_held() && fm_view_step(s)) {    /* (#20w, #71b) SHIFT + SELECT on an FM6 */
+            shift_mark();                               /* sheet: the panel, envelopes WAVE SPECTRUM */
             home_long = 0;
         } else if (!ui.home) {
             select_turn(s);

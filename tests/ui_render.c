@@ -669,7 +669,7 @@ static void state(void)                          /* a playing song with steps on
 {
     uint32_t i;
     ui_power_on();
-    fm_wave = 0;
+    fm_view = FM_VIEW_ENVELOPES;
     memset(fm6_last, 0, sizeof fm6_last);
     if (large_on) ui_prefs |= PREF_LARGE;
     song.playing = 1;
@@ -878,6 +878,7 @@ enum { S_HOME, S_HOME_IDLE, S_MESSAGE, S_MESSAGE_KEY, S_MESSAGE_NOFILE, S_PRESET
        S_HOME_FIT_PATS,                                                                       /* (#34 with #41) */
        S_HOME_METER, S_HOME_METER_FIT,      /* (#59) */
        S_HOME_SCOPE_TRACK, S_PAGE_SCOPE_TRACK,                                                /* (#59b) */
+       S_HOME_SPECTRUM, S_FM_SPECTRUM, S_FM_SPECTRUM_TUNE, S_SHIFT_SPECTRUM, S_HOME_SPECTRUM_HD,   /* (#71, #71b) */
        S_MENU_POPUP,
        S_HEAD_MEMORY,                                                                         /* (#62) */
        S_FOLLOW, S_FOLLOW_SCALE, S_FOLLOW_FIT, S_FOLLOW_OFF, S_FOLLOW_WAIT,                   /* (2.1) */
@@ -914,7 +915,32 @@ static const char *const S_NAME[S_COUNT] = {"home", "home_idle", "message", "mes
     "chorus_flanger", "chorus_phaser", "presets_bass", "song_rest", "song_rest_pick",
     "notes_range", "notes_pick", "feel_range", "notes_overlap", "momentary", "pool_empty", "pool_unused", "confirm_empty",
     "song_once", "song_new", "song_copyplus", "song_chain", "song_chain3", "notes_chain", "lane_mix", "lane_mix_dx",
-    "song_sound", "song_sounds", "song_chains", "song_chain_copy", "drum_kit_usr", "lanes_usr", "menu_presets_knob", "presets_knob_level", "shift_level", "shift_strip", "pool_new", "home_lists", "home_fit16", "home_fit24", "home_fit32", "home_fit64", "home_fit_pats", "home_meter", "home_meter_fit", "home_scope_track", "page_scope_track", "menu_popup", "head_memory", "follow", "follow_scale", "follow_fit", "follow_off", "follow_wait", "mock_home", "mock_presets", "mock_seq", "mock_drum", "mock_mixer", "mock_dialog", "mock_menu"};
+    "song_sound", "song_sounds", "song_chains", "song_chain_copy", "drum_kit_usr", "lanes_usr", "menu_presets_knob", "presets_knob_level", "shift_level", "shift_strip", "pool_new", "home_lists", "home_fit16", "home_fit24", "home_fit32", "home_fit64", "home_fit_pats", "home_meter", "home_meter_fit", "home_scope_track", "page_scope_track", "home_spectrum", "fm_spectrum", "fm_spectrum_tune", "shift_spectrum", "home_spectrum_hd", "menu_popup", "head_memory", "follow", "follow_scale", "follow_fit", "follow_off", "follow_wait", "mock_home", "mock_presets", "mock_seq", "mock_drum", "mock_mixer", "mock_dialog", "mock_menu"};
+
+/* (#71) a second of the spectrum's slices: a saw on A3, its low pass closing from 8 kHz to 600 Hz, the fifth over it
+ * coming in halfway, over a faint hiss; each slice from the scope's buffer as it was then */
+static void spectrum_scene(int16_t *buf, uint32_t *w)
+{
+    if (fm1_ms < SPEC_SLICES * SPEC_SLICE_MS)         /* (the slices' times from a second ago, none before 0) */
+        fm1_ms = SPEC_SLICES * SPEC_SLICE_MS;
+    for (uint32_t t = 0, seed = 1u, now = fm1_ms; t < SPEC_SLICES; t++) {
+        double cutoff = 8000.0 * pow(600.0 / 8000.0, t / (SPEC_SLICES - 1.0));
+        for (uint32_t i = 0; i < SCOPE_N; i++) {
+            double v = 0.0;
+            for (uint32_t h = 1; h * 220.0 < 11000.0; h++) {
+                double f = h * 220.0, g = 1.0 / sqrt(1.0 + pow(f / cutoff, 4.0));
+                v += g * sin(6.2831853 * f * i / 22050.0) / h;
+                if (t >= SPEC_SLICES / 2u && h * 330.0 < 11000.0)
+                    v += 0.6 * sin(6.2831853 * h * 330.0 * i / 22050.0 + h) / h / sqrt(1.0 + pow(h * 330.0 / cutoff, 4.0));
+            }
+            seed = seed * 1103515245u + 12345u;
+            buf[i] = (int16_t)(6000.0 * v + (double)((seed >> 16) % 61u) - 30.0);
+        }
+        *w = 0;
+        fm1_ms = now - (SPEC_SLICES - 1u - t) * SPEC_SLICE_MS;   /* (the clock as it was: the scenes after as before) */
+        spec_history();
+    }
+}
 
 /* the scenes of the UI design screens: the state the UI-redesign
  * prototype drew them from (its setup(): two pattern tracks, the drum pattern on track 4, a synthetic scope),
@@ -923,7 +949,7 @@ static void mock_state(int s)
 {
     uint32_t i;
     ui_power_on();
-    fm_wave = 0;
+    fm_view = FM_VIEW_ENVELOPES;
     memset(fm6_last, 0, sizeof fm6_last);
     if (large_on) ui_prefs |= PREF_LARGE;
     usb.config = 0;
@@ -1104,6 +1130,61 @@ static void setup(int s)
         ui.home = 1;
         ui.home_scope = HOME_SCOPE_TRACK;
         break;
+    case S_HOME_SPECTRUM:                           /* (#71) a second of a saw on A3, its low pass closing from 8 kHz to */
+    case S_SHIFT_SPECTRUM:                          /* 600 Hz, the fifth over it coming in halfway, over a faint hiss; */
+        song.master_q12 = MASTER_FULL;              /* SHIFT's map over it: + SELECT RANGE */
+        ui.home = 1;
+        ui.home_scope = HOME_SCOPE_SPECTRUM_MASTER;
+        spec_tune = (spec_tune_t){1, 0, 4};
+        spectrum_scene(scope_buf, &scope_w);
+        if (s == S_SHIFT_SPECTRUM)
+            ui.shift = shift_channel = 1;
+        break;
+    case S_HOME_SPECTRUM_HD: {                      /* (#71) SPECTRUM HD: a kick's 55 Hz, a bass on E2, a pad on A3 under */
+        static int16_t scope[SCOPE_N];              /* 1.5 kHz; hats in the first windows only (the peak line above) */
+        uint32_t w = scope_w, n, h, seed = 7u;
+        song.master_q12 = MASTER_FULL;
+        ui.home = 1;
+        ui.home_scope = HOME_SCOPE_SPECTRUM_HD;
+        spec_tune = (spec_tune_t){1, 0, 4};
+        memcpy(scope, scope_buf, sizeof scope);
+        for (n = 0; n < 4u * SPEC_HD_N; n++, scope_w++) {
+            double t = n / 22050.0, v = 0.45 * sin(6.2831853 * 55.0 * t), hiss;
+            for (h = 1; h * 82.41 < 3000.0; h++)
+                v += 0.25 * sin(6.2831853 * 82.41 * h * t) / h;
+            for (h = 1; h * 220.0 < 11000.0; h++)
+                v += 0.12 * sin(6.2831853 * 220.0 * h * t + h) / h / sqrt(1.0 + pow(h * 220.0 / 1500.0, 4.0));
+            seed = seed * 1103515245u + 12345u;
+            hiss = (double)((seed >> 16) % 2001u) / 1000.0 - 1.0;
+            v += (n < 2u * SPEC_HD_N ? 0.08 : 0.002) * hiss;
+            scope_buf[scope_w & (SCOPE_N - 1u)] = (int16_t)(16000.0 * v);
+            if ((n & 255u) == 255u)
+                spec_hd_gather();
+        }
+        memcpy(scope_buf, scope, sizeof scope);
+        scope_w = w;
+        break;
+    }
+    case S_FM_SPECTRUM:                             /* (#71b) the FM6 sheet's SPECTRUM: the same second on the track; */
+    case S_FM_SPECTRUM_TUNE: {                      /* its SHIFT knobs: RANGE 80 DB, TOP 0 DB, ZOOM Y 150 % */
+        static int16_t page_scope[SCOPE_TRK_N];     /* (the pages' scopes in the scenes after show it as before) */
+        uint32_t w = scope_trk_w;
+        eng(ENGI_FM6);
+        go_title("OPERATOR");
+        fm_ui[1] = FMW_TONE;
+        fm_view = FM_VIEW_SPECTRUM;
+        spec_tune = s == S_FM_SPECTRUM ? (spec_tune_t){1, 0, 4} : (spec_tune_t){2, 1, 6};
+        if (s == S_FM_SPECTRUM_TUNE) {
+            shift_channel = 1;
+            ui.hot_col = 3;
+            ui.hot_t = 30;
+        }
+        memcpy(page_scope, scope_trk_buf, sizeof page_scope);
+        spectrum_scene(scope_trk_buf, &scope_trk_w);
+        memcpy(scope_trk_buf, page_scope, sizeof page_scope);
+        scope_trk_w = w;
+        break;
+    }
     case S_HOME_IDLE: song.playing = 0; song.batt_raw = 570; ui.hot_col = 1; ui.hot_t = 30; break;
     case S_MESSAGE: ui_say("LOADED ", "07 A VERY LONG PATTERN NAME"); break;
     case S_MESSAGE_KEY: ui_message("HOLD [SAVE]: UNDO"); break;            /* a message with a keycap */
@@ -1653,7 +1734,7 @@ static void setup(int s)
         go_title(i & 1u ? "ALL OPS" : "OPERATOR");
         fm_ui[1] = FMW_TONE;
         fm_ui[2] = FMW_ALGO;
-        (void)fm_wave_set(1);
+        fm_view = FM_VIEW_WAVE;
         fm_wave_t0 = fm1_ms - 300u - 170u * i;      /* (the bars a moment in) */
         fm_ops(&fm_panel_sim, TSEL);                /* (rendered whole now; the UI does a few slices a frame) */
         fm_wf_begin(&fm_panel_sim, fm_wf_key(&fm_panel_sim, TSEL));

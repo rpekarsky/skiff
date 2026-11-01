@@ -1501,6 +1501,8 @@ static void ui_draw(void)
     scope_trk = (uint8_t)(scope_track_view() ? song.sel + 1u : 0u);   /* ((#59) the audio taps the track for HOME's
                                                                        * TRACK view, (#59b) on every page) */
     cpu_sample();                                       /* ((#57, #62) whatever is shown: the header marks a dropout) */
+    if (home_spectrum_hd() && strip_kind() == SK_NONE)
+        spec_hd_gather();                               /* ((#71) its window filled every frame, drawn or not) */
     if (!scr_frame())                                   /* MENU > SCREEN OFF: dark (or waking), nothing drawn */
         return;
     full = ui.force;

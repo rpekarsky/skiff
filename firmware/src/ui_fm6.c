@@ -47,17 +47,20 @@ static const char *const FM_CURVE[4] = {"-LIN", "-EXP", "+EXP", "+LIN"};
 static const char *const FM_WAVE[6] = {"TRI", "SAW DN", "SAW UP", "SQUARE", "SINE", "RANDOM"};
 static const char *const FM_HZ[4] = {"1", "10", "100", "1K"};          /* a fixed operator's range (FC & 3) */
 
-static uint8_t fm_wave __attribute__((section(".pool")));       /* (#20w) the panel WAVE, not the envelopes; not saved */
+enum { FM_VIEW_ENVELOPES, FM_VIEW_WAVE, FM_VIEW_SPECTRUM };   /* (#20w, #71b) the panel, SHIFT + SELECT steps it */
+static uint8_t fm_view __attribute__((section(".pool")));       /* FM_VIEW_*; not saved */
 static uint32_t fm_wave_t0 __attribute__((section(".pool")));   /* (fm1_ms) WAVE's operator bars' clock from 0 */
 #define FM_WF_BUF 4608                                  /* WAVE's slices' points, all of them */
 #define FM_WF_NP 192                                    /* a slice's points at most */
 #define FM_WF_SMOOTH_MAX 4
+#define FM_WF_PERIODS_MAX 3
 enum { FM_WF_HELD_PLAYED, FM_WF_HELD_SMART, FM_WF_HELD_1S };   /* as played; 1 s while the key is down; always 1 s */
 typedef struct {                                        /* (#20t, test build) SHIFT + KNOB 1..4 on WAVE; not saved */
     uint8_t slices;                                     /* 8 .. as many as the buffer holds (fm_wf_slices) */
-    uint8_t periods;                                    /* 1 .. 3 across, each rendered (fm_wf_points) */
+    uint8_t periods;                                    /* 1 .. FM_WF_PERIODS_MAX across, each rendered (fm_wf_points) */
     uint8_t phase;                                      /* where a slice starts past the note's zero phase, % of a period */
-    uint8_t smooth;                                     /* periods averaged a point, one after another */
+    uint8_t smooth;                                     /* periods averaged a point, one after another ((#71b) 2, no
+                                                         * knob) */
     uint8_t step_x;                                     /* px a slice further back moves right: 0 .. 3 */
     uint8_t zoom_y;                                     /* a slice's height, 25 % steps of the carriers' loudest: 4 .. 12 */
     uint8_t fill;                                       /* (SMK FADERS WAVE) % a slice veils the lines behind it */
@@ -318,7 +321,6 @@ static const char *fm_op_title(void)                 /* the header's: "OPERATOR 
     return t;
 }
 static const char *fm_all_title(void) { return "ALL OPS"; }
-static int32_t fm_log2(uint32_t x);
 /* the note drawn held 1 s, not as long as it was played: HELD 1 S, or SMART while its key is still down (its length
  * not known yet) */
 static int fm_wf_held_1s(const fm6_last_t *l)
@@ -331,7 +333,7 @@ static int fm_wf_held_1s(const fm6_last_t *l)
 static uint32_t fm_wf_note_sig(void)
 {
     const fm6_last_t *l = &fm6_last[fm_tr()];
-    uint32_t held = l->held_ms && !fm_wf_held_1s(l) ? fm_log2(l->held_ms) >> 12 : 0;
+    uint32_t held = l->held_ms && !fm_wf_held_1s(l) ? log2_q16(l->held_ms) >> 12 : 0;
     return l->note | (uint32_t)l->vel << 8 | held << 16;
 }
 /* what the cards and the panel show besides the track's values (ui_graph.c graph_signature hashes those) */
@@ -339,42 +341,46 @@ static uint32_t fm_sig(void)
 {
     return (fm6_pgen[fm_tr()] + 1u) * 2246822519u ^ (fm_ui[0] + fm_ui[1] * 7u + fm_ui[2] * 49u) * 40503u ^
            (ui.hot_t ? ui.hot_col + 1u : 0u) * 65537u ^ shift_channel * 3266489917u ^
-           (fm_wave ? (fm_wf_note_sig() + fm_wf.done + fm1_ms / FM_WF_BAR_MS + 1u) * 2654435761u : 0u) ^
-           (fm_wave ? fm_wf_tune_sig() * 2246822519u : 0u);
+           (fm_view == FM_VIEW_WAVE ? (fm_wf_note_sig() + fm_wf.done + fm1_ms / FM_WF_BAR_MS + 1u) * 2654435761u : 0u) ^
+           (fm_view == FM_VIEW_WAVE ? fm_wf_tune_sig() * 2246822519u : 0u) ^
+           (fm_view == FM_VIEW_SPECTRUM ? (fm1_ms / SPEC_SLICE_MS + 1u) * 3266489917u : 0u);
 }
-/* (#20w) SHIFT + SELECT on an FM6 sheet: its panel WAVE (on) or the envelopes (0). 0: not on one */
+/* (#20w, #71b) SHIFT + SELECT on an FM6 sheet steps its panel: right the envelopes, WAVE, SPECTRUM; left back. 0: not
+ * on one */
 static int fm_sheet_shown(void)
 {
     uint32_t g = cur_page()->graph;
     return !ui.home && (g == GR_FMOP || g == GR_FMALL) && TSEL->eng_req % NENGINES == ENGI_FM6;
 }
-static int fm_wave_set(int on)
+static int fm_view_step(int32_t s)
 {
     if (!fm_sheet_shown())
         return 0;
-    if (on && !fm_wave)
+    if (fm_view == FM_VIEW_ENVELOPES && s > 0)
         fm_wave_t0 = fm1_ms;
-    else if (on)                                        /* (#20t) again, WAVE shown: PERIODS 1, 2, 3, round */
-        fm_wf_tune.periods = (uint8_t)(fm_wf_cfg()->periods % 3u + 1u);
-    fm_wave = (uint8_t)(on != 0);
+    fm_view = (uint8_t)clamp((int32_t)fm_view + (s > 0 ? 1 : -1), FM_VIEW_ENVELOPES, FM_VIEW_SPECTRUM);
     return 1;
 }
 /* (#20t, test build) SHIFT + KNOB 1..4 on WAVE over OPERATOR's TONE window (OUTPUT first; the other windows' SHIFT
  * is their pair, #60c): its slices, periods, step right and height. 0: not there */
 static int fm_wf_tuned_here(void)
 {
-    return fm_wave && fm_sheet_shown() && cur_page()->graph == GR_FMOP && fm_ui[1] % FM_NWIN == FMW_TONE;
+    return fm_view != FM_VIEW_ENVELOPES && fm_sheet_shown() && cur_page()->graph == GR_FMOP && fm_ui[1] % FM_NWIN == FMW_TONE;
 }
 static int fm_wf_tune_turn(uint32_t k, int32_t s)
 {
     fm_wf_tune_t *u = &fm_wf_tune;
     if (!fm_wf_tuned_here())
         return 0;
+    if (fm_view == FM_VIEW_SPECTRUM) {                  /* ((#71) SPECTRUM's own: ui_spectrum.c spec_tune) */
+        spec_tune_turn(k, s);
+        return 1;
+    }
     (void)fm_wf_cfg();
     if (k == 0u)
         u->slices = (uint8_t)clamp((int32_t)fm_wf_slices() + s, 8, (int32_t)(FM_WF_BUF / fm_wf_points()));
     else if (k == 1u)
-        u->smooth = (uint8_t)clamp(u->smooth + s, 1, FM_WF_SMOOTH_MAX);
+        u->periods = (uint8_t)clamp(u->periods + s, 1, FM_WF_PERIODS_MAX);
     else if (k == 2u)
         u->step_x = (uint8_t)clamp(u->step_x + s, 0, 3);
     else
@@ -407,15 +413,30 @@ static void fm_wf_fader(uint32_t j, uint32_t v)
     ui_say(NAME[j], b);
 }
 #endif
+static void fm_spec_tune_cards(void)
+{
+    const spec_tune_t *u = spec_cfg();
+    char val[8];
+    fmt_int(val, SPEC_RANGE_DB[u->range]);
+    draw_column(0, "RANGE", val, "DB", VR_LIVE, u->range * 500, ICON_AUTO);
+    draw_column(1, "TOP", u->top_full_scale ? "0 DB" : "AUTO", "", VR_LIVE, u->top_full_scale ? 1000 : 0, ICON_AUTO);
+    draw_column(2, "", "", "", VR_THEME, -1, ICON_NONE);
+    fmt_int(val, u->zoom_q * 25);
+    draw_column(3, "ZOOM Y", val, "%", VR_LIVE, (u->zoom_q - 2) * 1000 / 6, ICON_AUTO);
+}
 static int fm_wf_tune_cards(void)
 {
-    static const char *const NAME[4] = {"SLICES", "SMOOTH", "STEP X", "ZOOM Y"};
+    static const char *const NAME[4] = {"SLICES", "PERIODS", "STEP X", "ZOOM Y"};
     const fm_wf_tune_t *u = fm_wf_cfg();
-    const int32_t v[4] = {(int32_t)fm_wf_slices(), u->smooth, u->step_x, u->zoom_y * 25}, lo[4] = {8, 1, 0, 100};
-    const int32_t hi[4] = {(int32_t)(FM_WF_BUF / fm_wf_points()), FM_WF_SMOOTH_MAX, 3, 300};
+    const int32_t v[4] = {(int32_t)fm_wf_slices(), u->periods, u->step_x, u->zoom_y * 25}, lo[4] = {8, 1, 0, 100};
+    const int32_t hi[4] = {(int32_t)(FM_WF_BUF / fm_wf_points()), FM_WF_PERIODS_MAX, 3, 300};
     uint32_t c;
     if (!fm_wf_tuned_here())
         return 0;
+    if (fm_view == FM_VIEW_SPECTRUM) {
+        fm_spec_tune_cards();
+        return 1;
+    }
     for (c = 0; c < 4u; c++) {
         char val[8];
         fmt_int(val, v[c]);
@@ -454,24 +475,14 @@ typedef struct {
     uint8_t q[FP_SIZE + 1u];                            /* the patch through the macros */
 } fm_sim_t;
 
-/* log2 x, Q16 (x > 0): the exponent, the mantissa's log2 ~ f + 0.34 f (1 - f) (within 0.004) */
-static int32_t fm_log2(uint32_t x)
-{
-    int32_t e = 0;
-    uint32_t f;
-    while (x >= 2u << e && e < 31)
-        e++;
-    f = (e > 16 ? x >> (e - 16) : x << (16 - e)) - 65536u;
-    return (e << 16) + (int32_t)f + (int32_t)(((f >> 1) * ((65536u - f) >> 1) >> 14) * 22u >> 6);
-}
 /* block b's column: the held part, the release, each on a log axis (the attack gets room) */
 static int32_t fm_warp(const fm_sim_t *s, int32_t b)
 {
-    int32_t l0 = fm_log2(FM_TAU);
+    int32_t l0 = log2_q16(FM_TAU);
     if (b <= s->held)
-        return (FM_HW - 1) * (fm_log2((uint32_t)b * 256u + FM_TAU) - l0) / (fm_log2((uint32_t)s->held * 256u + FM_TAU) - l0);
-    return FM_HW + (FM_XW - FM_HW - 1) * (fm_log2((uint32_t)(b - s->held) * 256u + FM_TAU) - l0) /
-                       (fm_log2((uint32_t)(s->n - s->held) * 256u + FM_TAU) - l0);
+        return (FM_HW - 1) * (log2_q16((uint32_t)b * 256u + FM_TAU) - l0) / (log2_q16((uint32_t)s->held * 256u + FM_TAU) - l0);
+    return FM_HW + (FM_XW - FM_HW - 1) * (log2_q16((uint32_t)(b - s->held) * 256u + FM_TAU) - l0) /
+                       (log2_q16((uint32_t)(s->n - s->held) * 256u + FM_TAU) - l0);
 }
 static void fm_bp(fm_env_line_t *l, int32_t i, int32_t v)
 {
@@ -1176,7 +1187,7 @@ static uint32_t fm_wf_key(const fm_sim_t *s, const track_t *t)
 /* the block at i / n of span blocks: on the log time axis (fm_warp's), fm_wf_tune.warp of the way from an even one */
 static int32_t fm_wf_unwarp(int32_t span, int32_t i, int32_t n)
 {
-    int32_t l0 = fm_log2(FM_TAU), l = l0 + (fm_log2((uint32_t)span * 256u + FM_TAU) - l0) * i / n;
+    int32_t l0 = log2_q16(FM_TAU), l = l0 + (log2_q16((uint32_t)span * 256u + FM_TAU) - l0) * i / n;
     int32_t on_log = clamp((int32_t)((fm6_mant(l << 8) >> (30 - (l >> 16))) - FM_TAU) / 256, 0, span), even = span * i / n;
     return even + (on_log - even) * fm_wf_cfg()->warp / 100;
 }
@@ -1342,41 +1353,14 @@ static int32_t fm_wf_at_col(const int8_t *v, int32_t col, int32_t w)
     int32_t a = v[i], b = v[i < last ? i + 1u : last];
     return (a << 8) + (b - a) * (int32_t)(pos & 255u);
 }
-/* a pixel of the line covering cover / 256 of it: the ink mixed into the panel under it, a
- * quarter at a time (mostly the panel there); (#29) the LCD looks' four tones take no mix: half covered or not at all */
-static void fm_wf_dot(int32_t x, int32_t y, int32_t cover, const uint16_t *ink)
+static int32_t fm_wf_col_y256(const void *v, uint32_t j, int32_t col, int32_t w)
 {
-    int32_t q = ux.h1n ? (cover >= 128 ? 4 : 0) : (cover * 4 + 128) >> 8;
-    if (q > 0)
-        cv_rect(x, y, 1, 1, ink[(q > 4 ? 4 : q) - 1]);
+    return fm_wf_y256(j, fm_wf_at_col(v, col, w));
 }
-/* slice j, a pixel column at a time: the line smoothed across the rows it falls between, a steep step a solid run; the
- * front one 2 px thick. Under it the lines behind veiled fm_wf_tune.fill % into the panel (0: they show through) */
 static void fm_wf_draw_slice(const int8_t *v, uint32_t j, uint16_t c)
 {
-    int32_t w = fm_wf_width(), left = fm_wf_left(j), half = j ? 128 : 256, col, ya, yb;
-    int32_t foot = fm_wf_y(j, -127) + 2, fill = fm_wf_cfg()->fill;
-    uint16_t ink[4];
-    for (col = 0; col < 4; col++)
-        ink[col] = ux_mix(T_SURF, c, 25 * (col + 1));
-    for (col = 1; fill && col <= w; col++) {
-        yb = fm_wf_y256(j, fm_wf_at_col(v, col, w)) >> 8;
-        cv_veil(left + col, yb + 1, foot, T_SURF, fill);
-    }
-    for (ya = fm_wf_y256(j, v[0] << 8), col = 1; col <= w; col++, ya = yb) {
-        int32_t x = left + col, top, f, lo, hi;
-        yb = fm_wf_y256(j, fm_wf_at_col(v, col, w));
-        lo = (ya < yb ? ya : yb) >> 8;
-        hi = (ya < yb ? yb : ya) >> 8;
-        if (hi - lo > 1)
-            cv_rect(x, lo + 1, 1, hi - lo - 1, ink[3]);
-        top = yb - half;
-        f = top & 255;
-        fm_wf_dot(x, top >> 8, 256 - f, ink);
-        if (!j)
-            cv_rect(x, (top >> 8) + 1, 1, 1, ink[3]);
-        fm_wf_dot(x, (top >> 8) + (j ? 1 : 2), f, ink);
-    }
+    const wf_slice_t s = {v, j, fm_wf_left(j), fm_wf_width(), fm_wf_y(j, -127) + 2, fm_wf_cfg()->fill, fm_wf_col_y256};
+    wf_draw_slice(&s, c);
 }
 /* slice j's ink: the track's colour fading into the panel with depth, the release dimmer (the key up reads from it);
  * (#29) an LCD's ink, the release MID */
@@ -1384,7 +1368,7 @@ static uint16_t fm_wf_ink(uint32_t j, uint16_t c)
 {
     if (ux.h1n)
         return j < fm_wf_held_slices() ? T_TEXT : T_MID;
-    return ux_mix(T_SURF, c, (100 - 70 * (int32_t)j / ((int32_t)fm_wf_slices() - 1)) * (j >= fm_wf_held_slices() ? 3 : 5) / 5);
+    return ux_mix(T_SURF, c, wf_fade(j, fm_wf_slices()) * (j >= fm_wf_held_slices() ? 3 : 5) / 5);
 }
 /* the carrier the bars show: the picked operator, else the first one it feeds */
 static uint32_t fm_wf_carrier(const fm_sim_t *s)
@@ -1488,13 +1472,47 @@ static void fm_scroll(uint32_t w)
     cv_rect(236, 4 + (int32_t)w * h, 2, h, T_MID);
 }
 static fm_sim_t fm_panel_sim __attribute__((section(".pool")));   /* (1.2 KB: off the stack and the ISR's globals) */
+/* (#71) the panel's room holds the SPECTRUM history (ui_spectrum.c) while HOME's or the panel's own is up: kept, the
+ * spectrum's since it last asked; the panel's envelopes or WAVE take the room back, WAVE's slices then rendered again */
+static uint8_t fm_room_lent __attribute__((section(".pool")));
+static uint8_t *fm_room_lend(int *kept)
+{
+    *kept = fm_room_lent;
+    fm_room_lent = 1;
+    return (uint8_t *)fm_panel_sim.wave;
+}
+static void fm_room_take_back(void)
+{
+    if (!fm_room_lent)
+        return;
+    fm_room_lent = 0;
+    fm_wf.key = 0;
+    fm_wf.whole = 0;
+}
+/* (#71b) SPECTRUM: the track's sound as HOME's TRACK n SPECTRUM shows it, in the graph's room */
+static void fm_spectrum_panel(uint16_t c)
+{
+    const spec_geo_t panel = {12, 228, FM_GY + FM_GH - 16, FM_GY, 2, 30};
+    char b[24] = "TRACK 1 SPECTRUM";
+    b[6] = (char)('1' + fm_tr());
+    spec_draw(&panel, c);
+    cv_text_on(10, FM_CY + CAP_IN(S, 12), &AF_S, b, T_MID, T_SURF);
+    spec_scale_text(b, sizeof b);
+    cv_text_r(229, FM_CY + CAP_IN(S, 12), &AF_S, b, T_MID, T_SURF);
+}
 static void fm_draw(uint32_t pg, const track_t *t, uint16_t c)
 {
     fm_sim_t *s = &fm_panel_sim;
     uint16_t sh[12];
     uint32_t w = fm_ui[1 + pg] % FM_NWIN;
+    if (fm_view != FM_VIEW_SPECTRUM)
+        fm_room_take_back();
     fm_ramp(sh);
-    if (fm_wave) {
+    if (fm_view == FM_VIEW_SPECTRUM) {
+        fm_ops(s, t);
+        fm_tabs(s, sh, !pg && w == FMW_TONE);
+        fm_spectrum_panel(c);
+    } else if (fm_view == FM_VIEW_WAVE) {
         fm_ops(s, t);
         fm_tabs(s, sh, !pg && w == FMW_TONE);
         fm_wave_panel(s, t, c);
