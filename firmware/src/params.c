@@ -349,6 +349,23 @@ static int32_t param_turn(const param_desc_t *d, int32_t v, int32_t steps)
 
 static uint8_t fmt_named;        /* the last param_format was a name (F_ENUM, even "4"): ui_draw.c's digits do not roll it */
 
+/* GLIDE as voice.c glide_set and track_render move the pitch, a whole sixteenth of a semitone or more every CTL
+ * samples: an octave's glide (192 sixteenths). TIME spreads an interval over 1 + v * v / 8 steps, its step rounded
+ * down to whole sixteenths (at least one, so an octave never takes more than 192); RATE steps ENV_LIN's sixteenths
+ * (v 0: SLIDE's 40). In
+ * 1/10 ms; not TIME_MS_X10, which reads up to 10 s */
+static uint32_t glide_ms10(int32_t v)
+{
+    uint32_t steps, step;
+    if (TSEL->p[P_GLMODE])
+        step = 192u / (1u + (uint32_t)(v * v) / 8u);
+    else
+        step = ENV_LIN[(v ? v : 40) & 127] >> 14;
+    step = step ? step : 1u;
+    steps = (192u + step - 1u) / step;
+    return (steps * CTL * 10000u + FS / 2u) / FS;      /* (2017 steps at most: within 32 bits) */
+}
+
 /* value string (<= 5 chars) and unit for a parameter value */
 static void param_format(const param_desc_t *d, int32_t v, char *val, const char **unit)
 {
@@ -371,7 +388,7 @@ static void param_format(const param_desc_t *d, int32_t v, char *val, const char
         *unit = "%";
         break;
     case F_TIME: {
-        uint32_t ms10 = TIME_MS_X10[v & 127];
+        uint32_t ms10 = d == &TP[P_GLIDE] ? glide_ms10(v) : TIME_MS_X10[v & 127];
         if (ms10 < 100u) {
             fmt_fix(val, (int32_t)ms10, 1);
             *unit = "ms";
