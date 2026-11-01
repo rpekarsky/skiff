@@ -7,7 +7,7 @@
  *             ENV 2  RATE 3 LEVEL 3 RATE 4 LEVEL 4              PITCH 2  RATE 3 PITCH 3 RATE 4 PITCH 4
  *             KEYS   L CURVE L DEPTH R DEPTH R CURVE            LFO      WAVE RATE FADE KEY SYNC
  *             MORE   BREAK KEY RATE VELOCITY LFO AMP            DEPTH    VIBRATO VIB SENS TREMOLO
- *             PHASE  PHASE (#72, an experiment: not in the patch, eng_fm6.c fm6_op_phase)
+ *             OSC    PHASE WAVE (#72, #73, experiments: not in the patch, eng_fm6.c fm6_op_phase, fm6_op_wave)
  *   A knob edits a copy of the patch: fm6_set_patch (the audio ISR's copy follows), fm6_edited (SLOT: OWN, or the
  *   factory patch it now is; F n*, still F n, while an own patch is kept aside: "F3* DROPPED" when that was another's
  *   F n*). ALGO and FEEDBACK show what plays (EDIT 1's ALGO and FEEDBACK on the patch) and turning them puts that in
@@ -20,10 +20,10 @@
  * KEYS and MORE: its level across the keyboard. ALGO: the chart (ui_graph.c graph_fm6). PITCH: the pitch envelope;
  * LFO and DEPTH: the vibrato over two seconds. All drawn in the theme's colours (the ramp: blue to REC). */
 
-enum { FMW_TONE, FMW_ENV1, FMW_ENV2, FMW_KEYS, FMW_MORE, FMW_PHASE };   /* OPERATOR's windows */
+enum { FMW_TONE, FMW_ENV1, FMW_ENV2, FMW_KEYS, FMW_MORE, FMW_OSC };     /* OPERATOR's windows */
 enum { FMW_ALGO, FMW_PITCH1, FMW_PITCH2, FMW_LFO, FMW_DEPTH };      /* ALL OPS' */
 enum { FMF_NUM, FMF_RATIO, FMF_FINE, FMF_DET, FMF_CURVE, FMF_NOTE, FMF_ALG, FMF_FB, FMF_TRNSP, FMF_PITCH, FMF_WAVE,
-       FMF_HZ, FMF_ONOFF, FMF_PHASE };
+       FMF_HZ, FMF_ONOFF, FMF_PHASE, FMF_OPWAVE };
 #define FM_OP_NWIN 6u
 #define FM_ALL_NWIN 5u
 typedef struct {
@@ -37,7 +37,7 @@ static const fm_field_t FM_F[2][FM_OP_NWIN][4] = {
       {"LEVEL 4", FP_L1 + 3, FMF_NUM}},
      {{"L CURVE", FP_LC, FMF_CURVE}, {"L DEPTH", FP_LD, FMF_NUM}, {"R DEPTH", FP_RD, FMF_NUM}, {"R CURVE", FP_RC, FMF_CURVE}},
      {{"BREAK", FP_BP, FMF_NOTE}, {"KEY RATE", FP_RS, FMF_NUM}, {"VELOCITY", FP_KVS, FMF_NUM}, {"LFO AMP", FP_AMS, FMF_NUM}},
-     {{"PHASE", 0, FMF_PHASE}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}},
+     {{"PHASE", 0, FMF_PHASE}, {"WAVE", 0, FMF_OPWAVE}, {0, 0, 0}, {0, 0, 0}}},
     {{{"ALGO", FP_ALG, FMF_ALG}, {"FEEDBACK", FP_FB, FMF_FB}, {"TRANSP", FP_TRNSP, FMF_TRNSP}, {0, 0, 0}},
      {{"RATE 1", FP_PR1, FMF_NUM}, {"PITCH 1", FP_PL1, FMF_PITCH}, {"RATE 2", FP_PR1 + 1, FMF_NUM},
       {"PITCH 2", FP_PL1 + 1, FMF_PITCH}},
@@ -48,6 +48,7 @@ static const fm_field_t FM_F[2][FM_OP_NWIN][4] = {
 };
 static const char *const FM_CURVE[4] = {"-LIN", "-EXP", "+EXP", "+LIN"};
 static const char *const FM_WAVE[6] = {"TRI", "SAW DN", "SAW UP", "SQUARE", "SINE", "RANDOM"};
+static const char *const FM_OPWAVE[FM6_NWAVE] = {"SINE", "SINE2", "HALF", "HALF2", "ALT", "ALT2", "CAMEL", "CAMEL2"};
 static const char *const FM_HZ[4] = {"1", "10", "100", "1K"};          /* a fixed operator's range (FC & 3) */
 
 static uint8_t fm_wave __attribute__((section(".pool")));       /* (#20w) the panel WAVE, not the envelopes; not saved */
@@ -117,13 +118,13 @@ static fm_wf_t fm_wf __attribute__((section(".pool")));
 static uint32_t fm_tr(void) { return trk_index(TSEL) % NTRK; }
 static uint32_t fm_nwin(uint32_t pg) { return pg ? FM_ALL_NWIN : FM_OP_NWIN; }
 static uint32_t fm_win(uint32_t pg) { return fm_ui[1 + pg] % fm_nwin(pg); }
-static uint32_t fm_phase_sig(void)
+static uint32_t fm_osc_sig(void)
 {
     const uint8_t *ph = fm6_op_phase[fm_tr()];
     uint32_t h = 2166136261u, k;
     for (k = 0; k < 6u; k++)
         h = (h ^ ph[k]) * 16777619u;
-    return h;
+    return (h ^ fm6_waves_of(fm6_op_wave[fm_tr()])) * 16777619u;
 }
 /* field f's byte in the patch (operator fm_ui[0] on OPERATOR) */
 static uint32_t fm_at(uint32_t pg, const fm_field_t *f)
@@ -247,6 +248,10 @@ static int32_t fm_val(const fm_field_t *f, uint32_t i, const uint8_t *p, const t
         fmt_int(val, (int32_t)v);
         *unit = "%";
         return (int32_t)v * 1000 / 99;
+    case FMF_OPWAVE:
+        v = fm6_op_wave[fm_tr()][i / FP_OP] % FM6_NWAVE;
+        str_cpy(val, FM_OPWAVE[v], 8);
+        return (int32_t)v * 1000 / (FM6_NWAVE - 1);
     default:
         fmt_int(val, (int32_t)v);
         break;
@@ -274,6 +279,10 @@ static void fm_knob(uint32_t pg, uint32_t k, int32_t s)
     i = fm_at(pg, f);
     if (f->fmt == FMF_PHASE) {
         fm_phase_turn(&fm6_op_phase[tr][i / FP_OP], k, s);
+        return;
+    }
+    if (f->fmt == FMF_OPWAVE) {
+        fm6_set_wave(tr, i / FP_OP, (uint32_t)clamp((int32_t)fm6_op_wave[tr][i / FP_OP] + d, 0, FM6_NWAVE - 1));
         return;
     }
     mx = fm6_max(i);
@@ -368,7 +377,7 @@ static uint32_t fm_sig(void)
     return (fm6_pgen[fm_tr()] + 1u) * 2246822519u ^ (fm_ui[0] + fm_ui[1] * 7u + fm_ui[2] * 49u) * 40503u ^
            (ui.hot_t ? ui.hot_col + 1u : 0u) * 65537u ^ shift_channel * 3266489917u ^
            (fm_wave ? (fm_wf_note_sig() + fm_wf.done + fm1_ms / FM_WF_BAR_MS + 1u) * 2654435761u : 0u) ^
-           (fm_wave ? fm_wf_tune_sig() * 2246822519u : 0u) ^ fm_phase_sig() * 3266489917u;
+           (fm_wave ? fm_wf_tune_sig() * 2246822519u : 0u) ^ fm_osc_sig() * 3266489917u;
 }
 /* (#20w) SHIFT + SELECT on an FM6 sheet: its panel WAVE (on) or the envelopes (0). 0: not on one */
 static int fm_sheet_shown(void)
@@ -800,7 +809,7 @@ static uint32_t fm_tab_beside(uint32_t pg, uint32_t w)
 {
     if (pg)
         return FM_TAB_NAME;
-    return w == FMW_TONE ? FM_TAB_RATIO : w == FMW_PHASE ? FM_TAB_PHASE : FM_TAB_NAME;
+    return w == FMW_TONE ? FM_TAB_RATIO : w == FMW_OSC ? FM_TAB_PHASE : FM_TAB_NAME;
 }
 static void fm_tab_value(char *b, uint32_t k, uint32_t beside)
 {
@@ -1214,7 +1223,7 @@ static uint32_t fm_wf_key(const fm_sim_t *s, const track_t *t)
     h = (h ^ (uint32_t)s->modlvl) * 16777619u;
     h = (h ^ fm_wf_note_sig() ^ fm_tr() << 28) * 16777619u;
     h = (h ^ fm_wf_tune_sig()) * 16777619u;
-    h = (h ^ fm_phase_sig()) * 16777619u;
+    h = (h ^ fm_osc_sig()) * 16777619u;
     return h ? h : 1u;
 }
 /* the block at i / n of span blocks: on the log time axis (fm_warp's), fm_wf_tune.warp of the way from an even one */
@@ -1301,6 +1310,7 @@ static void fm_wf_voice(fm6_note_t *n, const fm_sim_t *s, int32_t lf, const int3
 {
     uint32_t car = fm6_carriers(s->alg), i;
     memset(n, 0, sizeof *n);
+    n->waves = fm6_waves_of(fm6_op_wave[fm_tr()]);
     memcpy(n->env, fm_wf.env, sizeof n->env);
     n->penv = fm_wf.penv;
     n->live = 1;
@@ -1446,13 +1456,13 @@ static uint32_t fm_wf_carrier(const fm_sim_t *s)
 #define FM_WF_BX 16                                     /* the bars: the first at x 16, 10 px apart, middle y 43 */
 #define FM_WF_BY 43
 #define FM_WF_BH 13                                     /* a bar's reach either way */
-/* the feedback operator at the slowed phase: its output y = sin(phase + y >> shift) x gain, the steady state of
+/* the feedback operator at the slowed phase: its output y = wave(phase + y >> shift) x gain, the steady state of
  * fm6_op_fb's two last outputs; found by halving the step towards it (a saw's edge: one of its roots) */
-static void fm_wf_self_mod(int32_t *sine, int32_t *out, uint32_t phase, int32_t gain, int32_t shift)
+static void fm_wf_self_mod(int32_t *sine, int32_t *out, uint32_t phase, int32_t gain, int32_t shift, const fm6_shape_t *sh)
 {
     uint32_t n;
     for (n = 0; n < 8u; n++) {
-        *sine = fm6_sin((int32_t)(phase + (uint32_t)(*out >> shift)));
+        *sine = fm6_shaped((int32_t)(phase + (uint32_t)(*out >> shift)), sh);
         *out = (*out + (int32_t)(((int64_t)*sine * gain) >> 15)) / 2;
     }
 }
@@ -1472,15 +1482,16 @@ static void fm_wf_bars(const fm_sim_t *s, const track_t *t)
         const uint8_t *op = s->q + i * FP_OP;
         int32_t base = fm6_osc_base(op, fm_wf_engine_note(s), 0), gain = fm6_exp2(clamp(fm_wf.top[i] << 8, 0, 17 << 24) - (14 << 24));
         uint64_t speed = ((uint64_t)(uint32_t)fm6_freq(op[FP_MODE] ? base : lf + base + dt[i]) << 16) / (uint32_t)(f0 ? f0 : 1);
+        fm6_shape_t sh = fm6_shape(fm6_op_wave[fm_tr()][i]);
         uint32_t phase = (uint32_t)(speed * (fm1_ms - fm_wave_t0) * 256u / 1000u) +
                          (uint32_t)fm6_start_phase(fm6_op_phase[fm_tr()][i]);
         for (j = 0; j < 6u; j++)
             if (mods[k] >> j & 1u)
                 phase += (uint32_t)out[j];
-        sine[k] = fm6_sin((int32_t)phase);
+        sine[k] = fm6_shaped((int32_t)phase, &sh);
         out[k] = fm_wf.top[i] ? (int32_t)(((int64_t)sine[k] * gain) >> 15) : 0;
         if (k == fm6_fb_op(s->alg) && s->fb && fm_wf.top[i])
-            fm_wf_self_mod(&sine[k], &out[k], phase, gain, 8 - (int32_t)s->fb);
+            fm_wf_self_mod(&sine[k], &out[k], phase, gain, 8 - (int32_t)s->fb, &sh);
     }
     for (k = 0; k < 6u; k++) {
         int32_t x = FM_WF_BX + (int32_t)n * 10, reach, y;

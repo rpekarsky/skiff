@@ -672,6 +672,7 @@ static void state(void)                          /* a playing song with steps on
     fm_wave = 0;
     memset(fm6_last, 0, sizeof fm6_last);
     memset(fm6_op_phase, 0, sizeof fm6_op_phase);
+    memset(fm6_op_wave, 0, sizeof fm6_op_wave);
     if (large_on) ui_prefs |= PREF_LARGE;
     song.playing = 1;
     song.g[G_BPM] = 124;
@@ -927,6 +928,7 @@ static void mock_state(int s)
     fm_wave = 0;
     memset(fm6_last, 0, sizeof fm6_last);
     memset(fm6_op_phase, 0, sizeof fm6_op_phase);
+    memset(fm6_op_wave, 0, sizeof fm6_op_wave);
     if (large_on) ui_prefs |= PREF_LARGE;
     usb.config = 0;
     song.batt_raw = 600;
@@ -1645,7 +1647,7 @@ static void setup(int s)
             fm_wf_render(&fm_panel_sim, TSEL);
         break;
     }
-    case S_FM_PHASE:                                /* (#72) OPERATOR's PHASE: OP2 at x1 into OP1, OP1 from 25 %, OP2 */
+    case S_FM_PHASE:                                /* (#72) OPERATOR's OSC: OP2 at x1 into OP1, OP1 from 25 %, OP2 */
     case S_FM_WAVE_PHASE: {                         /* from 50 % (the tabs show them); WAVE of it: C3 held 0.4 s */
         uint32_t tr = trk_index(TSEL);
         uint8_t v[FP_SIZE + 1u];
@@ -1656,10 +1658,12 @@ static void setup(int s)
         fm6_adopt(tr);
         fm6_op_phase[tr][5] = 25;
         fm6_op_phase[tr][4] = 50;
+        fm6_op_wave[tr][5] = FM6_W_HALF;                /* (#73) OP1 HALF, OP2 ALT */
+        fm6_op_wave[tr][4] = FM6_W_ALT;
         fm6_last[tr] = (fm6_last_t){48, 110, 0, 0, 0, 400};
         fm_ui[0] = 0;
         go_title("OPERATOR");
-        fm_ui[1] = FMW_PHASE;
+        fm_ui[1] = FMW_OSC;
         if (s == S_FM_PHASE)
             break;
         (void)fm_wave_set(1);

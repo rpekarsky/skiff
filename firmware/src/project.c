@@ -1540,7 +1540,7 @@ static int project_restore_runtime(const project_t *input)
             fm6_unpack(p->fm6[k], v);
             fm6_set_patch(k, v);
             fm6_adopt(k);
-            memset(fm6_op_phase[k], 0, sizeof fm6_op_phase[k]);
+            fm6_osc_reset(k);
         }
     }
     sel_set((uint8_t)(p->sel < NTRK ? p->sel : 0u));

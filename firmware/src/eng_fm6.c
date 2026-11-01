@@ -29,7 +29,7 @@
  * matrix's CUT), SHP the feedback, PIT the pitch (bend, glide, tune: the voice's pitch and fine factor).
  * Six voices per part at most (engine_t.poly).
  *
- * State: per voice an fm6_note_t (244 bytes, in the part's shared engine area as PHYS's slots: engines.c eng_mem;
+ * State: per voice an fm6_note_t (248 bytes, in the part's shared engine area as PHYS's slots: engines.c eng_mem;
  * voice_t.s[] is too small), per part the patch, the patch through the macros (fm6_eff, rebuilt in the audio ISR
  * when either changes) and the LFO (once a block). */
 #include "fm6_core.c"
@@ -64,6 +64,8 @@ static int32_t fm6_lfo_v[NTRK], fm6_lfo_d[NTRK]; /* this block's LFO value and d
 /* (#72, an experiment) each operator's phase at a fresh note-on, % of a cycle (FM6_ALG's order: the sixth first). Not
  * in the patch, not saved: 0 again at a sound load (fm6_track_loaded, a project's, power-on) */
 static uint8_t fm6_op_phase[NTRK][6] __attribute__((section(".pool")));
+/* (#73, an experiment) each operator's waveform (FM6_W_*, FM6_ALG's order), as PHASE: not in the patch, not saved */
+static uint8_t fm6_op_wave[NTRK][6] __attribute__((section(".pool")));
 
 /* ------------------------------------------------------- patch formats --- */
 /* the highest value of each byte of the 155-byte voice */
@@ -168,6 +170,31 @@ static void fm6_set_patch(uint32_t tr, const uint8_t *v)
     fm6_pgen[tr]++;
 }
 
+/* (#73) operator k's waveform on track tr = w. Main loop: the ISR's next block plays it, the sounding notes too */
+static void fm6_set_wave(uint32_t tr, uint32_t k, uint32_t w)
+{
+    tr %= NTRK;
+    fm6_op_wave[tr][k % 6u] = (uint8_t)(w % FM6_NWAVE);
+    RING_PUBLISH();
+    fm6_pgen[tr]++;
+}
+static uint32_t fm6_waves_of(const uint8_t *w)
+{
+    uint32_t k, waves = 0;
+    for (k = 0; k < 6u; k++)
+        waves |= (uint32_t)(w[k] % FM6_NWAVE) << (3u * k);
+    return waves;
+}
+/* (#72, #73) a sound load: every operator back to PHASE 0 and SINE */
+static void fm6_osc_reset(uint32_t tr)
+{
+    tr %= NTRK;
+    memset(fm6_op_phase[tr], 0, sizeof fm6_op_phase[tr]);
+    memset(fm6_op_wave[tr], 0, sizeof fm6_op_wave[tr]);
+    RING_PUBLISH();
+    fm6_pgen[tr]++;
+}
+
 /* SLOT value s < FM6_NFACTORY: that factory patch into track tr (F n*: its edits) */
 static void fm6_load_slot(uint32_t tr, uint32_t s)
 {
@@ -233,7 +260,7 @@ static void fm6_track_loaded(const track_t *t)
 {
     uint32_t tr = (uint32_t)(t - trk);
     if (tr < NTRK && t->eng_req == ENGI_FM6) {
-        memset(fm6_op_phase[tr], 0, sizeof fm6_op_phase[tr]);
+        fm6_osc_reset(tr);
         fm6_own_ok &= (uint8_t)~(1u << tr);
         fm6_edit_f[tr] = 0;
         if (t->p[P_E7] >= 0 && t->p[P_E7] < (int32_t)FM6_NFACTORY)
@@ -250,10 +277,10 @@ static void fm6_init(void)
     uint32_t tr;
     fm6_unpack(FM6_INIT, v);
     for (tr = 0; tr < NTRK; tr++) {
+        fm6_osc_reset(tr);
         fm6_set_patch(tr, v);
         fm6_slot[tr] = 0xFFu;
     }
-    memset(fm6_op_phase, 0, sizeof fm6_op_phase);
 }
 
 /* main loop: SLOT turned (a knob, the editor, MIDI, motion) -> that factory patch; from OWN the own patch is kept
@@ -372,6 +399,7 @@ static void fm6_note_on(track_t *t, voice_t *v)
     p = fm6_eff[tr].p;
     fm6_note_init(n, p, (int32_t)v->note + p[FP_TRNSP] - 24, v->mvel ? v->mvel : v->vel,
                   (!v->env && !v->env_out) || !n->live, fm6_op_phase[tr]);   /* from silence */
+    n->waves = fm6_waves_of(fm6_op_wave[tr]);
     fm6_lfo_key(&fm6_lfo[tr]);
     if (tr < NTRK)
         fm6_last[tr] = (fm6_last_t){v->note, (uint8_t)(v->mvel ? v->mvel : v->vel), (uint8_t)(v - t->v), 1, fm1_ms,
@@ -394,14 +422,18 @@ static void fm6_block(track_t *t)       /* once a block and part: the macros, th
     uint32_t tr = (uint32_t)(t - trk), i;
     if (tr >= NTRK)
         return;
-    if (fm6_sync(t))
-        for (i = 0; i < FM6_POLY; i++) {        /* (#69) the sounding notes follow the edit */
+    if (fm6_sync(t)) {
+        uint32_t waves = fm6_waves_of(fm6_op_wave[tr]);
+        for (i = 0; i < FM6_POLY; i++) {        /* (#69) the sounding notes follow the edit ((#73) a waveform too) */
             voice_t *v = &t->v[i];
             fm6_note_t *n = fm6_note_of(t, v);
             const uint8_t *p = fm6_eff[tr].p;
-            if (n && n->live)
+            if (n && n->live) {
                 fm6_note_retune(n, p, (int32_t)v->note + p[FP_TRNSP] - 24, v->mvel ? v->mvel : v->vel);
+                n->waves = waves;
+            }
         }
+    }
     fm6_lfo_v[tr] = fm6_lfo_sample(&fm6_lfo[tr]);
     fm6_lfo_d[tr] = fm6_lfo_delay(&fm6_lfo[tr]);
 }

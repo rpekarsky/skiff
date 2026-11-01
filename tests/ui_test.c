@@ -3171,8 +3171,19 @@ static int test_fm6_lab(void)
         ok &= fm6_op_phase[tr][5u - 2u] == 99u && fm6_op_phase[tr][5u - 1u] == 0u;
         ok &= !memcmp(fm6_patch[tr], was, FP_SIZE) && fm6_pgen[tr] == gen;
         bad += check("(#72) PHASE: K1 turns OP3's phase, 99 % past 0, the patch untouched", ok);
+        turn(EN_K2, 1);                                 /* (#73) WAVE: OP3's, SINE .. CAMEL2, at once (fm6_pgen) */
+        ok = fm6_op_wave[tr][5u - 2u] == FM6_W_SIN2 && fm6_pgen[tr] != gen;
+        turn(EN_K2, -1);
+        turn(EN_K2, -1);
+        ok &= fm6_op_wave[tr][5u - 2u] == FM6_W_SINE;
+        for (i = 0; i < FM6_NWAVE + 1u; i++)
+            turn(EN_K2, 1);
+        ok &= fm6_op_wave[tr][5u - 2u] == FM6_W_CAMEL2 && fm6_op_wave[tr][5u - 1u] == FM6_W_SINE;
+        ok &= !memcmp(fm6_patch[tr], was, FP_SIZE);
+        bad += check("(#73) WAVE: K2 turns OP3's waveform, SINE to CAMEL2 and no further, the patch untouched", ok);
         apply_preset_to(TSEL, 0); frame();
-        bad += check("(#72) PHASE: 0 again at a sound load", fm6_op_phase[tr][5u - 2u] == 0u);
+        bad += check("(#72, #73) PHASE and WAVE: 0 and SINE again at a sound load",
+                     fm6_op_phase[tr][5u - 2u] == 0u && fm6_op_wave[tr][5u - 2u] == FM6_W_SINE);
     }
     btn_down(B_HOME); frame();                          /* (#20w) SHIFT + SELECT: the panel WAVE, the window kept */
     turn(EN_SELECT, 1);
@@ -3446,6 +3457,34 @@ static int test_fm6_wave(void)
         ok &= wave_vs_voice(v, 60, 689, pts) < 0.02;
         fm6_op_phase[trk_index(TSEL)][4] = 0;
         bad += check("(#72) WAVE with PHASE: OP1 at 25 % the voice's period and a cosine; OP2 into OP1 at 50 %: the voice's", ok);
+    }
+    {   /* (#73) operator waveforms: OP1 HALF a half sine; OP2 at x2, ALT2, into OP1 at CAMEL; OP6's FEEDBACK at SINE2 */
+        uint8_t *wave = fm6_op_wave[trk_index(TSEL)];
+        double half = 0;
+        fm6_unpack(FM6_INIT, v);
+        wave[5] = FM6_W_HALF;
+        off = wave_vs_voice(v, 60, 689, pts);
+        for (j = 0; j < fm_wf_points(); j++) {
+            double x = (double)j / (fm_wf_points() - 1u), d = fabs(pts[j] - (x < 0.5 ? 127.0 * sin(6.283185307 * x) : 0)) / 127.0;
+            half = d > half ? d : half;
+        }
+        ok = off < 0.02 && half < 0.03;
+        v[4u * FP_OP + FP_OL] = 80;
+        v[4u * FP_OP + FP_FC] = 2;
+        wave[4] = FM6_W_ALT2;
+        wave[5] = FM6_W_CAMEL;
+        ok &= wave_vs_voice(v, 60, 689, pts) < 0.02;
+        fm6_unpack(FM6_INIT, v);
+        v[FP_OL] = 99;
+        v[5u * FP_OP + FP_OL] = 0;
+        v[FP_ALG] = 31;
+        v[FP_FB] = 4;
+        memset(wave, FM6_W_SINE, 6);
+        wave[0] = FM6_W_SIN2;
+        ok &= wave_vs_voice(v, 60, 689, pts) < 0.02;
+        memset(wave, FM6_W_SINE, 6);
+        bad += check("(#73) WAVE with waveforms: OP1 HALF a half sine (3 %), OP2 ALT2 into OP1 CAMEL and OP6 SINE2 with "
+                     "FEEDBACK 4: the voice's period", ok);
     }
     {   /* the note it shows: the track's last, held as long as it was; again at the key's next note-on, kept */
         int32_t b[CTL], i;
