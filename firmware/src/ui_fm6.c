@@ -47,17 +47,20 @@ static const char *const FM_CURVE[4] = {"-LIN", "-EXP", "+EXP", "+LIN"};
 static const char *const FM_WAVE[6] = {"TRI", "SAW DN", "SAW UP", "SQUARE", "SINE", "RANDOM"};
 static const char *const FM_HZ[4] = {"1", "10", "100", "1K"};          /* a fixed operator's range (FC & 3) */
 
-static uint8_t fm_wave __attribute__((section(".pool")));       /* (#20w) the panel WAVE, not the envelopes; not saved */
+enum { FM_VIEW_ENVELOPES, FM_VIEW_WAVE, FM_VIEW_SPECTRUM };   /* (#20w, #71b) the panel, SHIFT + SELECT steps it */
+static uint8_t fm_view __attribute__((section(".pool")));       /* FM_VIEW_*; not saved */
 static uint32_t fm_wave_t0 __attribute__((section(".pool")));   /* (fm1_ms) WAVE's operator bars' clock from 0 */
 #define FM_WF_BUF 4608                                  /* WAVE's slices' points, all of them */
 #define FM_WF_NP 192                                    /* a slice's points at most */
 #define FM_WF_SMOOTH_MAX 4
+#define FM_WF_PERIODS_MAX 3
 enum { FM_WF_HELD_PLAYED, FM_WF_HELD_SMART, FM_WF_HELD_1S };   /* as played; 1 s while the key is down; always 1 s */
 typedef struct {                                        /* (#20t, test build) SHIFT + KNOB 1..4 on WAVE; not saved */
     uint8_t slices;                                     /* 8 .. as many as the buffer holds (fm_wf_slices) */
-    uint8_t periods;                                    /* 1 .. 3 across, each rendered (fm_wf_points) */
+    uint8_t periods;                                    /* 1 .. FM_WF_PERIODS_MAX across, each rendered (fm_wf_points) */
     uint8_t phase;                                      /* where a slice starts past the note's zero phase, % of a period */
-    uint8_t smooth;                                     /* periods averaged a point, one after another */
+    uint8_t smooth;                                     /* periods averaged a point, one after another ((#71b) 2, no
+                                                         * knob) */
     uint8_t step_x;                                     /* px a slice further back moves right: 0 .. 3 */
     uint8_t zoom_y;                                     /* a slice's height, 25 % steps of the carriers' loudest: 4 .. 12 */
     uint8_t fill;                                       /* (SMK FADERS WAVE) % a slice veils the lines behind it */
@@ -338,31 +341,31 @@ static uint32_t fm_sig(void)
 {
     return (fm6_pgen[fm_tr()] + 1u) * 2246822519u ^ (fm_ui[0] + fm_ui[1] * 7u + fm_ui[2] * 49u) * 40503u ^
            (ui.hot_t ? ui.hot_col + 1u : 0u) * 65537u ^ shift_channel * 3266489917u ^
-           (fm_wave ? (fm_wf_note_sig() + fm_wf.done + fm1_ms / FM_WF_BAR_MS + 1u) * 2654435761u : 0u) ^
-           (fm_wave ? fm_wf_tune_sig() * 2246822519u : 0u);
+           (fm_view == FM_VIEW_WAVE ? (fm_wf_note_sig() + fm_wf.done + fm1_ms / FM_WF_BAR_MS + 1u) * 2654435761u : 0u) ^
+           (fm_view == FM_VIEW_WAVE ? fm_wf_tune_sig() * 2246822519u : 0u) ^
+           (fm_view == FM_VIEW_SPECTRUM ? (fm1_ms / SPEC_SLICE_MS + 1u) * 3266489917u : 0u);
 }
-/* (#20w) SHIFT + SELECT on an FM6 sheet: its panel WAVE (on) or the envelopes (0). 0: not on one */
+/* (#20w, #71b) SHIFT + SELECT on an FM6 sheet steps its panel: right the envelopes, WAVE, SPECTRUM; left back. 0: not
+ * on one */
 static int fm_sheet_shown(void)
 {
     uint32_t g = cur_page()->graph;
     return !ui.home && (g == GR_FMOP || g == GR_FMALL) && TSEL->eng_req % NENGINES == ENGI_FM6;
 }
-static int fm_wave_set(int on)
+static int fm_view_step(int32_t s)
 {
     if (!fm_sheet_shown())
         return 0;
-    if (on && !fm_wave)
+    if (fm_view == FM_VIEW_ENVELOPES && s > 0)
         fm_wave_t0 = fm1_ms;
-    else if (on)                                        /* (#20t) again, WAVE shown: PERIODS 1, 2, 3, round */
-        fm_wf_tune.periods = (uint8_t)(fm_wf_cfg()->periods % 3u + 1u);
-    fm_wave = (uint8_t)(on != 0);
+    fm_view = (uint8_t)clamp((int32_t)fm_view + (s > 0 ? 1 : -1), FM_VIEW_ENVELOPES, FM_VIEW_SPECTRUM);
     return 1;
 }
 /* (#20t, test build) SHIFT + KNOB 1..4 on WAVE over OPERATOR's TONE window (OUTPUT first; the other windows' SHIFT
  * is their pair, #60c): its slices, periods, step right and height. 0: not there */
 static int fm_wf_tuned_here(void)
 {
-    return fm_wave && fm_sheet_shown() && cur_page()->graph == GR_FMOP && fm_ui[1] % FM_NWIN == FMW_TONE;
+    return fm_view == FM_VIEW_WAVE && fm_sheet_shown() && cur_page()->graph == GR_FMOP && fm_ui[1] % FM_NWIN == FMW_TONE;
 }
 static int fm_wf_tune_turn(uint32_t k, int32_t s)
 {
@@ -373,7 +376,7 @@ static int fm_wf_tune_turn(uint32_t k, int32_t s)
     if (k == 0u)
         u->slices = (uint8_t)clamp((int32_t)fm_wf_slices() + s, 8, (int32_t)(FM_WF_BUF / fm_wf_points()));
     else if (k == 1u)
-        u->smooth = (uint8_t)clamp(u->smooth + s, 1, FM_WF_SMOOTH_MAX);
+        u->periods = (uint8_t)clamp(u->periods + s, 1, FM_WF_PERIODS_MAX);
     else if (k == 2u)
         u->step_x = (uint8_t)clamp(u->step_x + s, 0, 3);
     else
@@ -408,10 +411,10 @@ static void fm_wf_fader(uint32_t j, uint32_t v)
 #endif
 static int fm_wf_tune_cards(void)
 {
-    static const char *const NAME[4] = {"SLICES", "SMOOTH", "STEP X", "ZOOM Y"};
+    static const char *const NAME[4] = {"SLICES", "PERIODS", "STEP X", "ZOOM Y"};
     const fm_wf_tune_t *u = fm_wf_cfg();
-    const int32_t v[4] = {(int32_t)fm_wf_slices(), u->smooth, u->step_x, u->zoom_y * 25}, lo[4] = {8, 1, 0, 100};
-    const int32_t hi[4] = {(int32_t)(FM_WF_BUF / fm_wf_points()), FM_WF_SMOOTH_MAX, 3, 300};
+    const int32_t v[4] = {(int32_t)fm_wf_slices(), u->periods, u->step_x, u->zoom_y * 25}, lo[4] = {8, 1, 0, 100};
+    const int32_t hi[4] = {(int32_t)(FM_WF_BUF / fm_wf_points()), FM_WF_PERIODS_MAX, 3, 300};
     uint32_t c;
     if (!fm_wf_tuned_here())
         return 0;
@@ -1450,8 +1453,8 @@ static void fm_scroll(uint32_t w)
     cv_rect(236, 4 + (int32_t)w * h, 2, h, T_MID);
 }
 static fm_sim_t fm_panel_sim __attribute__((section(".pool")));   /* (1.2 KB: off the stack and the ISR's globals) */
-/* (#71) between FM6 pages the panel's room holds HOME's SPECTRUM history (ui_spectrum.c): kept, the spectrum's since it
- * last asked; an FM6 page takes the room back, its WAVE slices then rendered again */
+/* (#71) the panel's room holds the SPECTRUM history (ui_spectrum.c) while HOME's or the panel's own is up: kept, the
+ * spectrum's since it last asked; the panel's envelopes or WAVE take the room back, WAVE's slices then rendered again */
 static uint8_t fm_room_lent __attribute__((section(".pool")));
 static uint8_t *fm_room_lend(int *kept)
 {
@@ -1467,14 +1470,29 @@ static void fm_room_take_back(void)
     fm_wf.key = 0;
     fm_wf.whole = 0;
 }
+/* (#71b) SPECTRUM: the track's sound as HOME's TRACK n SPECTRUM shows it, in the graph's room */
+static void fm_spectrum_panel(uint16_t c)
+{
+    const spec_geo_t panel = {12, 228, FM_GY + FM_GH - 16, FM_GY, 2, 30};
+    char b[24] = "TRACK 1 SPECTRUM";
+    b[6] = (char)('1' + fm_tr());
+    spec_draw(&panel, c);
+    cv_text_on(10, FM_CY + CAP_IN(S, 12), &AF_S, b, T_MID, T_SURF);
+    cv_text_r(229, FM_CY + CAP_IN(S, 12), &AF_S, "64 DB", T_MID, T_SURF);
+}
 static void fm_draw(uint32_t pg, const track_t *t, uint16_t c)
 {
     fm_sim_t *s = &fm_panel_sim;
     uint16_t sh[12];
     uint32_t w = fm_ui[1 + pg] % FM_NWIN;
-    fm_room_take_back();
+    if (fm_view != FM_VIEW_SPECTRUM)
+        fm_room_take_back();
     fm_ramp(sh);
-    if (fm_wave) {
+    if (fm_view == FM_VIEW_SPECTRUM) {
+        fm_ops(s, t);
+        fm_tabs(s, sh, !pg && w == FMW_TONE);
+        fm_spectrum_panel(c);
+    } else if (fm_view == FM_VIEW_WAVE) {
         fm_ops(s, t);
         fm_tabs(s, sh, !pg && w == FMW_TONE);
         fm_wave_panel(s, t, c);

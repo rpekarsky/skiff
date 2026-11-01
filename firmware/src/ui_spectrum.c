@@ -71,12 +71,13 @@ static void fft_windowed(int32_t gain_q15)
     fft_run();
 }
 
-/* (#71) HOME's SPECTRUM (HOME tapped on HOME past the scopes): every SPEC_SLICE_MS a slice, the newest FFT_N samples of
- * the scope's sound (the mix at MASTER full, or the selected track) as SPEC_COLS levels on a log frequency axis from
- * bin 1 (43 Hz) to bin 240 (10.3 kHz), 8 columns an octave: a column narrower than a bin read between the two either
- * side of it, a wider one its loudest bin. A level is 64 dB under a full-scale sine, SPEC_Q_DB steps a dB. The newest
- * slice in front, the older crawling back a slice a redraw, SPEC_SLICES of them (a second), drawn as WAVE's (ui_wf.c);
- * kept in the FM6 panel's room (ui_fm6.c fm_room_lend): after an FM6 page, or a second away, the history starts over */
+/* (#71) the SPECTRUM waterfall: HOME's (HOME tapped on HOME past the scopes) and (#71b) the FM6 sheet's panel (ui_fm6.c).
+ * Every SPEC_SLICE_MS a slice, the newest FFT_N samples of the scope's sound (the mix at MASTER full, or the selected
+ * track) as SPEC_COLS levels on a log frequency axis from bin 1 (43 Hz) to bin 240 (10.3 kHz), 8 columns an octave: a
+ * column narrower than a bin read between the two either side of it, a wider one its loudest bin. A level is 64 dB
+ * under a full-scale sine, SPEC_Q_DB steps a dB. The newest slice in front, the older crawling back a slice a redraw,
+ * SPEC_SLICES of them (a second), drawn as WAVE's (ui_wf.c); kept in the FM6 panel's room (ui_fm6.c fm_room_lend): after
+ * an FM6 page's envelopes or WAVE, another sound, or a second away, the history starts over */
 #define SPEC_COLS 64u
 #define SPEC_SLICES 25u
 #define SPEC_SLICE_MS 40u
@@ -85,14 +86,19 @@ static void fft_windowed(int32_t gain_q15)
 #define SPEC_Q_PER_L2 3083                           /* levels a unit of that log2, Q24: SPEC_Q_DB x 3.01 dB */
 #define SPEC_EDGE0_Q16 62746                         /* column 0's low edge in bins, Q16: 240^(-1/126) */
 #define SPEC_COL_Q16 71493                           /* a column's high edge over its low one, Q16: 240^(1/63) */
-#define SPEC_X0 12                                   /* the front slice from x 12, the back one's end at x 228 */
-#define SPEC_X1 228
-#define SPEC_STEP 2                                  /* px a slice further back moves right and up */
-#define SPEC_AMP 50                                  /* a slice's 64 dB, px: the back one up to y 4 */
 #define SPEC_FILL 30
+typedef struct {                                      /* where a waterfall is drawn */
+    int16_t x0, x1;                                   /* the front slice from x0, the back one's end at x1 */
+    int16_t floor_y;                                  /* the front slice's foot: its axis under it */
+    int16_t top_y;                                    /* nothing drawn above */
+    int16_t step;                                     /* px a slice further back moves right and up */
+    int16_t amp;                                      /* a slice's 64 dB, px */
+} spec_geo_t;
 static struct {
     uint32_t tick;                                    /* fm1_ms / SPEC_SLICE_MS when the newest slice was taken */
     uint8_t front;                                    /* its row in the room */
+    uint8_t sound;                                    /* what the history is of: 0 the mix, else the track + 1 */
+    spec_geo_t geo;                                   /* the one being drawn */
 } spec __attribute__((section(".pool")));
 static uint8_t *fm_room_lend(int *kept);
 
@@ -147,52 +153,64 @@ static const uint8_t *spec_row(const uint8_t *room, uint32_t j)
     return room + (spec.front + j) % SPEC_SLICES * SPEC_COLS;
 }
 
+static uint8_t spec_sound(void) { return (uint8_t)(scope_track_view() ? song.sel + 1u : 0u); }
+
 /* the history, a new slice in front once a tick */
 static const uint8_t *spec_history(void)
 {
     int kept;
     uint8_t *room = fm_room_lend(&kept);
     uint32_t tick = fm1_ms / SPEC_SLICE_MS;
-    if (kept && tick == spec.tick)
+    if (kept && tick == spec.tick && spec.sound == spec_sound())
         return room;
-    if (!kept || tick - spec.tick > SPEC_SLICES)
+    if (!kept || tick - spec.tick > SPEC_SLICES || spec.sound != spec_sound())
         memset(room, 0, SPEC_SLICES * SPEC_COLS);
+    spec.sound = spec_sound();
     spec.front = (uint8_t)((spec.front + SPEC_SLICES - 1u) % SPEC_SLICES);
     spec_slice(room + spec.front * SPEC_COLS);
     spec.tick = tick;
     return room;
 }
 
-static int32_t spec_floor_y(void) { return (int32_t)cv_h - 20; }   /* the front slice's: its axis under it */
-static int32_t spec_width(void) { return SPEC_X1 - SPEC_X0 - ((int32_t)SPEC_SLICES - 1) * SPEC_STEP; }
+static int32_t spec_width(void) { return spec.geo.x1 - spec.geo.x0 - ((int32_t)SPEC_SLICES - 1) * spec.geo.step; }
+static int32_t spec_foot_y(uint32_t j) { return spec.geo.floor_y - (int32_t)j * spec.geo.step; }
 static int32_t spec_y256(const void *v, uint32_t j, int32_t col, int32_t w)
 {
     const uint8_t *lv = v;
     uint32_t pos = (uint32_t)col * (SPEC_COLS - 1u) * 256u / (uint32_t)w, i = pos >> 8;
     int32_t a = lv[i], b = lv[i < SPEC_COLS - 1u ? i + 1u : i], level256 = (a << 8) + (b - a) * (int32_t)(pos & 255u);
-    return ((spec_floor_y() - (int32_t)j * SPEC_STEP) << 8) - level256 * SPEC_AMP / 255;
+    int32_t y = (spec_foot_y(j) << 8) - level256 * spec.geo.amp / 255;
+    return y > spec.geo.top_y << 8 ? y : spec.geo.top_y << 8;
 }
 
 /* the frequencies under the front slice */
 static void spec_axis(void)
 {
     static const struct { const char *hz; uint8_t col; } MARK[3] = {{"100", 10}, {"1K", 36}, {"10K", 63}};
-    int32_t y = spec_floor_y() + 4, k;
+    int32_t y = spec.geo.floor_y + 4, k;
     for (k = 0; k < 3; k++) {
-        int32_t x = SPEC_X0 + MARK[k].col * spec_width() / ((int32_t)SPEC_COLS - 1);
-        cv_rect(x, spec_floor_y() + 1, 1, 2, T_MID);
+        int32_t x = spec.geo.x0 + MARK[k].col * spec_width() / ((int32_t)SPEC_COLS - 1);
+        cv_rect(x, spec.geo.floor_y + 1, 1, 2, T_MID);
         cv_text_in(x - 15, y, 30, &AF_S, MARK[k].hz, T_MID, T_SURF);
     }
 }
 
-static void graph_spectrum(uint16_t c)
+static void spec_draw(const spec_geo_t *g, uint16_t c)
 {
     const uint8_t *room = spec_history();
     uint32_t j;
+    spec.geo = *g;
     for (j = SPEC_SLICES; j-- > 0;) {
-        const wf_slice_t s = {spec_row(room, j), j, SPEC_X0 + (int32_t)j * SPEC_STEP, spec_width(),
-                              spec_floor_y() - (int32_t)j * SPEC_STEP + 2, SPEC_FILL, spec_y256};
+        const wf_slice_t s = {spec_row(room, j), j, g->x0 + (int32_t)j * g->step, spec_width(), spec_foot_y(j) + 2,
+                              SPEC_FILL, spec_y256};
         wf_draw_slice(&s, ux.h1n ? (j ? T_MID : T_TEXT) : ux_mix(T_SURF, c, wf_fade(j, SPEC_SLICES)));
     }
     spec_axis();
+}
+
+/* HOME's: the panel's width, the back slice's 64 dB up to y 4 */
+static void graph_spectrum(uint16_t c)
+{
+    const spec_geo_t home = {12, 228, (int16_t)(cv_h - 20), 4, 2, 50};
+    spec_draw(&home, c);
 }

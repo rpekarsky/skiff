@@ -3168,11 +3168,11 @@ static int test_fm6_lab(void)
     btn_down(B_HOME); frame();                          /* (#20w) SHIFT + SELECT: the panel WAVE, the window kept */
     turn(EN_SELECT, 1);
     btn_up(B_HOME); frame();
-    ok = fm_wave == 1u && fm_ui[1] == 4u && str_eq(cur_page()->title, "OPERATOR") && !ui.home && !ui.menu;
+    ok = fm_view == FM_VIEW_WAVE && fm_ui[1] == 4u && str_eq(cur_page()->title, "OPERATOR") && !ui.home && !ui.menu;
     btn_down(B_HOME); frame();
     turn(EN_SELECT, -1);
     btn_up(B_HOME); frame();
-    ok &= fm_wave == 0u && fm_ui[1] == 4u && str_eq(cur_page()->title, "OPERATOR") && !ui.home && !ui.menu;
+    ok &= fm_view == FM_VIEW_ENVELOPES && fm_ui[1] == 4u && str_eq(cur_page()->title, "OPERATOR") && !ui.home && !ui.menu;
     bad += check("(#20w) HOME + SELECT on OPERATOR: right WAVE, left the envelopes; the window stays, no HOME, no MENU", ok);
     go_title("ALL OPS"); fm_ui[2] = 0; frame();
     TSEL->p[P_E0] = 5; TSEL->p[P_E1] = 2;               /* EDIT 1's ALGO and FEEDBACK over the patch's 5 and 3 */
@@ -3396,7 +3396,7 @@ static int test_fm6_wave(void)
         int32_t b[CTL], i;
         uint32_t tr = trk_index(TSEL);
         go_title("OPERATOR");
-        (void)fm_wave_set(1);
+        fm_view = FM_VIEW_WAVE;
         trk_note_on(TSEL, 50, 80);
         track_render(TSEL, b, CTL);
         fm1_ms += 300u;
@@ -3411,7 +3411,7 @@ static int test_fm6_wave(void)
         track_render(TSEL, b, CTL);
         ok &= fm6_last[tr].held_ms == 300u && fm6_last[tr].down;
         trk_note_off(TSEL, 50);
-        (void)fm_wave_set(0);
+        fm_view = FM_VIEW_ENVELOPES;
         bad += check("(#20w) WAVE plays the track's last note (D3 at 80 held 0.3 s); its next note-on keeps it", ok);
     }
     return bad;
@@ -11226,6 +11226,58 @@ static int test_spectrum_history(void)
     return check("(#71) SPECTRUM: a slice a tick, the older crawling back one a frame, none on a redraw; after an FM6 page "
                  "the history starts over", ok);
 }
+/* (#71b) SHIFT + SELECT on an FM6 sheet steps the panel: the envelopes, WAVE, SPECTRUM (staying there), back the same
+ * way; each fills the room afresh as it comes in (no slice of the other's drawn). SHIFT + KNOB 2 on TONE: WAVE's
+ * PERIODS, SMOOTH left at 2 */
+static void shift_select(int32_t s)
+{
+    btn_down(B_HOME); frame();
+    turn(EN_SELECT, s);
+    btn_up(B_HOME); frame();
+}
+static int test_fm6_spectrum_view(void)
+{
+    const uint8_t *room;
+    uint32_t i, j, k, sel_col = spec_col_of(23.0);
+    int ok, kept;
+    ui_power_on();
+    ui_prefs |= PREF_BPM_LOCK;
+    set_engine_of(TSEL, ENGI_FM6);
+    memset(&fm_wf_tune, 0, sizeof fm_wf_tune);          /* (the defaults: test_fm6_wave left its own) */
+    go_title("OPERATOR"); fm_ui[1] = FMW_TONE; frame();
+    shift_select(1);
+    ok = fm_view == FM_VIEW_WAVE && fm_wf_cfg()->periods == 2u;
+    for (k = 0; k < 64u && fm_wf.done < fm_wf_slices(); k++)
+        frame();
+    btn_down(B_HOME); frame();
+    turn(EN_K2, 1);
+    ok &= fm_wf_cfg()->periods == 3u && card_is(1, "PERIODS");
+    turn(EN_K2, -5);
+    btn_up(B_HOME); frame();
+    ok &= fm_wf_cfg()->periods == 1u && fm_wf_cfg()->smooth == 2u && !ui.home && !ui.menu;
+    for (i = 0; i < SCOPE_TRK_N; i++)
+        scope_trk_buf[i] = (int16_t)(16384.0 * sin(6.2831853 * 23.0 * i / SCOPE_TRK_N));
+    scope_trk_w = 0;
+    shift_select(1);
+    ok &= fm_view == FM_VIEW_SPECTRUM;
+    room = fm_room_lend(&kept);
+    for (j = 0; j < SPEC_SLICES; j++) {                 /* (a slice a tick: the tone's, or none yet) */
+        uint32_t lit = 0;
+        for (k = 0; k < SPEC_COLS; k++)
+            lit |= spec_row(room, j)[k];
+        ok &= j ? !lit || spec_loudest(spec_row(room, j)) == sel_col : spec_loudest(spec_row(room, j)) == sel_col;
+    }
+    shift_select(1);
+    ok &= fm_view == FM_VIEW_SPECTRUM && !ui.home && !ui.menu;
+    shift_select(-1);
+    ok &= fm_view == FM_VIEW_WAVE && !fm_room_lent && fm_wf.done > 0u && (!fm_wf.whole || fm_wf.whole == fm_wf.done);
+    shift_select(-1);
+    ok &= fm_view == FM_VIEW_ENVELOPES;
+    shift_select(-1);
+    ok &= fm_view == FM_VIEW_ENVELOPES && str_eq(cur_page()->title, "OPERATOR") && !ui.home && !ui.menu;
+    return check("(#71b) FM6: SHIFT + SELECT steps envelopes, WAVE, SPECTRUM (the track's, no WAVE slice in it) and back; "
+                 "SHIFT + KNOB 2 on WAVE: PERIODS 1 .. 3", ok);
+}
 /* MENU > DISPLAY > POPUP TIME: DEFAULT (each box its own, stored 0), 0.1 .. 2.7 s for the TAKE box and the undo box;
  * the undo window stays UNDO_WIN. POPUP CLOSE: TIMER (stored 0), ON INPUT (the window ends too) */
 static uint32_t popup_take_t(void)
@@ -11462,6 +11514,7 @@ int main(void)
     bad += test_h1n_eq();
     bad += test_spectrum_levels();
     bad += test_spectrum_history();
+    bad += test_fm6_spectrum_view();
     bad += test_popup_time();
     bad += test_h1n_song_pick();
     bad += test_fm6_charts();

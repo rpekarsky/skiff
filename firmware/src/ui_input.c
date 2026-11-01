@@ -2364,7 +2364,7 @@ static uint32_t smk_bank_taps(uint32_t pressed, uint32_t notes, uint32_t knob_mo
     return taps;
 }
 #endif
-static int fm_wave_set(int on);                         /* (#20w) ui_fm6.c */
+static int fm_view_step(int32_t s);                     /* (#20w, #71b) ui_fm6.c */
 static int fm_wf_tune_turn(uint32_t k, int32_t s);      /* (#20t) ui_fm6.c */
 static int shift_pair_turn(uint32_t k, int32_t s);      /* (wishlist #60c) after SHEETS */
 /* (Skiff 2.0) SHIFT held (HOME; the SMK's KNOB BANK too), and a combo of it taken: no HOME tap, no MENU after (the
@@ -2835,8 +2835,8 @@ static void ui_input(void)
             ui.bpm_t = 40;                              /* the header's BPM lights up; no message over the header */
         } else if (lay) {
             ;                                           /* (another layer held: not the page under it) */
-        } else if (!ui.home && shift_held() && fm_wave_set(s > 0)) {    /* (#20w) SHIFT + SELECT on an FM6 sheet: */
-            shift_mark();                               /* right WAVE, left the envelopes */
+        } else if (!ui.home && shift_held() && fm_view_step(s)) {    /* (#20w, #71b) SHIFT + SELECT on an FM6 */
+            shift_mark();                               /* sheet: the panel, envelopes WAVE SPECTRUM */
             home_long = 0;
         } else if (!ui.home) {
             select_turn(s);

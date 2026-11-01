@@ -1525,8 +1525,8 @@ static void shift_map(smap_t *m)
         m[3] = (smap_t){"KEYS", "STEPS", 1};
         m[4] = (smap_t){"EDIT + REC", "CLEAR", 1};
     }
-    if (sh && sh->eng == ENGI_FM6)                   /* (#20w) the panel: WAVE (right) or the envelopes */
-        m[3] = (smap_t){"+ SELECT", "WAVE", 2};
+    if (sh && sh->eng == ENGI_FM6)                   /* (#20w, #71b) the panel: envelopes, WAVE, SPECTRUM */
+        m[3] = (smap_t){"+ SELECT", "VIEW", 2};
     for (i = 0; i < 6u; i++)
         m[6 + i] = ALL[i < 3u && sel ? 6u + i : i];
     if (sel)                                         /* ((2.0) there SHIFT + EDIT deletes, ui_input.c sel_delete) */
