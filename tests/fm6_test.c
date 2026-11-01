@@ -18,7 +18,9 @@
  *    (checksums) into the same patches; the patch survives a project (FUN8) round trip with the same sound.
  * 7. cost: host instructions per sample and voice with six voices held (the heaviest: six carriers), and the
  *    device estimate (1.7 % per 100: the PHYS measurements' ratio, as drum_test); fails above FM6_COST_MAX.
- * 8. demos into DEMODIR: every factory preset playing the PAD phrase (tests/phrases.h). */
+ * 8. demos into DEMODIR: every factory preset playing the PAD phrase (tests/phrases.h).
+ * 9. (#73) operator waveforms: the eight shapes over a cycle against a float model; SINE's code is the sine's, bit for
+ *    bit; a voice plays each; a sounding note takes a new one at once; the cost of a voice with all six off the sine. */
 #define main hostsim_main
 #include "hostsim.c"
 #undef main
@@ -67,6 +69,7 @@ static void setup(const uint8_t *v, const int16_t *e)
     memset(eng_mem, 0, sizeof eng_mem);   /* (the parts' shared engine area: engines.c) */
     memset(fm6_eff, 0, sizeof fm6_eff);
     memset(fm6_lfo, 0, sizeof fm6_lfo);
+    memset(fm6_op_wave, 0, sizeof fm6_op_wave);
     host_tracks_init();
     host_preset(&trk[0], ENGI_FM6, 0);
     for (i = 0; i < 8u; i++)
@@ -552,12 +555,13 @@ static uint64_t instr_now(void)
     return 0;
 }
 
-static double mix_cost(const uint8_t *v, uint32_t notes)
+static double mix_cost(const uint8_t *v, uint32_t notes, uint32_t wave)
 {
     static int32_t o[2 * CTL];
     uint32_t i, nb = FS * 2u / CTL;
     uint64_t i0;
     setup(v, 0);
+    memset(fm6_op_wave[0], (int)wave, sizeof fm6_op_wave[0]);
     for (i = 0; i < notes; i++)
         trk_note_on(&trk[0], 48 + 3 * i, 100);
     for (i = 0; i < 64u; i++)
@@ -585,19 +589,147 @@ static void cost(void)
     }
     heavy[FP_ALG] = 31;
     heavy[FP_FB] = 7;
-    idle = mix_cost(heavy, 0);
+    idle = mix_cost(heavy, 0, FM6_W_SINE);
     printf("fm6: cost, host instructions per sample and voice (6 voices held; device estimate 1.7 %% per 100):\n");
     for (pi = 0; pi <= FM6_NFACTORY; pi++) {
         uint8_t v[FP_SIZE + 1u];
         if (pi < FM6_NFACTORY)
             fm6_unpack(FM6_FACTORY[pi], v);
-        c = (mix_cost(pi < FM6_NFACTORY ? v : heavy, 6) - idle) / 6;
+        c = (mix_cost(pi < FM6_NFACTORY ? v : heavy, 6, FM6_W_SINE) - idle) / 6;
         printf("fm6:   %-12s %5.0f  ~%.2f %%\n", pi < FM6_NFACTORY ? ENG_FM6.presets[pi].name : "(6 carriers)", c, c * 0.017);
         worst = c > worst ? c : worst;
     }
+    c = (mix_cost(heavy, 6, FM6_W_CAMEL2) - idle) / 6;   /* (#73) the six carriers off the sine: fm6_core_waves */
+    printf("fm6:   %-12s %5.0f  ~%.2f %%\n", "(6 at CAMEL2)", c, c * 0.017);
+    worst = c > worst ? c : worst;
     snprintf(what, sizeof what, "cost: at most %.0f instructions a sample and voice (~%.1f %% on the device, 6 voices ~%.0f %%; limit %.0f)",
              worst, worst * 0.017, worst * 0.017 * 6, FM6_COST_MAX);
     check(what, worst <= FM6_COST_MAX);
+}
+
+/* ---------------------------------------------------------- (#73) waves --- */
+/* waveform w at phase x (0..1 of a cycle), as ymfm's OPZ builds it; (#73b) SAW, RAMP, SQUARE naive */
+static double wave_model(uint32_t w, double x)
+{
+    double y;
+    if (w == FM6_W_SAW || w == FM6_W_RAMP)
+        return (x < 0.5 ? 2 * x : 2 * x - 2) * (w == FM6_W_RAMP ? -1 : 1);
+    if (w == FM6_W_SQUARE)
+        return x < 0.5 ? 1 : -1;
+    if (w >= FM6_W_HALF && x >= 0.5)
+        return 0;
+    y = sin(6.283185307179586 * (w >= FM6_W_ALT ? 2 * x : x));
+    if (w >= FM6_W_CAMEL)
+        y = fabs(y);
+    return (w & 1u) ? y * fabs(y) : y;
+}
+
+/* the voice's C4 from its note-on, n samples, fm6_render's DC blocker undone (its 7 Hz high-pass leads C4 by 0.7
+ * samples and takes a waveform's mean away); from sample turn on, operator 0's waveform is `wave` */
+static void voice_raw(double *y, uint32_t n, uint32_t turn, uint32_t wave)
+{
+    static int32_t b[FM6_N];
+    double dc = 0;
+    uint32_t i, k;
+    trk_note_on(&trk[0], 60, 100);
+    for (i = 0; i < n; i += FM6_N) {
+        if (i == turn)
+            fm6_set_wave(0, 5, wave);
+        track_render(&trk[0], b, FM6_N);
+        for (k = 0; k < FM6_N; k++) {
+            y[i + k] = b[k] + dc;
+            dc += b[k] / 1024.0;
+        }
+    }
+    trk_note_off(&trk[0], 60);
+}
+
+/* the worst distance (of the peak) of y[a .. a + n) from g x wave w at the voice's C4 phase, g the best fit */
+static double voice_vs_model(const double *y, uint32_t a, uint32_t n, uint32_t w)
+{
+    double f = fm6_freq(fm6_note_logfreq(60 * 16, 0)) / 16777216.0, num = 0, den = 0, g, worst = 0, peak = 0;
+    uint32_t i;
+    for (i = a; i < a + n; i++) {
+        double m = wave_model(w, fmod(f * i, 1.0));
+        num += y[i] * m;
+        den += m * m;
+    }
+    g = num / den;
+    for (i = a; i < a + n; i++) {
+        double d = fabs(y[i] - g * wave_model(w, fmod(f * i, 1.0)));
+        worst = d > worst ? d : worst;
+        peak = fabs(y[i]) > peak ? fabs(y[i]) : peak;
+    }
+    return worst / peak;
+}
+
+static void waves(void)
+{
+    static double y[FS / 10];
+    static int32_t ref[FM6_N], got[FM6_N], in[FM6_N];
+    fm6_shape_t sine = fm6_shape(FM6_W_SINE);
+    double worst = 0, wv = 0, live, peak = 0;
+    uint32_t w, j, same = 1, mode;
+    int32_t fb_ref[2] = {123456, -654321}, fb_got[2] = {123456, -654321};
+    for (w = 0; w < FM6_NWAVE; w++) {
+        fm6_shape_t sh = fm6_shape(w);
+        for (j = 0; j < 4096u; j++) {
+            double d = fabs(fm6_shaped((int32_t)(j << 12), &sh) / 32768.0 - wave_model(w, j / 4096.0));
+            worst = d > worst ? d : worst;
+        }
+    }
+    check("(#73, #73b) the eleven waveforms over a cycle against their float model: within 0.1 % of full scale", worst < 0.001);
+    srand(73);
+    for (j = 0; j < 100000u; j++) {
+        int32_t ph = (int32_t)((uint32_t)rand() << 16 ^ (uint32_t)rand());
+        same &= fm6_shaped(ph, &sine) == fm6_sin(ph);
+    }
+    for (j = 0; j < FM6_N; j++)
+        in[j] = (int32_t)((uint32_t)rand() << 12) - (1 << 26);
+    for (mode = 0; mode < 4u; mode++) {
+        const int32_t *pin = mode & 1u ? in : 0;
+        for (j = 0; j < FM6_N; j++)
+            ref[j] = got[j] = (int32_t)j * 999;
+        fm6_op_run(ref, pin, 0x123456, 0x9876, 1000, 900000, (int)(mode >> 1));
+        fm6_op_wave_run(got, pin, 0x123456, 0x9876, 1000, 900000, (int)(mode >> 1), FM6_W_SINE);
+        same &= !memcmp(ref, got, sizeof ref);
+    }
+    fm6_op_fb(ref, 0x123456, 0x9876, 1000, 900000, fb_ref, 2, 0);
+    fm6_op_wave_fb(got, 0x123456, 0x9876, 1000, 900000, fb_got, 2, 0, FM6_W_SINE);
+    same &= !memcmp(ref, got, sizeof ref) && !memcmp(fb_ref, fb_got, sizeof fb_ref);
+    check("(#73) SINE through the waveform code: the sine bit for bit (fm6_shaped, the run and feedback loops)", same);
+
+    init_patch(base);                                  /* INIT: OP1 alone, a sine carrier held at full */
+    for (w = 0; w < FM6_NWAVE; w++) {
+        setup(base, 0);
+        voice_raw(y, FS / 10, 0, w);
+        live = voice_vs_model(y, FS / 20, 170, w);
+        wv = live > wv ? live : wv;
+    }
+    check("(#73) INIT's OP1 at each waveform, C4: the voice is that shape over a period (1 % of its peak)", wv < 0.01);
+    setup(base, 0);
+    voice_raw(y, FS / 10, FS / 20 / FM6_N * FM6_N, FM6_W_CAMEL);
+    live = voice_vs_model(y, FS / 20 / FM6_N * FM6_N, 170, FM6_W_CAMEL);
+    check("(#73) a held C4 turned to CAMEL: the sounding note plays it from that block (1 %)", live < 0.01);
+
+    base[FP_OL] = 99;                                  /* ALG 32's OP6 alone, FEEDBACK 7, HALF: through fm6_op_wave_fb */
+    base[5u * FP_OP + FP_OL] = 0;
+    base[FP_ALG] = 31;
+    base[FP_FB] = 7;
+    setup(base, 0);
+    fm6_set_wave(0, 0, FM6_W_HALF);
+    voice_render(60, 100, y, FS / 10, 0);
+    trk_note_off(&trk[0], 60);
+    for (j = FS / 20; j < FS / 10; j++)
+        peak = fabs(y[j]) > peak ? fabs(y[j]) : peak;
+    check("(#73) OP6 with FEEDBACK 7 at HALF: it sounds, below 2 x VOICE_FS", peak > VOICE_FS / 20 && peak < 2.0 * VOICE_FS);
+    setup(base, 0);                                    /* (#73b) the same at SQUARE: through fm6_op_naive_fb */
+    fm6_set_wave(0, 0, FM6_W_SQUARE);
+    voice_render(60, 100, y, FS / 10, 0);
+    trk_note_off(&trk[0], 60);
+    for (peak = 0, j = FS / 20; j < FS / 10; j++)
+        peak = fabs(y[j]) > peak ? fabs(y[j]) : peak;
+    check("(#73b) OP6 with FEEDBACK 7 at SQUARE: it sounds, below 2 x VOICE_FS", peak > VOICE_FS / 20 && peak < 2.0 * VOICE_FS);
 }
 
 /* ----------------------------------------------------------------- demos --- */
@@ -703,6 +835,7 @@ int main(int argc, char **argv)
     ams();
     formats();
     voices();
+    waves();
     if (!getenv("NOCOST"))
         cost();
     if (argc > 1) {

@@ -29,7 +29,7 @@
  * matrix's CUT), SHP the feedback, PIT the pitch (bend, glide, tune: the voice's pitch and fine factor).
  * Six voices per part at most (engine_t.poly).
  *
- * State: per voice an fm6_note_t (244 bytes, in the part's shared engine area as PHYS's slots: engines.c eng_mem;
+ * State: per voice an fm6_note_t (284 bytes, in the part's shared engine area as PHYS's slots: engines.c eng_mem;
  * voice_t.s[] is too small), per part the patch, the patch through the macros (fm6_eff, rebuilt in the audio ISR
  * when either changes) and the LFO (once a block). */
 #include "fm6_core.c"
@@ -61,6 +61,15 @@ typedef struct {                                 /* (#20w) the last note a track
 } fm6_last_t;
 static fm6_last_t fm6_last[NTRK] __attribute__((section(".pool")));   /* (the voices write it, the main loop reads) */
 static int32_t fm6_lfo_v[NTRK], fm6_lfo_d[NTRK]; /* this block's LFO value and delay (Q24) */
+/* (#72, an experiment) each operator's phase, % of a cycle (FM6_ALG's order: the sixth first; shown as -50 .. +49): a
+ * fresh note starts there, the sounding ones glide there ((#72b) fm6_phase_glide). Not in the patch, not saved: 0 again
+ * at a sound load (fm6_track_loaded, a project's, power-on) */
+static uint8_t fm6_op_phase[NTRK][6] __attribute__((section(".pool")));
+/* (#72b) bumped by the main loop at a PHASE change; the ISR's copy once every sounding note has reached it */
+static uint8_t fm6_phase_gen[NTRK] __attribute__((section(".pool")));
+static uint8_t fm6_phase_seen[NTRK] __attribute__((section(".pool")));
+/* (#73, an experiment) each operator's waveform (FM6_W_*, FM6_ALG's order), as PHASE: not in the patch, not saved */
+static uint8_t fm6_op_wave[NTRK][6] __attribute__((section(".pool")));
 
 /* ------------------------------------------------------- patch formats --- */
 /* the highest value of each byte of the 155-byte voice */
@@ -165,6 +174,40 @@ static void fm6_set_patch(uint32_t tr, const uint8_t *v)
     fm6_pgen[tr]++;
 }
 
+/* (#73) operator k's waveform on track tr = w. Main loop: the ISR's next block plays it, the sounding notes too */
+static void fm6_set_wave(uint32_t tr, uint32_t k, uint32_t w)
+{
+    tr %= NTRK;
+    fm6_op_wave[tr][k % 6u] = (uint8_t)(w % FM6_NWAVE);
+    RING_PUBLISH();
+    fm6_pgen[tr]++;
+}
+static uint32_t fm6_waves_of(const uint8_t *w)
+{
+    uint32_t k, waves = 0;
+    for (k = 0; k < 6u; k++)
+        waves |= (uint32_t)(w[k] % FM6_NWAVE) << (4u * k);
+    return waves;
+}
+/* (#72b) operator k's PHASE on track tr = pct %. Main loop: the sounding notes glide there from the ISR's next block */
+static void fm6_set_phase(uint32_t tr, uint32_t k, uint32_t pct)
+{
+    tr %= NTRK;
+    fm6_op_phase[tr][k % 6u] = (uint8_t)(pct % 100u);
+    RING_PUBLISH();
+    fm6_phase_gen[tr]++;
+}
+/* (#72, #73) a sound load: every operator back to PHASE 0 and SINE */
+static void fm6_osc_reset(uint32_t tr)
+{
+    tr %= NTRK;
+    memset(fm6_op_phase[tr], 0, sizeof fm6_op_phase[tr]);
+    memset(fm6_op_wave[tr], 0, sizeof fm6_op_wave[tr]);
+    RING_PUBLISH();
+    fm6_pgen[tr]++;
+    fm6_phase_gen[tr]++;
+}
+
 /* SLOT value s < FM6_NFACTORY: that factory patch into track tr (F n*: its edits) */
 static void fm6_load_slot(uint32_t tr, uint32_t s)
 {
@@ -230,6 +273,7 @@ static void fm6_track_loaded(const track_t *t)
 {
     uint32_t tr = (uint32_t)(t - trk);
     if (tr < NTRK && t->eng_req == ENGI_FM6) {
+        fm6_osc_reset(tr);
         fm6_own_ok &= (uint8_t)~(1u << tr);
         fm6_edit_f[tr] = 0;
         if (t->p[P_E7] >= 0 && t->p[P_E7] < (int32_t)FM6_NFACTORY)
@@ -246,6 +290,7 @@ static void fm6_init(void)
     uint32_t tr;
     fm6_unpack(FM6_INIT, v);
     for (tr = 0; tr < NTRK; tr++) {
+        fm6_osc_reset(tr);
         fm6_set_patch(tr, v);
         fm6_slot[tr] = 0xFFu;
     }
@@ -366,7 +411,8 @@ static void fm6_note_on(track_t *t, voice_t *v)
     (void)fm6_sync(t);
     p = fm6_eff[tr].p;
     fm6_note_init(n, p, (int32_t)v->note + p[FP_TRNSP] - 24, v->mvel ? v->mvel : v->vel,
-                  (!v->env && !v->env_out) || !n->live);    /* from silence: phases and gains from 0 */
+                  (!v->env && !v->env_out) || !n->live, fm6_op_phase[tr]);   /* from silence */
+    n->waves = fm6_waves_of(fm6_op_wave[tr]);
     fm6_lfo_key(&fm6_lfo[tr]);
     if (tr < NTRK)
         fm6_last[tr] = (fm6_last_t){v->note, (uint8_t)(v->mvel ? v->mvel : v->vel), (uint8_t)(v - t->v), 1, fm1_ms,
@@ -384,19 +430,55 @@ static __attribute__((noinline)) void fm6_key_up(uint32_t tr, uint32_t voice)
     fm6_last[tr].down = 0;
 }
 
-static void fm6_block(track_t *t)       /* once a block and part: the macros, the LFO */
+/* (#72b) a step a block at most: half a cycle, the farthest PHASE can be, in 24 blocks (17 ms), ~29 Hz above or below
+ * the operator's pitch meanwhile */
+#define FM6_GLIDE_STEP ((65536 + 47) / 48)
+
+/* (#72b) each sounding note's operators a step closer to PHASE pct, the shorter way round. The step is the block's
+ * slide, which fm6_note_compute adds to the operator's frequency: spread over the block's samples, a brief tiny bend,
+ * never a jump. 1: one is still on its way */
+static __attribute__((noinline)) int fm6_phase_glide(track_t *t, const uint8_t *pct)
+{
+    uint16_t target[6];
+    uint32_t i, k;
+    int gliding = 0;
+    for (k = 0; k < 6u; k++)
+        target[k] = fm6_phase_q16(pct[k]);
+    for (i = 0; i < FM6_POLY; i++) {
+        fm6_note_t *n = fm6_note_of(t, &t->v[i]);
+        if (!n || !n->live)
+            continue;
+        for (k = 0; k < 6u; k++) {
+            int32_t step = clamp((int16_t)(uint16_t)(target[k] - n->phase_at[k]), -FM6_GLIDE_STEP, FM6_GLIDE_STEP);
+            n->phase_at[k] = (uint16_t)(n->phase_at[k] + step);
+            n->slide[k] = step << (8 - FM6_LG_N);
+            gliding |= step != 0;
+        }
+    }
+    return gliding;
+}
+
+static void fm6_block(track_t *t)       /* once a block and part: the macros, the LFO, the PHASE glide */
 {
     uint32_t tr = (uint32_t)(t - trk), i;
+    uint8_t phase_gen;
     if (tr >= NTRK)
         return;
-    if (fm6_sync(t))
-        for (i = 0; i < FM6_POLY; i++) {        /* (#69) the sounding notes follow the edit */
+    phase_gen = fm6_phase_gen[tr];
+    if (phase_gen != fm6_phase_seen[tr] && !fm6_phase_glide(t, fm6_op_phase[tr]))
+        fm6_phase_seen[tr] = phase_gen;
+    if (fm6_sync(t)) {
+        uint32_t waves = fm6_waves_of(fm6_op_wave[tr]);
+        for (i = 0; i < FM6_POLY; i++) {        /* (#69) the sounding notes follow the edit ((#73) a waveform too) */
             voice_t *v = &t->v[i];
             fm6_note_t *n = fm6_note_of(t, v);
             const uint8_t *p = fm6_eff[tr].p;
-            if (n && n->live)
+            if (n && n->live) {
                 fm6_note_retune(n, p, (int32_t)v->note + p[FP_TRNSP] - 24, v->mvel ? v->mvel : v->vel);
+                n->waves = waves;
+            }
         }
+    }
     fm6_lfo_v[tr] = fm6_lfo_sample(&fm6_lfo[tr]);
     fm6_lfo_d[tr] = fm6_lfo_delay(&fm6_lfo[tr]);
 }

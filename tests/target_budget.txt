@@ -20,6 +20,11 @@ noise_render 259
 fm6_render 372
 fm6_op_run 72
 fm6_op_fb 26
+fm6_core_waves 165
+fm6_op_wave_run 150
+fm6_op_wave_fb 46
+fm6_op_naive_run 46
+fm6_op_naive_fb 19
 px_modal_block 111
 px_modal_run 192
 px_memb_block 106

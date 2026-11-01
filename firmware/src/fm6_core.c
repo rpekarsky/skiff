@@ -73,6 +73,50 @@ static inline int32_t fm6_sin(int32_t ph)
     return s[0] + (((s[1] - s[0]) * (int32_t)(ph & 0x3FFF)) >> 14);
 }
 
+/* (#73, an experiment) an operator's waveform: TX81Z / OPZ's eight (ymfm opz.cpp), the sine first. Each from the sine:
+ * squared (its sign kept), the second half of the cycle silent (HALF and past it), the sine twice in the first half
+ * (ALT and past it), rectified (CAMEL). (#73b) Then three naive ones straight from the phase, aliasing: SAW rising
+ * from 0 at phase 0, RAMP falling, SQUARE +1 for the first half, -1 for the second */
+enum { FM6_W_SINE, FM6_W_SIN2, FM6_W_HALF, FM6_W_HALF2, FM6_W_ALT, FM6_W_ALT2, FM6_W_CAMEL, FM6_W_CAMEL2, FM6_W_SAW,
+       FM6_W_RAMP, FM6_W_SQUARE, FM6_NWAVE };
+typedef struct {
+    uint32_t twice;              /* the phase's left shift: 1 = the sine twice a cycle */
+    uint32_t mute;               /* the phase bit that silences the second half, 0 none */
+    int32_t rectify, square;     /* -1: on */
+    int32_t unsquared;           /* 1.0 (Q15) when not squared */
+    uint32_t naive;              /* (#73b) 1: SAW, RAMP or SQUARE, fm6_naive's */
+    uint32_t naive_shift;        /* the phase's top bits down to Q15 (a saw), or to its sign (a square) */
+    int32_t naive_xor;           /* -1: the saw falling; 0x7FFF: the sign to +-1.0 */
+} fm6_shape_t;
+static inline fm6_shape_t fm6_shape(uint32_t w)
+{
+    fm6_shape_t sh = {w >= FM6_W_ALT, w >= FM6_W_HALF ? 1u << 23 : 0u, w >= FM6_W_CAMEL ? -1 : 0, (w & 1u) ? -1 : 0,
+                      (w & 1u) ? 0 : 1 << 15, 0, 0, 0};
+    if (w >= FM6_W_SAW) {
+        fm6_shape_t naive = {0, 0, 0, 0, 1 << 15, 1, w == FM6_W_SQUARE ? 31u : 16u,
+                             w == FM6_W_RAMP ? -1 : w == FM6_W_SQUARE ? 0x7FFF : 0};
+        sh = naive;
+    }
+    return sh;
+}
+/* the shaped sine of a Q24 phase, Q15; no branch, so a loop runs the same code for any of them. FM6_W_SINE: fm6_sin */
+static inline __attribute__((always_inline)) int32_t fm6_shaped_sine(int32_t ph, const fm6_shape_t *sh)
+{
+    int32_t y = fm6_sin((int32_t)((uint32_t)ph << sh->twice)), sign = y >> 31, mag = (y ^ sign) - sign;
+    y = (y & ~sh->rectify) | (mag & sh->rectify);
+    y = (y * ((mag & sh->square) | sh->unsquared)) >> 15;
+    return y & ~((int32_t)(((uint32_t)ph & sh->mute) << 8) >> 31);
+}
+/* (#73b) SAW, RAMP or SQUARE of a Q24 phase, Q15: the phase itself, no table, no band limit */
+static inline __attribute__((always_inline)) int32_t fm6_naive(int32_t ph, const fm6_shape_t *sh)
+{
+    return ((int32_t)((uint32_t)ph << 8) >> sh->naive_shift) ^ sh->naive_xor;
+}
+static inline int32_t fm6_shaped(int32_t ph, const fm6_shape_t *sh)
+{
+    return sh->naive ? fm6_naive(ph, sh) : fm6_shaped_sine(ph, sh);
+}
+
 /* ------------------------------------------------------------ envelope --- */
 typedef struct {                 /* msfa Env: level in Q24 log2 (2^24 = 6 dB), 16 more bits than the original */
     int32_t level, target, inc, statc;
@@ -328,10 +372,10 @@ typedef struct {                 /* msfa FmOpParams */
 
 /* one operator over the block: modulated by in (0: none), into out (add: += else =). Four loops, so none
  * tests a flag per sample */
-#define FM6_OP_LOOP(PH, STORE)                                                    \
+#define FM6_OP_LOOP(Y, STORE)                                                     \
     for (i = 0; i < FM6_N; i++) {                                               \
         g += dg;                                                                \
-        out[i] STORE (int32_t)(((int64_t)fm6_sin(PH) * g) >> 15);               \
+        out[i] STORE (int32_t)(((int64_t)(Y) * g) >> 15);                       \
         phase = (int32_t)((uint32_t)phase + (uint32_t)freq);                    \
     }
 static __attribute__((noinline)) void fm6_op_run(int32_t *out, const int32_t *in, int32_t phase, int32_t freq,
@@ -340,13 +384,52 @@ static __attribute__((noinline)) void fm6_op_run(int32_t *out, const int32_t *in
     int32_t dg = (g2 - g1 + (FM6_N >> 1)) >> FM6_LG_N, g = g1;
     uint32_t i;
     if (in && add)
-        FM6_OP_LOOP(phase + in[i], +=)
+        FM6_OP_LOOP(fm6_sin(phase + in[i]), +=)
     else if (in)
-        FM6_OP_LOOP(phase + in[i], =)
+        FM6_OP_LOOP(fm6_sin(phase + in[i]), =)
     else if (add)
-        FM6_OP_LOOP(phase, +=)
+        FM6_OP_LOOP(fm6_sin(phase), +=)
     else
-        FM6_OP_LOOP(phase, =)
+        FM6_OP_LOOP(fm6_sin(phase), =)
+}
+/* (#73b) fm6_op_run at SAW, RAMP or SQUARE */
+static __attribute__((noinline)) void fm6_op_naive_run(int32_t *out, const int32_t *in, int32_t phase, int32_t freq,
+                                                       int32_t g1, int32_t g2, int add, uint32_t wave)
+{
+    int32_t dg = (g2 - g1 + (FM6_N >> 1)) >> FM6_LG_N, g = g1;
+    fm6_shape_t sh = fm6_shape(wave);
+    uint32_t i;
+    if (in && add)
+        FM6_OP_LOOP(fm6_naive(phase + in[i], &sh), +=)
+    else if (in)
+        FM6_OP_LOOP(fm6_naive(phase + in[i], &sh), =)
+    else if (add)
+        FM6_OP_LOOP(fm6_naive(phase, &sh), +=)
+    else
+        FM6_OP_LOOP(fm6_naive(phase, &sh), =)
+}
+/* (#73) fm6_op_run with a waveform other than the sine, SAW .. SQUARE aside */
+static __attribute__((noinline)) void fm6_op_wave_run(int32_t *out, const int32_t *in, int32_t phase, int32_t freq,
+                                                      int32_t g1, int32_t g2, int add, uint32_t wave)
+{
+    int32_t dg, g;
+    fm6_shape_t sh;
+    uint32_t i;
+    if (wave >= FM6_W_SAW) {     /* before the shape is built: after it, gcc's loops here grow by 2 (target_budget) */
+        fm6_op_naive_run(out, in, phase, freq, g1, g2, add, wave);
+        return;
+    }
+    dg = (g2 - g1 + (FM6_N >> 1)) >> FM6_LG_N;
+    g = g1;
+    sh = fm6_shape(wave);
+    if (in && add)
+        FM6_OP_LOOP(fm6_shaped_sine(phase + in[i], &sh), +=)
+    else if (in)
+        FM6_OP_LOOP(fm6_shaped_sine(phase + in[i], &sh), =)
+    else if (add)
+        FM6_OP_LOOP(fm6_shaped_sine(phase, &sh), +=)
+    else
+        FM6_OP_LOOP(fm6_shaped_sine(phase, &sh), =)
 }
 
 /* the operator with feedback (fb: its last two outputs) */
@@ -366,6 +449,39 @@ static __attribute__((noinline)) void fm6_op_fb(int32_t *out, int32_t phase, int
     fb[0] = y0;
     fb[1] = y;
 }
+#define FM6_FB_LOOP(Y)                                                            \
+    for (i = 0; i < FM6_N; i++) {                                               \
+        int32_t s = (y0 + y) >> (shift + 1);                                    \
+        g += dg;                                                                \
+        y0 = y;                                                                 \
+        y = (int32_t)(((int64_t)(Y) * g) >> 15);                                \
+        out[i] = add ? out[i] + y : y;                                          \
+        phase = (int32_t)((uint32_t)phase + (uint32_t)freq);                    \
+    }                                                                           \
+    fb[0] = y0;                                                                 \
+    fb[1] = y;
+/* (#73b) fm6_op_fb at SAW, RAMP or SQUARE */
+static __attribute__((noinline)) void fm6_op_naive_fb(int32_t *out, int32_t phase, int32_t freq, int32_t g1, int32_t g2,
+                                                      int32_t *fb, int32_t shift, int add, uint32_t wave)
+{
+    int32_t dg = (g2 - g1 + (FM6_N >> 1)) >> FM6_LG_N, g = g1, y0 = fb[0], y = fb[1];
+    fm6_shape_t sh = fm6_shape(wave);
+    uint32_t i;
+    FM6_FB_LOOP(fm6_naive(phase + s, &sh))
+}
+/* (#73) fm6_op_fb with a waveform other than the sine, SAW .. SQUARE aside */
+static __attribute__((noinline)) void fm6_op_wave_fb(int32_t *out, int32_t phase, int32_t freq, int32_t g1, int32_t g2,
+                                                     int32_t *fb, int32_t shift, int add, uint32_t wave)
+{
+    int32_t dg = (g2 - g1 + (FM6_N >> 1)) >> FM6_LG_N, g = g1, y0 = fb[0], y = fb[1];
+    fm6_shape_t sh = fm6_shape(wave);
+    uint32_t i;
+    if (wave >= FM6_W_SAW) {
+        fm6_op_naive_fb(out, phase, freq, g1, g2, fb, shift, add, wave);
+        return;
+    }
+    FM6_FB_LOOP(fm6_shaped_sine(phase + s, &sh))
+}
 
 /* msfa FmCore::render: the six operators of algorithm alg into out (Q24). Unlike msfa, out starts empty:
  * the first carrier sounding writes it, the next ones add. Returns 0 when none sounded (out untouched). (Skiff 1.3, as
@@ -374,7 +490,8 @@ static __attribute__((noinline)) void fm6_op_fb(int32_t *out, int32_t phase, int
 #if !FELUCCA_CPU2
 static int32_t fm6_bus[2][FM6_N];
 #endif
-static int fm6_core_render(int32_t *out, fm6_op_t *op, uint32_t alg, int32_t *fb, int32_t fb_shift)
+static inline __attribute__((always_inline)) int fm6_core_render_waves(int32_t *out, fm6_op_t *op, uint32_t alg,
+                                                                      int32_t *fb, int32_t fb_shift, uint32_t waves)
 {
 #if FELUCCA_CPU2
     int32_t fm6_bus[2][FM6_N];
@@ -383,22 +500,24 @@ static int fm6_core_render(int32_t *out, fm6_op_t *op, uint32_t alg, int32_t *fb
     uint8_t has[3] = {0, 0, 0};
     uint32_t k;
     for (k = 0; k < 6u; k++) {
-        uint32_t f = a[k], inbus = (f >> 4) & 3u, outbus = f & 3u;
+        uint32_t f = a[k], inbus = (f >> 4) & 3u, outbus = f & 3u, wave = waves >> (4u * k) & 15u;
         int add = (f & FM6_OADD) != 0;
         int32_t *o = outbus ? fm6_bus[outbus - 1u] : out;
+        const int32_t *in = inbus == 0u || !has[inbus] ? 0 : fm6_bus[inbus - 1u];
         int32_t g1 = op[k].gain_out, g2 = fm6_exp2(op[k].level_in - (14 << 24));
         op[k].gain_out = g2;
         if (g1 >= FM6_THRESH || g2 >= FM6_THRESH) {
+            int fed_back = !in && (f & 0xc0u) == 0xc0u && fb_shift < 16;
             if (!has[outbus])
                 add = 0;
-            if (inbus == 0u || !has[inbus]) {
-                if ((f & 0xc0u) == 0xc0u && fb_shift < 16)
-                    fm6_op_fb(o, op[k].phase, op[k].freq, g1, g2, fb, fb_shift, add);
-                else
-                    fm6_op_run(o, 0, op[k].phase, op[k].freq, g1, g2, add);
-            } else {
-                fm6_op_run(o, fm6_bus[inbus - 1u], op[k].phase, op[k].freq, g1, g2, add);
-            }
+            if (fed_back && wave)
+                fm6_op_wave_fb(o, op[k].phase, op[k].freq, g1, g2, fb, fb_shift, add, wave);
+            else if (fed_back)
+                fm6_op_fb(o, op[k].phase, op[k].freq, g1, g2, fb, fb_shift, add);
+            else if (wave)
+                fm6_op_wave_run(o, in, op[k].phase, op[k].freq, g1, g2, add, wave);
+            else
+                fm6_op_run(o, in, op[k].phase, op[k].freq, g1, g2, add);
             has[outbus] = 1;
         } else if (!add) {
             has[outbus] = 0;
@@ -407,9 +526,19 @@ static int fm6_core_render(int32_t *out, fm6_op_t *op, uint32_t alg, int32_t *fb
     }
     return has[0];
 }
+static int fm6_core_render(int32_t *out, fm6_op_t *op, uint32_t alg, int32_t *fb, int32_t fb_shift)
+{
+    return fm6_core_render_waves(out, op, alg, fb, fb_shift, 0);
+}
+/* (#73) a note with an operator off the sine: its own copy of the renderer, so the sine one stays as it was */
+static __attribute__((noinline)) int fm6_core_waves(int32_t *out, fm6_op_t *op, uint32_t alg, int32_t *fb,
+                                                    int32_t fb_shift, uint32_t waves)
+{
+    return fm6_core_render_waves(out, op, alg, fb, fb_shift, waves);
+}
 
 /* ------------------------------------------------------------ the note --- */
-typedef struct {                 /* a sounding note (msfa's note): 244 bytes */
+typedef struct {                 /* a sounding note (msfa's note): 284 bytes */
     fm6_env_t env[6];
     fm6_op_t op[6];
     int32_t base[6];             /* the operator's pitch: ratio: log2 offset from the note's (Q24); fixed: log2 Hz */
@@ -418,6 +547,9 @@ typedef struct {                 /* a sounding note (msfa's note): 244 bytes */
     uint8_t fixed;               /* bit k: operator k has a fixed frequency */
     uint8_t live, down, rsv;
     int32_t dc;                  /* (eng_fm6.c) the output's DC blocker */
+    uint32_t waves;              /* (#73) operator k's waveform (FM6_W_*) at bits 4k..4k+3 */
+    uint16_t phase_at[6];        /* (#72b) the PHASE offset each operator plays (Q16 of a cycle), gliding to PHASE */
+    int32_t slide[6];            /* (#72b) this block's share of that glide: a frequency offset (Q24 a sample) */
 } fm6_note_t;
 
 static const int32_t FM6_COARSE[32] = {
@@ -506,15 +638,26 @@ static void fm6_note_retune(fm6_note_t *n, const uint8_t *p, int32_t note, int32
     }
 }
 
-/* a note-on (msfa note init) of patch p, MIDI note `note` (transposed), velocity vel. fresh: from silence
- * (phases, gains, feedback 0); else a retrigger keeps them, as msfa does */
-static void fm6_note_init(fm6_note_t *n, const uint8_t *p, int32_t note, int32_t vel, int fresh)
+/* (#72) PHASE pct % of a cycle as Q16 of a cycle, and as an operator's start phase (Q24): the same point, so a fresh
+ * note starts where a sounding one's glide ends (#72b) */
+static uint16_t fm6_phase_q16(uint32_t pct) { return (uint16_t)(((pct % 100u) << 16) / 100u); }
+static int32_t fm6_start_phase(uint32_t pct) { return (int32_t)fm6_phase_q16(pct) << 8; }
+
+/* a note-on (msfa note init) of patch p, MIDI note `note` (transposed), velocity vel. fresh: from silence (gains and
+ * feedback 0, each operator k's phase at start_pct[k] % of a cycle, msfa's 0); else a retrigger keeps them, as msfa
+ * does: a sounding oscillator jumping clicks. A fixed-frequency operator starts at its offset too */
+static void fm6_note_init(fm6_note_t *n, const uint8_t *p, int32_t note, int32_t vel, int fresh,
+                          const uint8_t *start_pct)
 {
     uint32_t k;
     note = note < 0 ? 0 : note > 127 ? 127 : note;
     if (fresh) {
-        for (k = 0; k < 6u; k++)
-            n->op[k].phase = n->op[k].gain_out = 0;
+        for (k = 0; k < 6u; k++) {
+            n->op[k].phase = fm6_start_phase(start_pct[k]);
+            n->op[k].gain_out = 0;
+            n->phase_at[k] = fm6_phase_q16(start_pct[k]);
+            n->slide[k] = 0;
+        }
         n->fb[0] = n->fb[1] = 0;
         n->dc = 0;
     }
@@ -565,7 +708,8 @@ static inline __attribute__((always_inline)) int fm6_note_compute(fm6_note_t *n,
         const uint8_t *op = p + k * FP_OP;
         int32_t level = fm6_env_get(&n->env[k], op);
         uint32_t ams = FM6_AMSENS[op[FP_AMS] & 3u];
-        n->op[k].freq = fm6_freq((n->fixed >> k) & 1u ? n->base[k] : logfreq + n->base[k] + pitch_mod + dt[k]);
+        n->op[k].freq = fm6_freq((n->fixed >> k) & 1u ? n->base[k] : logfreq + n->base[k] + pitch_mod + dt[k]) +
+                        n->slide[k];
         if (ams) {                                 /* msfa: pt = exp(sensamp / 262144 * 0.07 + 12.2) */
             uint32_t sensamp = (uint32_t)(((uint64_t)amod * ams) >> 24);
             int32_t lg = FM6_AMS_C0 + (int32_t)(((uint64_t)sensamp * FM6_AMS_K) >> 10);
@@ -577,6 +721,8 @@ static inline __attribute__((always_inline)) int fm6_note_compute(fm6_note_t *n,
             level += modlvl;
         n->op[k].level_in = level < 0 ? 0 : level > (17 << 24) ? 17 << 24 : level;
     }
+    if (n->waves)
+        return fm6_core_waves(out, n->op, alg, n->fb, fb ? 8 - fb : 16, n->waves);
     return fm6_core_render(out, n->op, alg, n->fb, fb ? 8 - fb : 16);
 }
 
