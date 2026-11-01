@@ -128,7 +128,7 @@ typedef struct {
     chain_config_t chain;                      /* (FUN6 .. SKF1's) */
     motion_store_t motion;
 #endif
-    uint8_t fm6[NTRK][FM6_PACKED];             /* each track's FM6 patch, packed (eng_fm6.c) */
+    uint8_t fm6[NTRK][FM6_PACKED];             /* each track's FM6 sound, packed (eng_fm6.c fm6_pack_sound) */
     char name[PROJ_NAME_LEN];                  /* the project's name: upper-case ASCII 32..126, 0-padded; "" = none */
     uint8_t ent[NTRK][NENT][2];                /* (SKF2) each track's list: pattern id + 1 (0: none), repeats - 1 */
     uint8_t snd[NTRK][NENT][2];                /* ((2.0, #30) SKF4) each entry's sound (ui.c lists.snd) */
@@ -199,14 +199,18 @@ static const proj_fmt_t PROJ_SKF3 = {PROJ_MAGIC3, PROJ_STORE3, 6u, PROJ_SCENES, 
  * the DRUM-X kit (PROJ_DX_MARK
  * and its lanes; 0: the factory's), the FM6 patches; then the globals by GSID and each track's engine, preset, user
  * slot + 1 (#20's, 0 none) and parameters by SID, the counts the record's (a newer one's past ours passed over, an
- * older one's missing at their defaults); the name, the hash last. Room for about 50 more parameters a track */
+ * older one's missing at their defaults); (#76) the FM6X block of the six FM6 sounds' PHASE and WAVE (eng_fm6.c
+ * FM6X_MARK; in project_t.fm6 as a sound copy carries them); the name, the hash last. Room for about 19 more parameters
+ * a track */
 #define PROJ_MAGIC4 0x534B4634u
 #define PROJ_STORE4 2560u
 #define PROJ_LAYOUT4 1u
 #define PROJ_ENT4 10u
 static const proj_fmt_t PROJ_SKF4 = {PROJ_MAGIC4, PROJ_STORE4, 6u, PROJ_SCENES, 1u};
+#define PROJ_FM6X_MAX (3u + NTRK * (1u + FM6X_N))   /* (#76) the FM6X block after the last track (eng_fm6.c) */
 _Static_assert(PROJ_ENT4 + NTRK * (NENT * 4u + 1u) + PROJ_SCENES + 2u + 1u + DV_NLANE * 11u + NTRK * FM6_PACKED +
-               1u + 2u * GSID_COUNT + NTRK * (4u + SID_COUNT) + PROJ_NAME_LEN + 4u <= PROJ_STORE4, "SKF4 holds it all");
+               1u + 2u * GSID_COUNT + NTRK * (4u + SID_COUNT) + PROJ_FM6X_MAX + PROJ_NAME_LEN + 4u <= PROJ_STORE4,
+               "SKF4 holds it all");
 #define PROJ_SKF (&PROJ_SKF4)                  /* the format a save writes */
 #define PROJ_NAME_AT(f) ((f)->size - 4u - PROJ_NAME_LEN)
 #define PROJ_FM6_AT(f) (PROJ_NAME_AT(f) - (f)->nt * FM6_PACKED)
@@ -992,9 +996,7 @@ static int proj_pack4(project_store_t *out, const project_t *q)
 {
     uint8_t *b = out->raw;
     uint32_t pos = PROJ_ENT4, t, e, n, sum;
-    for (t = 0; t < NTRK; t++)
-        for (e = 0; e < FM6_PACKED; e++)
-            if (q->fm6[t][e] > 127u) return 0;
+    fm6x_t x[NTRK];
     if (!proj_ent_ok(q)) return 0;
     memset(out, 0, sizeof *out); memcpy(b, &PROJ_SKF4.magic, 4); memcpy(b + 4, &PROJ_SKF4.size, 4);
     b[8] = PROJ_LAYOUT4;
@@ -1013,13 +1015,19 @@ static int proj_pack4(project_store_t *out, const project_t *q)
         memcpy(b + pos + 1u, q->dx, sizeof q->dx);
     }
     pos += 1u + sizeof q->dx;
-    memcpy(b + pos, q->fm6, sizeof q->fm6); pos += sizeof q->fm6;
+    for (t = 0; t < NTRK; t++, pos += FM6_PACKED) {
+        memcpy(b + pos, q->fm6[t], FM6_PACKED);
+        fm6x_take(b + pos, &x[t]);
+        for (e = 0; e < FM6_PACKED; e++)
+            if (b[pos + e] > 127u) return 0;
+    }
     pos += gsid_put(b + pos, q->g);
     for (t = 0; t < NTRK; t++) {
         b[pos] = q->t[t].engine; b[pos + 1u] = q->t[t].preset; b[pos + 2u] = q->t[t].user; pos += 3u;   /* (#20) */
         if (!(n = sid_put(b + pos, q->t[t].p))) return 0;
         pos += n;
     }
+    fm6x_block_put(b + pos, PROJ_NAME_AT(&PROJ_SKF4) - pos, x, NTRK);
     {
         char nm[PROJ_NAME_LEN + 1u];
         memcpy(b + PROJ_NAME_AT(&PROJ_SKF4), nm, proj_name_get(nm, (const uint8_t *)q->name));
@@ -1031,6 +1039,7 @@ static int proj_pack4(project_store_t *out, const project_t *q)
 static int proj_unpack4(project_t *q, const uint8_t *b)
 {
     uint32_t pos = PROJ_ENT4, end = PROJ_NAME_AT(&PROJ_SKF4), t, e, n, sum;
+    fm6x_t x[NTRK];
     memcpy(&sum, b + PROJ_STORE4 - 4u, 4);
     if (b[8] != PROJ_LAYOUT4 || sum != proj_hash(b, PROJ_STORE4 - 4u)) return 0;
     memset(q, 0, sizeof *q); q->magic = PROJ_MAGIC; q->size = sizeof *q;
@@ -1073,6 +1082,9 @@ static int proj_unpack4(project_t *q, const uint8_t *b)
             q->t[t].step[e].time = ST_REST;               /* (empty: the patterns hold the steps) */
 #endif
     }
+    fm6x_block_get(b + pos, end - pos, x, NTRK);
+    for (t = 0; t < NTRK; t++)
+        fm6x_hide(q->fm6[t], &x[t]);
 #if FELUCCA_LEGACY
     chain_defaults(&q->chain);
 #endif
@@ -1353,7 +1365,7 @@ static void project_capture(project_t *p)
 #if FELUCCA_LEGACY
         memcpy(p->t[i].step, trk[i].step, sizeof trk[i].step);   /* (SKF3, SKF4 write neither: the patterns hold them) */
 #endif
-        fm6_pack(fm6_patch[i], p->fm6[i]);
+        fm6_pack_sound(i, p->fm6[i]);
     }
 #if FELUCCA_LEGACY
     p->motion = motion;
@@ -1535,13 +1547,8 @@ static int project_restore_runtime(const project_t *input)
         for (i = 0; i < NSTEP; i++)
             t->step[i].time = ST_REST;
 #endif
-        {   /* the project's own FM6 patch, never reloaded from SLOT: F n if it is that factory patch, else OWN */
-            uint8_t v[FP_SIZE + 1u];
-            fm6_unpack(p->fm6[k], v);
-            fm6_set_patch(k, v);
-            fm6_adopt(k);
-            fm6_osc_reset(k);
-        }
+        fm6_set_packed(k, p->fm6[k]);                   /* the project's own FM6 sound, never reloaded from SLOT: */
+        fm6_adopt(k);                                   /* F n if it is that factory patch, else OWN */
     }
     sel_set((uint8_t)(p->sel < NTRK ? p->sel : 0u));
     memcpy(dx_kit, p->dx_on && dx_kit_ok(p->dx) ? p->dx : DX_KIT_DEF, sizeof dx_kit);   /* (phase 7) its DRUM-X kit */
@@ -1768,6 +1775,8 @@ static uint32_t autosave_sig(void)
         h = as_mix(h, &t->user, 1);                   /* ((2.0, #20) the user sound it is on: SKF4 holds it) */
         h = as_mix(h, t->step, sizeof t->step);
         h = as_mix(h, fm6_patch[i], sizeof fm6_patch[i]);
+        h = as_mix(h, fm6_op_phase[i], 6);
+        h = as_mix(h, fm6_op_wave[i], 6);
     }
     h = as_mix(h, dx_kit, sizeof dx_kit);             /* (phase 7) the DRUM-X kit */
     for (i = 0; i < G_COUNT; i++)                       /* ((Skiff U3) not the unit's CLOCK MIDI IN TUNE, ui.c) */

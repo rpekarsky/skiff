@@ -44,11 +44,11 @@ static volatile uint8_t mute_arm[NTRK];
 static uint8_t mute_mode[NTRK];
 static uint32_t mute_at[NTRK];
 /* (2.0, #30) a song entry's sound (bank.c esnd_make), as PRESETS loads one: every value but param_kept's, the engine,
- * preset and user slot, an FM6 patch (fm6 1) and a DRUM-X preset's kit (+ 1). Made by the main loop when the entry is
- * staged, put in by the swap (its first notes play it); stopped at once (bank.c esnd_go). The automation's base takes
- * its values; an engine change fades from this block (the swap's: its engine_block ran before it, so the old engine
- * renders on pe_old, the notes after the fade), not by a call of engine_block (its second caller tripled the ISR's
- * static cost) */
+ * preset and user slot, an FM6 sound (fm6 1; (#76) eng_fm6.c fm6_sound_of) and a DRUM-X preset's kit (+ 1). Made by
+ * the main loop when the entry is staged, put in by the swap (its first notes play it); stopped at once (bank.c
+ * esnd_go). The automation's base takes its values; an engine change fades from this block (the swap's: its
+ * engine_block ran before it, so the old engine renders on pe_old, the notes after the fade), not by a call of
+ * engine_block (its second caller tripled the ISR's static cost) */
 typedef struct {
     int16_t p[P_COUNT];
     uint8_t f6[FP_SIZE + 1u];
@@ -67,8 +67,10 @@ static __attribute__((noinline)) void esnd_put(track_t *t, const esnd_t *s)
     if (s->kit)
         memcpy(dx_kit, DX_KITS[s->kit - 1u], sizeof dx_kit);
     if (s->fm6) {
+        fm6x_t x;
         memcpy(fm6_patch[k], s->f6, sizeof s->f6);
-        fm6_pgen[k]++;
+        fm6x_take(fm6_patch[k], &x);
+        fm6x_set(k, &x);
         fm6_own_ok &= (uint8_t)~(1u << k);         /* (fm6_poll takes SLOT as it is now) */
         fm6_edit_f[k] = 0;
     }

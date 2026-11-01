@@ -42,7 +42,7 @@ static void undo_copy_track(undo_t *c, track_t *t)
     c->user = t->user;
     memcpy(c->p, t->p, sizeof c->p);
     memcpy(c->step, t->step, sizeof c->step);
-    memcpy(c->fm6, fm6_patch[i], FP_SIZE);
+    fm6_sound_of(i, c->fm6);
     c->fm6_slot = fm6_slot[i];
     c->pid = trk_pid[i];
     motion_snapshot_track(t, &c->motion_backup);

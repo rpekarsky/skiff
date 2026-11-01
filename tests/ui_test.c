@@ -3470,6 +3470,175 @@ static int32_t max_sample_step(const int32_t *y, uint32_t len)
     return worst;
 }
 #define GLIDE_BLOCKS 72u
+/* (#76) PHASE and WAVE are part of the FM6 sound: the FM6X block, SLOT, undo, user sounds, projects, song entries */
+static const fm6x_t X76 = {{25, 0, 0, 0, 0, 75}, {FM6_W_HALF, 0, 0, 0, 0, FM6_W_SQUARE}};
+static int fm6x_is(uint32_t tr, const fm6x_t *x)
+{
+    fm6x_t now;
+    fm6x_of(tr, &now);
+    return !memcmp(&now, x, sizeof now);
+}
+static int fm6x_codec_ok(void)
+{
+    static const fm6x_t none, phase_only = {{0, 0, 0, 0, 0, 10}, {0}};
+    uint8_t b[64] = {0};
+    fm6x_t x, two[2] = {X76, phase_only};
+    uint32_t len = fm6x_block_put(b, sizeof b, &X76, 1u), n;
+    int ok = len == 16u && b[0] == FM6X_MARK && b[1] == 13u && b[15] == fm6x_chk(b, 15u);
+    for (n = 0; n < len; n++)
+        ok &= b[n] <= 127u;
+    fm6x_block_get(b, sizeof b, &x, 1u);
+    ok &= !memcmp(&x, &X76, sizeof x);
+    ok &= fm6x_block_put(b, sizeof b, &phase_only, 1u) == 10u && b[1] == 7u;
+    ok &= !fm6x_block_put(b, sizeof b, &none, 1u);
+    memset(b, 0, sizeof b);                            /* a newer block: 25 fields, the ones past ours passed over */
+    b[0] = FM6X_MARK;
+    b[1] = 25u;
+    b[2 + FM6X_PHASE] = 120u;                          /* (past 99: 99) */
+    b[2 + FM6X_OSC] = 14u;                             /* (a wave this build has not: SINE) */
+    b[2 + FM6X_OSC + 1u] = 0x70u | FM6_W_SAW;          /* (OSC's bits 4..6: not ours) */
+    b[2 + 24u] = 99u;
+    b[27] = (uint8_t)fm6x_chk(b, 27u);
+    fm6x_block_get(b, sizeof b, &x, 1u);
+    ok &= x.phase[0] == 99u && x.wave[0] == FM6_W_SINE && x.wave[1] == FM6_W_SAW && !x.phase[1];
+    fm6x_block_get(b, 27u, &x, 1u);                    /* (its check byte past the room: none) */
+    ok &= !memcmp(&x, &none, sizeof x);
+    b[27] ^= 1u;
+    fm6x_block_get(b, sizeof b, &x, 1u);
+    ok &= !memcmp(&x, &none, sizeof x);
+    len = fm6x_block_put(b, sizeof b, two, 2u);
+    fm6x_block_get(b, sizeof b, &x, 1u);               /* (a project's block read as one sound's: no) */
+    ok &= len == 1u + 1u + 14u + 8u + 1u && b[1] == 2u && !memcmp(&x, &none, sizeof x);
+    fm6x_block_get(b, sizeof b, two, 2u);
+    ok &= !memcmp(&two[0], &X76, sizeof x) && !memcmp(&two[1], &phase_only, sizeof x);
+    return ok;
+}
+/* the stock firmware harness's input (tests/stock_compat_test.c) */
+static int fm6x_dump(const char *path, const void *a, uint32_t na, const void *b, uint32_t nb)
+{
+    FILE *f = fopen(path, "wb");
+    int ok = f && fwrite(a, 1, na, f) == na && fwrite(b, 1, nb, f) == nb;
+    if (f)
+        fclose(f);
+    return ok;
+}
+static int test_fm6_patch_ext(void)
+{
+    static const fm6x_t none;
+    static project_store_t with, without;
+    int bad = 0, ok;
+    uint32_t tr, i, at;
+    uint8_t rec[2][sizeof(up_rec_t)], v[FP_SIZE + 1u];
+    uint32_t tag;
+    const up_rec_t *r;
+    esnd_t s;
+    ui_power_on();
+    ui_prefs |= PREF_BPM_LOCK;
+    tr = trk_index(TSEL);
+    bad += check("(#76) FM6X block: 7-bit, n up to the last field set, newer fields passed over, a bad check none",
+                 fm6x_codec_ok());
+
+    set_engine_of(TSEL, ENGI_FM6);                      /* TINE EP: SLOT F1 */
+    go_title("OPERATOR"); frame();
+    fm_ui[0] = 0; fm_ui[1] = 5;                         /* OSC, OP1 */
+    turn(EN_K1, 1);
+    frame();
+    ok = fm6_op_phase[tr][5] == 1u && TSEL->p[P_E7] == FM6_OWN;
+    undo_step(0);
+    frame();
+    ok &= fm6_op_phase[tr][5] == 0u && TSEL->p[P_E7] == 0;
+    undo_step(1);
+    frame();
+    ok &= fm6_op_phase[tr][5] == 1u && TSEL->p[P_E7] == FM6_OWN;
+    bad += check("(#76) PHASE turned on F1: OWN; undone F1 at 0 %, redone OWN at +1 %", ok);
+
+    fm6x_set(tr, &X76);
+    fm6_reslot(tr);
+    TSEL->p[P_E7] = 2; frame();                         /* F3: the own sound kept aside */
+    ok = fm6x_is(tr, &none) && fm6_slot[tr] == 2u;
+    turn(EN_K2, 1);                                     /* F3's OP1 SIN2: F3* */
+    ok &= fm6_op_wave[tr][5] == FM6_W_SIN2 && TSEL->p[P_E7] == 2 && fm6_edit_f[tr] == 3u;
+    TSEL->p[P_E7] = 3; frame();
+    ok &= fm6x_is(tr, &none);
+    TSEL->p[P_E7] = 2; frame();
+    ok &= fm6_op_wave[tr][5] == FM6_W_SIN2;
+    TSEL->p[P_E7] = FM6_OWN; frame();
+    ok &= fm6x_is(tr, &X76) && fm6_slot[tr] == FM6_OWN;
+    bad += check("(#76) SLOT: F n plays PHASE 0 SINE, F n* keeps its WAVE, OWN brings its PHASE and WAVE back", ok);
+
+    up_store(12, "EXT");
+    r = up_rec(12);
+    ok = r->sid[r->np] == FM6X_MARK && r->sid[r->np + 1u] == 13u && !upf_get(12, v);
+    memcpy(rec[0], r, sizeof rec[0]);
+    tag = upf.e[12].tag;
+    fm6_osc_reset(tr);
+    up_store(13, "EXT");
+    r = up_rec(13);
+    for (i = r->np; i < UP_SIDS; i++)
+        ok &= !r->sid[i];
+    memcpy(rec[1], r, sizeof rec[1]);
+    for (i = 0; i < sizeof rec[0]; i++)
+        ok &= rec[0][i] == rec[1][i] || (i >= offsetof(up_rec_t, sid) + r->np && i < offsetof(up_rec_t, sid) + r->np + 16u);
+    bad += check("(#76) SAVE > USER: the FM6X block after the values (n 13), none for PHASE 0 SINE (the record as before)",
+                 ok);
+    memcpy(v, fm6_patch[tr], sizeof v);
+    apply_preset_to(TSEL, 1); frame();
+    up_load(12); frame();
+    ok = fm6x_is(tr, &X76) && !memcmp(fm6_patch[tr], v, FP_SIZE) && TSEL->p[P_E7] == FM6_OWN;
+    up_load(13); frame();
+    ok &= fm6x_is(tr, &none);
+    bad += check("(#76) a user sound loads its PHASE and WAVE; one without them (as before #76) PHASE 0 SINE", ok);
+    up_rename(12, "EXZ");
+    up_load(12); frame();
+    ok = fm6x_is(tr, &X76);
+    up_rec(12)->sid[0]++;                               /* (its patch's tag no longer the record's: no patch) */
+    up_load(12); frame();
+    ok &= fm6x_is(tr, &none);
+    up_rec(12)->sid[0]--;
+    bad += check("(#76) .. renamed (the tag without the name) keeps them; a record without its patch PHASE 0 SINE", ok);
+
+    {
+        const uint8_t b[2] = {0x80u | 12u, 0};
+        apply_preset_to(TSEL, 1); frame();
+        ok = esnd_make(tr, b, &s) && s.fm6 && s.p[P_E7] == FM6_OWN;
+        esnd_put(TSEL, &s);
+        frame();
+        ok &= fm6x_is(tr, &X76) && !memcmp(fm6_patch[tr], v, FP_SIZE);
+        ok &= snd_of(tr, (uint8_t[2]){0}) == 1;
+        fm6_set_phase(tr, 0, 1);
+        ok &= !snd_of(tr, (uint8_t[2]){0});
+        bad += check("(#76) a song entry's user sound brings its PHASE and WAVE; changed, the track's is not the entry's", ok);
+    }
+
+    up_load(12); frame();
+    set_engine_of(&trk[(tr + 1u) % NTRK], ENGI_FM6);
+    fm6_set_phase((tr + 1u) % NTRK, 2, 60);
+    project_save(2);
+    memcpy(&with, &proj_slot[2], sizeof with);
+    fm6_osc_reset((tr + 1u) % NTRK);
+    fm6_osc_reset(tr);
+    project_save(3);
+    memcpy(&without, &proj_slot[3], sizeof without);
+    for (at = 0; at < PROJ_STORE4 && with.raw[at] == without.raw[at]; at++)
+        ;
+    ok = at < PROJ_NAME_AT(&PROJ_SKF4) && with.raw[at] == FM6X_MARK && with.raw[at + 1u] == NTRK;
+    for (i = at; i < PROJ_NAME_AT(&PROJ_SKF4); i++)
+        ok &= !without.raw[i];
+    for (i = PROJ_NAME_AT(&PROJ_SKF4); i < PROJ_STORE4 - 4u; i++)
+        ok &= with.raw[i] == without.raw[i];
+    bad += check("(#76) a project: the FM6X block after the last track; none for PHASE 0 SINE (zeros, as before)", ok);
+    project_load(2); frame();
+    ok = fm6x_is(tr, &X76) && fm6_op_phase[(tr + 1u) % NTRK][2] == 60u && TSEL->p[P_E7] == FM6_OWN;
+    project_load(3); frame();
+    ok &= fm6x_is(tr, &none) && fm6x_is((tr + 1u) % NTRK, &none);
+    bad += check("(#76) .. loads back each track's PHASE and WAVE; the project without the block PHASE 0 SINE", ok);
+
+    ok = fm6x_dump("build/host/fm6x_proj.bin", with.raw, PROJ_STORE4, without.raw, PROJ_STORE4) &&
+         fm6x_dump("build/host/fm6x_user.bin", rec, sizeof rec, &tag, sizeof tag);
+    bad += check("(#76) the records for the stock v2.1.1 harness (build/host/fm6x_*.bin)", ok);
+    return bad;
+}
+
 /* (#72b) PHASE turned on a held INIT C4 (OP1 the carrier alone): its phase glides to the new offset, never clicks */
 static int test_fm6_phase_live(void)
 {
@@ -12017,6 +12186,7 @@ int main(void)
     bad += test_fm6_lab();
     bad += test_fm6_wave();
     bad += test_fm6_phase_live();
+    bad += test_fm6_patch_ext();
 #if FELUCCA_SLICE
     bad += test_slices();
     bad += test_samples_page();

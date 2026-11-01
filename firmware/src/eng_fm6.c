@@ -61,14 +61,13 @@ typedef struct {                                 /* (#20w) the last note a track
 } fm6_last_t;
 static fm6_last_t fm6_last[NTRK] __attribute__((section(".pool")));   /* (the voices write it, the main loop reads) */
 static int32_t fm6_lfo_v[NTRK], fm6_lfo_d[NTRK]; /* this block's LFO value and delay (Q24) */
-/* (#72, an experiment) each operator's phase, % of a cycle (FM6_ALG's order: the sixth first; shown as -50 .. +49): a
- * fresh note starts there, the sounding ones glide there ((#72b) fm6_phase_glide). Not in the patch, not saved: 0 again
- * at a sound load (fm6_track_loaded, a project's, power-on) */
+/* (#72) each operator's phase, % of a cycle (FM6_ALG's order: the sixth first; shown as -50 .. +49): a fresh note
+ * starts there, the sounding ones glide there ((#72b) fm6_phase_glide). (#76) Part of the sound, as WAVE: see fm6x_t */
 static uint8_t fm6_op_phase[NTRK][6] __attribute__((section(".pool")));
 /* (#72b) bumped by the main loop at a PHASE change; the ISR's copy once every sounding note has reached it */
 static uint8_t fm6_phase_gen[NTRK] __attribute__((section(".pool")));
 static uint8_t fm6_phase_seen[NTRK] __attribute__((section(".pool")));
-/* (#73, an experiment) each operator's waveform (FM6_W_*, FM6_ALG's order), as PHASE: not in the patch, not saved */
+/* (#73) each operator's waveform (FM6_W_*, FM6_ALG's order), as PHASE */
 static uint8_t fm6_op_wave[NTRK][6] __attribute__((section(".pool")));
 
 /* ------------------------------------------------------- patch formats --- */
@@ -197,29 +196,198 @@ static void fm6_set_phase(uint32_t tr, uint32_t k, uint32_t pct)
     RING_PUBLISH();
     fm6_phase_gen[tr]++;
 }
-/* (#72, #73) a sound load: every operator back to PHASE 0 and SINE */
-static void fm6_osc_reset(uint32_t tr)
+
+/* ------------------------------------------- (#76) the patch's extension --- */
+/* A sound is its 155-byte patch and, beyond the DX7's voice, each operator's PHASE and WAVE (all 0: the patch as a DX7
+ * plays it). The tracks' are fm6_op_phase and fm6_op_wave. A copy of a sound (an undo copy, the own patch and F n* kept
+ * aside, a song entry's, a project's) carries them in the top bit of its first FM6X_BITS bytes, packed or not: no byte
+ * there uses it (fm6_unpack drops it). So no copy grows, and a copy with any of them set never equals a factory patch.
+ * Stored (the user sounds' records, the projects) they are a block of fields, FM6X_MARK below */
+#define FM6X_BITS 66u                            /* 6 x (PHASE 7 bits, WAVE 4) */
+typedef struct {
+    uint8_t phase[6], wave[6];
+} fm6x_t;
+
+static void fm6x_hide(uint8_t *p, const fm6x_t *x)
+{
+    uint32_t k, j;
+    for (k = 0; k < 6u; k++) {
+        uint32_t bits = (x->phase[k] & 127u) | (x->wave[k] & 15u) << 7;
+        for (j = 0; j < 11u; j++, p++)
+            *p = (uint8_t)((*p & 127u) | ((bits >> j) & 1u) << 7);
+    }
+}
+/* .. out of p (its bytes 7-bit again) into x */
+static void fm6x_take(uint8_t *p, fm6x_t *x)
+{
+    uint32_t k, j;
+    for (k = 0; k < 6u; k++) {
+        uint32_t bits = 0;
+        for (j = 0; j < 11u; j++, p++) {
+            bits |= (uint32_t)(*p >> 7) << j;
+            *p &= 127u;
+        }
+        x->phase[k] = (uint8_t)((bits & 127u) % 100u);
+        x->wave[k] = (uint8_t)((bits >> 7) % FM6_NWAVE);
+    }
+}
+
+static void fm6x_of(uint32_t tr, fm6x_t *x)
+{
+    memcpy(x->phase, fm6_op_phase[tr % NTRK], 6);
+    memcpy(x->wave, fm6_op_wave[tr % NTRK], 6);
+}
+/* track tr's PHASE and WAVE = x: the sounding notes take them at the ISR's next block */
+static void fm6x_set(uint32_t tr, const fm6x_t *x)
 {
     tr %= NTRK;
-    memset(fm6_op_phase[tr], 0, sizeof fm6_op_phase[tr]);
-    memset(fm6_op_wave[tr], 0, sizeof fm6_op_wave[tr]);
+    memcpy(fm6_op_phase[tr], x->phase, 6);
+    memcpy(fm6_op_wave[tr], x->wave, 6);
     RING_PUBLISH();
     fm6_pgen[tr]++;
     fm6_phase_gen[tr]++;
+}
+/* (#72, #73) a sound load without them: every operator back to PHASE 0 and SINE */
+static void fm6_osc_reset(uint32_t tr)
+{
+    static const fm6x_t none;
+    fm6x_set(tr, &none);
+}
+
+/* Stored, they are the FM6X block, written in the free bytes after a record's own: FM6X_MARK, then the fields (one
+ * sound's: their count n, then n bytes; a project's: the count of sounds, then each sound's), then a check byte; every
+ * byte 0..127. The fields, append-only: flags (bit 0 ROUTE, #75; bit 1 LOOP,
+ * #74), PHASE x 6, OSC x 6 (bits 0..3 WAVE), ROUTE x 6 (#75), FM6_ALG's order. n stops after the last one not 0: a
+ * reader takes the fields it knows, the ones past its own passed over, the missing ones 0. All 0 (n 0 for every sound):
+ * no block, the record as firmware before writes it. Firmware before reads none of those bytes */
+#define FM6X_MARK 0x36u                          /* ('6') another meaning of a field: another mark */
+#define FM6X_PHASE 1u
+#define FM6X_OSC 7u
+#define FM6X_N 19u                               /* the fields: up to ROUTE's (#75: read, none of them used yet) */
+
+static uint32_t fm6x_chk(const uint8_t *b, uint32_t n)
+{
+    uint32_t sum = 0;
+    while (n--)
+        sum += *b++;
+    return (sum & 127u) ^ 0x2Au;
+}
+static uint32_t fm6x_field(const fm6x_t *x, uint32_t i)
+{
+    if (i >= FM6X_OSC + 6u)
+        return 0;
+    if (i >= FM6X_OSC)
+        return x->wave[i - FM6X_OSC];
+    return i >= FM6X_PHASE ? x->phase[i - FM6X_PHASE] : 0u;
+}
+static uint32_t fm6x_count(const fm6x_t *x)
+{
+    uint32_t n = FM6X_N;
+    while (n && !fm6x_field(x, n - 1u))
+        n--;
+    return n;
+}
+/* one sound's fields at b: their bytes */
+static uint32_t fm6x_put(uint8_t *b, const fm6x_t *x)
+{
+    uint32_t n = fm6x_count(x), i;
+    b[0] = (uint8_t)n;
+    for (i = 0; i < n; i++)
+        b[1u + i] = (uint8_t)fm6x_field(x, i);
+    return 1u + n;
+}
+/* .. read into x (0 none: they pass room) */
+static uint32_t fm6x_get(const uint8_t *b, uint32_t room, fm6x_t *x)
+{
+    uint32_t n, i;
+    memset(x, 0, sizeof *x);
+    if (!room || (n = b[0]) >= room)
+        return 0;
+    for (i = FM6X_PHASE; i < n && i < FM6X_OSC; i++)
+        x->phase[i - FM6X_PHASE] = (uint8_t)(b[1u + i] > 99u ? 99u : b[1u + i]);
+    for (i = FM6X_OSC; i < n && i < FM6X_OSC + 6u; i++)
+        x->wave[i - FM6X_OSC] = (uint8_t)((b[1u + i] & 15u) < FM6_NWAVE ? b[1u + i] & 15u : FM6_W_SINE);
+    return 1u + n;
+}
+/* the block of nx sounds x at b (room bytes): its length, 0 when they are all 0 (or it would not fit: none) */
+static uint32_t fm6x_block_put(uint8_t *b, uint32_t room, const fm6x_t *x, uint32_t nx)
+{
+    uint32_t len = 1u, i;
+    for (i = 0; i < nx && !fm6x_count(&x[i]); i++)
+        ;
+    if (i == nx || room < 2u + nx * (1u + FM6X_N) + (nx > 1u))
+        return 0;
+    b[0] = FM6X_MARK;
+    if (nx > 1u)
+        b[len++] = (uint8_t)nx;
+    for (i = 0; i < nx; i++)
+        len += fm6x_put(b + len, &x[i]);
+    b[len] = (uint8_t)fm6x_chk(b, len);
+    return len + 1u;
+}
+/* .. read: x as stored, 0 for every sound when there is none (no mark, a bad check, past room) */
+static void fm6x_block_get(const uint8_t *b, uint32_t room, fm6x_t *x, uint32_t nx)
+{
+    uint32_t len = 1u, i, n, stored = 1u;
+    fm6x_t skip;
+    memset(x, 0, nx * sizeof *x);
+    if (room < 3u || b[0] != FM6X_MARK)
+        return;
+    if (nx > 1u)
+        stored = b[len++];
+    for (i = 0; i < stored; i++, len += n)
+        if (!(n = fm6x_get(b + len, room - len, i < nx ? &x[i] : &skip)) || len + n >= room)
+            break;
+    if (i < stored || b[len] != fm6x_chk(b, len))
+        memset(x, 0, nx * sizeof *x);
+}
+
+/* track tr's sound -> v (155 bytes + 1) */
+static void fm6_sound_of(uint32_t tr, uint8_t *v)
+{
+    fm6x_t x;
+    memcpy(v, fm6_patch[tr % NTRK], FP_SIZE + 1u);
+    fm6x_of(tr, &x);
+    fm6x_hide(v, &x);
+}
+/* track tr's sound = v (as fm6_sound_of made it; a bare patch: PHASE 0, SINE) */
+static void fm6_set_sound(uint32_t tr, const uint8_t *v)
+{
+    uint8_t p[FP_SIZE + 1u];
+    fm6x_t x;
+    memcpy(p, v, sizeof p);
+    fm6x_take(p, &x);
+    fm6_set_patch(tr, p);
+    fm6x_set(tr, &x);
+}
+/* .. packed (128 bytes) */
+static void fm6_pack_sound(uint32_t tr, uint8_t *b)
+{
+    fm6x_t x;
+    fm6_pack(fm6_patch[tr % NTRK], b);
+    fm6x_of(tr, &x);
+    fm6x_hide(b, &x);
+}
+static void fm6_set_packed(uint32_t tr, const uint8_t *b)
+{
+    uint8_t v[FP_SIZE + 1u];
+    uint32_t i;
+    fm6_unpack(b, v);
+    for (i = 0; i < FM6X_BITS; i++)
+        v[i] |= b[i] & 128u;
+    fm6_set_sound(tr, v);
 }
 
 /* SLOT value s < FM6_NFACTORY: that factory patch into track tr (F n*: its edits) */
 static void fm6_load_slot(uint32_t tr, uint32_t s)
 {
-    uint8_t v[FP_SIZE + 1u];
     tr %= NTRK;
     s %= FM6_NFACTORY;
-    fm6_unpack(fm6_edit_f[tr] == s + 1u ? fm6_edit[tr] : FM6_FACTORY[s], v);
-    fm6_set_patch(tr, v);
+    fm6_set_packed(tr, fm6_edit_f[tr] == s + 1u ? fm6_edit[tr] : FM6_FACTORY[s]);
     fm6_slot[tr] = (uint8_t)s;
 }
 
-/* the SLOT patch p shows: the factory patch it equals (F n; looked for from SLOT s on), else OWN */
+/* the SLOT sound p (fm6_sound_of) shows: the factory patch it equals (F n; looked for from SLOT s on), else OWN */
 static int32_t fm6_match(const uint8_t *p, int32_t s)
 {
     uint8_t v[FP_SIZE + 1u];
@@ -238,8 +406,11 @@ static void fm6_reslot(uint32_t tr)
     track_t *t = &trk[tr % NTRK];
     int32_t s = t->p[P_E7];
     tr %= NTRK;
-    if (t->eng_req == ENGI_FM6)
-        t->p[P_E7] = (int16_t)(s = fm6_match(fm6_patch[tr], s));
+    if (t->eng_req == ENGI_FM6) {
+        uint8_t v[FP_SIZE + 1u];
+        fm6_sound_of(tr, v);
+        t->p[P_E7] = (int16_t)(s = fm6_match(v, s));
+    }
     fm6_slot[tr] = (uint8_t)s;
 }
 
@@ -307,13 +478,10 @@ static void fm6_poll(void)
             continue;
         bit = 1u << tr;
         if (fm6_edit_f[tr] == fm6_slot[tr] + 1u)
-            fm6_pack(fm6_patch[tr], fm6_edit[tr]);
+            fm6_pack_sound(tr, fm6_edit[tr]);
         if (s < 0 || s >= (int32_t)FM6_NFACTORY) {           /* OWN */
-            if (fm6_own_ok & bit) {
-                uint8_t v[FP_SIZE + 1u];
-                fm6_unpack(fm6_own[tr], v);
-                fm6_set_patch(tr, v);
-            }
+            if (fm6_own_ok & bit)
+                fm6_set_packed(tr, fm6_own[tr]);
             fm6_own_ok &= (uint8_t)~bit;
             fm6_slot[tr] = FM6_OWN;
             if (s != FM6_OWN)
@@ -321,7 +489,7 @@ static void fm6_poll(void)
             continue;
         }
         if (fm6_slot[tr] == FM6_OWN && !(fm6_own_ok & bit)) {
-            fm6_pack(fm6_patch[tr], fm6_own[tr]);
+            fm6_pack_sound(tr, fm6_own[tr]);
             fm6_own_ok |= (uint8_t)bit;
         }
         fm6_load_slot(tr, (uint32_t)s);

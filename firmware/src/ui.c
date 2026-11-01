@@ -1448,8 +1448,8 @@ typedef struct {
     uint8_t what;                /* UNDO_SOUND | UNDO_PAT: what the loads since the copy changed (undo_swap) */
     uint8_t eng, preset, user;
     uint8_t pid;                 /* (Skiff phase 5) the pattern the track was on (trk_pid): only there does it undo */
-    uint8_t fm6_slot;            /* the track's FM6 patch and its SLOT (eng_fm6.c): an edited or a project's */
-    uint8_t fm6[FP_SIZE + 1u];   /* patch is the track's own, not a factory one */
+    uint8_t fm6_slot;            /* the track's FM6 sound and its SLOT (eng_fm6.c fm6_sound_of): an edited or a */
+    uint8_t fm6[FP_SIZE + 1u];   /* project's patch is the track's own, not a factory one */
     dx_lane_t dx[DV_NLANE];      /* (Skiff phase 7, UNDO_KIT) the DRUM-X kit as it was */
     int16_t p[P_COUNT];
     union {
@@ -1584,6 +1584,7 @@ static uint32_t track_sig(const track_t *t)      /* the sound (an FM6 track's pa
     uint8_t id[3] = {t->eng_req, t->preset, t->user};
     uint32_t h = fnv(fnv(steps_sig(t), t->p, sizeof t->p), id, 3), k = trk_index(t);
     h = fnv(h, fm6_patch[k], sizeof fm6_patch[k]); /* (a patch the editor sent between two loads) */
+    h = fnv(fnv(h, fm6_op_phase[k], 6), fm6_op_wave[k], 6);
     if (t->eng_req % NENGINES == ENGI_DRUMX)     /* ((Skiff phase 9) a kit edited between two preset loads) */
         h = fnv(h, dx_kit, sizeof dx_kit);
     for (uint32_t j = 0; j < motion.count; j++)
@@ -1750,7 +1751,7 @@ static void load_begin(track_t *t, uint32_t what)
     undo.user = t->user;
     memcpy(undo.p, t->p, sizeof undo.p);
     memcpy(undo.step, t->step, sizeof undo.step);
-    memcpy(undo.fm6, fm6_patch[i], FP_SIZE);
+    fm6_sound_of(i, undo.fm6);
     undo.fm6_slot = fm6_slot[i];
     if (what & UNDO_KIT)
         memcpy(undo.dx, dx_kit, sizeof undo.dx);
@@ -1811,7 +1812,7 @@ static void motion_undo_take(track_t *t, uint32_t tag)
     undo.user = t->user;
     memcpy(undo.p, t->p, sizeof undo.p);
     memcpy(undo.step, t->step, sizeof undo.step);
-    memcpy(undo.fm6, fm6_patch[i], FP_SIZE);
+    fm6_sound_of(i, undo.fm6);
     undo.fm6_slot = fm6_slot[i];
     undo.pid = trk_pid[i];
     motion_snapshot_track(t, &undo.motion_backup);
@@ -1913,12 +1914,12 @@ static int undo_swap(undo_t *c)
                                                    * converted DIGITAL sound), not a factory one */
         uint32_t tr = trk_index(t);
         uint8_t v[FP_SIZE + 1u], sl = fm6_slot[tr];
-        memcpy(v, fm6_patch[tr], FP_SIZE);
-        fm6_set_patch(tr, c->fm6);
+        fm6_sound_of(tr, v);
+        fm6_set_sound(tr, c->fm6);
         fm6_slot[tr] = c->fm6_slot;               /* (fm6_poll: the patch stays) */
         fm6_own_ok &= (uint8_t)~(1u << tr);
         fm6_edit_f[tr] = 0;
-        memcpy(c->fm6, v, FP_SIZE);
+        memcpy(c->fm6, v, sizeof v);
         c->fm6_slot = sl;
     }
     c->keep = 0;                                  /* the next load copies the track as it is now */
@@ -2076,7 +2077,7 @@ static void fm4_apply(track_t *t, int16_t *p)
 {
     uint8_t v[FP_SIZE + 1u];
     uint32_t pr = fm4_convert(p, v), tr = trk_index(t), f;
-    fm6_set_patch(tr, v);
+    fm6_set_sound(tr, v);
     f = motion_guard();                               /* the audio ISR sees the old sound or the new one */
     memcpy(t->p, p, sizeof t->p);
     t->eng_req = ENGI_FM6;
@@ -2224,7 +2225,7 @@ static void sound_init(void)
     if (t->eng_req % NENGINES == ENGI_FM6) {
         uint8_t v[FP_SIZE + 1u];
         fm6_unpack(FM6_INIT, v);
-        fm6_set_patch(trk_index(t), v);
+        fm6_set_sound(trk_index(t), v);
         fm6_adopt(trk_index(t));
     }
     load_end(t);

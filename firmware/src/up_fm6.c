@@ -195,13 +195,33 @@ static void upf_boot(void)                       /* up_boot, after the user pres
 #endif
 }
 
-/* slot k's patch into v (unpacked); without one, as before 1.0.3: SLOT s F n that factory patch, OWN the init voice */
+/* (#76) a version 6 record's FM6X block, after its values (eng_fm6.c FM6X_MARK): its PHASE and WAVE */
+_Static_assert(SID_COUNT + 3u + FM6X_N <= UP_SIDS, "user preset record: the SIDs and the FM6X block");
+static void upf_x(const up_rec_t *r, fm6x_t *x)
+{
+    uint32_t at = r->ver == UP_VER_SID ? r->np : UP_SIDS;
+    fm6x_block_get(r->sid + at, UP_SIDS - at, x, 1u);
+}
+static void upf_put_x(up_rec_t *r, uint32_t tr)
+{
+    fm6x_t x;
+    fm6x_of(tr, &x);
+    fm6x_block_put(r->sid + r->np, UP_SIDS - r->np, &x, 1u);
+}
+
+/* slot k's sound into v (unpacked: eng_fm6.c fm6_sound_of); without a patch, as before 1.0.3: SLOT s F n that factory
+ * patch, OWN the init voice, and no PHASE or WAVE (the record may not be the one they were stored with) */
 static void upf_patch(uint32_t k, int32_t s, uint8_t *v)
 {
     uint8_t pk[FM6_PACKED];
-    if (upf_get(k, pk))
-        memcpy(pk, s >= 0 && s < (int32_t)FM6_NFACTORY ? FM6_FACTORY[s] : FM6_INIT, FM6_PACKED);
+    fm6x_t x;
+    if (upf_get(k, pk)) {
+        fm6_unpack(s >= 0 && s < (int32_t)FM6_NFACTORY ? FM6_FACTORY[s] : FM6_INIT, v);
+        return;
+    }
     fm6_unpack(pk, v);
+    upf_x(up_rec(k), &x);
+    fm6x_hide(v, &x);
 }
 /* up_load: track t (its values just loaded from slot k) gets the record's patch (upf_patch). SLOT then shows F n or
  * OWN (fm6_adopt) */
@@ -212,7 +232,7 @@ static void upf_track_load(track_t *t, uint32_t k)
     if (tr >= NTRK || t->eng_req != ENGI_FM6)
         return;
     upf_patch(k, t->p[P_E7], v);
-    fm6_set_patch(tr, v);
+    fm6_set_sound(tr, v);
     fm6_adopt(tr);
 }
 

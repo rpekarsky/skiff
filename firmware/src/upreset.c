@@ -384,6 +384,8 @@ static int up_store(uint32_t k, const char *name)
     for (i = 0; i < P_COUNT; i++)
         v[i] = (int16_t)motion_base_value(TSEL, i);
     up_set_sound(&r, v);                                /* ((2.0) version 6) */
+    if (r.engine == ENGI_FM6)
+        upf_put_x(&r, trk_index(TSEL));
     if (r.engine == ENGI_FM6 && TSEL->p[P_E7] == FM6_OWN && name && name[0]) {   /* (FM6 LAB) its own patch takes a
                                                          * typed name (its first 10: .syx keeps it); a factory patch
                                                          * (F n) and the automatic name leave it as it is */

@@ -300,6 +300,21 @@ if [ -f build/gen/felucca_tables.h ]; then
     run "settings, the converter's build (FELUCCA_LEGACY): PER1..PER3 migration" "$OUT/settings_test_legacy"
     $CC -w -Ibuild/gen -Ifirmware/src -o "$OUT/ui_test" tests/ui_test.c -lm
     run "UI: sounds keep steps, undo, recording, MIDI overflow, pending saves, panel recovery, drum grid, song chain, GREY gray, MONO neutral" "$OUT/ui_test"
+    # (#76) the stock firmware (tag v2.1.1) reads the user sound and the project ui_test wrote with the FM6X block
+    if git rev-parse -q --verify 'v2.1.1^{commit}' >/dev/null 2>&1; then
+        STOCK=build/stock211
+        rm -rf "$STOCK" && mkdir -p "$STOCK"
+        git archive v2.1.1 firmware tests/hostsim.c | tar -x -C "$STOCK"
+        sed -n '/^static uint32_t upf_tag/,/^}/p' "$STOCK/firmware/src/up_fm6.c" > "$STOCK/upf_tag.h"
+        cp tests/stock_compat_test.c "$STOCK/tests/"
+        $CC -w -DSTOCK_USER -I"$STOCK" -o "$OUT/stock_user_test" "$STOCK/tests/stock_compat_test.c"
+        run "(#76) stock v2.1.1 reads our FM6 user sound with the FM6X block" "$OUT/stock_user_test" "$OUT"
+        $CC -w -Ibuild/gen -I"$STOCK/firmware/src" -o "$OUT/stock_proj_test" "$STOCK/tests/stock_compat_test.c" -lm
+        run "(#76) stock v2.1.1 reads our SKF4 project with the FM6X block" "$OUT/stock_proj_test" "$OUT"
+        rm -rf "$STOCK"
+    else
+        echo "== skip the stock v2.1.1 harness (no tag v2.1.1)"
+    fi
     $CC -w $LEGACY -Ibuild/gen -Ifirmware/src -o "$OUT/ui_test_legacy" tests/ui_test.c -lm
     run "UI, the converter's build (FELUCCA_LEGACY): DIGITAL sounds, SAMPLE PERC and old GM projects converted as 1.x did" "$OUT/ui_test_legacy"
     $CC -w -DFELUCCA_CDC=0 -Ibuild/gen -Ifirmware/src -o "$OUT/ui_test_rel" tests/ui_test.c -lm

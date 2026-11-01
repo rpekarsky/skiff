@@ -7,7 +7,7 @@
  *             ENV 2  RATE 3 LEVEL 3 RATE 4 LEVEL 4              PITCH 2  RATE 3 PITCH 3 RATE 4 PITCH 4
  *             KEYS   L CURVE L DEPTH R DEPTH R CURVE            LFO      WAVE RATE FADE KEY SYNC
  *             MORE   BREAK KEY RATE VELOCITY LFO AMP            DEPTH    VIBRATO VIB SENS TREMOLO
- *             OSC    PHASE WAVE (#72, #73, experiments: not in the patch, eng_fm6.c fm6_op_phase, fm6_op_wave)
+ *             OSC    PHASE WAVE (#72, #73: eng_fm6.c fm6_op_phase, fm6_op_wave; (#76) part of the sound, fm6x_t)
  *   A knob edits a copy of the patch: fm6_set_patch (the audio ISR's copy follows), fm6_edited (SLOT: OWN, or the
  *   factory patch it now is; F n*, still F n, while an own patch is kept aside: "F3* DROPPED" when that was another's
  *   F n*). ALGO and FEEDBACK show what plays (EDIT 1's ALGO and FEEDBACK on the patch) and turning them puts that in
@@ -266,17 +266,39 @@ static int32_t fm_val(const fm_field_t *f, uint32_t i, const uint8_t *p, const t
     return (int32_t)(v * 1000u / (mx ? mx : 1u));
 }
 
-/* (#72) PHASE round the cycle, +49 % on to -50 %; the next fresh note starts there, (#72b) the sounding ones glide */
-static void fm_phase_turn(uint32_t tr, uint32_t op, uint32_t k, int32_t s)
+/* track t's sound just edited: SLOT (fm6_edited), the undo copy taken before it */
+static void fm_edited(track_t *t, uint32_t tr)
 {
-    fm6_set_phase(tr, op, (uint32_t)((fm6_op_phase[tr][op] + accel(EN_K1 + k, s, 100) % 100 + 100) % 100));
+    uint32_t dropped = fm6_edited(tr);
+    sound_undo_done(t);
+    if (dropped) {
+        char msg[] = "F0* DROPPED";
+        msg[1] = (char)('0' + dropped);
+        ui_message(msg);
+    }
+}
+/* (#72) PHASE round the cycle, +49 % on to -50 %: the next fresh note starts there, (#72b) the sounding ones glide.
+ * (#73) WAVE, SINE .. SQUARE: KNOB k of operator op turned s on track t */
+static void fm_osc_turn(track_t *t, uint32_t tr, uint32_t is_phase, uint32_t op, uint32_t k, int32_t s)
+{
+    uint32_t was = is_phase ? fm6_op_phase[tr][op] : fm6_op_wave[tr][op];
+    uint32_t to = is_phase ? (uint32_t)((int32_t)was + accel(EN_K1 + k, s, 100) % 100 + 100) % 100u
+                        : (uint32_t)clamp((int32_t)was + (s > 0 ? 1 : -1), 0, FM6_NWAVE - 1);
+    if (to == was)
+        return;
+    sound_undo_take(t, cur_page()->title);
+    if (is_phase)
+        fm6_set_phase(tr, op, to);
+    else
+        fm6_set_wave(tr, op, to);
+    fm_edited(t, tr);
 }
 
 /* KNOB k (0..3) turned s on sheet pg (0 OPERATOR, 1 ALL OPS) */
 static void fm_knob(uint32_t pg, uint32_t k, int32_t s)
 {
     track_t *t = TSEL;
-    uint32_t tr = fm_tr(), w = fm_win(pg), i, mx, dropped;
+    uint32_t tr = fm_tr(), w = fm_win(pg), i, mx;
     const fm_field_t *f = &FM_F[pg & 1u][w][k & 3u];
     uint8_t v[FP_SIZE + 1u];
     int32_t d = s > 0 ? 1 : -1, x;
@@ -284,12 +306,8 @@ static void fm_knob(uint32_t pg, uint32_t k, int32_t s)
     if (!f->label || t->eng_req % NENGINES != ENGI_FM6)
         return;
     i = fm_at(pg, f);
-    if (f->fmt == FMF_PHASE) {
-        fm_phase_turn(tr, i / FP_OP, k, s);
-        return;
-    }
-    if (f->fmt == FMF_OPWAVE) {
-        fm6_set_wave(tr, i / FP_OP, (uint32_t)clamp((int32_t)fm6_op_wave[tr][i / FP_OP] + d, 0, FM6_NWAVE - 1));
+    if (f->fmt == FMF_PHASE || f->fmt == FMF_OPWAVE) {
+        fm_osc_turn(t, tr, f->fmt == FMF_PHASE, i / FP_OP, k, s);
         return;
     }
     mx = fm6_max(i);
@@ -320,13 +338,7 @@ static void fm_knob(uint32_t pg, uint32_t k, int32_t s)
     if (zeroed < P_COUNT)
         t->p[zeroed] = 0;
     fm6_set_patch(tr, v);
-    dropped = fm6_edited(tr);
-    sound_undo_done(t);
-    if (dropped) {
-        char msg[] = "F0* DROPPED";
-        msg[1] = (char)('0' + dropped);
-        ui_message(msg);
-    }
+    fm_edited(t, tr);
 }
 static void fm_op_knob(uint32_t k, int32_t s) { fm_knob(0, k, s); }
 static void fm_all_knob(uint32_t k, int32_t s) { fm_knob(1, k, s); }

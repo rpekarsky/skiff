@@ -903,6 +903,7 @@ static int snd_of(uint32_t k, uint8_t *b)
     esnd_t s;                                      /* (the main loop's stack: 448 B, once) */
     const track_t *t = &trk[k % NTRK];
     uint32_t i, u = user_of(t);
+    fm6x_t sx, tx;
     b[0] = (uint8_t)(u < UP_SLOTS ? 0x80u | u : t->eng_req + 1u);
     b[1] = (uint8_t)(u < UP_SLOTS ? 0u : t->preset);
     if (!esnd_make(k, b, &s))
@@ -910,8 +911,12 @@ static int snd_of(uint32_t k, uint8_t *b)
     for (i = 0; i < P_COUNT; i++)
         if (!param_kept(i) && motion_base_value(t, i) != s.p[i])
             return 0;
-    if (s.fm6 && memcmp(fm6_patch[k % NTRK], s.f6, FP_SIZE))
-        return 0;
+    if (s.fm6) {
+        fm6x_take(s.f6, &sx);
+        fm6x_of(k, &tx);
+        if (memcmp(fm6_patch[k % NTRK], s.f6, FP_SIZE) || memcmp(&sx, &tx, sizeof sx))
+            return 0;
+    }
     return !s.kit || !memcmp(dx_kit, DX_KITS[s.kit - 1u], sizeof dx_kit);
 }
 /* .. stopped: track k onto entry e brings its sound now. No undo step (the song's, as the pattern) */
