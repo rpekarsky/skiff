@@ -73,19 +73,19 @@ static void fft_windowed(int32_t gain_q15)
 
 /* (#71) the SPECTRUM waterfall: HOME's (HOME tapped on HOME past the scopes) and (#71b) the FM6 sheet's panel (ui_fm6.c).
  * Every SPEC_SLICE_MS a slice, the newest FFT_N samples of the scope's sound (the mix at MASTER full, or the selected
- * track) as SPEC_COLS levels on a log frequency axis from bin 1 (43 Hz) to bin 240 (10.3 kHz), 8 columns an octave: a
+ * track) as SPEC_COLS levels on a log frequency axis from bin 1 (43 Hz) to bin 240 (10.3 kHz), 16 columns an octave: a
  * column narrower than a bin read between the two either side of it, a wider one its loudest bin. A level is 64 dB
  * under a full-scale sine, SPEC_Q_DB steps a dB. The newest slice in front, the older crawling back a slice a redraw,
  * SPEC_SLICES of them (a second), drawn as WAVE's (ui_wf.c); kept in the FM6 panel's room (ui_fm6.c fm_room_lend): after
  * an FM6 page's envelopes or WAVE, another sound, or a second away, the history starts over */
-#define SPEC_COLS 64u
+#define SPEC_COLS 128u                               /* (x 25 slices: 3200 B of the room's 4608) */
 #define SPEC_SLICES 25u
 #define SPEC_SLICE_MS 40u
 #define SPEC_Q_DB 4
 #define SPEC_FS_L2 (26 << 16)                         /* a full-scale sine's bin power, log2 Q16: (32767 / 4)^2 */
 #define SPEC_Q_PER_L2 3083                           /* levels a unit of that log2, Q24: SPEC_Q_DB x 3.01 dB */
-#define SPEC_EDGE0_Q16 62746                         /* column 0's low edge in bins, Q16: 240^(-1/126) */
-#define SPEC_COL_Q16 71493                           /* a column's high edge over its low one, Q16: 240^(1/63) */
+#define SPEC_EDGE0_Q16 64137                         /* column 0's low edge in bins, Q16: 240^(-1/254) */
+#define SPEC_COL_Q16 68426                           /* a column's high edge over its low one, Q16: 240^(1/127) */
 #define SPEC_FILL 30
 typedef struct {                                      /* where a waterfall is drawn */
     int16_t x0, x1;                                   /* the front slice from x0, the back one's end at x1 */
@@ -186,7 +186,7 @@ static int32_t spec_y256(const void *v, uint32_t j, int32_t col, int32_t w)
 /* the frequencies under the front slice */
 static void spec_axis(void)
 {
-    static const struct { const char *hz; uint8_t col; } MARK[3] = {{"100", 10}, {"1K", 36}, {"10K", 63}};
+    static const struct { const char *hz; uint8_t col; } MARK[3] = {{"100", 20}, {"1K", 73}, {"10K", 126}};
     int32_t y = spec.geo.floor_y + 4, k;
     for (k = 0; k < 3; k++) {
         int32_t x = spec.geo.x0 + MARK[k].col * spec_width() / ((int32_t)SPEC_COLS - 1);

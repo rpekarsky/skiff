@@ -11118,8 +11118,8 @@ static int test_h1n_eq(void)
     song.master_q12 = mq;
     return bad;
 }
-/* (#71) HOME's SPECTRUM: a column's place on the log axis, bin 1 .. bin 240 over 64 columns, worked out here on its own */
-static uint32_t spec_col_of(double bin) { return (uint32_t)floor(63.0 * log(bin) / log(240.0) + 0.5); }
+/* (#71) HOME's SPECTRUM: a column's place on the log axis, bin 1 .. bin 240 over SPEC_COLS, worked out here on its own */
+static uint32_t spec_col_of(double bin) { return (uint32_t)floor((SPEC_COLS - 1.0) * log(bin) / log(240.0) + 0.5); }
 static uint32_t spec_loudest(const uint8_t *col)
 {
     uint32_t c, at = 0;
