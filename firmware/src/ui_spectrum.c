@@ -17,32 +17,36 @@ static int32_t log2_q16(uint32_t x)
 #define FFT_N 512u
 static int16_t fft_re[FFT_N], fft_im[FFT_N];
 
-/* in place, radix 2, halved at each of its 9 stages (the magnitudes never grow: no overflow); the twiddles from SINE */
-static void fft_run(void)
+/* n points (up to 1024: SINE's turn) in place, radix 2, halved at each stage (the magnitudes never grow: no overflow);
+ * the twiddles from SINE */
+static void fft_run(int16_t *re, int16_t *im, uint32_t n)
 {
     uint32_t i, j, k, half;
-    for (i = 1, j = 0; i < FFT_N; i++) {
-        uint32_t b = FFT_N >> 1;
+    for (i = 1, j = 0; i < n; i++) {
+        uint32_t b = n >> 1;
         for (; j & b; b >>= 1)
             j ^= b;
         j |= b;
         if (i < j) {
-            int16_t t = fft_re[i];
-            fft_re[i] = fft_re[j];
-            fft_re[j] = t;
+            int16_t t = re[i];
+            re[i] = re[j];
+            re[j] = t;
+            t = im[i];
+            im[i] = im[j];
+            im[j] = t;
         }
     }
-    for (half = 1; half < FFT_N; half <<= 1)
+    for (half = 1; half < n; half <<= 1)
         for (k = 0; k < half; k++) {
             uint32_t a = k * (512u / half);           /* (SINE: 1024 a turn; the angle 2 pi k / (2 half)) */
             int32_t c = SINE[(a + 256u) & 1023u], s = -SINE[a & 1023u];
-            for (i = k; i < FFT_N; i += 2u * half) {
-                int32_t tr = (fft_re[i + half] * c - fft_im[i + half] * s) >> 15;
-                int32_t ti = (fft_re[i + half] * s + fft_im[i + half] * c) >> 15;
-                fft_re[i + half] = (int16_t)((fft_re[i] - tr) >> 1);
-                fft_im[i + half] = (int16_t)((fft_im[i] - ti) >> 1);
-                fft_re[i] = (int16_t)((fft_re[i] + tr) >> 1);
-                fft_im[i] = (int16_t)((fft_im[i] + ti) >> 1);
+            for (i = k; i < n; i += 2u * half) {
+                int32_t tr = (re[i + half] * c - im[i + half] * s) >> 15;
+                int32_t ti = (re[i + half] * s + im[i + half] * c) >> 15;
+                re[i + half] = (int16_t)((re[i] - tr) >> 1);
+                im[i + half] = (int16_t)((im[i] - ti) >> 1);
+                re[i] = (int16_t)((re[i] + tr) >> 1);
+                im[i] = (int16_t)((im[i] + ti) >> 1);
             }
         }
 }
@@ -68,7 +72,7 @@ static void fft_windowed(int32_t gain_q15)
         fft_re[i] = (int16_t)(x * hann >> 16);
         fft_im[i] = 0;
     }
-    fft_run();
+    fft_run(fft_re, fft_im, FFT_N);
 }
 
 /* (#71) the SPECTRUM waterfall: HOME's (HOME tapped on HOME past the scopes) and (#71b) the FM6 sheet's panel (ui_fm6.c).
@@ -111,34 +115,40 @@ static struct {
     uint32_t tick;                                    /* fm1_ms / SPEC_SLICE_MS when the newest slice was taken */
     uint8_t front;                                    /* its row in the room */
     uint8_t sound;                                    /* what the history is of: 0 the mix, else the track + 1 */
+    uint8_t holds_hd;                                 /* the room is SPECTRUM HD's, not the history */
     uint16_t top;                                     /* AUTO's top level, Q8 */
+    uint16_t hd_n;                                    /* SPECTRUM HD: the samples gathered, */
+    uint32_t hd_w;                                    /* the next one's place in the scope's count, */
+    uint8_t hd_gen;                                   /* the spectra made (the panel redrawn for each) */
     spec_geo_t geo;                                   /* the one being drawn */
 } spec __attribute__((section(".pool")));
 static uint8_t *fm_room_lend(int *kept);
+
+/* a level from how far under full scale a power is (log2 Q16) */
+static int32_t spec_level(int32_t under_fs)
+{
+    return clamp(255 - (((under_fs >> 8) * SPEC_Q_PER_L2) >> 16), 0, 255);
+}
 
 /* bin k's level; the snapshot was raised by shift bits */
 static int32_t spec_bin(uint32_t k, int32_t shift)
 {
     uint32_t power = (uint32_t)(fft_re[k] * fft_re[k]) + (uint32_t)(fft_im[k] * fft_im[k]);
-    int32_t under_fs;
-    if (!power)
-        return 0;
-    under_fs = SPEC_FS_L2 + (shift << 17) - log2_q16(power);
-    return clamp(255 - (((under_fs >> 8) * SPEC_Q_PER_L2) >> 16), 0, 255);
+    return power ? spec_level(SPEC_FS_L2 + (shift << 17) - log2_q16(power)) : 0;
 }
 
-/* the column from bin lo to bin hi (Q16) */
-static uint8_t spec_col(uint32_t lo, uint32_t hi, int32_t shift)
+/* the column from bin lo to bin hi (Q16), the bins' levels from bin */
+static uint8_t spec_col(uint32_t lo, uint32_t hi, int32_t shift, int32_t (*bin)(uint32_t k, int32_t shift))
 {
     uint32_t k = (lo >> 16) + 1u, mid = (lo + hi) >> 1;
     int32_t loudest = 0, a, b;
     if (k << 16 > hi) {
-        a = spec_bin(mid >> 16, shift);
-        b = spec_bin((mid >> 16) + 1u, shift);
+        a = bin(mid >> 16, shift);
+        b = bin((mid >> 16) + 1u, shift);
         return (uint8_t)(a + (((b - a) * (int32_t)(mid & 0xFFFFu)) >> 16));
     }
     for (; k << 16 <= hi; k++) {
-        int32_t v = spec_bin(k, shift);
+        int32_t v = bin(k, shift);
         if (v > loudest)
             loudest = v;
     }
@@ -157,7 +167,7 @@ static void spec_slice(uint8_t *col)
     fft_windowed(32768 << shift);
     for (c = 0; c < SPEC_COLS; c++, lo = hi) {
         hi = (uint32_t)((uint64_t)lo * SPEC_COL_Q16 >> 16);
-        col[c] = spec_col(lo, hi, shift);
+        col[c] = spec_col(lo, hi, shift, spec_bin);
     }
 }
 
@@ -178,12 +188,12 @@ static const spec_tune_t *spec_cfg(void)
 static int32_t spec_range(void) { return SPEC_RANGE_DB[spec_cfg()->range] * SPEC_Q_DB; }
 static int32_t spec_top_q8(void) { return spec_cfg()->top_full_scale ? 255 << 8 : spec.top; }
 
-/* AUTO's top after ticks: up to the new slice's loudest column at once, else falling */
-static void spec_follow_top(const uint8_t *col, uint32_t ticks)
+/* AUTO's top after ticks: up to the loudest of the n new columns at once, else falling */
+static void spec_follow_top(const uint8_t *col, uint32_t n, uint32_t ticks)
 {
     int32_t top = (int32_t)spec.top - (int32_t)(ticks > SPEC_SLICES ? SPEC_SLICES : ticks) * SPEC_TOP_FALL_Q8;
     uint32_t c;
-    for (c = 0; c < SPEC_COLS; c++)
+    for (c = 0; c < n; c++)
         if (col[c] << 8 > top)
             top = col[c] << 8;
     spec.top = (uint16_t)(top > SPEC_TOP_LOWEST << 8 ? top : SPEC_TOP_LOWEST << 8);
@@ -195,29 +205,35 @@ static const uint8_t *spec_history(void)
     int kept;
     uint8_t *room = fm_room_lend(&kept);
     uint32_t tick = fm1_ms / SPEC_SLICE_MS;
-    if (kept && tick == spec.tick && spec.sound == spec_sound())
+    if (kept && !spec.holds_hd && tick == spec.tick && spec.sound == spec_sound())
         return room;
-    if (!kept || tick - spec.tick > SPEC_SLICES || spec.sound != spec_sound())
+    if (!kept || spec.holds_hd || tick - spec.tick > SPEC_SLICES || spec.sound != spec_sound())
         memset(room, 0, SPEC_SLICES * SPEC_COLS);
+    spec.holds_hd = 0;
     spec.sound = spec_sound();
     spec.front = (uint8_t)((spec.front + SPEC_SLICES - 1u) % SPEC_SLICES);
     spec_slice(room + spec.front * SPEC_COLS);
-    spec_follow_top(room + spec.front * SPEC_COLS, tick - spec.tick);
+    spec_follow_top(room + spec.front * SPEC_COLS, SPEC_COLS, tick - spec.tick);
     spec.tick = tick;
     return room;
 }
 
 static int32_t spec_width(void) { return spec.geo.x1 - spec.geo.x0 - ((int32_t)SPEC_SLICES - 1) * spec.geo.step; }
 static int32_t spec_foot_y(uint32_t j) { return spec.geo.floor_y - (int32_t)j * spec.geo.step; }
+/* a level (Q8) on a line whose foot is at foot, in 1/256 px */
+static int32_t spec_level_y256(int32_t foot, int32_t level256)
+{
+    int32_t top = spec_top_q8(), floor = top > spec_range() << 8 ? top - (spec_range() << 8) : 0;
+    int32_t over_floor = level256 > floor ? level256 - floor : 0;
+    int32_t y = (foot << 8) - over_floor * spec.geo.amp * spec_cfg()->zoom_q / ((top - floor) >> 6);
+    return y > spec.geo.top_y << 8 ? y : spec.geo.top_y << 8;
+}
 static int32_t spec_y256(const void *v, uint32_t j, int32_t col, int32_t w)
 {
     const uint8_t *lv = v;
     uint32_t pos = (uint32_t)col * (SPEC_COLS - 1u) * 256u / (uint32_t)w, i = pos >> 8;
-    int32_t a = lv[i], b = lv[i < SPEC_COLS - 1u ? i + 1u : i], level256 = (a << 8) + (b - a) * (int32_t)(pos & 255u);
-    int32_t top = spec_top_q8(), floor = top > spec_range() << 8 ? top - (spec_range() << 8) : 0;
-    int32_t over_floor = level256 > floor ? level256 - floor : 0;
-    int32_t y = (spec_foot_y(j) << 8) - over_floor * spec.geo.amp * spec_cfg()->zoom_q / ((top - floor) >> 6);
-    return y > spec.geo.top_y << 8 ? y : spec.geo.top_y << 8;
+    int32_t a = lv[i], b = lv[i < SPEC_COLS - 1u ? i + 1u : i];
+    return spec_level_y256(spec_foot_y(j), (a << 8) + (b - a) * (int32_t)(pos & 255u));
 }
 
 /* the frequencies under the front slice */
@@ -279,9 +295,161 @@ static void spec_tune_turn(uint32_t k, int32_t s)
     else if (k == 3u)
         spec_tune.zoom_q = (uint8_t)clamp((int32_t)spec_tune.zoom_q + s, 2, 8);
 }
-/* HOME's: the panel's width, the back slice's range up to y 4 */
+/* (#71) SPECTRUM HD (HOME's fifth tap: the mix): one spectrum at 4x the waterfall's resolution, no history. The room
+ * holds SPEC_HD_N consecutive samples of the scope instead, gathered every frame (spec_hd_gather: the scope's ring holds
+ * 23 ms, a frame comes every 15 ms or so; a longer tap would cost the audio ISR's buffer 3 KB the pool has not got),
+ * two a complex point (the even ones real, the odd imaginary) for a SPEC_HD_PTS point FFT in place, the real spectrum
+ * split out of it: bins of 10.8 Hz, a 93 ms window, ~10 spectra a second. A frame later than the ring (a gap) starts
+ * the window over. SPEC_HD_COLS columns, a pixel each, on a log axis from bin 2 (21.5 Hz) to bin 960 (10.3 kHz), 24 an
+ * octave, under a peak line held and falling ~10 dB a second; RANGE, TOP and ZOOM Y as the waterfall's */
+#define SPEC_HD_N 2048u
+#define SPEC_HD_PTS (SPEC_HD_N / 2u)
+#define SPEC_HD_COLS 216u
+#define SPEC_HD_FS_L2 (30 << 16)                      /* a full-scale sine's bin power, log2 Q16: 32767^2 (the split's 4x) */
+#define SPEC_HD_EDGE0_Q16 129204                     /* column 0's low edge in bins, Q16: 2 x 480^(-1/430) */
+#define SPEC_HD_COL_Q16 67445                        /* a column's high edge over its low one, Q16: 480^(1/215) */
+#define SPEC_HD_PEAK_FALL 3                          /* levels a spectrum */
+#define SPEC_HD_GAP (SCOPE_N - 64u)                  /* how far behind the ring's head its samples are still whole */
+typedef struct {
+    int16_t re[SPEC_HD_PTS], im[SPEC_HD_PTS];
+    uint8_t level[SPEC_HD_COLS], peak[SPEC_HD_COLS];
+} spec_hd_room_t;
+_Static_assert(sizeof(spec_hd_room_t) <= 4608u, "SPECTRUM HD in the FM6 panel's room (ui_fm6.c FM_WF_BUF)");
+static const spec_hd_room_t *spec_hd_fft __attribute__((section(".pool")));   /* (spec_hd_bin's, while analysed) */
+
+/* SINE at half its steps (2048 a turn), the odd ones between two */
+static int32_t sine_half_step(uint32_t a2) { return (SINE[(a2 >> 1) & 1023u] + SINE[((a2 + 1u) >> 1) & 1023u]) >> 1; }
+static int32_t log2_q16_wide(uint64_t x)
+{
+    int32_t e = 0;
+    for (; x >> 32; x >>= 2)
+        e += 2;
+    return log2_q16((uint32_t)x) + (e << 16);
+}
+
+/* bin k of the samples' real spectrum, 4x: Z[k] + conj Z[N-k] - i W^k (Z[k] - conj Z[N-k]), W = e^(-i pi / N) */
+static int32_t spec_hd_bin(uint32_t k, int32_t shift)
+{
+    const spec_hd_room_t *r = spec_hd_fft;
+    uint32_t m = (SPEC_HD_PTS - k) & (SPEC_HD_PTS - 1u);
+    int32_t er = r->re[k] + r->re[m], ei = r->im[k] - r->im[m], dr = r->re[k] - r->re[m], di = r->im[k] + r->im[m];
+    int32_t c = sine_half_step(k + 512u), s = sine_half_step(k);
+    int64_t xr = er + ((c * di - s * dr) >> 15), xi = ei - ((c * dr + s * di) >> 15);
+    uint64_t power = (uint64_t)(xr * xr + xi * xi);
+    return power ? spec_level(SPEC_HD_FS_L2 + (shift << 17) - log2_q16_wide(power)) : 0;
+}
+
+/* the gathered samples raised (or halved) by whole bits to 16383 at most (a complex point's parts then stay inside 16
+ * bits through the FFT), Hann-windowed, through the FFT; the columns, the peak line and AUTO's top from it */
+static void spec_hd_analyse(spec_hd_room_t *r)
+{
+    int32_t loudest = 0, shift;
+    uint32_t i, c, lo = SPEC_HD_EDGE0_Q16, hi, tick = fm1_ms / SPEC_SLICE_MS;
+    for (i = 0; i < SPEC_HD_N; i++) {
+        int32_t x = (i & 1u ? r->im : r->re)[i >> 1], size = x < 0 ? -x : x;
+        if (size > loudest)
+            loudest = size;
+    }
+    for (shift = loudest > 16383 ? -1 : 0; loudest && shift >= 0 && loudest << (shift + 1) <= 16383;)
+        shift++;
+    for (i = 0; i < SPEC_HD_N; i++) {
+        int16_t *x = (i & 1u ? r->im : r->re) + (i >> 1);
+        int32_t raised = shift < 0 ? *x >> 1 : *x << shift, hann = 32767 - sine_half_step(i + 512u);
+        *x = (int16_t)(raised * hann >> 16);
+    }
+    fft_run(r->re, r->im, SPEC_HD_PTS);
+    spec_hd_fft = r;
+    for (c = 0; c < SPEC_HD_COLS; c++, lo = hi) {
+        int32_t fallen;
+        hi = (uint32_t)((uint64_t)lo * SPEC_HD_COL_Q16 >> 16);
+        r->level[c] = spec_col(lo, hi, shift, spec_hd_bin);
+        fallen = r->peak[c] - SPEC_HD_PEAK_FALL;
+        r->peak[c] = (uint8_t)(r->level[c] > fallen ? r->level[c] : fallen);
+    }
+    spec_follow_top(r->level, SPEC_HD_COLS, tick - spec.tick);
+    spec.tick = tick;
+    spec.hd_gen++;
+}
+
+/* the room as SPECTRUM HD's: taken over, the window starts with what the scope's ring still holds */
+static spec_hd_room_t *spec_hd_room(void)
+{
+    int kept;
+    spec_hd_room_t *r = (spec_hd_room_t *)fm_room_lend(&kept);
+    if (kept && spec.holds_hd)
+        return r;
+    memset(r->level, 0, sizeof r->level);
+    memset(r->peak, 0, sizeof r->peak);
+    spec.holds_hd = 1;
+    spec.hd_n = 0;
+    spec.hd_w = scope_head() - SPEC_HD_GAP;
+    spec.top = SPEC_TOP_LOWEST << 8;
+    spec.tick = fm1_ms / SPEC_SLICE_MS;
+    return r;
+}
+
+/* every frame while SPECTRUM HD shows (ui_draw.c ui_draw): the scope's new samples into the window, a spectrum made
+ * once it is full */
+static void spec_hd_gather(void)
+{
+    spec_hd_room_t *r = spec_hd_room();
+    uint32_t head = scope_head();
+    int32_t unmaster = scope_unmaster_q8();
+    if (head - spec.hd_w > SPEC_HD_GAP) {
+        spec.hd_n = 0;
+        spec.hd_w = head - SPEC_HD_GAP;
+    }
+    for (; spec.hd_w != head && spec.hd_n < SPEC_HD_N; spec.hd_w++, spec.hd_n++)
+        (spec.hd_n & 1u ? r->im : r->re)[spec.hd_n >> 1] = scope_sample(spec.hd_w, unmaster);
+    if (spec.hd_n < SPEC_HD_N)
+        return;
+    spec_hd_analyse(r);
+    spec.hd_n = 0;
+}
+
+static int32_t spec_hd_y256(const void *v, uint32_t j, int32_t col, int32_t w)
+{
+    (void)j;
+    (void)w;
+    return spec_level_y256(spec.geo.floor_y, ((const uint8_t *)v)[col] << 8);
+}
+
+static void spec_hd_axis(void)
+{
+    static const struct { const char *hz; uint8_t col; } MARK[8] = {{"50", 29}, {"100", 53}, {"200", 78}, {"500", 110},
+                                                                    {"1K", 134}, {"2K", 158}, {"5K", 190}, {"10K", 214}};
+    int32_t k;
+    for (k = 0; k < 8; k++) {
+        int32_t x = spec.geo.x0 + MARK[k].col;
+        cv_rect(x, spec.geo.floor_y + 1, 1, 2, T_MID);
+        cv_text_in(x - 11, spec.geo.floor_y + 4, 22, &AF_S, MARK[k].hz, T_MID, T_SURF);
+    }
+}
+
+/* the spectrum filled in under its line, the peak line over it */
+static void spec_hd_draw(const spec_geo_t *g, uint16_t c)
+{
+    const spec_hd_room_t *r = spec_hd_room();
+    const int32_t w = (int32_t)SPEC_HD_COLS - 1;
+    const wf_slice_t peak = {r->peak, 1, g->x0, w, 0, 0, spec_hd_y256}, now = {r->level, 0, g->x0, w, 0, 0, spec_hd_y256};
+    int32_t col;
+    spec.geo = *g;
+    for (col = 1; col <= w; col++) {
+        int32_t y = spec_hd_y256(r->level, 0, col, w) >> 8;
+        cv_rect(g->x0 + col, y + 1, 1, g->floor_y - y, ux.h1n ? T_DIM : ux_mix(T_SURF, c, 25));
+    }
+    wf_draw_slice(&peak, ux.h1n ? T_MID : ux_mix(T_SURF, c, 55));
+    wf_draw_slice(&now, ux.h1n ? T_TEXT : c);
+    spec_hd_axis();
+}
+
+/* HOME's: the panel's width; the waterfall's back slice up to y 4, HD's peaks clear of the caption */
 static void graph_spectrum(uint16_t c)
 {
-    const spec_geo_t home = {12, 228, (int16_t)(cv_h - 20), 4, 2, 50};
-    spec_draw(&home, c);
+    const spec_geo_t waterfall = {12, 228, (int16_t)(cv_h - 20), 4, 2, 50};
+    const spec_geo_t hd = {11, 228, (int16_t)(cv_h - 20), 18, 0, (int16_t)(cv_h - 38)};
+    if (home_spectrum_hd())
+        spec_hd_draw(&hd, c);
+    else
+        spec_draw(&waterfall, c);
 }

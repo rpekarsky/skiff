@@ -34,22 +34,23 @@ static int scope_track_view(void)
     return !ui.home || ui.home_scope == HOME_SCOPE_TRACK || ui.home_scope == HOME_SCOPE_SPECTRUM_TRACK;
 }
 static int home_spectrum(void) { return ui.home && ui.home_scope >= HOME_SCOPE_SPECTRUM_MASTER; }
+static int home_spectrum_hd(void) { return ui.home && ui.home_scope == HOME_SCOPE_SPECTRUM_HD; }
 
-/* the scope's last SCOPE_N samples, oldest first: the mix at MASTER full, or the selected track */
+/* the scope's sample count so far (its ring's write index), and sample i of it: the mix at MASTER full, or the selected
+ * track */
+static uint32_t scope_head(void) { return scope_track_view() ? scope_trk_w : scope_w; }
+static int16_t scope_sample(uint32_t i, int32_t unmaster_q8)
+{
+    return scope_track_view() ? scope_trk_buf[i & (SCOPE_TRK_N - 1u)] : scope_at_full_master(i, unmaster_q8);
+}
+
+/* the scope's last SCOPE_N samples, oldest first */
 static void scope_snapshot(int16_t *snap)
 {
-    uint32_t i, w;
-    int32_t unmaster;
-    if (scope_track_view()) {
-        w = scope_trk_w;
-        for (i = 0; i < SCOPE_N; i++)
-            snap[i] = scope_trk_buf[(w + i) & (SCOPE_TRK_N - 1u)];
-        return;
-    }
-    w = scope_w;
-    unmaster = scope_unmaster_q8();
+    uint32_t i, w = scope_head();
+    int32_t unmaster = scope_unmaster_q8();
     for (i = 0; i < SCOPE_N; i++)
-        snap[i] = scope_at_full_master(w + i, unmaster);
+        snap[i] = scope_sample(w + i, unmaster);
 }
 
 #include "ui_wf.c"                                    /* (#20w, #71) the waterfalls' slices */
@@ -1649,8 +1650,8 @@ static uint32_t graph_signature(void)
     const page_t *pg = cur_page();
     const track_t *t = TSEL;
     uint32_t h = 2166136261u, i;
-    if (home_spectrum() && strip_kind() == SK_NONE)   /* (#71) a slice a tick */
-        return h ^ (fm1_ms / SPEC_SLICE_MS) ^ cpu_shown_sig();
+    if (home_spectrum() && strip_kind() == SK_NONE)   /* (#71) a slice a tick, HD's each spectrum */
+        return h ^ (home_spectrum_hd() ? spec.hd_gen * 2654435761u : fm1_ms / SPEC_SLICE_MS) ^ cpu_shown_sig();
     if (ui.home && (ui.home_scope || strip_kind() == SK_SCOPE))   /* scope: redraw every other frame */
         return h ^ (ui.frame / 2u) ^ cpu_shown_sig();
     if (ui.home) {                                   /* Skiff's tracks: on a change */
@@ -2672,7 +2673,7 @@ static void scope_caption(void)
         what[6] = (char)('1' + song.sel);
     }
     if (home_spectrum())                             /* (#71) */
-        str_cpy(what + str_len(what), " SPECTRUM", sizeof what - str_len(what));
+        str_cpy(what + str_len(what), home_spectrum_hd() ? " SPECTRUM HD" : " SPECTRUM", sizeof what - str_len(what));
     cv_rect(PANEL_X0, y - 2, text_w(&AF_S, what) + 4, AF_S_CAP_H + 4, T_SURF);   /* (CRYPT's fire, NEON's ridge reach it) */
     cv_text(PANEL_X0 + 2, 4, &AF_S, what, scope_track_view() ? scope_colour() : T_MID);
 }

@@ -1174,6 +1174,8 @@ static int test_scope_track(void)
     ok &= ui.home_scope == HOME_SCOPE_SPECTRUM_TRACK && scope_trk == song.sel + 1u &&
           track_scope_blocks(8, &loudest) == 8u * CTL / 2u && loudest > 1000;
     press(B_HOME);
+    ok &= ui.home_scope == HOME_SCOPE_SPECTRUM_HD && !scope_trk && track_scope_blocks(4, &loudest) == 0u;
+    press(B_HOME);
     ok &= ui.home && !ui.home_scope && !scope_trk && track_scope_blocks(4, &loudest) == 0u;
     go_title("EDIT 1");
     frame();
@@ -1184,7 +1186,7 @@ static int test_scope_track(void)
     trk_all_off(TSEL);
     trk_all_off(&trk[other]);
     song.master_q12 = mq;
-    return check("#59 HOME on HOME: lanes -> MASTER -> TRACK -> (#71) their spectra -> lanes; TRACK taps the selected "
+    return check("#59 HOME on HOME: lanes -> MASTER -> TRACK -> (#71) their spectra, the mix's HD -> lanes; TRACK taps the selected "
                  "track only, while shown; "
                  "(#59b) a page: always the track, back on HOME the cycle as it was", ok);
 }
@@ -11315,16 +11317,16 @@ static int test_spectrum_height(void)
     spec_tune = (spec_tune_t){1, 0, 4};
     spec.top = 0;
     memset(row, tone, sizeof row);
-    spec_follow_top(row, 1);
+    spec_follow_top(row, SPEC_COLS, 1);
     ok &= spec.top == tone << 8 && spec_height_px(tone) == 50 && spec_height_px(0) == 0;
     spec_tune.zoom_q = 8;
     ok &= spec_height_px(tone) == 100;
     spec.geo.top_y = 80;
     ok &= spec_height_px(tone) == 40;
     memset(row, 0, sizeof row);
-    spec_follow_top(row, SPEC_SLICES);
+    spec_follow_top(row, SPEC_COLS, SPEC_SLICES);
     ok &= abs((int32_t)spec.top - ((tone - 10 * SPEC_Q_DB) << 8)) < 256;
-    spec_follow_top(row, SPEC_SLICES);
+    spec_follow_top(row, SPEC_COLS, SPEC_SLICES);
     ok &= spec.top == SPEC_TOP_LOWEST << 8;
     spec_tune = (spec_tune_t){1, 0, 4};
     ui_prefs &= ~PREF_BPM_LOCK;
@@ -11343,6 +11345,88 @@ static int test_spectrum_height(void)
     spec_tune = (spec_tune_t){1, 0, 4};
     return check("(#71) SPECTRUM's height: RANGE 48 / 64 / 80 dB under TOP 0 DB or AUTO (falling 10 dB/s), ZOOM Y; "
                  "SHIFT + SELECT on HOME: RANGE", ok);
+}
+/* (#71) SPECTRUM HD: the mix's samples into the scope's ring as the audio would write them, gathered every 256 (a frame's
+ * worth and some); tones at HD bins (10.77 Hz each), one or two at a time */
+static uint32_t hd_col_of(double bin) { return (uint32_t)floor((SPEC_HD_COLS - 1.0) * log(bin / 2.0) / log(480.0) + 0.5); }
+static void hd_feed(const double *bin, uint32_t tones, double amp, uint32_t n)
+{
+    uint32_t i, t;
+    for (i = 0; i < n; i++, scope_w++) {
+        double v = 0.0;
+        for (t = 0; t < tones; t++)
+            v += amp * sin(6.2831853 * bin[t] * scope_w / SPEC_HD_N);
+        scope_buf[scope_w & (SCOPE_N - 1u)] = (int16_t)v;
+        if ((i & 255u) == 255u)
+            spec_hd_gather();
+    }
+}
+static uint32_t hd_loudest(const uint8_t *col, uint32_t from, uint32_t to)
+{
+    uint32_t c, at = from;
+    for (c = from; c <= to; c++)
+        if (col[c] > col[at])
+            at = c;
+    return at;
+}
+/* a tone peaks in its column at its level (55 Hz and 1 kHz, -6 dB, to 1 dB); 54 Hz and 86 Hz stand apart, 6 dB over the
+ * dip between them, where the waterfall's bins (43 Hz) run them together; the peak line holds a tone gone, falling 3
+ * levels a spectrum; a frame later than the ring starts the window over */
+static int test_spectrum_hd(void)
+{
+    static const double ONE[2][1] = {{5.0}, {93.0}}, TWO[2] = {5.0, 8.0};
+    const spec_hd_room_t *r;
+    uint8_t col[SPEC_COLS], gen;
+    uint32_t k, a, b, dip, mq = song.master_q12;
+    int32_t want = 255 + (int32_t)floor(SPEC_Q_DB * 20.0 * log10(16384.0 / 32767.0) + 0.5);
+    int ok = 1, kept;
+    ui_power_on();
+    song.master_q12 = MASTER_FULL;
+    ui.home = 1;
+    ui.home_scope = HOME_SCOPE_SPECTRUM_HD;
+    spec_tune = (spec_tune_t){1, 0, 4};
+    r = (const spec_hd_room_t *)fm_room_lend(&kept);
+    for (k = 0; k < 2u; k++) {
+        hd_feed(ONE[k], 1, 16384.0, 2u * SPEC_HD_N);
+        a = hd_loudest(r->level, 0, SPEC_HD_COLS - 1u);
+        if (a != hd_col_of(ONE[k][0]) || abs(r->level[a] - want) > SPEC_Q_DB) {
+            printf("  HD bin %.0f: column %u (want %u), level %u (want %d)\n", ONE[k][0], a, hd_col_of(ONE[k][0]),
+                   r->level[a], want);
+            ok = 0;
+        }
+    }
+    hd_feed(TWO, 2, 8000.0, 2u * SPEC_HD_N);
+    a = hd_loudest(r->level, hd_col_of(4.0), hd_col_of(6.5));
+    b = hd_loudest(r->level, hd_col_of(6.5), hd_col_of(10.0));
+    dip = a;
+    for (k = a; k <= b; k++)
+        dip = r->level[k] < r->level[dip] ? k : dip;
+    ok &= a == hd_col_of(5.0) && b == hd_col_of(8.0) && r->level[a] - r->level[dip] >= 6 * SPEC_Q_DB &&
+          r->level[b] - r->level[dip] >= 6 * SPEC_Q_DB;
+    for (k = 0; k < SCOPE_N; k++)
+        scope_buf[k] = (int16_t)(8000.0 * (sin(6.2831853 * 1.25 * k / SCOPE_N) + sin(6.2831853 * 2.0 * k / SCOPE_N)));
+    spec_slice(col);
+    for (dip = spec_col_of(1.25), k = spec_col_of(1.25); k <= spec_col_of(2.0); k++)
+        dip = col[k] < col[dip] ? k : dip;
+    ok &= col[spec_col_of(1.25)] - col[dip] < 6 * SPEC_Q_DB;
+    a = hd_col_of(93.0);
+    hd_feed(ONE[1], 1, 16384.0, 2u * SPEC_HD_N);
+    memset(scope_buf, 0, sizeof scope_buf);
+    hd_feed(ONE[1], 1, 0.0, SPEC_HD_N);
+    ok &= r->level[a] < want - 40 * SPEC_Q_DB && abs(r->peak[a] - (want - SPEC_HD_PEAK_FALL)) <= SPEC_Q_DB;
+    hd_feed(ONE[1], 1, 0.0, SPEC_HD_N);
+    ok &= abs(r->peak[a] - (want - 2 * SPEC_HD_PEAK_FALL)) <= SPEC_Q_DB;
+    hd_feed(ONE[1], 1, 0.0, SPEC_HD_N - 512u);
+    gen = spec.hd_gen;
+    scope_w += SCOPE_N;                                 /* (the next gather 768 behind: the last 448 kept, 3 x 256 on) */
+    hd_feed(ONE[1], 1, 0.0, 1024u);
+    ok &= spec.hd_gen == gen && spec.hd_n == SPEC_HD_GAP + 768u;
+    hd_feed(ONE[1], 1, 0.0, SPEC_HD_N);
+    ok &= spec.hd_gen == gen + 1u;
+    song.master_q12 = mq;
+    go_home();
+    return check("(#71) SPECTRUM HD: a tone in its column at its level (55 Hz, 1 kHz), 54 + 86 Hz apart (the waterfall "
+                 "merges them), the peak line held and falling, a gap starts the window over", ok);
 }
 /* MENU > DISPLAY > POPUP TIME: DEFAULT (each box its own, stored 0), 0.1 .. 2.7 s for the TAKE box and the undo box;
  * the undo window stays UNDO_WIN. POPUP CLOSE: TIMER (stored 0), ON INPUT (the window ends too) */
@@ -11582,6 +11666,7 @@ int main(void)
     bad += test_spectrum_history();
     bad += test_fm6_spectrum_view();
     bad += test_spectrum_height();
+    bad += test_spectrum_hd();
     bad += test_popup_time();
     bad += test_h1n_song_pick();
     bad += test_fm6_charts();
