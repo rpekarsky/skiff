@@ -3109,6 +3109,22 @@ static int engine_cycle(const char *const *want, uint32_t n)   /* EDIT tapped fr
     return ok;
 }
 /* (FM6 LAB) EDIT > OPERATOR and ALL OPS: every byte of an FM6 track's patch from the knobs (ui_fm6.c) */
+/* (#72b) OSC's PHASE card on OPERATOR (the picked operator) reads val %, its gauge at gauge (0..1000) */
+static int phase_card_is(const char *val, int32_t gauge)
+{
+    const fm_field_t *f = &FM_F[0][FMW_OSC][0];
+    char b[16] = {0};
+    const char *unit = "";
+    int32_t g = fm_val(f, fm_at(0, f), fm6_patch[fm_tr()], TSEL, b, &unit);
+    return str_eq(b, val) && str_eq(unit, "%") && g == gauge;
+}
+/* (#72b) operator tab k (OP1 = 0) beside its number on OSC */
+static int phase_tab_is(uint32_t k, const char *val)
+{
+    char b[16] = {0};
+    fm_tab_value(b, k, FM_TAB_PHASE);
+    return str_eq(b, val);
+}
 static int test_fm6_lab(void)
 {
     int bad = 0, ok;
@@ -3166,11 +3182,20 @@ static int test_fm6_lab(void)
         uint8_t gen = fm6_pgen[tr];
         memcpy(was, fm6_patch[tr], sizeof was);
         turn(EN_K1, 1);
-        ok = fm6_op_phase[tr][5u - 2u] == 1u;
+        ok = fm6_op_phase[tr][5u - 2u] == 1u && phase_card_is("+1", 51 * 1000 / 99);
         turn(EN_K1, -2);
-        ok &= fm6_op_phase[tr][5u - 2u] == 99u && fm6_op_phase[tr][5u - 1u] == 0u;
+        ok &= fm6_op_phase[tr][5u - 2u] == 99u && fm6_op_phase[tr][5u - 1u] == 0u && phase_card_is("-1", 49 * 1000 / 99);
         ok &= !memcmp(fm6_patch[tr], was, FP_SIZE) && fm6_pgen[tr] == gen;
-        bad += check("(#72) PHASE: K1 turns OP3's phase, 99 % past 0, the patch untouched", ok);
+        bad += check("(#72) PHASE: K1 turns OP3's phase, -1 % past 0, the patch untouched", ok);
+        fm6_set_phase(tr, 5u - 2u, 49);
+        ok = phase_card_is("+49", 1000) && phase_tab_is(2, "49");
+        turn(EN_K1, 1);
+        ok &= fm6_op_phase[tr][5u - 2u] == 50u && phase_card_is("-50", 0) && phase_tab_is(2, "-50");
+        turn(EN_K1, -1);
+        ok &= phase_card_is("+49", 1000);
+        fm6_set_phase(tr, 5u - 2u, 75);
+        ok &= phase_card_is("-25", 25 * 1000 / 99) && phase_tab_is(2, "-25") && phase_tab_is(1, "0");
+        bad += check("(#72b) PHASE on the card and tab: -50 .. +49 %, +49 on to -50 and back, 75 % of a cycle -25", ok);
         turn(EN_K2, 1);                                 /* (#73) WAVE: OP3's, SINE .. CAMEL2, at once (fm6_pgen) */
         ok = fm6_op_wave[tr][5u - 2u] == FM6_W_SIN2 && fm6_pgen[tr] != gen;
         turn(EN_K2, -1);
@@ -3384,6 +3409,130 @@ static void fm6_first_block(const uint8_t *v, uint8_t pct, int32_t *y)
     for (i = 0; i < 4000u; i += CTL)
         track_render(TSEL, b, CTL);
     fm6_op_phase[tr][5] = 0;
+}
+/* (#72b) a C4 on patch v held past its attack, every operator at PHASE 0: its note */
+static fm6_note_t *fm6_held_c4(const uint8_t *v)
+{
+    uint32_t tr = trk_index(TSEL), i;
+    int32_t b[CTL];
+    fm6_set_patch(tr, v);
+    fm6_adopt(tr);
+    for (i = 0; i < 6u; i++)
+        fm6_set_phase(tr, i, 0);
+    trk_note_on(TSEL, 60, 100);
+    for (i = 0; i < 64u; i++)
+        track_render(TSEL, b, CTL);
+    for (i = 0; i < NVOICE; i++)
+        if (TSEL->v[i].active && TSEL->v[i].note == 60u)
+            return fm6_note_of(TSEL, &TSEL->v[i]);
+    return 0;
+}
+static void fm6_release_c4(void)
+{
+    uint32_t i;
+    int32_t b[CTL];
+    trk_note_off(TSEL, 60);
+    for (i = 0; i < 4000u; i += CTL)
+        track_render(TSEL, b, CTL);
+}
+/* the phase (rad) of the sine at w rad a sample best fitting y[0 .. len) (least squares), 0 at a sine from y[0] */
+static double sine_phase(const int32_t *y, uint32_t len, double w)
+{
+    double ss = 0, cc = 0, sc = 0, ys = 0, yc = 0, a, b, det;
+    uint32_t j;
+    for (j = 0; j < len; j++) {
+        double sn = sin(w * j), cs = cos(w * j);
+        ss += sn * sn; cc += cs * cs; sc += sn * cs; ys += y[j] * sn; yc += y[j] * cs;
+    }
+    det = ss * cc - sc * sc;
+    a = (ys * cc - yc * sc) / det;
+    b = (yc * ss - ys * sc) / det;
+    return atan2(b, a);
+}
+static int32_t max_sample_step(const int32_t *y, uint32_t len)
+{
+    int32_t worst = 0;
+    uint32_t j;
+    for (j = 1; j < len; j++)
+        worst = abs(y[j] - y[j - 1u]) > worst ? abs(y[j] - y[j - 1u]) : worst;
+    return worst;
+}
+#define GLIDE_BLOCKS 72u
+/* (#72b) PHASE turned on a held INIT C4 (OP1 the carrier alone): its phase glides to the new offset, never clicks */
+static int test_fm6_phase_live(void)
+{
+    static int32_t still[GLIDE_BLOCKS * CTL], turned[GLIDE_BLOCKS * CTL], jumped[GLIDE_BLOCKS * CTL];
+    uint32_t tr, b, at25 = 0, at75 = 0;
+    uint8_t v[FP_SIZE + 1u];
+    int bad = 0, ok;
+    double w = 6.283185307 * fm6_freq(fm6_note_logfreq(60 * 16, 0)) / 16777216.0, shift;
+    int32_t steady, step, jump;
+    fm6_note_t *n;
+    ui_power_on();
+    host_preset(TSEL, ENGI_FM6, 0);
+    TSEL->p[P_E7] = FM6_OWN;
+    tr = trk_index(TSEL);
+    fm6_unpack(FM6_INIT, v);
+    fm6_held_c4(v);
+    for (b = 0; b < GLIDE_BLOCKS; b++)
+        track_render(TSEL, memset(&still[b * CTL], 0, CTL * sizeof *still), CTL);
+    fm6_release_c4();
+    n = fm6_held_c4(v);
+    for (b = 0; b < GLIDE_BLOCKS; b++) {
+        if (b == 2u)
+            fm6_set_phase(tr, 5, 25);
+        if (b == 40u)
+            fm6_set_phase(tr, 5, 75);                   /* (+25 to -25: half a cycle, the farthest) */
+        track_render(TSEL, memset(&turned[b * CTL], 0, CTL * sizeof *turned), CTL);
+        if (!at25 && n && n->phase_at[5] == fm6_phase_q16(25))
+            at25 = b + 1u - 2u;
+        if (!at75 && n && n->phase_at[5] == fm6_phase_q16(75))
+            at75 = b + 1u - 40u;
+    }
+    fm6_release_c4();
+    shift = sine_phase(&turned[20 * CTL], 20 * CTL, w) - sine_phase(&still[20 * CTL], 20 * CTL, w);
+    shift = remainder(shift, 6.283185307);
+    ok = at25 == 12u && at75 == 24u && fabs(shift - 1.570796327) < 0.035;
+    printf("    (#72b) PHASE glide: +25 %% in %u blocks (%.1f ms), +25 to -25 %% in %u (%.1f ms); shift %.1f deg\n", at25,
+           at25 * CTL * 1000.0 / 44100, at75, at75 * CTL * 1000.0 / 44100, shift * 57.29578);
+    bad += check("(#72b) PHASE on a held note: +25 % reached in 12 blocks (9 ms), its sine 90 deg on (2 deg); +25 to -25 in "
+                 "24 (17 ms)", ok);
+    n = fm6_held_c4(v);
+    for (b = 0; b < GLIDE_BLOCKS; b++) {
+        if (b == 2u && n)
+            n->op[5].phase += 1 << 22;                  /* (the click a jump makes, for the detector's sake) */
+        track_render(TSEL, memset(&jumped[b * CTL], 0, CTL * sizeof *jumped), CTL);
+    }
+    fm6_release_c4();
+    fm6_held_c4(v);
+    for (b = 0; b < GLIDE_BLOCKS; b++) {               /* a knob turned on and on, then across the circle */
+        if (b < 40u)
+            fm6_set_phase(tr, 5, (b * 7u) % 100u);
+        else if (b == 40u)
+            fm6_set_phase(tr, 5, 50);
+        track_render(TSEL, memset(&turned[b * CTL], 0, CTL * sizeof *turned), CTL);
+    }
+    steady = max_sample_step(still, GLIDE_BLOCKS * CTL);
+    step = max_sample_step(turned, GLIDE_BLOCKS * CTL);
+    jump = max_sample_step(jumped, GLIDE_BLOCKS * CTL);
+    printf("    (#72b) the largest sample step: held %d, PHASE turning %d (x%.2f), a phase jump %d (x%.2f)\n", steady, step,
+           (double)step / steady, jump, (double)jump / steady);
+    bad += check("(#72b) PHASE turning on a held note: no sample step 15 % past the held sine's (a jump's: 3x)",
+                 step * 100 <= steady * 115 && jump > 3 * steady);
+    fm6_set_phase(tr, 5, 75);
+    fm6_release_c4();
+    trk_note_on(TSEL, 60, 100);
+    n = 0;
+    for (b = 0; b < NVOICE; b++)
+        if (TSEL->v[b].active && TSEL->v[b].note == 60u)
+            n = fm6_note_of(TSEL, &TSEL->v[b]);
+    ok = n && n->op[5].phase == fm6_start_phase(75) && n->phase_at[5] == fm6_phase_q16(75) && !n->slide[5];
+    track_render(TSEL, memset(turned, 0, CTL * sizeof *turned), CTL);
+    ok &= turned[0] < 0 && turned[1] < turned[0];
+    fm6_release_c4();
+    fm6_set_phase(tr, 5, 0);
+    bad += check("(#72b) after a glide a fresh note starts at PHASE (-25 %: from sin(270 deg) down), not gliding", ok);
+    return bad;
 }
 static int test_fm6_wave(void)
 {
@@ -11425,6 +11574,7 @@ int main(void)
     bad += test_edit_cycle();
     bad += test_fm6_lab();
     bad += test_fm6_wave();
+    bad += test_fm6_phase_live();
 #if FELUCCA_SLICE
     bad += test_slices();
     bad += test_samples_page();

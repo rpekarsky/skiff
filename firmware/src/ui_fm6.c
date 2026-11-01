@@ -141,6 +141,8 @@ static void fm_signed(char *b, int32_t v)
         *b++ = '+';
     fmt_int(b, v);
 }
+/* (#72b) PHASE's 0 .. 99 % of a cycle as -50 .. +49: the same circle round 0, its far side (-50 = +50) once */
+static int32_t fm_phase_signed(uint32_t pct) { return pct >= 50u ? (int32_t)pct - 100 : (int32_t)pct; }
 /* tenths: "-1.5", "5.5", "+0.4" (sign: a plus too) */
 static void fm_tenths(char *b, int32_t v, int sign)
 {
@@ -243,11 +245,12 @@ static int32_t fm_val(const fm_field_t *f, uint32_t i, const uint8_t *p, const t
     case FMF_ONOFF:
         str_cpy(val, v ? "ON" : "OFF", 8);
         break;
-    case FMF_PHASE:
-        v = fm6_op_phase[fm_tr()][i / FP_OP];
-        fmt_int(val, (int32_t)v);
+    case FMF_PHASE: {
+        int32_t pct = fm_phase_signed(fm6_op_phase[fm_tr()][i / FP_OP]);
+        fm_signed(val, pct);
         *unit = "%";
-        return (int32_t)v * 1000 / 99;
+        return (pct + 50) * 1000 / 99;
+    }
     case FMF_OPWAVE:
         v = fm6_op_wave[fm_tr()][i / FP_OP] % FM6_NWAVE;
         str_cpy(val, FM_OPWAVE[v], 8);
@@ -259,10 +262,10 @@ static int32_t fm_val(const fm_field_t *f, uint32_t i, const uint8_t *p, const t
     return (int32_t)(v * 1000u / (mx ? mx : 1u));
 }
 
-/* (#72) PHASE round the cycle, 99 % on to 0; the next fresh note plays it, the sounding ones keep theirs */
-static void fm_phase_turn(uint8_t *ph, uint32_t k, int32_t s)
+/* (#72) PHASE round the cycle, +49 % on to -50 %; the next fresh note starts there, (#72b) the sounding ones glide */
+static void fm_phase_turn(uint32_t tr, uint32_t op, uint32_t k, int32_t s)
 {
-    *ph = (uint8_t)((*ph + accel(EN_K1 + k, s, 100) % 100 + 100) % 100);
+    fm6_set_phase(tr, op, (uint32_t)((fm6_op_phase[tr][op] + accel(EN_K1 + k, s, 100) % 100 + 100) % 100));
 }
 
 /* KNOB k (0..3) turned s on sheet pg (0 OPERATOR, 1 ALL OPS) */
@@ -278,7 +281,7 @@ static void fm_knob(uint32_t pg, uint32_t k, int32_t s)
         return;
     i = fm_at(pg, f);
     if (f->fmt == FMF_PHASE) {
-        fm_phase_turn(&fm6_op_phase[tr][i / FP_OP], k, s);
+        fm_phase_turn(tr, i / FP_OP, k, s);
         return;
     }
     if (f->fmt == FMF_OPWAVE) {
@@ -814,8 +817,8 @@ static uint32_t fm_tab_beside(uint32_t pg, uint32_t w)
 static void fm_tab_value(char *b, uint32_t k, uint32_t beside)
 {
     const uint8_t *op = fm6_patch[fm_tr()] + (5u - k) * FP_OP;
-    if (beside == FM_TAB_PHASE) {                       /* (no "%": "25%" runs into the number) */
-        fmt_int(b, fm6_op_phase[fm_tr()][5u - k]);
+    if (beside == FM_TAB_PHASE) {                       /* (no "%", no "+": "+25%" runs into the number) */
+        fmt_int(b, fm_phase_signed(fm6_op_phase[fm_tr()][5u - k]));
         return;
     }
     if (op[FP_MODE])

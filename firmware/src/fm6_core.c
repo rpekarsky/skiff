@@ -481,7 +481,7 @@ static __attribute__((noinline)) int fm6_core_waves(int32_t *out, fm6_op_t *op, 
 }
 
 /* ------------------------------------------------------------ the note --- */
-typedef struct {                 /* a sounding note (msfa's note): 248 bytes */
+typedef struct {                 /* a sounding note (msfa's note): 284 bytes */
     fm6_env_t env[6];
     fm6_op_t op[6];
     int32_t base[6];             /* the operator's pitch: ratio: log2 offset from the note's (Q24); fixed: log2 Hz */
@@ -491,6 +491,8 @@ typedef struct {                 /* a sounding note (msfa's note): 248 bytes */
     uint8_t live, down, rsv;
     int32_t dc;                  /* (eng_fm6.c) the output's DC blocker */
     uint32_t waves;              /* (#73) operator k's waveform (FM6_W_*) at bits 3k..3k+2 */
+    uint16_t phase_at[6];        /* (#72b) the PHASE offset each operator plays (Q16 of a cycle), gliding to PHASE */
+    int32_t slide[6];            /* (#72b) this block's share of that glide: a frequency offset (Q24 a sample) */
 } fm6_note_t;
 
 static const int32_t FM6_COARSE[32] = {
@@ -579,8 +581,10 @@ static void fm6_note_retune(fm6_note_t *n, const uint8_t *p, int32_t note, int32
     }
 }
 
-/* (#72) an operator's start phase of pct % of a cycle (Q24) */
-static int32_t fm6_start_phase(uint32_t pct) { return (int32_t)(((pct % 100u) << 24) / 100u); }
+/* (#72) PHASE pct % of a cycle as Q16 of a cycle, and as an operator's start phase (Q24): the same point, so a fresh
+ * note starts where a sounding one's glide ends (#72b) */
+static uint16_t fm6_phase_q16(uint32_t pct) { return (uint16_t)(((pct % 100u) << 16) / 100u); }
+static int32_t fm6_start_phase(uint32_t pct) { return (int32_t)fm6_phase_q16(pct) << 8; }
 
 /* a note-on (msfa note init) of patch p, MIDI note `note` (transposed), velocity vel. fresh: from silence (gains and
  * feedback 0, each operator k's phase at start_pct[k] % of a cycle, msfa's 0); else a retrigger keeps them, as msfa
@@ -594,6 +598,8 @@ static void fm6_note_init(fm6_note_t *n, const uint8_t *p, int32_t note, int32_t
         for (k = 0; k < 6u; k++) {
             n->op[k].phase = fm6_start_phase(start_pct[k]);
             n->op[k].gain_out = 0;
+            n->phase_at[k] = fm6_phase_q16(start_pct[k]);
+            n->slide[k] = 0;
         }
         n->fb[0] = n->fb[1] = 0;
         n->dc = 0;
@@ -645,7 +651,8 @@ static inline __attribute__((always_inline)) int fm6_note_compute(fm6_note_t *n,
         const uint8_t *op = p + k * FP_OP;
         int32_t level = fm6_env_get(&n->env[k], op);
         uint32_t ams = FM6_AMSENS[op[FP_AMS] & 3u];
-        n->op[k].freq = fm6_freq((n->fixed >> k) & 1u ? n->base[k] : logfreq + n->base[k] + pitch_mod + dt[k]);
+        n->op[k].freq = fm6_freq((n->fixed >> k) & 1u ? n->base[k] : logfreq + n->base[k] + pitch_mod + dt[k]) +
+                        n->slide[k];
         if (ams) {                                 /* msfa: pt = exp(sensamp / 262144 * 0.07 + 12.2) */
             uint32_t sensamp = (uint32_t)(((uint64_t)amod * ams) >> 24);
             int32_t lg = FM6_AMS_C0 + (int32_t)(((uint64_t)sensamp * FM6_AMS_K) >> 10);
