@@ -1552,6 +1552,15 @@ static void fm_room_take_back(void)
     fm_wf.key = 0;
     fm_wf.whole = 0;
 }
+/* the room for another page's drawing (ui_graph.c's themed envelope rows): WAVE's slices and the SPECTRUM history then
+ * start over */
+static int16_t *fm_room_borrow(void)
+{
+    fm_room_lent = 0;
+    fm_wf.key = 0;
+    fm_wf.whole = 0;
+    return (int16_t *)fm_panel_sim.wave;
+}
 /* (#71b) SPECTRUM: the track's sound as HOME's TRACK n SPECTRUM shows it, in the graph's room */
 static void fm_spectrum_panel(uint16_t c)
 {

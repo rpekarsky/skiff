@@ -60,8 +60,8 @@ static void scope_snapshot(int16_t *snap)
 /* the height ADSR and LFO are drawn on: 100 px, or (MENU > LARGE's strip: draw_graph) the strip's ~ 56 */
 static int32_t graph_ht = 100;
 
-/* (Skiff 2.0) the envelope graphs' one buffer (ENV in every theme, ENV DEST: one is drawn at a time) */
-static int16_t eg_lv[217] __attribute__((section(".pool")));
+/* (Skiff 2.0) the themed envelope graphs' rows (217): (PO) in the FM6 panel's room (ui_fm6.c), never on screen with it */
+static int16_t *fm_room_borrow(void);
 /* (Skiff 2.0) a column under a curve from (x, y) to the foot: NEON the sun's bands (from top), QUARK a Monte Carlo fill,
  * else fill */
 static void pg_under(int32_t x, int32_t y, int32_t top, int32_t foot, uint16_t fill)
@@ -105,7 +105,7 @@ static void env_fill4(int32_t at, int32_t de, int32_t su, int32_t re, int16_t *l
  * (the knob just turned's the flame's colour) */
 static void cr_adsr(const track_t *t)
 {
-    int16_t *const lv = eg_lv;
+    int16_t *const lv = fm_room_borrow();
     const page_t *pg = cur_page();
     uint8_t L[37];
     int32_t rows = (graph_ht - 6) / 9, i, pt[3], hc = ui.hot_t ? (int32_t)ui.hot_col : -1;
@@ -180,14 +180,15 @@ static void graph_adsr(const track_t *t, uint16_t c)
     if (ux.neon || ux.quark) {                       /* (Skiff N4) NEON: the sun's bands under the curve; (Q4) QUARK: a
                                                       * Monte Carlo fill */
         int32_t xa, xd, xr;
-        env_fill4(t->p[pg->id[0]], t->p[pg->id[1]], t->p[pg->id[2]], t->p[pg->id[3]], eg_lv, 214, &xa, &xd, &xr);
+        int16_t *const lv = fm_room_borrow();
+        env_fill4(t->p[pg->id[0]], t->p[pg->id[1]], t->p[pg->id[2]], t->p[pg->id[3]], lv, 214, &xa, &xd, &xr);
         for (i = 0; i <= 214; i++)
-            eg_lv[i] = (int16_t)EGY(eg_lv[i]);     /* (the rows) */
+            lv[i] = (int16_t)EGY(lv[i]);           /* (the rows) */
         if (ux.neon)
-            ne_bands(x0, eg_lv, 215, top, bot);
+            ne_bands(x0, lv, 215, top, bot);
         else
             for (i = 0; i <= 214; i++)
-                qk_mc(x0 + i, eg_lv[i], bot);
+                qk_mc(x0 + i, lv[i], bot);
     }
     cv_rect(PANEL_X0, top, PANEL_W, 1, T_LINE);      /* (Skiff) as the B mockup: three guides, its top, middle, foot */
     cv_rect(PANEL_X0, (top + bot) / 2, PANEL_W, 1, T_LINE);

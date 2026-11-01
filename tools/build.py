@@ -324,7 +324,7 @@ def check(img, syms, dis, rt):
     if bss > 96 * 1024:
         errors.append("RAM region overflow")
     if 0x57000 - pool < 4096:                     # (#20t test build: 4 KiB for WAVE's 48 slices; was 8)
-        errors.append(f"pool headroom {0x57000 - pool} B < 8192 B")
+        errors.append(f"pool headroom {0x57000 - pool} B < 4096 B")
     return errors, notes
 
 
