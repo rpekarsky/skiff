@@ -11494,6 +11494,73 @@ static int test_six_tracks(void)
 
 /* (Skiff #27, @tradiuz) MENU > DISPLAY > PLAYHEAD: THEME (the figure on HOME's selected lane at the playhead: CRYPT's
  * torch, NEON's car, QUARK's collision) or LINE (the playhead's line only); SKIFF, HI-CON and PAPER draw none either way */
+/* GLIDE's card reads the glide as it plays: TIME the blocks a legato glide takes (any interval), RATE an octave's */
+static int glide_blocks(track_t *t, uint32_t from, uint32_t to)
+{
+    int32_t b[CTL];
+    uint32_t i, n = 0;
+    for (i = 0; i < NVOICE; i++)
+        t->v[i].pitch_cur = 0;                          /* (the first note from nowhere: no glide into it) */
+    trk_note_on(t, from, 100);
+    track_render(t, b, CTL);
+    trk_note_on(t, to, 100);
+    for (i = 0; i < 20000u; i++) {
+        uint32_t k, gliding = 0;
+        track_render(t, b, CTL);
+        for (k = 0; k < NVOICE; k++)
+            gliding |= t->v[k].active && t->v[k].pitch_cur != t->v[k].pitch16;
+        if (!gliding)
+            break;
+        n++;
+    }
+    trk_note_off(t, to);
+    trk_note_off(t, from);
+    for (i = 0; i < 4000u; i++)
+        track_render(t, b, CTL);
+    return (int)n + 1;
+}
+static int glide_card_ms10(track_t *t, int32_t v)
+{
+    char val[8];
+    const char *unit;
+    int32_t whole = 0, frac = 0, dec = -1;
+    uint32_t i;
+    param_format(&TP[P_GLIDE], v, val, &unit);
+    for (i = 0; val[i]; i++)
+        if (val[i] == '.')
+            dec = 0;
+        else if (dec < 0)
+            whole = whole * 10 + (val[i] - '0');
+        else if (dec++ < 2)
+            frac = frac * 10 + (val[i] - '0');
+    (void)t;
+    for (; dec < 2 && dec >= 0; dec++)
+        frac *= 10;
+    return unit[0] == 's' ? whole * 10000 + frac * 100 : whole * 10 + (dec > 0 ? frac / 10 : 0);
+}
+static int test_glide_card(void)
+{
+    track_t *t = TSEL;
+    int bad = 0, ok, n;
+    set_engine_of(t, 0);
+    t->p[P_VOICE] = V_MONO;
+    t->p[P_GLIDE] = 127;
+    t->p[P_GLMODE] = 1;                                 /* TIME */
+    n = glide_blocks(t, 48, 60);
+    ok = abs(glide_card_ms10(t, 127) - n * CTL * 10000 / FS) <= 100;
+    t->p[P_GLIDE] = 20;
+    n = glide_blocks(t, 48, 60);
+    ok &= abs(glide_card_ms10(t, 20) - n * CTL * 10000 / FS) <= 100;
+    bad += check("GLIDE TIME: the card reads an octave's glide as it plays (127: ~139 ms, not 10 s; 20 too)", ok);
+    t->p[P_GLMODE] = 0;                                 /* RATE */
+    t->p[P_GLIDE] = 100;
+    n = glide_blocks(t, 48, 60);
+    ok = abs(glide_card_ms10(t, 100) - n * CTL * 10000 / FS) <= 100;
+    bad += check("GLIDE RATE 100: the card reads an octave's glide", ok);
+    t->p[P_GLIDE] = 0;
+    t->p[P_VOICE] = V_POLY;
+    return bad;
+}
 static int test_playhead_line(void)
 {
     static uint16_t fig[240 * 240];
@@ -12215,6 +12282,7 @@ int main(void)
     bad += test_spectrum_hd();
     bad += test_popup_time();
     bad += test_h1n_song_pick();
+    bad += test_glide_card();
     bad += test_fm6_charts();
 #if FELUCCA_FM4
     bad += test_fm_charts();                        /* (DIGITAL's charts: built with FELUCCA_FM4=1 only) */
