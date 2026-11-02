@@ -69,13 +69,47 @@ PALETTES = [
     # (wishlist #66) LCD GREEN: LCD as it was before the H1n's backlit blue, the PO's H1N GREY (a reflective LCD): the
     # ghost and MID derived (RAISE 160,170,148; BG to ink LCD_MID_PCT)
     ("LCD GREEN", (178, 186, 166), (178, 186, 166), (28, 32, 26),  (28, 32, 26),  (28, 32, 26)),
+    # (PO, 02.11) the cell-gap LCDs (LCD_LOOK: the gaps at 25 or 50 %, the dot grid on the light ones), their ink
+    # deeper than their plain LCD's: the gaps pale it
+    ("BLUE 25",  (214, 228, 246), (214, 228, 246), (6, 12, 48),     (6, 12, 48),     (6, 12, 48)),
+    ("BLUE 50",  (214, 228, 246), (214, 228, 246), (6, 12, 48),     (6, 12, 48),     (6, 12, 48)),
+    ("GREEN 25", (178, 186, 166), (178, 186, 166), (10, 12, 8),     (10, 12, 8),     (10, 12, 8)),
+    ("GREEN 50", (178, 186, 166), (178, 186, 166), (10, 12, 8),     (10, 12, 8),     (10, 12, 8)),
+    ("NIGHT 25", (16, 24, 32),    (28, 40, 54),    (255, 250, 240), (156, 149, 148), (255, 250, 240)),
+    ("NIGHT 50", (16, 24, 32),    (28, 40, 54),    (255, 250, 240), (156, 149, 148), (255, 250, 240)),
+    # (PO, 02.11) glowing displays on black, one colour in four tones (their own ghost and MID, LCD_OWN_TONES), the
+    # gaps at 25 or 50 %: an OLED's white, the Virtual Boy's red (below the LCD floor: VBOY_MIN), a deep amber, a P1
+    # CRT's green, a VFD's cyan
+    ("OLED 25",   (0, 0, 0),       (0, 0, 0),       (255, 255, 255), (255, 255, 255), (255, 255, 255)),
+    ("OLED 50",   (0, 0, 0),       (0, 0, 0),       (255, 255, 255), (255, 255, 255), (255, 255, 255)),
+    ("VBOY 25",   (0, 0, 0),       (0, 0, 0),       (255, 0, 0), (255, 0, 0), (255, 0, 0)),
+    ("VBOY 50",   (0, 0, 0),       (0, 0, 0),       (255, 0, 0), (255, 0, 0), (255, 0, 0)),
+    ("AMBER 25",  (0, 0, 0),       (0, 0, 0),       (255, 144, 0), (255, 144, 0), (255, 144, 0)),
+    ("AMBER 50",  (0, 0, 0),       (0, 0, 0),       (255, 144, 0), (255, 144, 0), (255, 144, 0)),
+    ("CRT 25",      (0, 0, 0),       (0, 0, 0),       (51, 255, 51), (51, 255, 51), (51, 255, 51)),
+    ("CRT 50",      (0, 0, 0),       (0, 0, 0),       (51, 255, 51), (51, 255, 51), (51, 255, 51)),
+    ("VFD 25",    (0, 0, 0),       (0, 0, 0),       (64, 240, 200), (64, 240, 200), (64, 240, 200)),
+    ("VFD 50",    (0, 0, 0),       (0, 0, 0),       (64, 240, 200), (64, 240, 200), (64, 240, 200)),
 ]
 SKIFF, CRYPT, NEON, QUARK, LCD, LCD_NIGHT = "SKIFF", "CRYPT", "NEON", "QUARK", "LCD", "LCD NIGHT"
 LCD_GRAIN, LCD_GREEN = "LCD GRAIN", "LCD GREEN"
-LCD_LOOKS = (LCD, LCD_NIGHT, LCD_GRAIN, LCD_GREEN)   # src/gfx.c ux.h1n: four tones, CRYPT's font, ui_h1n.c's widgets
+# the LCD looks (src/gfx.c ux.h1n: four tones, CRYPT's font, ui_h1n.c's widgets): their cell gaps (0, 25, 50 %) and the
+# dot grid of the unlit cells (a light BG's only)
+LCD_LOOK = {LCD: (0, 1), LCD_NIGHT: (0, 0), LCD_GRAIN: (50, 0), LCD_GREEN: (0, 1),
+            "BLUE 25": (25, 1), "BLUE 50": (50, 1), "GREEN 25": (25, 1), "GREEN 50": (50, 1),
+            "NIGHT 25": (25, 0), "NIGHT 50": (50, 0),
+            **{f"{n} {g}": (g, 0) for n in ("OLED", "VBOY", "AMBER", "CRT", "VFD") for g in (25, 50)}}
+LCD_LOOKS = tuple(LCD_LOOK)
 # LCD's ghost and MID as the backlit H1n shows them: blue, off the line from BG to ink that the derived ones lie on
 # (src/gfx.c lcd_tones; THEME CUSTOM over the look derives its own)
-LCD_OWN_TONES = {LCD: ((150, 190, 240), (96, 128, 196)), LCD_GRAIN: ((150, 190, 240), (96, 128, 196))}
+H1N_TONES = ((150, 190, 240), (96, 128, 196))
+LCD_OWN_TONES = {LCD: H1N_TONES, LCD_GRAIN: H1N_TONES, "BLUE 25": H1N_TONES, "BLUE 50": H1N_TONES,
+                 # the glowing ones: an unlit cell's faint glow, MID their colour at half
+                 **{f"{n} {g}": t for n, t in (("OLED", ((40, 40, 40), (150, 150, 150))),
+                                               ("VBOY", ((70, 0, 0), (176, 0, 0))),
+                                               ("AMBER", ((60, 30, 0), (184, 96, 0))),
+                                               ("CRT", ((8, 44, 8), (34, 170, 34))),
+                                               ("VFD", ((10, 42, 34), (42, 160, 132)))) for g in (25, 50)}}
 # the six tracks' colours (src/gfx.c T_TRK; (Skiff phase 6) T5, T6 too): a palette not named here gives every track
 # its THEME. Told apart by lightness as well as hue, and always drawn with the track's number (never the colour alone)
 TRACKS = {"SKIFF": [(255, 90, 54), (34, 195, 180), (255, 191, 0), (149, 128, 255),    # vermilion teal amber violet
@@ -182,6 +216,12 @@ CHECKS = [("text", "bg", 12.0, "body text"), ("text", "surf", 9.0, "body text on
 # with four tones, at what its tones give (rounded down)
 LCD_MIN = {("text", "bg"): 8.0, ("text", "surf"): 8.0, ("mid", "bg"): 3.0, ("mid", "surf"): 3.0, ("line", "bg"): 1.2,
            ("text", "raise_"): 6.5}
+# (PO, 02.11) VBOY: pure red on black, as the Virtual Boy shows it; red is dim to the eye (5.25:1 at full), its tones
+# at what they give (rounded down), asked for by the PO over the LCD floor
+VBOY_MIN = {("text", "bg"): 5.0, ("text", "surf"): 5.0, ("mid", "bg"): 2.0, ("mid", "surf"): 2.0,
+            ("text", "raise_"): 4.0, ("theme", "bg"): 5.0, ("theme", "surf"): 5.0, ("accent", "bg"): 5.0,
+            ("accent", "surf"): 5.0, ("ink", "sel"): 5.0, ("ink", "theme"): 5.0, ("ink", "key"): 5.0,
+            ("ink", "accent"): 5.0, ("ink", "rec"): 4.5, ("key", "bg"): 3.0}
 
 
 def main():
@@ -195,6 +235,7 @@ def main():
     for name, d in rows:
         for f, b, lim, why in CHECKS:
             lim = LCD_MIN.get((f, b), lim) if name in LCD_LOOKS else lim
+            lim = VBOY_MIN.get((f, b), lim) if name.startswith("VBOY") else lim
             c = contrast(d[f], d[b])
             if c < lim:
                 fails.append(f"{name}: {f}/{b} {c:.2f} < {lim} ({why})")
@@ -238,9 +279,19 @@ def main():
                 "Felucca's oldest */"]
         out += [f"#define UI_{k}_PCT {v}" for k, v in PCT.items()] + [f"#define UI_RAISE_PCT {RAISE_PCT}   /* SURF -> TEXT */",
                                                     f"#define UI_LCD_MID_PCT {LCD_MID_PCT}   /* (LCD) BG -> TEXT */"]
-        ghost, mid = (to565(c) for c in LCD_OWN_TONES[LCD])
-        out += [f"#define UI_LCD_GHOST 0x{ghost:04x}u   /* (LCD) its own ghost and MID (CUSTOM over it: derived) */",
-                f"#define UI_LCD_MID 0x{mid:04x}u"]
+        out += ["/* each palette's LCD look (src/gfx.c palette_set): UI_LOOK_* */",
+                "#define UI_LOOK_LCD 1u          /* four tones, CRYPT's font, ui_h1n.c's widgets */",
+                "#define UI_LOOK_DOTS 2u          /* the unlit cells' dot grid */",
+                "#define UI_LOOK_OWN 4u          /* its own ghost and MID (UI_LCD_OWN; CUSTOM over it: derived) */",
+                "#define UI_LOOK_GAP25 8u          /* the cells' gaps, 25 % of the way to the backlight */",
+                "#define UI_LOOK_GAP50 16u          /* .. 50 % */",
+                "static const uint8_t UI_PAL_LOOK[] = {" + ", ".join(
+                    str(0 if n not in LCD_LOOK else 1 | 2 * LCD_LOOK[n][1] | 4 * (n in LCD_OWN_TONES) |
+                        {0: 0, 25: 8, 50: 16}[LCD_LOOK[n][0]]) for n in names) + "};",
+                "/* .. its own ghost and MID (UI_LOOK_OWN) */",
+                "static const uint16_t UI_LCD_OWN[][2] = {" + ", ".join(
+                    "{0x%04x, 0x%04x}" % tuple(to565(c) for c in LCD_OWN_TONES[n]) if n in LCD_OWN_TONES else "{0, 0}"
+                    for n in names) + "};"]
         out += [f"#define UI_REC_DARK 0x{to565(REC_DARK):04x}u", f"#define UI_REC_LIGHT 0x{to565(REC_LIGHT):04x}u",
                 f"#define UI_QR_LIGHT 0x{to565(QR_LIGHT):04x}u", f"#define UI_QR_DARK 0x{to565(QR_DARK):04x}u",
                 f"#define UI_CRASH_BG 0x{to565(CRASH_BG):04x}u", f"#define UI_CRASH_INK 0x{to565(CRASH_INK):04x}u", "",

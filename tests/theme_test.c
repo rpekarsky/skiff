@@ -60,7 +60,7 @@ int main(int argc, char **argv)
         uint16_t *tok = &ux.bg;
         palette_set(p);
         assert(ux.crypt == (p == UI_CRYPT_INDEX) &&
-               ux.h1n == (p == UI_LCD_INDEX || p == UI_LCD_NIGHT_INDEX || p == UI_LCD_GRAIN_INDEX || p == UI_LCD_GREEN_INDEX));
+               ux.h1n == ((UI_PAL_LOOK[p] & UI_LOOK_LCD) != 0));
         /* text and the things read on the screen; the generator checks the same (tools/gen_ui_palettes.py) */
         struct { uint16_t fg, bg; double min; } c[] = {
             {T_TEXT, T_BG, 12.0}, {T_TEXT, T_SURF, 9.0}, {T_MID, T_BG, 5.0}, {T_MID, T_SURF, 4.0},
@@ -145,8 +145,7 @@ int main(int argc, char **argv)
                        T_SEL == ux_mix(T_BG, T_THEME, UI_SEL_PCT) && T_LANE == ux_mix(T_SURF, T_THEME, 10) &&
                        T_REC == UI_REC_LIGHT);
             assert(ux.crypt == (p == UI_CRYPT_INDEX) && ux.neon == (p == UI_NEON_INDEX) && ux.quark == (p == UI_QUARK_INDEX) &&
-                   ux.h1n == (p == UI_LCD_INDEX || p == UI_LCD_NIGHT_INDEX || p == UI_LCD_GRAIN_INDEX ||
-                              p == UI_LCD_GREEN_INDEX));
+                   ux.h1n == ((UI_PAL_LOOK[p] & UI_LOOK_LCD) != 0));
         }
         ux_cpal = 0;
         palette_set(UI_NEON_INDEX);

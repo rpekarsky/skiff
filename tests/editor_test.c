@@ -1553,7 +1553,7 @@ static int tokens_builtin(uint32_t p)                       /* palette p's own *
     for (k = 0; k < UI_NTRK; k++) c[5 + k] = UI_TRACKS[p][k];
     if (ux.h1n)                                             /* (an LCD look: its tokens pinned to four tones, gfx.c lcd_tones) */
         return T_BG == c[0] && T_TEXT == c[2] && T_THEME == c[3] && T_ACCENT == c[4] &&
-               (p == UI_LCD_INDEX || p == UI_LCD_NIGHT_INDEX || p == UI_LCD_GRAIN_INDEX || p == UI_LCD_GREEN_INDEX);
+               (UI_PAL_LOOK[p] & UI_LOOK_LCD);
     return tokens_are(c) && ux.crypt == (p == UI_CRYPT_INDEX) && ux.neon == (p == UI_NEON_INDEX) && ux.quark == (p == UI_QUARK_INDEX);
 }
 static uint32_t palettes_listed(void)                       /* UI_PALETTES: the count; the last name CUSTOM or not */

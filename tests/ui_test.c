@@ -128,18 +128,12 @@ static volatile uint32_t audio_max_us;
 #include "../firmware/src/bank.c"
 #include "phrases.h"                              /* (test material: the phrases the firmware no longer ships) */
 
-/* (#48) LCD: px, swapped, is the rail's tone there, or (BG, the ghost) one of its backlight shades (gfx.c lcd_vig);
- * LCD GRAIN: either, or it under a cell gap (gfx.c cv_lcd_gaps) */
+/* (#48) LCD: px, swapped, is the rail's tone there; LCD GRAIN: or it under a cell gap (gfx.c cv_lcd_gaps) */
 static int rail_px_ok(uint16_t px, uint16_t tone)
 {
-    uint16_t light = (uint16_t)LCD_GAP_HALF(ux_mix(ux.bg, 0xFFFFu, 30));
-    uint32_t i;
-    for (i = 0; i <= LCD_VIG; i++) {
-        uint16_t c = tone == T_RAISE ? lcd_vig[1][i] : tone == T_BG ? lcd_vig[0][i] : swap16(tone);
-        if (px == c || (ux.grain && px == swap16(LCD_GAP_HALF(swap16(c)) + light)))
-            return 1;
-    }
-    return 0;
+    uint16_t light = ux_mix(ux.bg, ux.light ? 0xFFFFu : 0u, 30);
+    uint32_t mix = tone == ux.text ? 25u : ux.gap_mix;
+    return px == swap16(tone) || (ux.grain && px == swap16(lcd_gap(tone, light, mix)));
 }
 static int check(const char *what, int ok)
 {
@@ -297,6 +291,11 @@ static void turn(uint32_t role, int32_t s)
     host_enc[panel.enc[role]] += s * panel.dir[role];
     frame();
     host_ticks += 200000u;                        /* (no knob acceleration between the turns) */
+}
+static void turns(uint32_t role, int32_t s, uint32_t n)
+{
+    while (n--)
+        turn(role, s);
 }
 static void stop_transport(void) { transport_req = 0; song.playing = 0; }
 static void user_rename(void) { turn(EN_K3, 2); press(B_OCTUP); }      /* (U2) USER: KNOB 3 past ERASE, NAME */
@@ -1674,8 +1673,8 @@ static int test_display_preferences(void)
                  settings.palette == 2 && T_BG == UI_PALETTES[2].bg && ux.light && ui.menu == 1 && !song.octave &&
                  memcmp(before, host_screen, sizeof before) && !memcmp(sounds, trk, sizeof sounds));
     bad += check("THEME KNOB 1 steps on to CRYPT, NEON (both the pixel faces), QUARK (Barlow), LCD, LCD NIGHT (pixel), the "
-                 "plain GAMEBOY, AMBER and BLUE-STN, LCD GRAIN, LCD GREEN (pixel), then wraps to SKIFF (R1: SKIFF HI-CON PAPER "
-                 "CRYPT NEON QUARK, #29 LCD LCD NIGHT, wishlist #47, #66)",
+                 "plain GAMEBOY, AMBER and BLUE-STN, LCD GRAIN, LCD GREEN (pixel), the cell-gap and glowing LCDs to VFD 50, then wraps "
+                 "to SKIFF (R1: SKIFF HI-CON PAPER CRYPT NEON QUARK, #29 LCD LCD NIGHT, wishlist #47, #66, PO 02.11)",
                  str_eq(MI_NAME[MI_COLOR], "THEME") && (turn(EN_K1, 1), settings.palette == UI_CRYPT_INDEX) && ux.crypt &&
                  str_eq(UI_PALETTES[UI_CRYPT_INDEX].name, "CRYPT") && &AF_S == &AF_S_PX &&
                  (turn(EN_K1, 1), settings.palette == UI_NEON_INDEX) && ux.neon && !ux.crypt && &AF_S == &AF_S_PX &&
@@ -1686,12 +1685,14 @@ static int test_display_preferences(void)
                  str_eq(UI_PALETTES[UI_LCD_INDEX].name, "LCD") &&
                  (turn(EN_K1, 1), settings.palette == UI_LCD_NIGHT_INDEX) && ux.h1n && &AF_S == &AF_S_PX &&
                  str_eq(UI_PALETTES[UI_LCD_NIGHT_INDEX].name, "LCD NIGHT") &&
-                 (turn(EN_K1, 1), turn(EN_K1, 1), turn(EN_K1, 1), settings.palette == NPALETTES - 3u) &&
-                 !ux.h1n && &AF_S != &AF_S_PX && str_eq(UI_PALETTES[NPALETTES - 3u].name, "BLUE-STN") &&
+                 (turn(EN_K1, 1), turn(EN_K1, 1), turn(EN_K1, 1), settings.palette == 10u) &&
+                 !ux.h1n && &AF_S != &AF_S_PX && str_eq(UI_PALETTES[10].name, "BLUE-STN") &&
                  (turn(EN_K1, 1), settings.palette == UI_LCD_GRAIN_INDEX) && ux.h1n && ux.grain && &AF_S == &AF_S_PX &&
                  str_eq(UI_PALETTES[UI_LCD_GRAIN_INDEX].name, "LCD GRAIN") &&
                  (turn(EN_K1, 1), settings.palette == UI_LCD_GREEN_INDEX) && ux.h1n && !ux.grain && ux.light &&
                  &AF_S == &AF_S_PX && str_eq(UI_PALETTES[UI_LCD_GREEN_INDEX].name, "LCD GREEN") &&
+                 (turns(EN_K1, 1, NPALETTES - 1u - UI_LCD_GREEN_INDEX), settings.palette == NPALETTES - 1u) && ux.h1n &&
+                 ux.grain && ux.gap_mix == 50u && !ux.light && str_eq(UI_PALETTES[NPALETTES - 1u].name, "VFD 50") &&
                  (turn(EN_K1, 1), settings.palette == UI_SKIFF_INDEX) && !ux.h1n && !ux.crypt && !ux.neon && &AF_S != &AF_S_PX &&
                  str_eq(UI_PALETTES[UI_SKIFF_INDEX].name, "SKIFF"));
     settings.lowcut = 2;
