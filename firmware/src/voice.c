@@ -417,11 +417,40 @@ static __attribute__((noinline)) void lfo_restart(track_t *t)
 static uint32_t fol_on(track_t *t, uint32_t note);
 static uint32_t fol_off(track_t *t, uint32_t note);
 static void fol_drop(const track_t *t);
+/* LEGATO / UNISON: the last key's release waits LEG_WAIT_BLOCKS (~4 ms) for a next note, which then plays legato. A
+ * sequencer's step and a DAW's MIDI end a note just before the next one starts (a TIE chain's end and a DAW's note-off
+ * first on the same tick: 0; GATE 127 up to a 1/4 at 120 BPM: under 4 ms): without the wait every note would start its
+ * envelope again. A shorter GATE's gap (a RATCH part, staccato) stays longer than the wait. Per track, in the pool (track_t's size stays as
+ * the ISR's trk[] indexing wants); counted down by legato_block, ended by the next note-on */
+#define LEG_WAIT_BLOCKS ((FS / 250u + CTL - 1u) / CTL)
+static uint8_t leg_wait[NTRK] __attribute__((section(".pool")));
+static void legato_release(track_t *t)
+{
+    uint32_t i, nv = trk_vmode(t) == V_UNISON ? trk_nvoice(t) : 1u;
+    for (i = 0; i < nv; i++)
+        if (t->v[i].gate) {
+            t->v[i].gate = 0;
+            t->v[i].stage = 3;
+        }
+    t->mono_note = 0;
+}
+static void legato_block(track_t *t)              /* once a block (seq.c seq_tick): a release whose wait is over lands */
+{
+    uint32_t k = (uint32_t)(t - trk);
+    if (leg_wait[k] && !--leg_wait[k])
+        legato_release(t);
+}
+
 static void trk_note_on(track_t *t, uint32_t note, uint32_t vel)
 {
     uint32_t any = 0, i, mode = trk_vmode(t);
     if (t->p[P_MUTE])
         return;
+    if (leg_wait[t - trk]) {                        /* a LEGATO release waiting: another note plays legato, the same */
+        leg_wait[t - trk] = 0;                      /* one again starts anew */
+        if (note == t->mono_note)
+            legato_release(t);
+    }
     if (t->xf_on || t->eng_req != t->engine) {          /* engine switch under way: after the fade */
         for (i = 0; i < t->xp_n && t->xp_note[i] != note; i++)
             ;
@@ -481,6 +510,9 @@ static void trk_note_off(track_t *t, uint32_t note)
             uint32_t next = mono_pick(t);
             if (next) {                                 /* fall back to a held note, legato */
                 mono_play(t, next, t->v[0].vel, 0, t->p[P_GLIDE] != 0);
+            } else if (mode != V_MONO && t->v[0].gate) {
+                leg_wait[t - trk] = (uint8_t)LEG_WAIT_BLOCKS;
+                return;                                 /* (its voices sound on, the release waits) */
             } else {
                 for (i = 0; i < nv; i++)
                     if (t->v[i].gate) {
@@ -501,6 +533,7 @@ static void trk_note_off(track_t *t, uint32_t note)
 static void trk_all_off(track_t *t)
 {
     uint32_t i;
+    leg_wait[t - trk] = 0;
     for (i = 0; i < NVOICE; i++) {
         t->v[i].gate = 0;
         t->v[i].stage = t->v[i].active ? 3 : 0;

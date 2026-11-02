@@ -1588,6 +1588,7 @@ static __attribute__((noinline)) void seq_nudge(track_t *t, uint32_t period, uin
 static void seq_tick(track_t *t, uint32_t n)
 {
     uint32_t period, len;
+    legato_block(t);                                /* a LEGATO release that waited for a next note (voice.c) */
     if (t->seq_n && !t->seq_hold) {
         if (t->seq_off > n)
             t->seq_off -= n;
