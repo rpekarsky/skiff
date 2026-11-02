@@ -130,7 +130,8 @@ static struct {
     uint8_t quark;               /* (Skiff) THEME QUARK: Skiff's font, its own widgets (design/mock_quark.py) */
     uint8_t h1n;                 /* (Skiff #29) THEME LCD, LCD NIGHT: an LCD's four tones, CRYPT's font, own widgets */
     uint8_t grain;               /* (PO) THEME LCD GRAIN: LCD's look, its cells' gaps instead of the dot grid */
-    uint8_t gap_mix;             /* .. how far its gaps go to the backlight: 25, 50, 75 % (GRAIN 25, LCD GRAIN, GRAIN 75) */
+    uint8_t gap_mix;             /* .. how far its gaps go to the backlight: 25 or 50 % (UI_PAL_LOOK) */
+    uint8_t dots;                /* the LCD looks' dot grid of the unlit cells (UI_PAL_LOOK; a light BG only) */
     uint32_t gen;                /* bumped by palette_set (the text ramps follow) */
 } ux;
 /* The look (Skiff, DESIGN.md: BLOCKS; U2: the only one, FLAT and LINE retired): SURF tiles with square corners on the
@@ -184,12 +185,12 @@ static uint16_t lcd_snap(uint16_t c)
     return lcd.tone[(l > lcd.th[0]) + (l > lcd.th[1]) + (l > lcd.th[2])];
 }
 static uint8_t lcd_flat __attribute__((section(".pool")));   /* 1: no cell gaps (the splash: drawn flat) */
-static void lcd_tones(int own)                    /* own: LCD's ghost and MID, else derived (tools/gen_ui_palettes.py) */
+static void lcd_tones(const uint16_t *own)       /* own: the palette's ghost and MID, 0: derived (gen_ui_palettes.py) */
 {
     uint32_t i, k;
     if (own)
-        ux.raise = UI_LCD_GHOST;
-    ux.mid = ux.dim = own ? UI_LCD_MID : ux_mix(ux.bg, ux.text, UI_LCD_MID_PCT);
+        ux.raise = own[0];
+    ux.mid = ux.dim = own ? own[1] : ux_mix(ux.bg, ux.text, UI_LCD_MID_PCT);
     ux.line = ux.tint = ux.lane = ux.grid = ux.raise;
     ux.sel = ux.key = ux.rec = ux.text;
     lcd.tone[0] = ux.bg; lcd.tone[1] = ux.raise; lcd.tone[2] = ux.mid; lcd.tone[3] = ux.text;
@@ -214,10 +215,9 @@ static void palette_set(uint32_t i)
     ux.crypt = i == UI_CRYPT_INDEX;
     ux.neon = i == UI_NEON_INDEX;
     ux.quark = i == UI_QUARK_INDEX;
-    ux.grain = i == UI_LCD_GRAIN_INDEX || i == UI_GRAIN_25_INDEX || i == UI_GRAIN_75_INDEX ||
-               i == UI_LCD_NIGHT_INDEX || i == UI_LCD_GREEN_INDEX;   /* (GRAIN 25 / 75, NIGHT, GREEN: a test) */
-    ux.gap_mix = i == UI_GRAIN_25_INDEX ? 25u : i == UI_GRAIN_75_INDEX ? 75u : 50u;
-    ux.h1n = i == UI_LCD_INDEX || i == UI_LCD_NIGHT_INDEX || ux.grain || i == UI_LCD_GREEN_INDEX;
+    ux.h1n = (UI_PAL_LOOK[i] & UI_LOOK_LCD) != 0;
+    ux.grain = (UI_PAL_LOOK[i] & (UI_LOOK_GAP25 | UI_LOOK_GAP50)) != 0;
+    ux.gap_mix = UI_PAL_LOOK[i] & UI_LOOK_GAP25 ? 25u : 50u;
     uf.f = UF_FACE[ux.crypt || ux.neon || ux.h1n];   /* (CRYPT, NEON, LCD: the pixel faces) */
     uf.cap = UF_CAP[ux.crypt || ux.neon || ux.h1n];
     ux.bg = p->bg; ux.surf = p->surf; ux.text = p->text; ux.theme = p->theme;
@@ -240,9 +240,9 @@ static void palette_set(uint32_t i)
     ux.grid = ux_mix(ux.surf, ux.text, 6);
     ux.light = ux_luma(ux.bg) > 128u;
     ux.rec = ux.light ? UI_REC_LIGHT : UI_REC_DARK;
+    ux.dots = ux.light && (UI_PAL_LOOK[i] & UI_LOOK_DOTS);
     if (ux.h1n)
-        lcd_tones((i == UI_LCD_INDEX || i == UI_LCD_GRAIN_INDEX || i == UI_GRAIN_25_INDEX || i == UI_GRAIN_75_INDEX) &&
-                  !ux_cpal);
+        lcd_tones((UI_PAL_LOOK[i] & UI_LOOK_OWN) && !ux_cpal ? UI_LCD_OWN[i] : 0);
     ux.gen++;                                    /* the text ramps change with the coverage curve */
 }
 
@@ -305,32 +305,33 @@ static void cv_lcd_dots(uint32_t x, uint32_t y, uint32_t r0)
 }
 
 /* LCD GRAIN: the gaps between the LCD's cells, every other row and column of the screen ux.gap_mix % of the way to the
- * backlight (BG a little lighter; a dark LCD's: a little darker), over the frame as drawn. RGB565 halved or quartered
- * per channel by a shift and a mask: no channel borrows from the next */
+ * backlight (BG a little lighter; a dark LCD's: a little darker), over the frame as drawn; the ink a step less (25:
+ * none), so the letters keep their weight. RGB565 halved or quartered per channel by a shift and a mask: no channel
+ * borrows from the next */
 #define RGB565_HALF(c) (((c) >> 1) & 0x7BEFu)
 #define RGB565_QUARTER(c) (((c) >> 2) & 0x39E7u)
-static uint16_t lcd_gap(uint16_t c, uint16_t light)
+static uint16_t lcd_gap(uint16_t c, uint16_t light, uint32_t mix)
 {
-    if (ux.gap_mix == 25u)
+    if (mix == 25u)
         return (uint16_t)(c - RGB565_QUARTER(c) + RGB565_QUARTER(light));
-    if (ux.gap_mix == 75u)
-        return (uint16_t)(RGB565_QUARTER(c) + light - RGB565_QUARTER(light));
-    return (uint16_t)(RGB565_HALF(c) + RGB565_HALF(light));
+    if (mix == 50u)
+        return (uint16_t)(RGB565_HALF(c) + RGB565_HALF(light));
+    return c;
 }
 static void cv_lcd_gaps(uint32_t x, uint32_t y, uint32_t r0)
 {
     uint32_t r, i;
-    uint16_t light = ux_mix(ux.bg, ux.light ? 0xFFFFu : 0u, 30);
+    uint16_t light = ux_mix(ux.bg, ux.light ? 0xFFFFu : 0u, 30), ink = swap16(ux.text);
     for (r = r0; r < cv_h; r++) {
         uint16_t *p = cv_px + r * cv_w;
         int whole_row = !((y + r) & 1u);
         for (i = whole_row ? 0u : x & 1u; i < cv_w; i += whole_row ? 1u : 2u)
-            p[i] = swap16(lcd_gap(swap16(p[i]), light));
+            p[i] = swap16(lcd_gap(swap16(p[i]), light, p[i] == ink ? ux.gap_mix - 25u : ux.gap_mix));
     }
 }
 
 static void hn_rail_rows(uint32_t x, uint32_t y, uint32_t r0);   /* (ui_h1n.c) */
-/* (Skiff #29) THEME LCD: rows r0.. of the canvas in the LCD's four tones, the dot grid (LCD NIGHT, LCD GRAIN: none),
+/* (Skiff #29) THEME LCD: rows r0.. of the canvas in the LCD's four tones, the dot grid (UI_LOOK_DOTS),
  * (#48) the track rail, LCD GRAIN's cell gaps */
 static void cv_lcd_rows(uint32_t x, uint32_t y, uint32_t r0)
 {
@@ -345,7 +346,7 @@ static void cv_lcd_rows(uint32_t x, uint32_t y, uint32_t r0)
         }
         cv_px[i] = out;
     }
-    if (ux.light && !ux.grain)
+    if (ux.dots)
         cv_lcd_dots(x, y, r0);
     hn_rail_rows(x, y, r0);
     if (ux.grain && !lcd_flat)

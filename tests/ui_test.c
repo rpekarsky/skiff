@@ -132,7 +132,8 @@ static volatile uint32_t audio_max_us;
 static int rail_px_ok(uint16_t px, uint16_t tone)
 {
     uint16_t light = ux_mix(ux.bg, ux.light ? 0xFFFFu : 0u, 30);
-    return px == swap16(tone) || (ux.grain && px == swap16(lcd_gap(tone, light)));
+    uint32_t mix = tone == ux.text ? ux.gap_mix - 25u : ux.gap_mix;
+    return px == swap16(tone) || (ux.grain && px == swap16(lcd_gap(tone, light, mix)));
 }
 static int check(const char *what, int ok)
 {

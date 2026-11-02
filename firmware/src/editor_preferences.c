@@ -93,7 +93,7 @@ static void ed_colors_state(void)        /* stored, in use; the look; then the s
 {
     uint32_t b = cpal_bits();                          /* (none stored: 0) */
     ed_b(b & 3u);
-    ed_b(b >> 2 & 15u);
+    ed_b(b >> 2 & 63u);
     ed_bk_pack(CPAL_COLS, sizeof cpal_prev);
 }
 static uint32_t ed_colors(const uint8_t *a, uint32_t n)   /* rc: 0 done, 1 arguments; store, remove: 3, 4 as UI_SET */

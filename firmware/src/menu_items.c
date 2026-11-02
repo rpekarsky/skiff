@@ -355,7 +355,7 @@ static void menu_put(uint32_t row, uint32_t v)
     switch (row) {
     case MI_COLOR:                                     /* ((Skiff #27) CUSTOM: the stored colours in their look) */
         CPAL_BYTE = (uint8_t)(v >= NPALETTES ? CPAL_BYTE | 2u : CPAL_BYTE & ~2u);
-        settings.palette = v >= NPALETTES ? CPAL_BYTE >> 2 & 15u : v;   /* (a look past BLUE-STN: palette_set wraps it) */
+        settings.palette = v >= NPALETTES ? CPAL_BYTE >> 2 & 63u : v;   /* (a look past BLUE-STN: palette_set wraps it) */
         theme_apply();                                 /* (the menu signature redraws) */
         ui.force = 1;
         break;
