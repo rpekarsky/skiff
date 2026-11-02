@@ -69,18 +69,17 @@ PALETTES = [
     # (wishlist #66) LCD GREEN: LCD as it was before the H1n's backlit blue, the PO's H1N GREY (a reflective LCD): the
     # ghost and MID derived (RAISE 160,170,148; BG to ink LCD_MID_PCT)
     ("LCD GREEN", (178, 186, 166), (178, 186, 166), (28, 32, 26),  (28, 32, 26),  (28, 32, 26)),
-    # (PO, 02.11) GRAIN FLAT: LCD GRAIN without the backlight's fall-off, to compare on the unit
-    ("GRAIN FLAT", (214, 228, 246), (214, 228, 246), (18, 30, 84), (18, 30, 84),  (18, 30, 84)),
-    # (PO, 02.11) LCD VIG: LCD with LCD GRAIN's dithered fall-off, to compare on the unit
-    ("LCD VIG", (214, 228, 246), (214, 228, 246), (18, 30, 84),    (18, 30, 84),    (18, 30, 84)),
+    # (PO, 02.11, a test) LCD GRAIN's cell gaps at 25 % and 75 % (LCD GRAIN: 50 %), to compare on the unit
+    ("GRAIN 25", (214, 228, 246), (214, 228, 246), (18, 30, 84),   (18, 30, 84),  (18, 30, 84)),
+    ("GRAIN 75", (214, 228, 246), (214, 228, 246), (18, 30, 84),   (18, 30, 84),  (18, 30, 84)),
 ]
 SKIFF, CRYPT, NEON, QUARK, LCD, LCD_NIGHT = "SKIFF", "CRYPT", "NEON", "QUARK", "LCD", "LCD NIGHT"
-LCD_GRAIN, LCD_GREEN, GRAIN_FLAT, LCD_VIG = "LCD GRAIN", "LCD GREEN", "GRAIN FLAT", "LCD VIG"
-LCD_LOOKS = (LCD, LCD_NIGHT, LCD_GRAIN, LCD_GREEN, GRAIN_FLAT, LCD_VIG)   # src/gfx.c ux.h1n: four tones, CRYPT's font, ui_h1n.c's widgets
+LCD_GRAIN, LCD_GREEN, GRAIN_25, GRAIN_75 = "LCD GRAIN", "LCD GREEN", "GRAIN 25", "GRAIN 75"
+LCD_LOOKS = (LCD, LCD_NIGHT, LCD_GRAIN, LCD_GREEN, GRAIN_25, GRAIN_75)   # src/gfx.c ux.h1n: four tones, CRYPT's font, ui_h1n.c's widgets
 # LCD's ghost and MID as the backlit H1n shows them: blue, off the line from BG to ink that the derived ones lie on
 # (src/gfx.c lcd_tones; THEME CUSTOM over the look derives its own)
 LCD_OWN_TONES = {LCD: ((150, 190, 240), (96, 128, 196)), LCD_GRAIN: ((150, 190, 240), (96, 128, 196)),
-                 GRAIN_FLAT: ((150, 190, 240), (96, 128, 196)), LCD_VIG: ((150, 190, 240), (96, 128, 196))}
+                 GRAIN_25: ((150, 190, 240), (96, 128, 196)), GRAIN_75: ((150, 190, 240), (96, 128, 196))}
 # the six tracks' colours (src/gfx.c T_TRK; (Skiff phase 6) T5, T6 too): a palette not named here gives every track
 # its THEME. Told apart by lightness as well as hue, and always drawn with the track's number (never the colour alone)
 TRACKS = {"SKIFF": [(255, 90, 54), (34, 195, 180), (255, 191, 0), (149, 128, 255),    # vermilion teal amber violet
@@ -238,8 +237,8 @@ def main():
                 f"#define UI_LCD_NIGHT_INDEX {names.index(LCD_NIGHT)}u          /* LCD NIGHT: LCD's look, its own colours */",
                 f"#define UI_LCD_GRAIN_INDEX {names.index(LCD_GRAIN)}u          /* LCD GRAIN: LCD, the cells' gaps for the dots */",
                 f"#define UI_LCD_GREEN_INDEX {names.index(LCD_GREEN)}u          /* LCD GREEN: LCD in its first green-grey */",
-                f"#define UI_GRAIN_FLAT_INDEX {names.index(GRAIN_FLAT)}u          /* GRAIN FLAT: LCD GRAIN, no fall-off */",
-                f"#define UI_LCD_VIG_INDEX {names.index(LCD_VIG)}u          /* LCD VIG: LCD with the fall-off */",
+                f"#define UI_GRAIN_25_INDEX {names.index(GRAIN_25)}u          /* GRAIN 25: LCD GRAIN, its gaps at 25 % */",
+                f"#define UI_GRAIN_75_INDEX {names.index(GRAIN_75)}u          /* GRAIN 75: .. at 75 % */",
                 f"#define UI_THEME_TAG {THEME_TAG}u          /* stored id = UI_THEME_TAG + index */",
                 f"#define UI_PAL_TAG {PAL_TAG}u          /* before THEME: UI_PAL_TAG + an index into the eleven; below 20: "
                 "Felucca's oldest */"]
