@@ -94,6 +94,22 @@ static int play(void)
     seq_start();
     run(t, step_len(t, 0) / CTL + step_len(t, 1) / CTL - 1u, 0, 0, 0);
     bad += check("  nor ties out: a TIE after a ratcheted step holds nothing", !t->seq_n);
+    {   /* a long SLIDE note (NOTE, TIE, TIE) into the next note: held on into it, the same voice gliding (one voice
+         * start); without SLIDE the next note starts its own voice */
+        int legato = 1;
+        for (uint32_t slide = 0; slide < 2u; slide++) {
+            uint32_t starts;
+            t = one_step(1, slide ? SF_SLIDE : 0u);
+            t->p[P_SLEN] = 4;
+            t->step[1] = t->step[2] = (step_t){{0}, 0, ST_TIE};
+            t->step[3] = (step_t){{64}, 1, ST_NOTE, 0, 100};
+            seq_start();
+            starts = run(t, (step_len(t, 0) + step_len(t, 1) + step_len(t, 2) + step_len(t, 3) / 4u) / CTL, 0, 0, 0);
+            legato &= slide ? starts == 1u && t->slide_glide : starts == 2u && !t->slide_glide;
+        }
+        bad += check("  a SLIDE note held through its TIEs slides into the next note, as the roll draws it; without "
+                     "SLIDE the next one starts anew", legato);
+    }
 
     t = one_step(4, 0);                               /* the DRUM grid: hits of BD (accented) and CH */
     set_engine_of(t, ENGI_DRUM);

@@ -1297,6 +1297,9 @@ static uint32_t flam_at(const track_t *t, uint32_t period)
     uint32_t h = step_samples(t, period, t->fire_idx) / 2u;
     return h < FLAM_SAMPLES ? h : FLAM_SAMPLES;
 }
+/* seq_hold 3: a SLIDE note held on through its TIEs; its chain's last step holds it into the next note, as the piano
+ * roll draws the slide there (ui_graph.c) */
+#define SEQ_HOLD_SLIDING 3u
 static __attribute__((noinline)) void seq_step(track_t *t, const step_t *s, uint32_t period, uint32_t skip)
 {
     uint32_t i, j, gate = period * (uint32_t)t->p[P_SGATE] / 128u;
@@ -1335,7 +1338,10 @@ static __attribute__((noinline)) void seq_step(track_t *t, const step_t *s, uint
     if (s->time == ST_TIE) {
         if (t->seq_n) {
             t->seq_off = gate + period / 2u;
-            t->seq_hold = (s->flags & SF_SLIDE) != 0 || next_tie;   /* chains hold at any GATE / swing */
+            if (next_tie)                           /* chains hold at any GATE / swing */
+                t->seq_hold = t->seq_hold == SEQ_HOLD_SLIDING ? SEQ_HOLD_SLIDING : 1u;
+            else
+                t->seq_hold = (s->flags & SF_SLIDE) != 0 || t->seq_hold == SEQ_HOLD_SLIDING;
             seq_tm[k] = 0;                          /* ((#25) its notes end with it, unless the next step ties them */
             seq_h2[k] = 0;                          /* (not in RAND: the next one isn't known)) */
             seq_k[k] = (uint8_t)(t->seq_hold || t->p[P_DIR] == DIR_RAND ? 0u : seq_ties_of(t, ns, qseq, qtrn));
@@ -1433,6 +1439,8 @@ static __attribute__((noinline)) void seq_step(track_t *t, const step_t *s, uint
         /* next step a TIE: keep the notes to it (a ratchet or, Skiff, a flam never slides or ties out); (2.0) a NOTE
          * step tying some of them: those, at the GATE (seq_gate_end; not in RAND: the next one isn't known) */
         t->seq_hold = hits == 1u && !(s->flags & SF_FLAM) && ((s->flags & SF_SLIDE) != 0 || next_tie);
+        if (t->seq_hold && (s->flags & SF_SLIDE) && next_tie)
+            t->seq_hold = SEQ_HOLD_SLIDING;
         keep = t->seq_hold || t->p[P_DIR] == DIR_RAND ? 0u : seq_ties_of(t, ns, qseq, qtrn);
         if (hits != 1u || (s->flags & SF_FLAM))
             keep &= tm;
