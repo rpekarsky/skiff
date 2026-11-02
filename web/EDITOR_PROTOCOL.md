@@ -892,7 +892,7 @@ weight and no longer sets it), bit 2 reserved for a MIDI monitor, bit 3 favorite
 
 UI_SET ids: 0 palette (0..count-1, the order of UI_PALETTES: GREY GREEN AMBER ICE VIOLET ROSE PAPER
 HI-CON NIGHT MONO; 1.0.2: GREY is the MONO of 1.0.1, MONO a new black and white palette; Skiff: SKIFF HI-CON PAPER
-CRYPT NEON QUARK LCD LCD NIGHT, (wishlist #47) GAMEBOY AMBER BLUE-STN, LCD GRAIN, (#66) LCD GREEN, and (#27) CUSTOM last while a set is stored), 1 font (retired: rc 2), 2 reserved, 3 preset filter (0 all, 1 favorites). Unsupported state
+CRYPT NEON QUARK LCD LCD NIGHT, (wishlist #47) GAMEBOY AMBER BLUE-STN, LCD GRAIN, (#66) LCD GREEN, (PO 02.11) BLUE GREEN NIGHT OLED VBOY AMBER CRT VFD 25 and 50, and (#27) CUSTOM last while a set is stored), 1 font (retired: rc 2), 2 reserved, 3 preset filter (0 all, 1 favorites). Unsupported state
 fields are 127.
 Both u28 signatures are four least-significant-first 7-bit bytes; compare them
 to refresh changed favorites and user slots. Factory references use stable
@@ -1076,7 +1076,7 @@ rc 1), and the indexes after them are lower than before:
 
 | index | id | name | kind | values (min 0) | default | tab |
 | --- | --- | --- | --- | --- | --- | --- |
-| 0 | 0 | THEME (Felucca's COLOR) | 0 | 0..12: SKIFF HI-CON PAPER CRYPT NEON QUARK LCD LCD NIGHT GAMEBOY AMBER BLUE-STN LCD GRAIN LCD GREEN (the order of `UI_PALETTES`); (#27) 13 CUSTOM while a set is stored | SKIFF (a new unit) | 0 DISPLAY |
+| 0 | 0 | THEME (Felucca's COLOR) | 0 | 0..28: SKIFF HI-CON PAPER CRYPT NEON QUARK LCD LCD NIGHT GAMEBOY AMBER BLUE-STN LCD GRAIN LCD GREEN, BLUE GREEN NIGHT OLED VBOY AMBER CRT VFD each 25 and 50 (the order of `UI_PALETTES`); (#27) 29 CUSTOM while a set is stored | SKIFF (a new unit) | 0 DISPLAY |
 | 1 | 2 | LARGE | 0 | 0 OFF, 1 ON | OFF | 0 DISPLAY |
 | 2 | 3 | ANIM | 0 | 0 ON, 1 OFF | ON | 0 DISPLAY |
 | 3 | 4 | LEDS | 0 | 0 OFF, 1 DIM LO, 2 DIM HI, 3 INV (darkest first, as the menu steps them) | DIM HI | 0 DISPLAY |
