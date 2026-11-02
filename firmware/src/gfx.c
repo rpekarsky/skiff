@@ -183,9 +183,10 @@ static uint16_t lcd_snap(uint16_t c)
     return lcd.tone[(l > lcd.th[0]) + (l > lcd.th[1]) + (l > lcd.th[2])];
 }
 /* (PO) the LCD's backlight falling off toward the corners: BG and the ghost a little darker with the square of the
- * distance from the screen's centre, LCD_VIG % at the corners (cv_lcd_vignette); their shades, a percent apart */
+ * distance from the screen's centre, LCD_VIG % at the corners (cv_lcd_vignette), dithered: RGB565 has too few shades
+ * for a smooth fall-off, its steps showed as rings */
 #define LCD_VIG 11u
-static uint16_t lcd_vig[2][LCD_VIG + 1u] __attribute__((section(".pool")));   /* BG's, the ghost's; swapped */
+static uint16_t lcd_vig[2] __attribute__((section(".pool")));   /* BG, the ghost; swapped */
 static uint8_t lcd_flat __attribute__((section(".pool")));   /* 1: no fall-off, no cell gaps (the splash: drawn flat) */
 static void lcd_tones(int own)                    /* own: LCD's ghost and MID, else derived (tools/gen_ui_palettes.py) */
 {
@@ -204,10 +205,8 @@ static void lcd_tones(int own)                    /* own: LCD's ghost and MID, e
         }
     for (i = 0; i < 3u; i++)
         lcd.th[i] = (lcd_luma(lcd.tone[i]) + lcd_luma(lcd.tone[i + 1u])) / 2u;
-    for (i = 0; i <= LCD_VIG; i++) {
-        lcd_vig[0][i] = swap16(ux_mix(ux.bg, 0, (int32_t)i));
-        lcd_vig[1][i] = swap16(ux_mix(ux.raise, 0, (int32_t)i));
-    }
+    lcd_vig[0] = swap16(ux.bg);
+    lcd_vig[1] = swap16(ux.raise);
 }
 
 /* (Skiff #27) THEME CUSTOM's colours over the palette's: 11 RGB565, low byte first (BG SURF TEXT THEME ACCENT, the six
@@ -309,37 +308,51 @@ static void cv_lcd_dots(uint32_t x, uint32_t y, uint32_t r0)
 }
 
 /* the backlight's fall-off on the BG and ghost pixels of rows r0.. of the canvas going to (x, y): its level the
- * squared distance from the screen's centre in half pixels (2 * 119.5 = 239), LCD_VIG at a corner */
+ * squared distance from the screen's centre in half pixels (2 * 119.5 = 239), LCD_VIG % at a corner, in 16ths of a
+ * percent; each channel rounded by a 4x4 Bayer threshold */
 #define LCD_VIG_K ((LCD_VIG << 24) / (2u * 239u * 239u))
+static uint16_t vig_shade(uint16_t c, uint32_t pct16, uint32_t threshold)
+{
+    uint32_t r = c >> 11, g = (c >> 5) & 63u, b = c & 31u;
+    r = (r * 16u - r * pct16 / 100u + threshold) >> 4;
+    g = (g * 16u - g * pct16 / 100u + threshold) >> 4;
+    b = (b * 16u - b * pct16 / 100u + threshold) >> 4;
+    return (uint16_t)(r << 11 | g << 5 | b);
+}
 static void cv_lcd_vignette(uint32_t x, uint32_t y, uint32_t r0)
 {
+    static const uint8_t BAYER[16] = {0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5};
     uint32_t r, i;
     if (lcd_flat)
         return;
     for (r = r0; r < cv_h; r++) {
         int32_t dy = 2 * (int32_t)(y + r) - 239;
         uint16_t *p = cv_px + r * cv_w;
+        const uint8_t *row = BAYER + ((y + r) & 3u) * 4u;
         for (i = 0; i < cv_w; i++) {
             int32_t dx = 2 * (int32_t)(x + i) - 239;
-            int ghost = p[i] == lcd_vig[1][0];
-            if (ghost || p[i] == lcd_vig[0][0])
-                p[i] = lcd_vig[ghost][((uint32_t)(dx * dx + dy * dy) * LCD_VIG_K) >> 24];
+            int ghost = p[i] == lcd_vig[1];
+            if (ghost || p[i] == lcd_vig[0])
+                p[i] = swap16(vig_shade(swap16(lcd_vig[ghost]), ((uint32_t)(dx * dx + dy * dy) * LCD_VIG_K) >> 20,
+                                        row[(x + i) & 3u]));
         }
     }
 }
 
-/* LCD GRAIN: the gaps between the LCD's cells, every third row and column of the screen half way to the backlight
- * (BG, a little lighter), over the frame as drawn */
-#define LCD_GAP_HALF(c) (((c) & 0xF7DEu) >> 1)       /* (RGB565 halved per channel: an average by adding two) */
+/* LCD GRAIN: the gaps between the LCD's cells, every other row and column of the screen LCD_GAP_MIX % of the way to
+ * the backlight (BG, a little lighter), over the frame as drawn */
+#ifndef LCD_GAP_MIX
+#define LCD_GAP_MIX 30
+#endif
 static void cv_lcd_gaps(uint32_t x, uint32_t y, uint32_t r0)
 {
     uint32_t r, i;
-    uint16_t light = (uint16_t)LCD_GAP_HALF(ux_mix(ux.bg, 0xFFFFu, 30));
+    uint16_t light = ux_mix(ux.bg, 0xFFFFu, 30);
     for (r = r0; r < cv_h; r++) {
         uint16_t *p = cv_px + r * cv_w;
-        int whole_row = (y + r) % 3u == 0u;
-        for (i = whole_row ? 0u : (3u - x % 3u) % 3u; i < cv_w; i += whole_row ? 1u : 3u)
-            p[i] = swap16(LCD_GAP_HALF(swap16(p[i])) + light);
+        int whole_row = !((y + r) & 1u);
+        for (i = whole_row ? 0u : x & 1u; i < cv_w; i += whole_row ? 1u : 2u)
+            p[i] = swap16(ux_mix(swap16(p[i]), light, LCD_GAP_MIX));
     }
 }
 

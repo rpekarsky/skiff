@@ -128,18 +128,28 @@ static volatile uint32_t audio_max_us;
 #include "../firmware/src/bank.c"
 #include "phrases.h"                              /* (test material: the phrases the firmware no longer ships) */
 
-/* (#48) LCD: px, swapped, is the rail's tone there, or (BG, the ghost) one of its backlight shades (gfx.c lcd_vig);
- * LCD GRAIN: either, or it under a cell gap (gfx.c cv_lcd_gaps) */
+/* (#48) LCD: px, swapped, is the rail's tone there, or (BG, the ghost) one of its dithered backlight shades (gfx.c
+ * cv_lcd_vignette: each channel between the tone at the corners' fall-off and the tone itself); LCD GRAIN: either, or
+ * it under a cell gap (gfx.c cv_lcd_gaps) */
+static int channels_within(uint16_t px, uint16_t lo, uint16_t hi)
+{
+    static const uint16_t MASK[3] = {0xF800u, 0x07E0u, 0x001Fu};
+    uint32_t k;
+    for (k = 0; k < 3u; k++)
+        if ((px & MASK[k]) < (lo & MASK[k]) || (px & MASK[k]) > (hi & MASK[k]))
+            return 0;
+    return 1;
+}
 static int rail_px_ok(uint16_t px, uint16_t tone)
 {
-    uint16_t light = (uint16_t)LCD_GAP_HALF(ux_mix(ux.bg, 0xFFFFu, 30));
-    uint32_t i;
-    for (i = 0; i <= LCD_VIG; i++) {
-        uint16_t c = tone == T_RAISE ? lcd_vig[1][i] : tone == T_BG ? lcd_vig[0][i] : swap16(tone);
-        if (px == c || (ux.grain && px == swap16(LCD_GAP_HALF(swap16(c)) + light)))
-            return 1;
-    }
-    return 0;
+    uint16_t light = ux_mix(ux.bg, 0xFFFFu, 30), c, dark;
+    px = swap16(px);
+    if (tone != T_RAISE && tone != T_BG)
+        return px == tone || (ux.grain && px == ux_mix(tone, light, LCD_GAP_MIX));
+    c = tone == T_RAISE ? ux.raise : ux.bg;
+    dark = vig_shade(c, LCD_VIG * 16u, 0);
+    return channels_within(px, dark, c) ||
+           (ux.grain && channels_within(px, ux_mix(dark, light, LCD_GAP_MIX), ux_mix(c, light, LCD_GAP_MIX)));
 }
 static int check(const char *what, int ok)
 {
