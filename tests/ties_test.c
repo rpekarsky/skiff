@@ -329,6 +329,47 @@ static int chain_notes(void)
     return bad;
 }
 
+/* ---- LEGATO / UNISON: a note ended just before the next starts (a step's GATE, a TIE chain's end, a DAW's note-off
+ * first on the same tick) plays legato, one voice start; the same note again starts anew; MONO retriggers each ---- */
+static uint32_t legato_starts(uint32_t vm)            /* C4, E4, E4 a step each at full GATE: voice starts in a pass */
+{
+    track_t *t = overlap(vm);
+    uint32_t b, a0;
+    t->p[P_SGATE] = 127;
+    t->step[0] = (step_t){{C4}, 1, ST_NOTE, 0, 100};
+    t->step[1] = (step_t){{E4}, 1, ST_NOTE, 0, 100};
+    t->step[2] = (step_t){{E4}, 1, ST_NOTE, 0, 100};
+    t->step[3] = (step_t){{0}, 0, ST_REST, 0, 0};
+    seq_start();
+    a0 = vage;
+    for (b = 0; b < 3u * slen(t) / CTL; b++)
+        seq_tick(t, CTL);
+    return vage - a0;
+}
+static int legato(void)
+{
+    int bad = 0, ok;
+    uint32_t b, a0;
+    track_t *t;
+    bad += check("LEGATO: C4 E4 E4 at full GATE sound C4, E4 legato (no new start), E4 again anew; MONO starts each",
+                 legato_starts(V_LEGATO) == 2u && legato_starts(V_MONO) == 3u);
+    t = overlap(V_LEGATO);
+    seq_stop();
+    trk_note_on(t, C4, 100);
+    a0 = vage;
+    trk_note_off(t, C4);
+    trk_note_on(t, E4, 100);
+    ok = vage == a0 && t->v[0].gate && t->v[0].note == E4;
+    trk_note_off(t, E4);
+    for (b = 1; b < LEG_WAIT_BLOCKS; b++)
+        legato_block(t);
+    ok &= t->v[0].gate;
+    legato_block(t);
+    ok &= !t->v[0].gate && !t->mono_note;
+    bad += check("  MIDI's note-off before the next note-on: legato; the last let go ends ~4 ms later", ok);
+    return bad;
+}
+
 int main(void)
 {
     int bad = 0;
@@ -336,6 +377,7 @@ int main(void)
     bad += sequencer();
     bad += record();
     bad += chain_notes();
+    bad += legato();
     if (bad)
         printf("ties: %d FAILED\n", bad);
     else
