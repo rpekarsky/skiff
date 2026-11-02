@@ -130,6 +130,7 @@ static struct {
     uint8_t quark;               /* (Skiff) THEME QUARK: Skiff's font, its own widgets (design/mock_quark.py) */
     uint8_t h1n;                 /* (Skiff #29) THEME LCD, LCD NIGHT: an LCD's four tones, CRYPT's font, own widgets */
     uint8_t grain;               /* (PO) THEME LCD GRAIN: LCD's look, its cells' gaps instead of the dot grid */
+    uint8_t vignette;            /* the backlight's fall-off: LCD GRAIN, LCD VIG (the others: none) */
     uint32_t gen;                /* bumped by palette_set (the text ramps follow) */
 } ux;
 /* The look (Skiff, DESIGN.md: BLOCKS; U2: the only one, FLAT and LINE retired): SURF tiles with square corners on the
@@ -222,8 +223,9 @@ static void palette_set(uint32_t i)
     ux.crypt = i == UI_CRYPT_INDEX;
     ux.neon = i == UI_NEON_INDEX;
     ux.quark = i == UI_QUARK_INDEX;
-    ux.grain = i == UI_LCD_GRAIN_INDEX;
-    ux.h1n = i == UI_LCD_INDEX || i == UI_LCD_NIGHT_INDEX || ux.grain || i == UI_LCD_GREEN_INDEX;
+    ux.grain = i == UI_LCD_GRAIN_INDEX || i == UI_GRAIN_FLAT_INDEX;
+    ux.vignette = i == UI_LCD_GRAIN_INDEX || i == UI_LCD_VIG_INDEX;
+    ux.h1n = i == UI_LCD_INDEX || i == UI_LCD_NIGHT_INDEX || ux.grain || i == UI_LCD_GREEN_INDEX || i == UI_LCD_VIG_INDEX;
     uf.f = UF_FACE[ux.crypt || ux.neon || ux.h1n];   /* (CRYPT, NEON, LCD: the pixel faces) */
     uf.cap = UF_CAP[ux.crypt || ux.neon || ux.h1n];
     ux.bg = p->bg; ux.surf = p->surf; ux.text = p->text; ux.theme = p->theme;
@@ -247,7 +249,7 @@ static void palette_set(uint32_t i)
     ux.light = ux_luma(ux.bg) > 128u;
     ux.rec = ux.light ? UI_REC_LIGHT : UI_REC_DARK;
     if (ux.h1n)
-        lcd_tones((i == UI_LCD_INDEX || ux.grain) && !ux_cpal);
+        lcd_tones((i == UI_LCD_INDEX || i == UI_LCD_VIG_INDEX || ux.grain) && !ux_cpal);
     ux.gen++;                                    /* the text ramps change with the coverage curve */
 }
 
@@ -375,10 +377,10 @@ static void cv_lcd_rows(uint32_t x, uint32_t y, uint32_t r0)
     if (ux.light && !ux.grain)
         cv_lcd_dots(x, y, r0);
     hn_rail_rows(x, y, r0);
-    if (ux.grain && !lcd_flat) {                  /* (the fall-off's dither shows on the flat LCDs: the gaps hide it) */
+    if (ux.vignette && !lcd_flat)
         cv_lcd_vignette(x, y, r0);
+    if (ux.grain && !lcd_flat)
         cv_lcd_gaps(x, y, r0);
-    }
 }
 
 static void cv_blit(uint32_t x, uint32_t y)

@@ -2555,7 +2555,7 @@ int main(int argc, char **argv)
     uint32_t p, s;
     static const char *const SHOW[] = {"SKIFF", "HI-CON", "PAPER", "CRYPT", "NEON", "QUARK", "LCD",   /* ((Skiff, R1) THEME's) */
                                        "LCD NIGHT", "GAMEBOY", "AMBER", "BLUE-STN",                /* (wishlist #47) */
-                                       "LCD GRAIN", "LCD GREEN"};
+                                       "LCD GRAIN", "LCD GREEN", "GRAIN FLAT", "LCD VIG"};
     snprintf(path, sizeof path, "%s/report.txt", out);
     rep = fopen(path, "w");
     if (!rep) { fprintf(stderr, "cannot write %s\n", path); return 1; }
