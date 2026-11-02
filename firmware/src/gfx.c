@@ -305,9 +305,9 @@ static void cv_lcd_dots(uint32_t x, uint32_t y, uint32_t r0)
 }
 
 /* LCD GRAIN: the gaps between the LCD's cells, every other row and column of the screen ux.gap_mix % of the way to the
- * backlight (BG a little lighter; a dark LCD's: a little darker), over the frame as drawn; the ink a step less (25:
- * none), so the letters keep their weight. RGB565 halved or quartered per channel by a shift and a mask: no channel
- * borrows from the next */
+ * backlight (BG a little lighter; a dark LCD's: a little darker), over the frame as drawn; the ink at most 25 %, so
+ * the letters keep their weight. RGB565 halved or quartered per channel by a shift and a mask: no channel borrows from
+ * the next */
 #define RGB565_HALF(c) (((c) >> 1) & 0x7BEFu)
 #define RGB565_QUARTER(c) (((c) >> 2) & 0x39E7u)
 static uint16_t lcd_gap(uint16_t c, uint16_t light, uint32_t mix)
@@ -326,7 +326,7 @@ static void cv_lcd_gaps(uint32_t x, uint32_t y, uint32_t r0)
         uint16_t *p = cv_px + r * cv_w;
         int whole_row = !((y + r) & 1u);
         for (i = whole_row ? 0u : x & 1u; i < cv_w; i += whole_row ? 1u : 2u)
-            p[i] = swap16(lcd_gap(swap16(p[i]), light, p[i] == ink ? ux.gap_mix - 25u : ux.gap_mix));
+            p[i] = swap16(lcd_gap(swap16(p[i]), light, p[i] == ink ? 25u : ux.gap_mix));
     }
 }
 
