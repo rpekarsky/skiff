@@ -185,7 +185,9 @@ static uint16_t lcd_snap(uint16_t c)
 /* (PO) the LCD's backlight falling off toward the corners: BG and the ghost a little darker with the square of the
  * distance from the screen's centre, LCD_VIG % at the corners (cv_lcd_vignette), dithered: RGB565 has too few shades
  * for a smooth fall-off, its steps showed as rings */
-#define LCD_VIG 11u
+#ifndef LCD_VIG
+#define LCD_VIG 22u
+#endif
 static uint16_t lcd_vig[2] __attribute__((section(".pool")));   /* BG, the ghost; swapped */
 static uint8_t lcd_flat __attribute__((section(".pool")));   /* 1: no fall-off, no cell gaps (the splash: drawn flat) */
 static void lcd_tones(int own)                    /* own: LCD's ghost and MID, else derived (tools/gen_ui_palettes.py) */
@@ -323,8 +325,6 @@ static void cv_lcd_vignette(uint32_t x, uint32_t y, uint32_t r0)
 {
     static const uint8_t BAYER[16] = {0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5};
     uint32_t r, i;
-    if (lcd_flat)
-        return;
     for (r = r0; r < cv_h; r++) {
         int32_t dy = 2 * (int32_t)(y + r) - 239;
         uint16_t *p = cv_px + r * cv_w;
@@ -375,9 +375,10 @@ static void cv_lcd_rows(uint32_t x, uint32_t y, uint32_t r0)
     if (ux.light && !ux.grain)
         cv_lcd_dots(x, y, r0);
     hn_rail_rows(x, y, r0);
-    cv_lcd_vignette(x, y, r0);
-    if (ux.grain && !lcd_flat)
+    if (ux.grain && !lcd_flat) {                  /* (the fall-off's dither shows on the flat LCDs: the gaps hide it) */
+        cv_lcd_vignette(x, y, r0);
         cv_lcd_gaps(x, y, r0);
+    }
 }
 
 static void cv_blit(uint32_t x, uint32_t y)
