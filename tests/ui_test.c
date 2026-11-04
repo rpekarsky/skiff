@@ -11989,6 +11989,19 @@ static int test_first_take(void)
     bad += check("  PLAY drops it, nothing changed; REC twice with nothing played: armed, then off", ok);
     ui_power_on();
     ft_mode_put(FT_AUTO);
+    song.g[G_BPM] = 120;
+    cin_bars = 1;
+    rec_tap();
+    ok = ft.state == FT_ARMED && !transport_req;
+    ft_play(60, 0, 100);
+    fm1_ms = ft.t0 + 2000u;
+    rec_tap();
+    ok &= ft.state == FT_OFF && transport_req == 1u && !song.rec;   /* (seq.c counts in only with REC armed) */
+    cin_bars = 0;
+    transport_req = 0;
+    bad += check("  COUNT IN 1 BAR: REC arms it still (no tempo to count yet); the loop then plays at once, no count-in", ok);
+    ui_power_on();
+    ft_mode_put(FT_AUTO);
     TSEL->step[3] = (step_t){{60}, 1, ST_NOTE, 0, 100};
     rec_tap();
     ok = ft.state == FT_OFF && song.rec && transport_req == 1u;
