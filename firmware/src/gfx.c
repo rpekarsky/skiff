@@ -583,7 +583,8 @@ static void cv_fx_on(int32_t y, const aafont_t *f, int chrome)   /* y: the text'
                                               t / 100 < 6 ? t % 100 : 100)) : 0;
     }
 }
-static void cv_fx_off(void) { cv_fx.on = 0; }
+/* noinline: inlined, its store let the compiler fork ui_draw_page's and draw_column's drawing after it (264 B) */
+static __attribute__((noinline)) void cv_fx_off(void) { cv_fx.on = 0; }
 
 /* w x h nibbles, rows back to back, at canvas (x, y) */
 static void cv_alpha(int32_t x, int32_t y, uint32_t w, uint32_t h, const uint8_t *d, const uint16_t *rv)
