@@ -101,8 +101,7 @@ static int ed_smp_erase(uint32_t k, uint32_t all)  /* header sector, or the whol
     for (i = 0; i < 16u; i++)
         usr_zone[k][i].n = 0;                     /* a sounding voice ends instead of reading 0xFF */
     for (i = 0; i < (all ? SMP_USER_SIZE / 0x1000u : 1u) && !rc; i++) {
-        audio_silence();
-        rc = fl_erase4k(ed_smp_slot(k) + i * 0x1000u, &took);
+        rc = fl_erase4k_quiet(ed_smp_slot(k) + i * 0x1000u, &took);
         fm1_wdt_feed();
     }
     ed_smp_inval(k);
@@ -710,11 +709,10 @@ static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes between F0
             rc = 1;
         else {
             if (!(off & 0xFFFu)) {                         /* first write into a sector: erase it */
-                audio_silence();
 #if BOARD_SMK37
                 st_stock_release();                        /* (storage.c: the stock mapping's marker) */
 #endif
-                rc = fl_erase4k(ed_smp_slot(a[0]) + off, &took) ? 2u : 0u;
+                rc = fl_erase4k_quiet(ed_smp_slot(a[0]) + off, &took) ? 2u : 0u;
             }
             if (!rc && fl_write(ed_smp_slot(a[0]) + off, ed_smp_buf, len))
                 rc = 3;
