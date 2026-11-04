@@ -394,7 +394,7 @@ static int up_store(uint32_t k, const char *name)
         if (!str_eq(a, name)) {
             uint32_t tr = trk_index(TSEL) % NTRK, n = str_len(name);
             uint8_t v[FP_SIZE + 1u];
-            memcpy(v, fm6_patch[tr], sizeof v);
+            fm6_patch_get(tr, v);
             for (i = 0; i < 10u; i++)
                 v[FP_NAME + i] = (uint8_t)(i < n ? name[i] : ' ');
             fm6_set_patch(tr, v);

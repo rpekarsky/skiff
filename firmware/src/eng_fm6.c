@@ -168,32 +168,58 @@ static void fm6_pack(const uint8_t *v, uint8_t *b)
 
 /* ---------------------------------------------------- the track's patch --- */
 /* track tr's patch = v (155 bytes, sanitized). Main loop: the ISR takes it at its next block */
+static uint32_t motion_guard(void);                 /* (motion.c) */
+static void motion_unguard(uint32_t f);
 static void fm6_set_patch(uint32_t tr, const uint8_t *v)
 {
     uint8_t s[FP_SIZE + 1u];
+    uint32_t f;
     tr %= NTRK;
     memcpy(s, v, FP_SIZE);
     fm6_sanitize(s);                                /* not in place: fm6_sync must never copy an unsanitized byte */
+    f = motion_guard();                             /* (whole, with its count: the ISR's fm6_sync copies it, and a
+                                                     * SONG entry's sound writes it there too, launch.c esnd_put) */
     memcpy(fm6_patch[tr], s, FP_SIZE + 1u);
-    RING_PUBLISH();
     fm6_pgen[tr]++;
+    motion_unguard(f);
+}
+/* track tr's patch as it stands into d: copied again if the audio ISR wrote it meanwhile (a SONG entry's sound,
+ * launch.c esnd_put; the ISR runs whole between two of our reads, so fm6_pgen has moved) */
+static __attribute__((noinline)) void fm6_patch_get(uint32_t tr, uint8_t *d)
+{
+    uint8_t g;
+    tr %= NTRK;
+    do {
+        g = fm6_pgen[tr];
+        memcpy(d, fm6_patch[tr], FP_SIZE + 1u);
+        RING_PUBLISH();
+    } while (g != fm6_pgen[tr]);
+}
+/* OWN's kept patch no longer valid for track tr (the ISR's esnd_put clears the same mask: not torn) */
+static void fm6_own_drop(uint32_t tr)
+{
+    uint32_t f = motion_guard();
+    fm6_own_ok &= (uint8_t)~(1u << (tr % NTRK));
+    motion_unguard(f);
 }
 
 /* (#73) operator k's waveform on track tr = w. Main loop: the ISR's next block plays it, the sounding notes too */
 static void fm6_set_wave(uint32_t tr, uint32_t k, uint32_t w)
 {
+    uint32_t f = motion_guard();                    /* (the count: a SONG entry's sound bumps it in the ISR) */
     tr %= NTRK;
     fm6_op_wave[tr][k % 6u] = (uint8_t)(w % FM6_NWAVE);
-    RING_PUBLISH();
     fm6_pgen[tr]++;
+    motion_unguard(f);
 }
 /* operator output o (FM6_OUT_*) the same way */
 static void fm6_set_out(uint32_t tr, uint32_t k, uint32_t o)
 {
+    uint32_t f = motion_guard();
     tr %= NTRK;
     fm6_op_out[tr][k % 6u] = (uint8_t)(o % FM6_NOUT);
-    RING_PUBLISH();
     fm6_pgen[tr]++;
+    motion_unguard(f);
 }
 /* track tr's waveforms and outputs as fm6_note_t.waves holds them */
 static uint32_t fm6_waves_of(uint32_t tr)
@@ -209,10 +235,11 @@ static uint32_t fm6_waves_of(uint32_t tr)
 /* (#72b) operator k's PHASE on track tr = pct %. Main loop: the sounding notes glide there from the ISR's next block */
 static void fm6_set_phase(uint32_t tr, uint32_t k, uint32_t pct)
 {
+    uint32_t f = motion_guard();
     tr %= NTRK;
     fm6_op_phase[tr][k % 6u] = (uint8_t)(pct > FM6_PHASE_FREE ? 0u : pct);
-    RING_PUBLISH();
     fm6_phase_gen[tr]++;
+    motion_unguard(f);
 }
 
 /* ------------------------------------------- (#76) the patch's extension --- */
@@ -261,13 +288,14 @@ static void fm6x_of(uint32_t tr, fm6x_t *x)
 /* track tr's PHASE and WAVE = x: the sounding notes take them at the ISR's next block */
 static void fm6x_set(uint32_t tr, const fm6x_t *x)
 {
+    uint32_t f = motion_guard();                    /* (the ISR's esnd_put calls it too: the guard nests) */
     tr %= NTRK;
     memcpy(fm6_op_phase[tr], x->phase, 6);
     memcpy(fm6_op_wave[tr], x->wave, 6);
     memcpy(fm6_op_out[tr], x->out, 6);
-    RING_PUBLISH();
     fm6_pgen[tr]++;
     fm6_phase_gen[tr]++;
+    motion_unguard(f);
 }
 /* (#72, #73) a sound load without them: every operator back to PHASE 0, SINE and ON */
 static void fm6_osc_reset(uint32_t tr)
@@ -367,11 +395,22 @@ static void fm6x_block_get(const uint8_t *b, uint32_t room, fm6x_t *x, uint32_t 
 }
 
 /* track tr's sound -> v (155 bytes + 1) */
+/* track tr's patch and its extension as they stand: again if the audio ISR wrote them meanwhile (a SONG entry's
+ * sound, launch.c esnd_put; fm6_patch_get) */
+static __attribute__((noinline)) void fm6_sound_raw(uint32_t tr, uint8_t *v, fm6x_t *x)
+{
+    uint8_t g;
+    do {
+        g = fm6_pgen[tr % NTRK];
+        memcpy(v, fm6_patch[tr % NTRK], FP_SIZE + 1u);
+        fm6x_of(tr, x);
+        RING_PUBLISH();
+    } while (g != fm6_pgen[tr % NTRK]);
+}
 static void fm6_sound_of(uint32_t tr, uint8_t *v)
 {
     fm6x_t x;
-    memcpy(v, fm6_patch[tr % NTRK], FP_SIZE + 1u);
-    fm6x_of(tr, &x);
+    fm6_sound_raw(tr, v, &x);
     fm6x_hide(v, &x);
 }
 /* track tr's sound = v (as fm6_sound_of made it; a bare patch: PHASE 0, SINE) */
@@ -387,9 +426,10 @@ static void fm6_set_sound(uint32_t tr, const uint8_t *v)
 /* .. packed (128 bytes) */
 static void fm6_pack_sound(uint32_t tr, uint8_t *b)
 {
+    uint8_t v[FP_SIZE + 1u];
     fm6x_t x;
-    fm6_pack(fm6_patch[tr % NTRK], b);
-    fm6x_of(tr, &x);
+    fm6_sound_raw(tr, v, &x);
+    fm6_pack(v, b);
     fm6x_hide(b, &x);
 }
 static void fm6_set_packed(uint32_t tr, const uint8_t *b)
@@ -469,7 +509,7 @@ static void fm6_track_loaded(const track_t *t)
     uint32_t tr = (uint32_t)(t - trk);
     if (tr < NTRK && t->eng_req == ENGI_FM6) {
         fm6_osc_reset(tr);
-        fm6_own_ok &= (uint8_t)~(1u << tr);
+        fm6_own_drop(tr);
         fm6_edit_f[tr] = 0;
         if (t->p[P_E7] >= 0 && t->p[P_E7] < (int32_t)FM6_NFACTORY)
             fm6_load_slot(tr, (uint32_t)t->p[P_E7]);
@@ -506,15 +546,18 @@ static void fm6_poll(void)
         if (s < 0 || s >= (int32_t)FM6_NFACTORY) {           /* OWN */
             if (fm6_own_ok & bit)
                 fm6_set_packed(tr, fm6_own[tr]);
-            fm6_own_ok &= (uint8_t)~bit;
+            fm6_own_drop(tr);
             fm6_slot[tr] = FM6_OWN;
             if (s != FM6_OWN)
                 trk[tr].p[P_E7] = FM6_OWN;
             continue;
         }
         if (fm6_slot[tr] == FM6_OWN && !(fm6_own_ok & bit)) {
+            uint32_t f;
             fm6_pack_sound(tr, fm6_own[tr]);
+            f = motion_guard();
             fm6_own_ok |= (uint8_t)bit;
+            motion_unguard(f);
         }
         fm6_load_slot(tr, (uint32_t)s);
     }

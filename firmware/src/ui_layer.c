@@ -653,7 +653,9 @@ static void layer_key(uint32_t l, uint32_t k)
             confirm_open(CF_INIT_SOUND, song.sel);      /* (the dialog closes the layer) */
     } else if (l == LAYER_EDIT && p < NLANE && drum_track(TSEL)) {   /* ((1.3, from Felucca 1.4.1) black keys 1..8:
                                                          * the lanes' MUTE, latched (eng_drum.c drum_mute) */
+        uint32_t f = motion_guard();                    /* (a SONG entry's sound clears them in the ISR: esnd_put) */
         drum_mute[song.sel] ^= (uint8_t)(1u << p);
+        motion_unguard(f);
         ui_say(drum_lane_name(TSEL, p), (drum_mute[song.sel] >> p) & 1u ? " MUTED" : " ON");
         ui.force = 1;
     } else if (l == LAYER_REC) {
