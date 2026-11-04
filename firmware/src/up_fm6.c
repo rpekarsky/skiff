@@ -219,8 +219,9 @@ static void upf_track_load(track_t *t, uint32_t k)
 /* up_store: slot k (its record just written from track tr) gets that track's patch; upf_save's result */
 static int upf_store(uint32_t k, uint32_t tr)
 {
-    uint8_t pk[FM6_PACKED];
-    fm6_pack(fm6_patch[tr % NTRK], pk);
+    uint8_t pk[FM6_PACKED], v[FP_SIZE + 1u];
+    fm6_patch_get(tr, v);
+    fm6_pack(v, pk);
     upf_set(k, pk);
     return upf_save();
 }

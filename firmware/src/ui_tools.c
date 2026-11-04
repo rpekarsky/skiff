@@ -44,7 +44,7 @@ static void tl_undo_take(track_t *t, const char *name)
     undo.user = t->user;
     memcpy(undo.p, t->p, sizeof undo.p);
     memcpy(undo.step, t->step, sizeof undo.step);
-    memcpy(undo.fm6, fm6_patch[i], FP_SIZE);
+    fm6_patch_get(i, undo.fm6);
     undo.fm6_slot = fm6_slot[i];
     undo.pid = trk_pid[i];
     motion_snapshot_track(t, &undo.motion_backup);

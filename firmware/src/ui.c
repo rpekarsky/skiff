@@ -1635,7 +1635,7 @@ static void load_begin(track_t *t, uint32_t what)
     undo.user = t->user;
     memcpy(undo.p, t->p, sizeof undo.p);
     memcpy(undo.step, t->step, sizeof undo.step);
-    memcpy(undo.fm6, fm6_patch[i], FP_SIZE);
+    fm6_patch_get(i, undo.fm6);
     undo.fm6_slot = fm6_slot[i];
     if (what & UNDO_KIT)
         memcpy(undo.dx, dx_kit, sizeof undo.dx);
@@ -1696,7 +1696,7 @@ static void motion_undo_take(track_t *t, uint32_t tag)
     undo.user = t->user;
     memcpy(undo.p, t->p, sizeof undo.p);
     memcpy(undo.step, t->step, sizeof undo.step);
-    memcpy(undo.fm6, fm6_patch[i], FP_SIZE);
+    fm6_patch_get(i, undo.fm6);
     undo.fm6_slot = fm6_slot[i];
     undo.pid = trk_pid[i];
     motion_snapshot_track(t, &undo.motion_backup);
@@ -1778,10 +1778,10 @@ static int undo_swap(undo_t *c)
                                                    * converted DIGITAL sound), not a factory one */
         uint32_t tr = trk_index(t);
         uint8_t v[FP_SIZE + 1u], sl = fm6_slot[tr];
-        memcpy(v, fm6_patch[tr], FP_SIZE);
+        fm6_patch_get(tr, v);
         fm6_set_patch(tr, c->fm6);
         fm6_slot[tr] = c->fm6_slot;               /* (fm6_poll: the patch stays) */
-        fm6_own_ok &= (uint8_t)~(1u << tr);
+        fm6_own_drop(tr);
         memcpy(c->fm6, v, FP_SIZE);
         c->fm6_slot = sl;
     }
