@@ -3225,6 +3225,19 @@ static int test_fm6_lab(void)
         ok &= fm6_op_wave[tr][5u - 2u] == FM6_W_SQUARE && fm6_op_wave[tr][5u - 1u] == FM6_W_SINE;
         ok &= !memcmp(fm6_patch[tr], was, FP_SIZE);
         bad += check("(#73) WAVE: K2 turns OP3's waveform, SINE to SQUARE and no further, the patch untouched", ok);
+        ok = fm6_op_out[tr][5u - 2u] == FM6_OUT_ON;      /* OUT: K3, OFF ON INV on the knob, ON in the middle */
+        turn(EN_K3, -1);
+        ok &= fm6_op_out[tr][5u - 2u] == FM6_OUT_OFF;
+        turn(EN_K3, -1);
+        ok &= fm6_op_out[tr][5u - 2u] == FM6_OUT_OFF;
+        turn(EN_K3, 1);
+        turn(EN_K3, 1);
+        ok &= fm6_op_out[tr][5u - 2u] == FM6_OUT_INV;
+        turn(EN_K3, 1);
+        ok &= fm6_op_out[tr][5u - 2u] == FM6_OUT_INV && !memcmp(fm6_patch[tr], was, FP_SIZE);
+        turn(EN_K3, -1);
+        ok &= fm6_op_out[tr][5u - 2u] == FM6_OUT_ON;
+        bad += check("OUT: K3 on OP3, OFF ON INV with ON (the default) in the middle, no further either way", ok);
         apply_preset_to(TSEL, 0); frame();
         bad += check("(#72, #73) PHASE and WAVE: 0 and SINE again at a sound load",
                      fm6_op_phase[tr][5u - 2u] == 0u && fm6_op_wave[tr][5u - 2u] == FM6_W_SINE);

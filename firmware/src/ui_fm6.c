@@ -57,6 +57,8 @@ static const char *const FM_OPWAVE[FM6_NWAVE] = {"SINE", "SINE2", "HALF", "HALF2
                                                      "SAW", "RAMP", "SQUARE"};
 static const char *const FM_HZ[4] = {"1", "10", "100", "1K"};          /* a fixed operator's range (FC & 3) */
 static const char *const FM_OUT[FM6_NOUT] = {"ON", "INV", "OFF"};
+/* OUT on its knob: OFF, ON (the default, in the middle), INV; stored as fm6_op_out (ON 0: every older sound) */
+static const uint8_t FM_OUT_POS[FM6_NOUT] = {1, 2, 0}, FM_OUT_AT[FM6_NOUT] = {FM6_OUT_OFF, FM6_OUT_ON, FM6_OUT_INV};
 
 enum { FM_VIEW_ENVELOPES, FM_VIEW_WAVE, FM_VIEW_SPECTRUM };   /* (#20w, #71b) the panel, SHIFT + SELECT steps it */
 static uint8_t fm_view __attribute__((section(".pool")));       /* FM_VIEW_*; not saved */
@@ -292,7 +294,7 @@ static int32_t fm_val(const fm_field_t *f, uint32_t i, const uint8_t *p, const t
     case FMF_OUT:
         v = fm6_op_out[fm_tr()][i / FP_OP] % FM6_NOUT;
         str_cpy(val, FM_OUT[v], 8);
-        return (int32_t)v * 500;
+        return (int32_t)FM_OUT_POS[v] * 500;
     case FMF_OL:                                    /* (its OUT: INV a minus, OFF said, the level kept) */
         fmt_int(val, fm6_op_out[fm_tr()][i / FP_OP] == FM6_OUT_INV ? -(int32_t)v : (int32_t)v);
         *unit = fm6_op_out[fm_tr()][i / FP_OP] == FM6_OUT_OFF ? "OFF" : "";
@@ -320,9 +322,9 @@ static void fm_edited(track_t *t, uint32_t tr)
 static void fm_osc_turn(track_t *t, uint32_t tr, uint32_t fmt, uint32_t op, uint32_t k, int32_t s)
 {
     uint32_t was = fmt == FMF_PHASE ? fm6_op_phase[tr][op] : fmt == FMF_OPWAVE ? fm6_op_wave[tr][op] : fm6_op_out[tr][op];
-    uint32_t last = fmt == FMF_OPWAVE ? FM6_NWAVE - 1u : FM6_NOUT - 1u;
     uint32_t to = fmt == FMF_PHASE ? fm_phase_turn(was, accel(EN_K1 + k, s, 101))
-                                   : (uint32_t)clamp((int32_t)was + (s > 0 ? 1 : -1), 0, (int32_t)last);
+                  : fmt == FMF_OPWAVE ? (uint32_t)clamp((int32_t)was + (s > 0 ? 1 : -1), 0, FM6_NWAVE - 1)
+                                      : FM_OUT_AT[clamp((int32_t)FM_OUT_POS[was % FM6_NOUT] + (s > 0 ? 1 : -1), 0, 2)];
     if (to == was)
         return;
     sound_undo_take(t, cur_page()->title);
