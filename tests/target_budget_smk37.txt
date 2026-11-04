@@ -1,0 +1,4 @@
+# The SMK-37's own budget lines over target_budget.txt (tests/target_budget.py): the ISRs, whose cost
+# follows the code's layout. Rewritten by BUDGET_UPDATE=1 on an SMK build.
+fm1_alnk0_irq 20566
+fm1_timer5_irq 27710
