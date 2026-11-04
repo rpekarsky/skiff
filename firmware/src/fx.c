@@ -952,6 +952,9 @@ static __attribute__((noinline)) void track_insert(track_t *t, int32_t *b, uint3
     t->ins_run = s->w != 0;                             /* (mix_part calls again while it fades) */
 }
 
+/* a track after LEVEL (+7.5 dB at 127) times a pan gain (Q12): 64 bits, a POLY or DRUM peak past 2^19 wrapped round in
+ * 32 (the same result below it) */
+#define PAN_MUL(x, g) ((int32_t)(((int64_t)(x) * (g)) >> 12))
 /* (Skiff 1.3, from Felucca's #148) SPREAD: a POLY or UNISON part whose SPREAD is above 0. Its voices start left and
  * right of PAN in turn (voice.c voice_start; UNISON's detuned voices alternate), at PAN -/+ SPREAD / 2 (127: hard left
  * and right), with the pan law PAN has (the far side down, the near one as it is). track_render gives every voice (b, as
@@ -986,8 +989,8 @@ static __attribute__((noinline)) void lpan_mix(track_t *t, const int32_t *b, con
             SM(d)[i] += mulq15(xs, dl);
         if (r)
             SM(v)[i] += mulq15(xs, r);
-        SM(l)[i] += ((x - yl) * gl) >> 12;
-        SM(r)[i] += ((x - yr) * gr) >> 12;
+        SM(l)[i] += PAN_MUL(x - yl, gl);
+        SM(r)[i] += PAN_MUL(x - yr, gr);
     }
     t->peak = pk;
 }
@@ -1042,8 +1045,8 @@ static __attribute__((noinline)) void mix_spread(track_t *t, int32_t *b, uint32_
             SM(d)[i] += mulq15(xs, dl);
         if (r)
             SM(v)[i] += mulq15(xs, r);
-        SM(l)[i] += ((x * glm) >> 12) + ((y * gld) >> 12);
-        SM(r)[i] += ((x * grm) >> 12) + ((y * grd) >> 12);
+        SM(l)[i] += PAN_MUL(x, glm) + PAN_MUL(y, gld);
+        SM(r)[i] += PAN_MUL(x, grm) + PAN_MUL(y, grd);
     }
     t->peak = pk;
 }
@@ -1154,8 +1157,8 @@ static void mix_part(track_t *t, uint32_t n SM_DECL)
                 SM(d)[i] += mulq15(xs, d);
             if (r)
                 SM(v)[i] += mulq15(xs, r);
-            SM(l)[i] += (x * gl) >> 12;
-            SM(r)[i] += (x * gr) >> 12;
+            SM(l)[i] += PAN_MUL(x, gl);
+            SM(r)[i] += PAN_MUL(x, gr);
         }
         t->peak = pk;
     }
