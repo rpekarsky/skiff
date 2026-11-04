@@ -123,6 +123,8 @@ static struct {
     spec_geo_t geo;                                   /* the one being drawn */
 } spec __attribute__((section(".pool")));
 static uint8_t *fm_room_lend(int *kept);
+static int fm_op_spec_snap(int16_t *snap);             /* (ui_fm6.c: FM6's OP SPEC, the operator picked) */
+static uint32_t fm_op_spec_sound(void);
 
 /* a level from how far under full scale a power is (log2 Q16) */
 static int32_t spec_level(int32_t under_fs)
@@ -160,7 +162,8 @@ static void spec_slice(uint8_t *col)
 {
     int32_t peak, shift = 0;
     uint32_t c, lo = SPEC_EDGE0_Q16, hi;
-    scope_snapshot(fft_re);
+    if (!fm_op_spec_snap(fft_re))
+        scope_snapshot(fft_re);
     peak = fft_peak();
     while (peak && peak << (shift + 1) <= 32767)
         shift++;
@@ -177,7 +180,10 @@ static const uint8_t *spec_row(const uint8_t *room, uint32_t j)
     return room + (spec.front + j) % SPEC_SLICES * SPEC_COLS;
 }
 
-static uint8_t spec_sound(void) { return (uint8_t)(scope_track_view() ? song.sel + 1u : 0u); }
+static uint8_t spec_sound(void)
+{
+    return (uint8_t)(fm_op_spec_sound() ? fm_op_spec_sound() : scope_track_view() ? song.sel + 1u : 0u);
+}
 
 static const spec_tune_t *spec_cfg(void)
 {

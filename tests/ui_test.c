@@ -11949,7 +11949,11 @@ static int test_fm6_spectrum_view(void)
         ok &= j ? !lit || spec_loudest(spec_row(room, j)) == sel_col : spec_loudest(spec_row(room, j)) == sel_col;
     }
     shift_select(1);
-    ok &= fm_view == FM_VIEW_SPECTRUM && !ui.home && !ui.menu;
+    ok &= fm_view == FM_VIEW_OP_SPEC;
+    shift_select(1);
+    ok &= fm_view == FM_VIEW_OP_SPEC && !ui.home && !ui.menu;
+    shift_select(-1);
+    ok &= fm_view == FM_VIEW_SPECTRUM;
     spec_tune = (spec_tune_t){1, 0, 4};
     go_title("ALL OPS"); fm_ui[2] = FMW_VIEW; frame();    /* (SPECTRUM: K2 K3 K4 nothing, RANGE and TOP their defaults) */
     turn(EN_K2, 1); turn(EN_K3, 1); turn(EN_K4, -1);
@@ -11972,7 +11976,7 @@ static int test_fm6_spectrum_view(void)
     shift_select(-1);
     ok &= fm_view == FM_VIEW_ENVELOPES && str_eq(cur_page()->title, "OPERATOR") && !ui.home && !ui.menu;
     return check("(#71b) FM6: SHIFT + SELECT steps envelopes, WAVE, OP WAVE, LIVE, OP LIVE, SPECTRUM (the track's, no "
-                 "WAVE slice in it) and back; "
+                 "WAVE slice in it), OP SPEC and back; "
                  "ALL OPS' VIEW: K1 PANEL; on WAVE K2 PERIODS 1 .. 3 with ZOOM Y 100 .. 300 % inside each, K3 HELD (as "
                  "played, 0.02 .. 10 s on a log scale), K4 RELEASE; on SPECTRUM nothing beside PANEL; "
                  "SHIFT on TONE: the channel strip", ok);
@@ -12148,6 +12152,43 @@ static int test_fm6_op_live(void)
     fm_view = FM_VIEW_ENVELOPES;
     return check("OP LIVE: OP2 (x2 into OP1) in A4's voice as it sounds, a sine twice the note's; the voice done: flat",
                  ok);
+}
+/* OP SPEC: INIT with OP2 (x2) into OP1, A4 held: OP2 in the voice, its loudest column at 880 Hz (A4's 440: the voice) */
+static int test_fm6_op_spec(void)
+{
+    uint8_t v[FP_SIZE + 1u];
+    int32_t b[CTL];
+    const uint8_t *room;
+    uint32_t tr, i, op2, voice;
+    int kept, ok;
+    ui_power_on();
+    set_engine_of(TSEL, ENGI_FM6);
+    tr = fm_tr();
+    fm6_unpack(FM6_INIT, v);
+    v[4u * FP_OP + FP_OL] = 70;
+    v[4u * FP_OP + FP_FC] = 2;
+    fm6_set_patch(tr, v);
+    go_title("ALL OPS"); fm_ui[2] = FMW_VIEW; frame();
+    TSEL->engine = TSEL->eng_req;
+    trk_note_on(TSEL, 69, 100);
+    for (i = 0; i < 4u; i++)
+        track_render(TSEL, b, CTL);
+    fm_ui[0] = 1;
+    fm_view = FM_VIEW_OP_SPEC;
+    fm_draw(1, TSEL, T_TEXT);
+    room = fm_room_lend(&kept);
+    op2 = spec_loudest(spec_row(room, 0));
+    ok = kept && abs((int)op2 - (int)spec_col_of(880.0 * FFT_N / 22050.0)) <= 1 && spec.sound == (0x80u | 1u);   /* (880 Hz:
+                                                         * bin 20.4, between two) */
+    fm_ui[0] = 0;                                       /* (OP1: the voice, its own history) */
+    fm1_ms += SPEC_SLICE_MS;
+    fm_draw(1, TSEL, T_TEXT);
+    room = fm_room_lend(&kept);
+    voice = spec_loudest(spec_row(room, 0));
+    ok &= voice != op2 && spec.sound == 0x80u && !spec_row(room, 1)[op2];
+    trk_note_off(TSEL, 69);
+    fm_view = FM_VIEW_ENVELOPES;
+    return check("OP SPEC: OP2 (x2 into OP1) in A4's voice, its loudest at 880 Hz; OP1 another, its history anew", ok);
 }
 static int test_fm6_wave_windows(void)
 {
@@ -12560,6 +12601,7 @@ int main(void)
     bad += test_fm6_op_wave();
     bad += test_fm6_live();
     bad += test_fm6_op_live();
+    bad += test_fm6_op_spec();
     bad += test_spectrum_height();
     bad += test_spectrum_hd();
     bad += test_popup_time();

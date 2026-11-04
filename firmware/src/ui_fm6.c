@@ -10,7 +10,10 @@
  *             KEYS   L CURVE L DEPTH R DEPTH R CURVE            LFO      WAVE RATE FADE KEY SYNC
  *             MORE   BREAK KEY RATE VELOCITY LFO AMP            DEPTH    VIBRATO VIB SENS TREMOLO
  *                                                           VIEW     PANEL, then WAVE's PERIODS x ZOOM Y, HELD,
- *                                                                    RELEASE (the panel's look, not saved)
+ *                                                                    RELEASE (LIVE's PERIODS x ZOOM Y; the panel's
+ *                                                                    look, not saved)
+ *   PANEL: ENV, WAVE (the last note rendered), OP WAVE (the operator picked alone with what feeds it), LIVE (the
+ *   track as it plays), OP LIVE (the operator in the sounding voice), SPECTRUM (the track's), OP SPEC (the operator's)
  *   A knob edits a copy of the patch: fm6_set_patch (the audio ISR's copy follows), fm6_edited (SLOT: OWN, or the
  *   factory patch it now is; F n*, still F n, while an own patch is kept aside: "F3* DROPPED" when that was another's
  *   F n*). ALGO and FEEDBACK show what plays (EDIT 1's ALGO and FEEDBACK on the patch) and turning them puts that in
@@ -58,8 +61,8 @@ static const char *const FM_OUT[FM6_NOUT] = {"ON", "INV", "OFF"};
 /* OUT on its knob: OFF, ON (the default, in the middle), INV; stored as fm6_op_out (ON 0: every older sound) */
 static const uint8_t FM_OUT_POS[FM6_NOUT] = {1, 2, 0}, FM_OUT_AT[FM6_NOUT] = {FM6_OUT_OFF, FM6_OUT_ON, FM6_OUT_INV};
 
-enum { FM_VIEW_ENVELOPES, FM_VIEW_WAVE, FM_VIEW_OP_WAVE, FM_VIEW_LIVE, FM_VIEW_OP_LIVE, FM_VIEW_SPECTRUM };   /* (#20w,
-                                                                       * #71b) the panel, SHIFT + SELECT steps it */
+enum { FM_VIEW_ENVELOPES, FM_VIEW_WAVE, FM_VIEW_OP_WAVE, FM_VIEW_LIVE, FM_VIEW_OP_LIVE, FM_VIEW_SPECTRUM,
+       FM_VIEW_OP_SPEC, FM_VIEW_N };   /* (#20w, #71b) the panel, SHIFT + SELECT steps it */
 static uint8_t fm_view __attribute__((section(".pool")));       /* FM_VIEW_*; not saved */
 static uint32_t fm_wave_t0 __attribute__((section(".pool")));   /* (fm1_ms) WAVE's operator bars' clock from 0 */
 #define FM_WF_BUF 4608                                  /* WAVE's slices' points, all of them */
@@ -128,6 +131,7 @@ static uint32_t fm_tr(void) { return trk_index(TSEL) % NTRK; }
 static int fm_is_wave(uint32_t view) { return view == FM_VIEW_WAVE || view == FM_VIEW_OP_WAVE; }
 /* the sound as it plays: the track's (LIVE) or the operator picked in the last note's voice (OP LIVE) */
 static int fm_is_live(uint32_t view) { return view == FM_VIEW_LIVE || view == FM_VIEW_OP_LIVE; }
+static int fm_is_spec(uint32_t view) { return view == FM_VIEW_SPECTRUM || view == FM_VIEW_OP_SPEC; }
 static uint32_t fm_nwin(uint32_t pg) { return pg ? FM_ALL_NWIN : FM_OP_NWIN; }
 static uint32_t fm_win(uint32_t pg)
 {
@@ -465,7 +469,7 @@ static uint32_t fm_sig(void)
            (ui.hot_t ? ui.hot_col + 1u : 0u) * 65537u ^ shift_channel * 3266489917u ^
            (fm_is_wave(view) ? (fm_wf_note_sig() + fm_wf.done + fm1_ms / FM_WF_BAR_MS + 1u) * 2654435761u : 0u) ^
            (fm_is_wave(view) ? fm_wf_tune_sig() * 2246822519u : 0u) ^
-           (view == FM_VIEW_SPECTRUM ? (fm1_ms / SPEC_SLICE_MS + 1u) * 3266489917u : 0u) ^
+           (fm_is_spec(view) ? (fm1_ms / SPEC_SLICE_MS + 1u) * 3266489917u : 0u) ^
            (view == FM_VIEW_LIVE ? (scope_trk_w / 128u + fm_wf_tune_sig()) * 2654435761u : 0u) ^
            (view == FM_VIEW_OP_LIVE ? (fm1_ms / 16u + fm_wf_tune_sig()) * 2654435761u : 0u) ^
            fm_osc_sig() * 3266489917u;
@@ -481,7 +485,7 @@ static void fm_view_turn(int32_t s)
 {
     if (fm_view == FM_VIEW_ENVELOPES && s > 0)
         fm_wave_t0 = fm1_ms;
-    fm_view = (uint8_t)clamp((int32_t)fm_view + (s > 0 ? 1 : -1), FM_VIEW_ENVELOPES, FM_VIEW_SPECTRUM);
+    fm_view = (uint8_t)clamp((int32_t)fm_view + (s > 0 ? 1 : -1), FM_VIEW_ENVELOPES, FM_VIEW_N - 1);
 }
 static int fm_view_step(int32_t s)
 {
@@ -491,7 +495,7 @@ static int fm_view_step(int32_t s)
     return 1;
 }
 /* the voice's without a prefix: "VOICE WAVE" is too wide for a card */
-static const char *const FM_PANEL_N[FM_VIEW_SPECTRUM + 1] = {"ENV", "WAVE", "OP WAVE", "LIVE", "OP LIVE", "SPECTRUM"};
+static const char *const FM_PANEL_N[FM_VIEW_N] = {"ENV", "WAVE", "OP WAVE", "LIVE", "OP LIVE", "SPECTRUM", "OP SPEC"};
 /* PERIODS x ZOOM Y on one knob: ZOOM Y's five steps inside each PERIODS */
 static int32_t fm_wf_zone(const fm_wf_tune_t *u)
 {
@@ -551,8 +555,7 @@ static void fm_view_cards(void)
     const fm_wf_tune_t *u = fm_wf_cfg();
     char val[12], zoom[8];
     uint32_t c;
-    draw_column(0, "PANEL", FM_PANEL_N[fm_view % (FM_VIEW_SPECTRUM + 1u)], "", VR_LIVE, fm_view * 1000 / FM_VIEW_SPECTRUM,
-                ICON_AUTO);
+    draw_column(0, "PANEL", FM_PANEL_N[fm_view % FM_VIEW_N], "", VR_LIVE, fm_view * 1000 / (FM_VIEW_N - 1), ICON_AUTO);
     if (!fm_is_wave(fm_view) && !fm_is_live(fm_view)) {
         for (c = 1; c < 4u; c++)
             draw_column(c, "", "", "", VR_THEME, -1, ICON_NONE);
@@ -1748,43 +1751,63 @@ static void fm_live_panel(const fm_sim_t *s, uint16_t c)
     const fm_live_src_t src = {scope_trk_buf, SCOPE_TRK_N - 1u, scope_trk_w};
     fm_live_draw(&src, fm_live_period(s), c);
 }
-#define FM_OP_LIVE_N 512u
-/* (OP LIVE) the operator picked as the last note's voice plays it now: the voice copied as it stands (the ISR kept out
- * for those 284 B), then FM_LIVE_FRESH x 2 samples of it rendered on as OP WAVE renders (the LFO at rest), every
- * other kept; the voice silent: a flat line */
-static void fm_op_live_panel(const fm_sim_t *s, const track_t *t, uint16_t c)
+/* (OP LIVE, OP SPEC) the operator picked as the last note's voice plays it now: the voice copied as it stands (the ISR
+ * kept out for those 284 B), then n x 2 samples of it rendered on as OP WAVE renders (the LFO at rest), every other
+ * kept (22050 Hz) into buf; the voice silent: zeros */
+static void fm_op_voice(const fm_sim_t *s, const track_t *t, int16_t *buf, uint32_t n)
 {
     const fm6_last_t *l = &fm6_last[fm_tr()];
     const fm6_note_t *voice = l->vel ? fm6_note_of((track_t *)t, (voice_t *)&t->v[l->voice % NVOICE]) : 0;
-    int16_t buf[FM_OP_LIVE_N] = {0};
     int32_t out[FM6_N], dt[6], lf = fm6_note_logfreq(clamp(l->note + s->q[FP_TRNSP] - 24, 0, 127) * 16, 0);
-    const fm_live_src_t src = {buf, FM_OP_LIVE_N - 1u, FM_LIVE_FRESH};
-    fm6_note_t n;
+    fm6_note_t note;
     uint32_t i, k;
-    memset(&n, 0, sizeof n);
-    if (voice) {
-        fm1_irq_off();
-        n = *voice;
-        fm1_irq_on();
-    }
+    memset(buf, 0, n * sizeof *buf);
+    if (!voice)
+        return;
+    fm1_irq_off();
+    note = *voice;
+    fm1_irq_on();
     fm6_spread(s->alg, t->p[P_E6], dt);
-    for (i = 0; voice && n.live && i < FM_LIVE_FRESH * 2u; i += FM6_N) {
-        if (!fm_wf_compute(&n, s, out, lf, dt, 1))
+    for (i = 0; note.live && i < n * 2u; i += FM6_N) {
+        if (!fm_wf_compute(&note, s, out, lf, dt, 1))
             memset(out, 0, sizeof out);
-        for (k = 0; k < FM6_N; k += 2u)
+        for (k = 0; k < FM6_N && (i + k) / 2u < n; k += 2u)
             buf[(i + k) / 2u] = (int16_t)clamp(out[k] >> 11, -32767, 32767);
     }
+}
+#define FM_OP_LIVE_N 512u
+static void fm_op_live_panel(const fm_sim_t *s, const track_t *t, uint16_t c)
+{
+    int16_t buf[FM_OP_LIVE_N];
+    const fm_live_src_t src = {buf, FM_OP_LIVE_N - 1u, FM_LIVE_FRESH};
+    fm_op_voice(s, t, buf, FM_OP_LIVE_N);
     fm_live_draw(&src, fm_live_period(s), c);
 }
+static int fm_op_spec_shown(void)
+{
+    uint32_t pg = cur_page()->graph == GR_FMALL;
+    return fm_sheet_shown() && fm_panel_view(pg, fm_win(pg)) == FM_VIEW_OP_SPEC;
+}
+/* (OP SPEC) SPECTRUM's slice (ui_spectrum.c spec_slice) from the operator picked in the voice instead of the track's
+ * scope: 1, snap filled; 0, not on OP SPEC */
+static int fm_op_spec_snap(int16_t *snap)
+{
+    if (!fm_op_spec_shown())
+        return 0;
+    fm_op_voice(&fm_panel_sim, TSEL, snap, SCOPE_N);
+    return 1;
+}
+/* which sound SPECTRUM's history is of: on OP SPEC the operator picked (another: the history starts over) */
+static uint32_t fm_op_spec_sound(void) { return fm_op_spec_shown() ? 0x80u | fm_ui[0] % 6u : 0u; }
 static void fm_draw(uint32_t pg, const track_t *t, uint16_t c)
 {
     fm_sim_t *s = &fm_panel_sim;
     uint16_t sh[12];
     uint32_t w = fm_win(pg), view = fm_panel_view(pg, w);
-    if (view != FM_VIEW_SPECTRUM && !fm_is_live(view))
+    if (!fm_is_spec(view) && !fm_is_live(view))
         fm_room_take_back();
     fm_ramp(sh);
-    if (view == FM_VIEW_SPECTRUM) {
+    if (fm_is_spec(view)) {
         fm_ops(s, t);
         fm_tabs(s, sh, fm_tab_beside(pg, w));
         fm_spectrum_panel(c);
