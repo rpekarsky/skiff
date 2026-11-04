@@ -58,8 +58,8 @@ static const char *const FM_OUT[FM6_NOUT] = {"ON", "INV", "OFF"};
 /* OUT on its knob: OFF, ON (the default, in the middle), INV; stored as fm6_op_out (ON 0: every older sound) */
 static const uint8_t FM_OUT_POS[FM6_NOUT] = {1, 2, 0}, FM_OUT_AT[FM6_NOUT] = {FM6_OUT_OFF, FM6_OUT_ON, FM6_OUT_INV};
 
-enum { FM_VIEW_ENVELOPES, FM_VIEW_WAVE, FM_VIEW_OP_WAVE, FM_VIEW_LIVE, FM_VIEW_SPECTRUM };   /* (#20w, #71b) the panel,
-                                                                                              * SHIFT + SELECT steps it */
+enum { FM_VIEW_ENVELOPES, FM_VIEW_WAVE, FM_VIEW_OP_WAVE, FM_VIEW_LIVE, FM_VIEW_OP_LIVE, FM_VIEW_SPECTRUM };   /* (#20w,
+                                                                       * #71b) the panel, SHIFT + SELECT steps it */
 static uint8_t fm_view __attribute__((section(".pool")));       /* FM_VIEW_*; not saved */
 static uint32_t fm_wave_t0 __attribute__((section(".pool")));   /* (fm1_ms) WAVE's operator bars' clock from 0 */
 #define FM_WF_BUF 4608                                  /* WAVE's slices' points, all of them */
@@ -126,6 +126,8 @@ static fm_wf_t fm_wf __attribute__((section(".pool")));
 static uint32_t fm_tr(void) { return trk_index(TSEL) % NTRK; }
 /* the waterfall: the voice (WAVE) or the operator picked with what feeds it (OP WAVE) */
 static int fm_is_wave(uint32_t view) { return view == FM_VIEW_WAVE || view == FM_VIEW_OP_WAVE; }
+/* the sound as it plays: the track's (LIVE) or the operator picked in the last note's voice (OP LIVE) */
+static int fm_is_live(uint32_t view) { return view == FM_VIEW_LIVE || view == FM_VIEW_OP_LIVE; }
 static uint32_t fm_nwin(uint32_t pg) { return pg ? FM_ALL_NWIN : FM_OP_NWIN; }
 static uint32_t fm_win(uint32_t pg)
 {
@@ -465,6 +467,7 @@ static uint32_t fm_sig(void)
            (fm_is_wave(view) ? fm_wf_tune_sig() * 2246822519u : 0u) ^
            (view == FM_VIEW_SPECTRUM ? (fm1_ms / SPEC_SLICE_MS + 1u) * 3266489917u : 0u) ^
            (view == FM_VIEW_LIVE ? (scope_trk_w / 128u + fm_wf_tune_sig()) * 2654435761u : 0u) ^
+           (view == FM_VIEW_OP_LIVE ? (fm1_ms / 16u + fm_wf_tune_sig()) * 2654435761u : 0u) ^
            fm_osc_sig() * 3266489917u;
 }
 /* (#20w, #71b) SHIFT + SELECT on an FM6 sheet steps its panel: right the envelopes, WAVE, SPECTRUM; left back. 0: not
@@ -488,13 +491,13 @@ static int fm_view_step(int32_t s)
     return 1;
 }
 /* the voice's without a prefix: "VOICE WAVE" is too wide for a card */
-static const char *const FM_PANEL_N[FM_VIEW_SPECTRUM + 1] = {"ENV", "WAVE", "OP WAVE", "LIVE", "SPECTRUM"};
+static const char *const FM_PANEL_N[FM_VIEW_SPECTRUM + 1] = {"ENV", "WAVE", "OP WAVE", "LIVE", "OP LIVE", "SPECTRUM"};
 /* PERIODS x ZOOM Y on one knob: ZOOM Y's five steps inside each PERIODS */
 static int32_t fm_wf_zone(const fm_wf_tune_t *u)
 {
     return ((int32_t)u->periods - 1) * FM_WF_ZOOMS + ((int32_t)u->zoom_y - 4) / 2;
 }
-/* ALL OPS' VIEW, KNOB k turned s: the panel; on WAVE PERIODS x ZOOM Y, HELD, RELEASE; on LIVE PERIODS x ZOOM Y */
+/* ALL OPS' VIEW, KNOB k turned s: the panel; on WAVE PERIODS x ZOOM Y, HELD, RELEASE; on LIVE and OP LIVE PERIODS x ZOOM Y */
 static void fm_view_knob(uint32_t k, int32_t s)
 {
     fm_wf_tune_t *u = &fm_wf_tune;
@@ -504,7 +507,7 @@ static void fm_view_knob(uint32_t k, int32_t s)
         fm_view_turn(s);
         return;
     }
-    if (k == 1u && (fm_is_wave(fm_view) || fm_view == FM_VIEW_LIVE)) {
+    if (k == 1u && (fm_is_wave(fm_view) || fm_is_live(fm_view))) {
         zone = clamp(fm_wf_zone(u) + s, 0, FM_WF_PERIODS_MAX * FM_WF_ZOOMS - 1);
         u->periods = (uint8_t)(zone / FM_WF_ZOOMS + 1);
         u->zoom_y = (uint8_t)(4 + zone % FM_WF_ZOOMS * 2);
@@ -550,7 +553,7 @@ static void fm_view_cards(void)
     uint32_t c;
     draw_column(0, "PANEL", FM_PANEL_N[fm_view % (FM_VIEW_SPECTRUM + 1u)], "", VR_LIVE, fm_view * 1000 / FM_VIEW_SPECTRUM,
                 ICON_AUTO);
-    if (!fm_is_wave(fm_view) && fm_view != FM_VIEW_LIVE) {
+    if (!fm_is_wave(fm_view) && !fm_is_live(fm_view)) {
         for (c = 1; c < 4u; c++)
             draw_column(c, "", "", "", VR_THEME, -1, ICON_NONE);
         return;
@@ -559,7 +562,7 @@ static void fm_view_cards(void)
     fmt_int(zoom, u->zoom_y * 25);
     str_cpy(zoom + str_len(zoom), "%", sizeof zoom - str_len(zoom));
     draw_column(1, "PERIODS", val, zoom, VR_LIVE, (u->zoom_y - 4) * 1000 / 8, ICON_AUTO);   /* (the gauge: ZOOM Y) */
-    if (fm_view == FM_VIEW_LIVE) {
+    if (fm_is_live(fm_view)) {
         for (c = 2; c < 4u; c++)
             draw_column(c, "", "", "", VR_THEME, -1, ICON_NONE);
         return;
@@ -1428,16 +1431,16 @@ static void fm_wf_voice(fm6_note_t *n, const fm_sim_t *s, int32_t lf, const int3
         n->op[i].gain_out = fm6_exp2(clamp(lv, 0, 17 << 24) - (14 << 24));
     }
 }
-/* (OP WAVE) a block of the operator picked alone: the voice's block run on a copy for the levels and envelopes it
+/* (OP WAVE, OP LIVE: alone) a block of the operator picked alone: the voice's block run on a copy for the levels and envelopes it
  * reaches (fm6_note_compute as the voice runs it, untouched), then the operators with the picked one's row of the
  * algorithm onto the output and every operator outside its chain OFF; (WAVE) the voice's */
 static __attribute__((noinline)) int fm_wf_compute(fm6_note_t *n, const fm_sim_t *s, int32_t *out, int32_t lf,
-                                                   const int32_t *dt)
+                                                   const int32_t *dt, int alone)
 {
     fm6_note_t voice;
     uint8_t row[6];
     uint32_t sel = fm_ui[0] % 6u, chain = (1u << sel) | fm_feeders(s->alg, sel), waves = n->waves, j;
-    if (fm_view != FM_VIEW_OP_WAVE)
+    if (!alone)
         return fm6_note_compute(n, s->q, out, 1 << 23, 0, lf, s->alg, (int32_t)s->fb, dt, s->modlvl << 8);
     voice = *n;
     (void)fm6_note_compute(&voice, s->q, out, 1 << 23, 0, lf, s->alg, (int32_t)s->fb, dt, s->modlvl << 8);
@@ -1473,7 +1476,7 @@ static int32_t fm_wf_slice(const fm_sim_t *s, const track_t *t, int8_t *pts)
     fm6_spread(s->alg, t->p[P_E6], dt);
     fm_wf_voice(&n, s, lf, dt, s0);
     for (i = 0; i < len; i += FM6_N) {
-        if (!fm_wf_compute(&n, s, out, lf, dt))
+        if (!fm_wf_compute(&n, s, out, lf, dt, fm_view == FM_VIEW_OP_WAVE))
             memset(out, 0, sizeof out);
         for (k = 0; k < FM6_N; prev = out[k++])
             for (r = 0; r < u->smooth; r++)
@@ -1682,25 +1685,31 @@ static fm_live_t *fm_live_room(void)
     }
     return live;
 }
-/* the track's sound at 22050 Hz (fx.c scope_trk_buf), sample at x / 256 past start */
-static int32_t fm_live_at(uint32_t start, uint32_t x)
+typedef struct {                                        /* what LIVE draws: 22050 Hz samples in a ring */
+    const int16_t *buf;
+    uint32_t mask, newest;                              /* the ring's size - 1; the sample after the newest */
+} fm_live_src_t;
+/* the sample at x / 256 past start */
+static int32_t fm_live_at(const fm_live_src_t *src, uint32_t start, uint32_t x)
 {
-    int32_t a = scope_trk_buf[(start + (x >> 8)) & (SCOPE_TRK_N - 1u)];
-    int32_t b = scope_trk_buf[(start + (x >> 8) + 1u) & (SCOPE_TRK_N - 1u)];
+    int32_t a = src->buf[(start + (x >> 8)) & src->mask], b = src->buf[(start + (x >> 8) + 1u) & src->mask];
     return a + (((b - a) * (int32_t)(x & 255u)) >> 8);
 }
-/* (LIVE) the track's sound as it plays: PERIODS periods of the last note's pitch (as many as the fresh samples hold).
- * Of the starts within a period, the one whose trace is most like the last frame's: a held note stands still, however
- * many times its wave crosses zero */
-static void fm_live_panel(const fm_sim_t *s, uint16_t c)
+/* the last note's period at 22050 Hz, 1/256 samples */
+static uint32_t fm_live_period(const fm_sim_t *s)
 {
     const fm6_last_t *l = &fm6_last[fm_tr()];
+    int32_t note = clamp((l->vel ? l->note : 60) + s->q[FP_TRNSP] - 24, 0, 127);
+    return (uint32_t)((1ull << 31) / (uint32_t)fm6_freq(fm6_note_logfreq(note * 16, 0)));
+}
+/* (LIVE, OP LIVE) PERIODS periods of src (as many as its fresh samples hold). Of the starts within a period, the one
+ * whose trace is most like the last frame's: a held note stands still, however many times its wave crosses zero */
+static void fm_live_draw(const fm_live_src_t *src, uint32_t period, uint16_t c)
+{
     fm_live_t *live = fm_live_room();
-    int32_t note = clamp((l->vel ? l->note : 60) + s->q[FP_TRNSP] - 24, 0, 127), mid = FM_GY + FM_GH / 2, peak = 0;
-    uint32_t period = (uint32_t)((1ull << 31) / (uint32_t)fm6_freq(fm6_note_logfreq(note * 16, 0)));   /* (1/256) */
-    uint32_t w = scope_trk_w, oldest = w - FM_LIVE_FRESH, n = fm_wf_cfg()->periods, span, room, best = oldest, j, x;
+    uint32_t oldest = src->newest - FM_LIVE_FRESH, n = fm_wf_cfg()->periods, span, room, best = oldest, j, x;
     int64_t best_score = INT64_MIN;
-    int32_t py = mid;
+    int32_t mid = FM_GY + FM_GH / 2, py = mid, peak = 0;
     while (n > 1u && (n + 1u) * period > FM_LIVE_FRESH << 8)
         n--;
     span = n * period < FM_LIVE_FRESH << 8 ? n * period : FM_LIVE_FRESH << 8;
@@ -1709,16 +1718,16 @@ static void fm_live_panel(const fm_sim_t *s, uint16_t c)
         uint32_t start = oldest + j, k;
         int64_t score = 0;
         for (k = 0; k < FM_LIVE_PTS; k++)
-            score += (int64_t)live->last[k] * fm_live_at(start, span / (FM_LIVE_PTS - 1u) * k);
+            score += (int64_t)live->last[k] * fm_live_at(src, start, span / (FM_LIVE_PTS - 1u) * k);
         if (score > best_score) {
             best_score = score;
             best = start;
         }
     }
     for (j = 0; j < FM_LIVE_PTS; j++)
-        live->last[j] = (int16_t)fm_live_at(best, span / (FM_LIVE_PTS - 1u) * j);
+        live->last[j] = (int16_t)fm_live_at(src, best, span / (FM_LIVE_PTS - 1u) * j);
     for (x = 0; x < FM_XW; x++) {
-        int32_t v = fm_live_at(best, (uint32_t)((uint64_t)span * x / (FM_XW - 1u)));
+        int32_t v = fm_live_at(src, best, (uint32_t)((uint64_t)span * x / (FM_XW - 1u)));
         peak = v > peak ? v : -v > peak ? -v : peak;
     }
     live->peak = peak > live->peak * 15 / 16 ? peak : live->peak * 15 / 16;
@@ -1726,19 +1735,53 @@ static void fm_live_panel(const fm_sim_t *s, uint16_t c)
     if (live->peak < 64)
         return;
     for (x = 0; x < FM_XW; x++) {
-        int32_t v = fm_live_at(best, (uint32_t)((uint64_t)span * x / (FM_XW - 1u)));
+        int32_t v = fm_live_at(src, best, (uint32_t)((uint64_t)span * x / (FM_XW - 1u)));
         int32_t y = clamp(mid - v * (FM_GH / 2 - 2) * fm_wf_cfg()->zoom_y / 4 / live->peak, FM_GY, FM_GY + FM_GH - 1);
         if (x)
             cv_line_t(FM_X0 + (int32_t)x - 1, py, FM_X0 + (int32_t)x, y, c, 2);
         py = y;
     }
 }
+/* (LIVE) the track's sound as it plays: fx.c's scope of it, the newest samples (the ISR writes past the rest) */
+static void fm_live_panel(const fm_sim_t *s, uint16_t c)
+{
+    const fm_live_src_t src = {scope_trk_buf, SCOPE_TRK_N - 1u, scope_trk_w};
+    fm_live_draw(&src, fm_live_period(s), c);
+}
+#define FM_OP_LIVE_N 512u
+/* (OP LIVE) the operator picked as the last note's voice plays it now: the voice copied as it stands (the ISR kept out
+ * for those 284 B), then FM_LIVE_FRESH x 2 samples of it rendered on as OP WAVE renders (the LFO at rest), every
+ * other kept; the voice silent: a flat line */
+static void fm_op_live_panel(const fm_sim_t *s, const track_t *t, uint16_t c)
+{
+    const fm6_last_t *l = &fm6_last[fm_tr()];
+    const fm6_note_t *voice = l->vel ? fm6_note_of((track_t *)t, (voice_t *)&t->v[l->voice % NVOICE]) : 0;
+    int16_t buf[FM_OP_LIVE_N] = {0};
+    int32_t out[FM6_N], dt[6], lf = fm6_note_logfreq(clamp(l->note + s->q[FP_TRNSP] - 24, 0, 127) * 16, 0);
+    const fm_live_src_t src = {buf, FM_OP_LIVE_N - 1u, FM_LIVE_FRESH};
+    fm6_note_t n;
+    uint32_t i, k;
+    memset(&n, 0, sizeof n);
+    if (voice) {
+        fm1_irq_off();
+        n = *voice;
+        fm1_irq_on();
+    }
+    fm6_spread(s->alg, t->p[P_E6], dt);
+    for (i = 0; voice && n.live && i < FM_LIVE_FRESH * 2u; i += FM6_N) {
+        if (!fm_wf_compute(&n, s, out, lf, dt, 1))
+            memset(out, 0, sizeof out);
+        for (k = 0; k < FM6_N; k += 2u)
+            buf[(i + k) / 2u] = (int16_t)clamp(out[k] >> 11, -32767, 32767);
+    }
+    fm_live_draw(&src, fm_live_period(s), c);
+}
 static void fm_draw(uint32_t pg, const track_t *t, uint16_t c)
 {
     fm_sim_t *s = &fm_panel_sim;
     uint16_t sh[12];
     uint32_t w = fm_win(pg), view = fm_panel_view(pg, w);
-    if (view != FM_VIEW_SPECTRUM && view != FM_VIEW_LIVE)
+    if (view != FM_VIEW_SPECTRUM && !fm_is_live(view))
         fm_room_take_back();
     fm_ramp(sh);
     if (view == FM_VIEW_SPECTRUM) {
@@ -1749,10 +1792,13 @@ static void fm_draw(uint32_t pg, const track_t *t, uint16_t c)
         fm_ops(s, t);
         fm_tabs(s, sh, fm_tab_beside(pg, w));
         fm_wave_panel(s, t, c);
-    } else if (view == FM_VIEW_LIVE) {
+    } else if (fm_is_live(view)) {
         fm_ops(s, t);
         fm_tabs(s, sh, fm_tab_beside(pg, w));
-        fm_live_panel(s, c);
+        if (view == FM_VIEW_LIVE)
+            fm_live_panel(s, c);
+        else
+            fm_op_live_panel(s, t, c);
     } else if (pg && w == FMW_ALGO) {
         fm_algo(t, c);
     } else if (!pg && (w == FMW_KEYS || w == FMW_MORE)) {

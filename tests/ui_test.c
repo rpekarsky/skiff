@@ -11938,6 +11938,8 @@ static int test_fm6_spectrum_view(void)
     shift_select(1);
     ok &= fm_view == FM_VIEW_LIVE;
     shift_select(1);
+    ok &= fm_view == FM_VIEW_OP_LIVE;
+    shift_select(1);
     ok &= fm_view == FM_VIEW_SPECTRUM;
     room = fm_room_lend(&kept);
     for (j = 0; j < SPEC_SLICES; j++) {                 /* (a slice a tick: the tone's, or none yet) */
@@ -11953,10 +11955,12 @@ static int test_fm6_spectrum_view(void)
     turn(EN_K2, 1); turn(EN_K3, 1); turn(EN_K4, -1);
     ok &= card_is(1, "") && card_is(2, "") && card_is(3, "") && fm_nwin(1) == FM_ALL_NWIN;
     ok &= spec_tune.range == 1u && !spec_tune.top_full_scale && spec_tune.zoom_q == 4u && TSEL->p[P_PAN] == pan;
-    turn(EN_K1, -1);                                   /* (PANEL: SPECTRUM to LIVE: PERIODS alone, back) */
-    ok &= fm_view == FM_VIEW_LIVE && card_is(1, "PERIODS") && card_is(2, "") && fm_nwin(1) == FM_ALL_NWIN;
+    turn(EN_K1, -1);                                   /* (PANEL: SPECTRUM to OP LIVE: PERIODS alone, back) */
+    ok &= fm_view == FM_VIEW_OP_LIVE && card_is(1, "PERIODS") && card_is(2, "") && fm_nwin(1) == FM_ALL_NWIN;
     turn(EN_K1, 1);
     go_title("OPERATOR"); fm_ui[1] = FMW_TONE; frame();
+    shift_select(-1);
+    ok &= fm_view == FM_VIEW_OP_LIVE;
     shift_select(-1);
     ok &= fm_view == FM_VIEW_LIVE;
     shift_select(-1);
@@ -11967,8 +11971,8 @@ static int test_fm6_spectrum_view(void)
     ok &= fm_view == FM_VIEW_ENVELOPES;
     shift_select(-1);
     ok &= fm_view == FM_VIEW_ENVELOPES && str_eq(cur_page()->title, "OPERATOR") && !ui.home && !ui.menu;
-    return check("(#71b) FM6: SHIFT + SELECT steps envelopes, WAVE, OP WAVE, LIVE, SPECTRUM (the track's, no WAVE "
-                 "slice in it) and back; "
+    return check("(#71b) FM6: SHIFT + SELECT steps envelopes, WAVE, OP WAVE, LIVE, OP LIVE, SPECTRUM (the track's, no "
+                 "WAVE slice in it) and back; "
                  "ALL OPS' VIEW: K1 PANEL; on WAVE K2 PERIODS 1 .. 3 with ZOOM Y 100 .. 300 % inside each, K3 HELD (as "
                  "played, 0.02 .. 10 s on a log scale), K4 RELEASE; on SPECTRUM nothing beside PANEL; "
                  "SHIFT on TONE: the channel strip", ok);
@@ -12092,8 +12096,10 @@ static int test_fm6_live(void)
             worst = d > worst ? d : -d > worst ? -d : worst;
         }
     }
-    for (j = 0; j < FM_LIVE_PTS; j++)                   /* (unheld: the oldest fresh sample, 37 on, another phase) */
-        moved |= abs(fm_live_at(w - FM_LIVE_FRESH, 2u * 256u * j) - first[j]) > 3000;
+    for (j = 0; j < FM_LIVE_PTS; j++) {                 /* (unheld: the oldest fresh sample, 37 on, another phase) */
+        const fm_live_src_t src = {scope_trk_buf, SCOPE_TRK_N - 1u, w};
+        moved |= abs(fm_live_at(&src, w - FM_LIVE_FRESH, 2u * 256u * j) - first[j]) > 3000;
+    }
     ok &= worst < 2000 && moved;                      /* (the steepest slope ~3000 a sample) */
     fm_view = FM_VIEW_WAVE;
     fm_draw(0, TSEL, T_TEXT);
@@ -12101,6 +12107,47 @@ static int test_fm6_live(void)
     fm_view = FM_VIEW_ENVELOPES;
     return check("LIVE: A4 on the track's scope, 37 and 300 samples on: the trace held where it was (within 2/3 of a "
                  "sample); WAVE takes the room back", ok);
+}
+/* OP LIVE: INIT with OP2 (x2) into OP1, A4 held on the track: OP2 in the voice as it sounds, a sine twice the note's
+ * (8 zero crossings over PERIODS 2); OP1 the voice's FM; let go and done: flat */
+static int test_fm6_op_live(void)
+{
+    uint8_t v[FP_SIZE + 1u];
+    int32_t b[CTL];
+    fm_live_t *live;
+    uint32_t tr, j, cross = 0, i;
+    int ok;
+    ui_power_on();
+    set_engine_of(TSEL, ENGI_FM6);
+    memset(&fm_wf_tune, 0, sizeof fm_wf_tune);
+    tr = fm_tr();
+    fm6_unpack(FM6_INIT, v);
+    v[4u * FP_OP + FP_OL] = 99;
+    v[4u * FP_OP + FP_FC] = 2;
+    fm6_set_patch(tr, v);
+    go_title("ALL OPS"); fm_ui[2] = FMW_VIEW; frame();
+    TSEL->engine = TSEL->eng_req;                       /* (the switch to FM6 done: no note waits for its fade) */
+    trk_note_on(TSEL, 69, 100);
+    for (i = 0; i < 4u; i++)
+        track_render(TSEL, b, CTL);
+    fm_view = FM_VIEW_OP_LIVE;
+    fm_ui[0] = 1;
+    fm_ops(&fm_panel_sim, TSEL);
+    fm_draw(1, TSEL, T_TEXT);
+    fm_draw(1, TSEL, T_TEXT);
+    live = fm_live_room();
+    for (j = 1; j < FM_LIVE_PTS; j++)
+        cross += (live->last[j - 1] < 0) != (live->last[j] < 0);
+    ok = fm_room_lent == FM_ROOM_LIVE && live->peak > 1000 && cross >= 7u && cross <= 9u;
+    trk_note_off(TSEL, 69);
+    for (i = 0; i < 2000u && fm6_note_of(TSEL, &TSEL->v[fm6_last[tr].voice])->live; i++)
+        track_render(TSEL, b, CTL);
+    for (i = 0; i < 120u; i++)                         /* (the height falls 1/16 a frame: 60 dB in ~110) */
+        fm_draw(1, TSEL, T_TEXT);
+    ok &= live->peak < 64;
+    fm_view = FM_VIEW_ENVELOPES;
+    return check("OP LIVE: OP2 (x2 into OP1) in A4's voice as it sounds, a sine twice the note's; the voice done: flat",
+                 ok);
 }
 static int test_fm6_wave_windows(void)
 {
@@ -12512,6 +12559,7 @@ int main(void)
     bad += test_fm6_out_preview();
     bad += test_fm6_op_wave();
     bad += test_fm6_live();
+    bad += test_fm6_op_live();
     bad += test_spectrum_height();
     bad += test_spectrum_hd();
     bad += test_popup_time();
