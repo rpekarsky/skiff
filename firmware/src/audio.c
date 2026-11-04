@@ -15,7 +15,10 @@ static int32_t abuf[2u * HALF_WORDS] __attribute__((aligned(4)));
 /* diagnostics, kept across resets and UBOOT entry: read with `fm1t memr` */
 #define DBG_MAGIC 0x44424731u                       /* "DBG1" */
 struct felucca_dbg {
-    uint32_t magic, halves, max_us, nested, in_audio, late, timer_irqs, ui_frames;
+    uint32_t magic, halves, max_us, nested;
+    volatile uint32_t in_audio;           /* (TIMER5 reads it, main.c: its stores stay first and last; the order here:
+                                           * console.c's names, fm1t memr) */
+    uint32_t late, timer_irqs, ui_frames;
     uint32_t last_us, cpu_q8, boots;
     uint32_t stage, page, home;           /* where the main loop is (breadcrumbs) */
     uint32_t prev_stage, prev_page, prev_home, prev_rst, prev_frames;   /* as found at boot */
