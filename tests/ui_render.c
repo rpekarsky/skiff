@@ -2247,6 +2247,21 @@ static void sweep_columns(void)
             lint();
         }
     }
+    state(); pal(UI_SKIFF_INDEX); eng(ENGI_FM6); go_title("ALL OPS");   /* FM6's VIEW: every PANEL, the WAVE knobs' ends */
+    cur_name = large_on ? "LARGE FM6 VIEW sweep" : "FM6 VIEW sweep";
+    fm_ui[2] = FMW_VIEW;
+    for (fm_view = FM_VIEW_ENVELOPES; fm_view <= FM_VIEW_SPECTRUM; fm_view++) {
+        uint32_t end;
+        for (end = 0; end < 2u; end++) {
+            fm_wf_tune = (fm_wf_tune_t){end ? 3 : 1, 0, 2, 2, end ? 12 : 4, 30, 50, end ? 70 : 0, end ? FM_WF_HELD_MAX : 0};
+            nscr = npend = 0;
+            ui.force = 1;
+            draw_columns();
+            lint();
+        }
+    }
+    fm_view = FM_VIEW_ENVELOPES;
+    memset(&fm_wf_tune, 0, sizeof fm_wf_tune);
 }
 
 /* the rolling digits (ui_draw.c roll_*): GLOBAL, SELECT and KNOB 4 turned together, BPM 129 -> 130 in the header

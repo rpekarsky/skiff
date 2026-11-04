@@ -492,13 +492,15 @@ static __attribute__((noinline)) void fm6_op_wave_fb(int32_t *out, int32_t phase
 #if !FELUCCA_CPU2
 static int32_t fm6_bus[2][FM6_N];
 #endif
-static inline __attribute__((always_inline)) int fm6_core_render_waves(int32_t *out, fm6_op_t *op, uint32_t alg,
-                                                                      int32_t *fb, int32_t fb_shift, uint32_t waves)
+/* row: 0, the algorithm's own (FM6_ALG); (OP WAVE, ui_fm6.c) a copy of it with one operator onto the output */
+static inline __attribute__((always_inline)) int fm6_core_render_row(int32_t *out, fm6_op_t *op, uint32_t alg,
+                                                                    const uint8_t *row, int32_t *fb, int32_t fb_shift,
+                                                                    uint32_t waves)
 {
 #if FELUCCA_CPU2
     int32_t fm6_bus[2][FM6_N];
 #endif
-    const uint8_t *a = FM6_ALG[alg & 31u];
+    const uint8_t *a = row ? row : FM6_ALG[alg & 31u];
     uint8_t has[3] = {0, 0, 0};
     uint32_t k;
     for (k = 0; k < 6u; k++) {
@@ -531,6 +533,11 @@ static inline __attribute__((always_inline)) int fm6_core_render_waves(int32_t *
         op[k].phase = (int32_t)((uint32_t)op[k].phase + ((uint32_t)op[k].freq << FM6_LG_N));
     }
     return has[0];
+}
+static inline __attribute__((always_inline)) int fm6_core_render_waves(int32_t *out, fm6_op_t *op, uint32_t alg,
+                                                                      int32_t *fb, int32_t fb_shift, uint32_t waves)
+{
+    return fm6_core_render_row(out, op, alg, 0, fb, fb_shift, waves);
 }
 static int fm6_core_render(int32_t *out, fm6_op_t *op, uint32_t alg, int32_t *fb, int32_t fb_shift)
 {
