@@ -1579,10 +1579,17 @@ static void fm_wf_bars(const fm_sim_t *s, const track_t *t)
         for (j = 0; j < 6u; j++)
             if (mods[k] >> j & 1u)
                 phase += (uint32_t)out[j];
-        sine[k] = fm6_shaped((int32_t)phase, &sh);
+        sine[k] = fm6_op_out[fm_tr()][i] == FM6_OUT_OFF ? 0 : fm6_shaped((int32_t)phase, &sh);
+        if (fm6_op_out[fm_tr()][i] == FM6_OUT_INV)
+            sine[k] = -sine[k];                         /* (its OUT: INV upside down, OFF still, as fm6_core_render) */
         out[k] = fm_wf.top[i] ? (int32_t)(((int64_t)sine[k] * gain) >> 15) : 0;
-        if (k == fm6_fb_op(s->alg) && s->fb && fm_wf.top[i])
+        if (k == fm6_fb_op(s->alg) && s->fb && fm_wf.top[i] && fm6_op_out[fm_tr()][i] != FM6_OUT_OFF) {
             fm_wf_self_mod(&sine[k], &out[k], phase, gain, 8 - (int32_t)s->fb, &sh);
+            if (fm6_op_out[fm_tr()][i] == FM6_OUT_INV) {
+                sine[k] = -sine[k];
+                out[k] = -out[k];
+            }
+        }
     }
     for (k = 0; k < 6u; k++) {
         int32_t x = FM_WF_BX + (int32_t)n * 10, reach, y;

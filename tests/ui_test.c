@@ -11956,6 +11956,42 @@ static int test_fm6_spectrum_view(void)
                  "(WAVE): FILL .. HELD (as played, 0.1 .. 10 s on a log scale); "
                  "SHIFT on TONE: the channel strip", ok);
 }
+/* OUT in WAVE's waterfall: INIT's OP1 (its only carrier) at HALF; INV: every slice upside down */
+static void fm_preview(int8_t *pts)
+{
+    fm_view = FM_VIEW_WAVE;
+    fm_wave_t0 = fm1_ms - 300u;
+    fm_ops(&fm_panel_sim, TSEL);
+    fm_wf_begin(&fm_panel_sim, fm_wf_key(&fm_panel_sim, TSEL));
+    while (fm_wf.done < fm_wf_slices())
+        fm_wf_render(&fm_panel_sim, TSEL);
+    memcpy(pts, fm_panel_sim.wave, fm_wf_points() * 4u);
+}
+static int test_fm6_out_preview(void)
+{
+    static int8_t on[FM_WF_NP * 4], inv[FM_WF_NP * 4];
+    uint8_t v[FP_SIZE + 1u];
+    uint32_t tr, j, n, lit = 0;
+    int ok = 1;
+    ui_power_on();
+    set_engine_of(TSEL, ENGI_FM6);
+    tr = fm_tr();
+    fm6_unpack(FM6_INIT, v);
+    fm6_set_patch(tr, v);
+    fm6_set_wave(tr, 5, FM6_W_HALF);
+    go_title("OPERATOR"); fm_ui[1] = FMW_OSC; frame();
+    fm_preview(on);
+    fm6_set_out(tr, 5, FM6_OUT_INV);
+    fm_preview(inv);
+    n = fm_wf_points() * 4u;
+    for (j = 0; j < n; j++) {
+        ok &= inv[j] == -on[j] || inv[j] == -on[j] - 1 || inv[j] == -on[j] + 1;
+        lit |= on[j] > 20;
+    }
+    fm6_set_out(tr, 5, FM6_OUT_ON);
+    fm_view = FM_VIEW_ENVELOPES;
+    return check("OUT in WAVE: INIT's OP1 at HALF, its only carrier: INV turns every slice upside down", ok && lit);
+}
 static int test_fm6_wave_windows(void)
 {
     int ok;
@@ -12367,6 +12403,7 @@ int main(void)
     bad += test_spectrum_history();
     bad += test_fm6_spectrum_view();
     bad += test_fm6_wave_windows();
+    bad += test_fm6_out_preview();
     bad += test_spectrum_height();
     bad += test_spectrum_hd();
     bad += test_popup_time();
