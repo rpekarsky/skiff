@@ -3844,6 +3844,11 @@ static int test_fm6_wave(void)
         for (i = 0; i < 64 && (i < 2 || fm_wf.done < fm_wf_slices()); i++)
             frame();
         ok &= fm_wf.note == 50u && fm_wf.vel == 80u && fm_wf.held == 300 * 1378 / 1000 && fm_wf.done == fm_wf_slices();
+        fm_wf_tune.held = 21;                          /* HELD 1.0 S: drawn held 1 s, as long as it was played or not */
+        for (i = 0; i < 64 && (i < 2 || fm_wf.done < fm_wf_slices()); i++)
+            frame();
+        ok &= fm_wf.held == 1378;
+        fm_wf_tune.held = 0;
         trk_note_on(TSEL, 50, 80);
         track_render(TSEL, b, CTL);
         ok &= fm6_last[tr].held_ms == 300u && fm6_last[tr].down;
@@ -11888,9 +11893,16 @@ static int test_fm6_spectrum_view(void)
     ok &= fm_wf_cfg()->periods == 1u && fm_wf_cfg()->smooth == 2u && !ui.home && !ui.menu;
     fm_ui[2] = FMW_VIEW2; frame();
     turn(EN_K1, -200); turn(EN_K4, 5);
-    ok &= fm_wf_cfg()->fill == 0u && fm_wf_cfg()->held == FM_WF_HELD_1S && card_is(0, "FILL") && card_is(3, "HELD");
+    ok &= fm_wf_cfg()->fill == 0u && fm_wf_cfg()->held > 0u && card_is(0, "FILL") && card_is(3, "HELD");
+    fm_wf_tune.held = 1;
+    ok &= fm_wf_held_ms() == 100u;
+    fm_wf_tune.held = 21;
+    ok &= fm_wf_held_ms() == 1000u;
+    fm_wf_tune.held = FM_WF_HELD_MAX;
+    ok &= fm_wf_held_ms() == 10000u;
     fm_wf_tune.fill = 30;
-    fm_wf_tune.held = FM_WF_HELD_PLAYED;
+    fm_wf_tune.held = 0;
+    ok &= !fm_wf_held_ms();
     go_title("OPERATOR"); fm_ui[1] = FMW_TONE; frame();
     for (i = 0; i < SCOPE_TRK_N; i++)
         scope_trk_buf[i] = (int16_t)(16384.0 * sin(6.2831853 * 23.0 * i / SCOPE_TRK_N));
@@ -11920,7 +11932,7 @@ static int test_fm6_spectrum_view(void)
     shift_select(-1);
     ok &= fm_view == FM_VIEW_ENVELOPES && str_eq(cur_page()->title, "OPERATOR") && !ui.home && !ui.menu;
     return check("(#71b) FM6: SHIFT + SELECT steps envelopes, WAVE, SPECTRUM (the track's, no WAVE slice in it) and back; "
-                 "ALL OPS' VIEW 1: K2 PERIODS 1 .. 3; VIEW 2: FILL .. HELD; VIEW 3 K1 K2 K4: RANGE TOP ZOOM Y, K3 nothing; "
+                 "ALL OPS' VIEW 1: K2 PERIODS 1 .. 3; VIEW 2: FILL .. HELD (as played, 0.1 .. 10 s on a log scale); VIEW 3 K1 K2 K4: RANGE TOP ZOOM Y, K3 nothing; "
                  "SHIFT on TONE: the channel strip", ok);
 }
 static int test_fm6_wave_windows(void)

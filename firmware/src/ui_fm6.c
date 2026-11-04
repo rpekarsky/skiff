@@ -64,7 +64,7 @@ static uint32_t fm_wave_t0 __attribute__((section(".pool")));   /* (fm1_ms) WAVE
 #define FM_WF_NP 192                                    /* a slice's points at most */
 #define FM_WF_SMOOTH_MAX 4
 #define FM_WF_PERIODS_MAX 3
-enum { FM_WF_HELD_PLAYED, FM_WF_HELD_SMART, FM_WF_HELD_1S };   /* as played; 1 s while the key is down; always 1 s */
+#define FM_WF_HELD_MAX 41u                      /* HELD: 0 as played, 1 .. 41: 0.1 .. 10 s, 20 a decade */
 typedef struct {                                        /* (#20t, test build) SHIFT + KNOB 1..4 on WAVE; not saved */
     uint8_t slices;                                     /* 8 .. as many as the buffer holds (fm_wf_slices) */
     uint8_t periods;                                    /* 1 .. FM_WF_PERIODS_MAX across, each rendered (fm_wf_points) */
@@ -76,13 +76,13 @@ typedef struct {                                        /* (#20t, test build) SH
     uint8_t fill;                                       /* (SMK FADERS WAVE) % a slice veils the lines behind it */
     uint8_t warp;                                       /* the time axis: 0 even, 100 log (the attack drawn large) */
     uint8_t release;                                    /* % of the slices on the release: 0 .. 70 */
-    uint8_t held;                                       /* the note's length: FM_WF_HELD_* */
+    uint8_t held;                                       /* the note's length: 0 as played, else fm_wf_held_ms */
 } fm_wf_tune_t;
 static fm_wf_tune_t fm_wf_tune __attribute__((section(".pool")));
 static const fm_wf_tune_t *fm_wf_cfg(void)
 {
     if (!fm_wf_tune.slices)
-        fm_wf_tune = (fm_wf_tune_t){26, 2, 0, 2, 3, 4, 30, 50, 25, FM_WF_HELD_PLAYED};
+        fm_wf_tune = (fm_wf_tune_t){26, 2, 0, 2, 3, 4, 30, 50, 25, 0};
     return &fm_wf_tune;
 }
 /* a slice's points: PERIODS 1 128, 2 88 a period, 3 64, so the buffer holds 36, 26, 24 slices */
@@ -410,19 +410,34 @@ static const char *fm_op_title(void)                 /* the header's: "OPERATOR 
     return t;
 }
 static const char *fm_all_title(void) { return "ALL OPS"; }
-/* the note drawn held 1 s, not as long as it was played: HELD 1 S, or SMART while its key is still down (its length
- * not known yet) */
-static int fm_wf_held_1s(const fm6_last_t *l)
+/* the note drawn held this long (ms), whatever it was played: HELD 0.1 .. 10 s on a log scale; 0: as played */
+static uint32_t fm_wf_held_ms(void)
 {
-    uint32_t mode = fm_wf_cfg()->held;
-    return mode == FM_WF_HELD_1S || (mode == FM_WF_HELD_SMART && l->down);
+    static const uint16_t DECADE[20] = {100, 112, 126, 141, 158, 178, 200, 224, 251, 282,
+                                        316, 355, 398, 447, 501, 562, 631, 708, 794, 891};
+    uint32_t h = fm_wf_cfg()->held, i = h - 1u;
+    return h ? DECADE[i % 20u] * (i >= 40u ? 100u : i >= 20u ? 10u : 1u) : 0u;
+}
+/* HELD's value: "PLAYED", "0.56", "2.5", "10" (seconds) */
+static const char *fm_wf_held_text(char *b)
+{
+    uint32_t ms = fm_wf_held_ms();
+    if (!ms)
+        str_cpy(b, "PLAYED", 8);
+    else if (ms < 1000u)
+        fm_hundredths(b, (int32_t)ms / 10);
+    else if (ms < 10000u)
+        fm_tenths(b, (int32_t)ms / 100, 0);
+    else
+        fmt_int(b, (int32_t)ms / 1000);
+    return b;
 }
 /* (#20w) the track's last note as WAVE plays it: its key, velocity and how long it was held, the hold in 1/16 octaves (a
  * sequencer's notes come a few ms apart: one rendering) */
 static uint32_t fm_wf_note_sig(void)
 {
     const fm6_last_t *l = &fm6_last[fm_tr()];
-    uint32_t held = l->held_ms && !fm_wf_held_1s(l) ? log2_q16(l->held_ms) >> 12 : 0;
+    uint32_t held = l->held_ms && !fm_wf_held_ms() ? log2_q16(l->held_ms) >> 12 : 0;
     return l->note | (uint32_t)l->vel << 8 | held << 16;
 }
 /* what the cards and the panel show besides the track's values (ui_graph.c graph_signature hashes those) */
@@ -475,11 +490,10 @@ static void fm_view_knob(uint32_t w, uint32_t k, int32_t s)
     else if (k == 2u)
         u->release = (uint8_t)clamp(u->release + accel(EN_K1 + k, s, 70), 0, 70);
     else
-        u->held = (uint8_t)clamp(u->held + s, FM_WF_HELD_PLAYED, FM_WF_HELD_1S);
+        u->held = (uint8_t)clamp(u->held + accel(EN_K1 + k, s, FM_WF_HELD_MAX), 0, FM_WF_HELD_MAX);
 }
 #if BOARD_SMK37
-/* (SMK FADERS WAVE, SHIFT + FADER BANK) fader j at v of 127: FILL, TIME WARP, RELEASE, HELD (thirds: as played,
- * smart, 1 s) */
+/* (SMK FADERS WAVE, SHIFT + FADER BANK) fader j at v of 127: FILL, TIME WARP, RELEASE, HELD */
 static void fm_wf_fader(uint32_t j, uint32_t v)
 {
     static const char *const NAME[4] = {"FILL ", "TIME WARP ", "RELEASE ", "HELD "};
@@ -493,9 +507,9 @@ static void fm_wf_fader(uint32_t j, uint32_t v)
     else if (j == 2u)
         u->release = (uint8_t)(v * 70u / 127u);
     else
-        u->held = (uint8_t)(v * 3u / 128u);
+        u->held = (uint8_t)(v * (FM_WF_HELD_MAX + 1u) / 128u);
     if (j == 3u) {
-        ui_say(NAME[j], u->held == FM_WF_HELD_1S ? "1 S" : u->held == FM_WF_HELD_SMART ? "SMART" : "AS PLAYED");
+        ui_say(NAME[j], fm_wf_held_text(b));
         return;
     }
     fmt_int(b, j == 0u ? u->fill : j == 1u ? u->warp : u->release);
@@ -516,15 +530,15 @@ static void fm_spec_tune_cards(void)
 }
 static void fm_view_cards(uint32_t w)
 {
-    static const char *const HELD[3] = {"PLAYED", "SMART", "1 S"};
     static const char *const NAME[2][4] = {{"SLICES", "PERIODS", "STEP X", "ZOOM Y"},
                                            {"FILL", "TIME WARP", "RELEASE", "HELD"}};
-    static const char *const UNIT[2][4] = {{"", "", "PX", "%"}, {"%", "%", "%", ""}};
+    static const char *const UNIT[2][4] = {{"", "", "PX", "%"}, {"%", "%", "%", "S"}};
     const fm_wf_tune_t *u = fm_wf_cfg();
     const int32_t v[2][4] = {{(int32_t)fm_wf_slices(), u->periods, u->step_x, u->zoom_y * 25},
                              {u->fill, u->warp, u->release, u->held}};
     const int32_t lo[2][4] = {{8, 1, 0, 100}, {0, 0, 0, 0}};
-    const int32_t hi[2][4] = {{(int32_t)(FM_WF_BUF / fm_wf_points()), FM_WF_PERIODS_MAX, 3, 300}, {100, 100, 70, 2}};
+    const int32_t hi[2][4] = {{(int32_t)(FM_WF_BUF / fm_wf_points()), FM_WF_PERIODS_MAX, 3, 300},
+                              {100, 100, 70, FM_WF_HELD_MAX}};
     uint32_t r = w == FMW_VIEW2, c;
     if (w == FMW_VIEW3) {
         fm_spec_tune_cards();
@@ -533,10 +547,10 @@ static void fm_view_cards(uint32_t w)
     for (c = 0; c < 4u; c++) {
         char val[12];
         if (r && c == 3u)
-            str_cpy(val, HELD[u->held % 3u], sizeof val);
+            (void)fm_wf_held_text(val);
         else
             fmt_int(val, v[r][c]);
-        draw_column(c, NAME[r][c], val, UNIT[r][c], VR_LIVE, (v[r][c] - lo[r][c]) * 1000 / (hi[r][c] - lo[r][c]), ICON_AUTO);
+        draw_column(c, NAME[r][c], val, r && c == 3u && !u->held ? "" : UNIT[r][c], VR_LIVE, (v[r][c] - lo[r][c]) * 1000 / (hi[r][c] - lo[r][c]), ICON_AUTO);
     }
 }
 
@@ -1319,8 +1333,8 @@ static void fm_wf_begin(const fm_sim_t *s, uint32_t key)
     fm_wf.played = l->vel != 0;
     fm_wf.note = fm_wf.played ? l->note : 60;
     fm_wf.vel = fm_wf.played ? l->vel : 100;
-    held_ms = fm_wf.played && l->held_ms && !fm_wf_held_1s(l) ? (int32_t)l->held_ms : 1000;
-    fm_wf.held = clamp(held_ms * 1378 / 1000, 1, 8 * 1378);
+    held_ms = fm_wf_held_ms() ? (int32_t)fm_wf_held_ms() : fm_wf.played && l->held_ms ? (int32_t)l->held_ms : 1000;
+    fm_wf.held = clamp(held_ms * 1378 / 1000, 1, 10 * 1378);
     fm_wf.b = fm_wf.tail = fm_wf.peak = 0;
     fm_wf.done = 0;
     fm_wf.ticks = 0;
