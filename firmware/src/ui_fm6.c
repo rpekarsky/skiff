@@ -1441,12 +1441,15 @@ static __attribute__((noinline)) int fm_wf_compute(fm6_note_t *n, const fm_sim_t
                                                    const int32_t *dt, int alone)
 {
     fm6_note_t voice;
+    fm6_note_t *run = alone ? &voice : n;               /* (one fm6_note_compute inlined here, not two: 1 KB) */
     uint8_t row[6];
     uint32_t sel = fm_ui[0] % 6u, chain = (1u << sel) | fm_feeders(s->alg, sel), waves = n->waves, j;
+    int sounded;
+    if (alone)
+        voice = *n;
+    sounded = fm6_note_compute(run, s->q, out, 1 << 23, 0, lf, s->alg, (int32_t)s->fb, dt, s->modlvl << 8);
     if (!alone)
-        return fm6_note_compute(n, s->q, out, 1 << 23, 0, lf, s->alg, (int32_t)s->fb, dt, s->modlvl << 8);
-    voice = *n;
-    (void)fm6_note_compute(&voice, s->q, out, 1 << 23, 0, lf, s->alg, (int32_t)s->fb, dt, s->modlvl << 8);
+        return sounded;
     memcpy(n->env, voice.env, sizeof n->env);
     n->penv = voice.penv;
     for (j = 0; j < 6u; j++) {
