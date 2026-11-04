@@ -3129,7 +3129,7 @@ static int phase_card_is(const char *val, int32_t gauge)
     char b[16] = {0};
     const char *unit = "";
     int32_t g = fm_val(f, fm_at(0, f), fm6_patch[fm_tr()], TSEL, b, &unit);
-    return str_eq(b, val) && str_eq(unit, "%") && g == gauge;
+    return str_eq(b, val) && str_eq(unit, str_eq(val, "FREE") ? "" : "%") && g == gauge;
 }
 /* (#72b) operator tab k (OP1 = 0) beside its number on OSC */
 static int phase_tab_is(uint32_t k, const char *val)
@@ -3203,12 +3203,15 @@ static int test_fm6_lab(void)
         fm6_set_phase(tr, 5u - 2u, 49);
         ok = phase_card_is("+49", 1000) && phase_tab_is(2, "49");
         turn(EN_K1, 1);
+        ok &= fm6_op_phase[tr][5u - 2u] == FM6_PHASE_FREE && phase_card_is("FREE", 1000) && phase_tab_is(2, "FR");
+        turn(EN_K1, 1);
         ok &= fm6_op_phase[tr][5u - 2u] == 50u && phase_card_is("-50", 0) && phase_tab_is(2, "-50");
-        turn(EN_K1, -1);
+        turn(EN_K1, -2);
         ok &= phase_card_is("+49", 1000);
         fm6_set_phase(tr, 5u - 2u, 75);
         ok &= phase_card_is("-25", 25 * 1000 / 99) && phase_tab_is(2, "-25") && phase_tab_is(1, "0");
-        bad += check("(#72b) PHASE on the card and tab: -50 .. +49 %, +49 on to -50 and back, 75 % of a cycle -25", ok);
+        bad += check("(#72b) PHASE on the card and tab: -50 .. +49 %, +49 on to FREE, -50 and back, 75 % of a cycle -25",
+                     ok);
         turn(EN_K2, 1);                                 /* (#73) WAVE: OP3's, SINE .. SQUARE, at once (fm6_pgen) */
         ok = fm6_op_wave[tr][5u - 2u] == FM6_W_SIN2 && fm6_pgen[tr] != gen;
         turn(EN_K2, -1);
@@ -3512,6 +3515,18 @@ static int fm6x_codec_ok(void)
     ok &= len == 1u + 1u + 14u + 8u + 1u && b[1] == 2u && !memcmp(&x, &none, sizeof x);
     fm6x_block_get(b, sizeof b, two, 2u);
     ok &= !memcmp(&two[0], &X76, sizeof x) && !memcmp(&two[1], &phase_only, sizeof x);
+    x = X76;                                           /* OUT: OSC's bits 4..5, and in a copy's hidden bits */
+    x.out[0] = FM6_OUT_INV;
+    x.out[5] = FM6_OUT_OFF;
+    len = fm6x_block_put(b, sizeof b, &x, 1u);
+    fm6x_block_get(b, sizeof b, &two[0], 1u);
+    ok &= len == 16u && b[2 + FM6X_OSC] == (FM6_W_HALF | FM6_OUT_INV << 4) && !memcmp(&two[0], &x, sizeof x);
+    {
+        uint8_t v[FP_SIZE + 1u] = {0};
+        fm6x_hide(v, &x);
+        fm6x_take(v, &two[1]);
+        ok &= !memcmp(&two[1], &x, sizeof x) && !v[FM6X_BITS - 1u];
+    }
     return ok;
 }
 /* the stock firmware harness's input (tests/stock_compat_test.c) */
@@ -3832,6 +3847,11 @@ static int test_fm6_wave(void)
         for (i = 0; i < 64 && (i < 2 || fm_wf.done < fm_wf_slices()); i++)
             frame();
         ok &= fm_wf.note == 50u && fm_wf.vel == 80u && fm_wf.held == 300 * 1378 / 1000 && fm_wf.done == fm_wf_slices();
+        fm_wf_tune.held = 21;                          /* HELD 1.0 S: drawn held 1 s, as long as it was played or not */
+        for (i = 0; i < 64 && (i < 2 || fm_wf.done < fm_wf_slices()); i++)
+            frame();
+        ok &= fm_wf.held == 1378;
+        fm_wf_tune.held = 0;
         trk_note_on(TSEL, 50, 80);
         track_render(TSEL, b, CTL);
         ok &= fm6_last[tr].held_ms == 300u && fm6_last[tr].down;
@@ -11863,12 +11883,30 @@ static int test_fm6_spectrum_view(void)
     ok = fm_view == FM_VIEW_WAVE && fm_wf_cfg()->periods == 2u;
     for (k = 0; k < 64u && fm_wf.done < fm_wf_slices(); k++)
         frame();
+    pan = TSEL->p[P_PAN];
     btn_down(B_HOME); frame();
     turn(EN_K2, 1);
-    ok &= fm_wf_cfg()->periods == 3u && card_is(1, "PERIODS");
-    turn(EN_K2, -5);
     btn_up(B_HOME); frame();
+    ok &= fm_wf_cfg()->periods == 2u && TSEL->p[P_PAN] != pan;   /* (SHIFT on TONE: the channel strip, not WAVE's) */
+    TSEL->p[P_PAN] = pan;
+    go_title("ALL OPS"); fm_ui[2] = FMW_VIEW1; frame();
+    turn(EN_K2, 1);
+    ok &= fm_wf_cfg()->periods == 3u && card_is(1, "PERIODS") && fm_panel_view(1, FMW_VIEW1) == FM_VIEW_WAVE;
+    turn(EN_K2, -5);
     ok &= fm_wf_cfg()->periods == 1u && fm_wf_cfg()->smooth == 2u && !ui.home && !ui.menu;
+    fm_ui[2] = FMW_VIEW2; frame();
+    turn(EN_K1, -200); turn(EN_K4, 5);
+    ok &= fm_wf_cfg()->fill == 0u && fm_wf_cfg()->held > 0u && card_is(0, "FILL") && card_is(3, "HELD");
+    fm_wf_tune.held = 1;
+    ok &= fm_wf_held_ms() == 100u;
+    fm_wf_tune.held = 21;
+    ok &= fm_wf_held_ms() == 1000u;
+    fm_wf_tune.held = FM_WF_HELD_MAX;
+    ok &= fm_wf_held_ms() == 10000u;
+    fm_wf_tune.fill = 30;
+    fm_wf_tune.held = 0;
+    ok &= !fm_wf_held_ms();
+    go_title("OPERATOR"); fm_ui[1] = FMW_TONE; frame();
     for (i = 0; i < SCOPE_TRK_N; i++)
         scope_trk_buf[i] = (int16_t)(16384.0 * sin(6.2831853 * 23.0 * i / SCOPE_TRK_N));
     scope_trk_w = 0;
@@ -11884,13 +11922,12 @@ static int test_fm6_spectrum_view(void)
     shift_select(1);
     ok &= fm_view == FM_VIEW_SPECTRUM && !ui.home && !ui.menu;
     spec_tune = (spec_tune_t){1, 0, 4};
-    pan = TSEL->p[P_PAN];
-    btn_down(B_HOME); frame();
+    go_title("ALL OPS"); fm_ui[2] = FMW_VIEW3; frame();
     turn(EN_K1, 1); turn(EN_K2, 1); turn(EN_K3, 3); turn(EN_K4, -1);
     ok &= card_is(0, "RANGE") && card_is(1, "TOP") && card_is(3, "ZOOM Y");
-    btn_up(B_HOME); frame();
     ok &= spec_tune.range == 2u && spec_tune.top_full_scale && spec_tune.zoom_q == 3u && TSEL->p[P_PAN] == pan;
     spec_tune = (spec_tune_t){1, 0, 4};
+    go_title("OPERATOR"); fm_ui[1] = FMW_TONE; frame();
     shift_select(-1);
     ok &= fm_view == FM_VIEW_WAVE && !fm_room_lent && fm_wf.done > 0u && (!fm_wf.whole || fm_wf.whole == fm_wf.done);
     shift_select(-1);
@@ -11898,7 +11935,32 @@ static int test_fm6_spectrum_view(void)
     shift_select(-1);
     ok &= fm_view == FM_VIEW_ENVELOPES && str_eq(cur_page()->title, "OPERATOR") && !ui.home && !ui.menu;
     return check("(#71b) FM6: SHIFT + SELECT steps envelopes, WAVE, SPECTRUM (the track's, no WAVE slice in it) and back; "
-                 "SHIFT + KNOB 2 on WAVE: PERIODS 1 .. 3; on SPECTRUM K1 K2 K4: RANGE TOP ZOOM Y, K3 nothing", ok);
+                 "ALL OPS' VIEW 1: K2 PERIODS 1 .. 3; VIEW 2: FILL .. HELD (as played, 0.1 .. 10 s on a log scale); VIEW 3 K1 K2 K4: RANGE TOP ZOOM Y, K3 nothing; "
+                 "SHIFT on TONE: the channel strip", ok);
+}
+static int test_fm6_wave_windows(void)
+{
+    int ok;
+    ui_power_on();
+    set_engine_of(TSEL, ENGI_FM6);
+    fm_view = FM_VIEW_WAVE;
+    ok = fm_panel_view(0, FMW_TONE) == FM_VIEW_WAVE && fm_panel_view(0, FMW_OSC) == FM_VIEW_WAVE &&
+         fm_panel_view(1, FMW_ALGO) == FM_VIEW_WAVE && fm_panel_view(1, FMW_PITCH1) == FM_VIEW_WAVE;
+    ok &= fm_panel_view(0, FMW_KEYS) == FM_VIEW_ENVELOPES && fm_panel_view(0, FMW_MORE) == FM_VIEW_ENVELOPES &&
+          fm_panel_view(1, FMW_LFO) == FM_VIEW_ENVELOPES && fm_panel_view(1, FMW_DEPTH) == FM_VIEW_ENVELOPES;
+    fm_view = FM_VIEW_SPECTRUM;
+    ok &= fm_panel_view(0, FMW_KEYS) == FM_VIEW_SPECTRUM && fm_panel_view(1, FMW_LFO) == FM_VIEW_SPECTRUM;
+    fm_view = FM_VIEW_ENVELOPES;
+    ok &= fm_panel_view(1, FMW_VIEW1) == FM_VIEW_WAVE && fm_panel_view(1, FMW_VIEW2) == FM_VIEW_WAVE &&
+          fm_panel_view(1, FMW_VIEW3) == FM_VIEW_SPECTRUM && fm_panel_view(0, FMW_TONE) == FM_VIEW_ENVELOPES;
+    go_title("ALL OPS"); fm_ui[2] = FMW_LFO; fm_view = FM_VIEW_WAVE; frame();
+    fm_wf.key = 1;
+    ui.force = 1;
+    frame();
+    ok &= fm_wf.key == 1u;                              /* (LFO's chart keeps WAVE's slices) */
+    fm_view = FM_VIEW_ENVELOPES;
+    return check("FM6: WAVE on every window but KEYS, MORE (across the keyboard), LFO, DEPTH (the vibrato): their own "
+                 "charts, WAVE's slices kept; SPECTRUM everywhere; VIEW 1, 2 show WAVE, VIEW 3 SPECTRUM", ok);
 }
 /* (#71) the height: a tone 32 dB under full scale stands RANGE - 32 dB of RANGE high with TOP 0 DB (48, 64, 80), at the
  * top with AUTO; ZOOM Y 200 % twice as high, stopped at the top edge; AUTO's top falls 10 dB a second in silence, to 48 dB
@@ -12279,6 +12341,7 @@ int main(void)
     bad += test_spectrum_levels();
     bad += test_spectrum_history();
     bad += test_fm6_spectrum_view();
+    bad += test_fm6_wave_windows();
     bad += test_spectrum_height();
     bad += test_spectrum_hd();
     bad += test_popup_time();
