@@ -25,7 +25,7 @@ static uint16_t take_p0[NTRK] __attribute__((section(".pool")));   /* (Skiff pha
 
 /* FIRST TAKE (as Sloop's FREE TAKE): REC stopped on an empty project arms it instead of starting the transport; the
  * first note on the armed track starts its clock, REC on the 1 closes the loop (ui_take.c ft_close): its length in
- * 1, 2 or 4 bars of 4/4 and the tempo from how long it took; PLAY drops it. Its notes wait in the log as they were
+ * 1, 2 or 4 bars of 4/4 and the tempo from how long it took; PLAY cancels it. Its notes wait in the log as they were
  * played, each entry's pass the ms since the first note (step and feel set at the close) */
 enum { FT_OFF, FT_ARMED, FT_RUNNING };
 static struct { uint8_t state, trk; uint32_t t0; } ft __attribute__((section(".ramx")));

@@ -176,8 +176,8 @@ static void take_box_draw(void)
         cv_text_fit(TB_X + 10, TB_Y + 31, &AF_S, ln, T_INK, T_TEXT, TB_W - 20);
     }
     if (take_box.kind == 2u)                          /* FIRST TAKE running (ft_poll) */
-        cv_text_on(TB_X + 10, TB_Y + 49, &AF_S, ft.state == FT_ARMED ? "REC: CANCEL" : "REC: CLOSE   PLAY: DROP", T_INK,
-                   T_TEXT);
+        cv_text_on(TB_X + 10, TB_Y + 49, &AF_S, ft.state == FT_ARMED ? "REC: CANCEL" : "REC ON THE 1: TAKE   PLAY: CANCEL",
+                   T_INK, T_TEXT);
     else if (take_box.kind)                           /* the undo window (ui.c undo_step): further back, or redo */
         take_box_key(take_box_key(TB_X + 10, KC_OCTDN, "BACK", undo_back < undo_n) + 14, KC_OCTUP, "REDO", undo_back);
     else                                              /* the take's undo: SAVE held (the mockup's words) */
@@ -482,7 +482,7 @@ static void ft_poll(void)
         return;
     }
     if (ft.state == FT_ARMED) {
-        ft_say("FIRST TAKE", "PLAY FREELY: THE FIRST NOTE STARTS IT");
+        ft_say("FIRST TAKE", "PLAY FREELY: A NOTE STARTS IT");
         return;
     }
     ms = fm1_ms - ft.t0;
@@ -498,9 +498,7 @@ static void ft_poll(void)
         fmt_int(line, (int32_t)bars);
         str_cpy(line + str_len(line), bars > 1u ? " BARS, " : " BAR, ", sizeof line - str_len(line));
         fmt_int(line + str_len(line), (int32_t)bpm);
-        str_cpy(line + str_len(line), " BPM. REC ON THE 1", sizeof line - str_len(line));
-    } else {
-        str_cpy(line, "REC ON THE 1 CLOSES THE LOOP", sizeof line);
+        str_cpy(line + str_len(line), " BPM", sizeof line - str_len(line));
     }
     ft_say(title, line);
 }

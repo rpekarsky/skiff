@@ -630,8 +630,8 @@ static int rec_tap(void)                                /* 1: the arming changed
 static int layer_play(void);
 static void play_press(void)
 {
-    if (ft.state) {                                   /* (FIRST TAKE: PLAY drops it, nothing changed) */
-        ft_drop("TAKE DROPPED");
+    if (ft.state) {                                   /* (FIRST TAKE: PLAY cancels it, nothing changed) */
+        ft_drop("TAKE CANCELLED");
         return;
     }
     if (layer_play())
