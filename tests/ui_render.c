@@ -2253,7 +2253,7 @@ static void sweep_columns(void)
     for (fm_view = FM_VIEW_ENVELOPES; fm_view <= FM_VIEW_SPECTRUM; fm_view++) {
         uint32_t end;
         for (end = 0; end < 2u; end++) {
-            fm_wf_tune = (fm_wf_tune_t){end ? 3 : 1, 0, 2, 2, end ? 12 : 4, 30, 50, end ? 70 : 0, end ? FM_WF_HELD_MAX : 0};
+            fm_wf_tune = (fm_wf_tune_t){end ? 3 : 1, 0, 2, end ? 12 : 4, end ? 70 : 0, end ? FM_WF_HELD_MAX : 0};
             nscr = npend = 0;
             ui.force = 1;
             draw_columns();
