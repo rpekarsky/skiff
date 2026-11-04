@@ -63,6 +63,7 @@ static int fl_erase4k(uint32_t off, uint32_t *took)
 {
     memset(host_flash_ptr(off), 0xFF, 4096); *took = 0; host_erases++; return 0;
 }
+static int fl_erase4k_quiet(uint32_t off, uint32_t *took) { audio_silence(); return fl_erase4k(off, took); }
 static int fl_write(uint32_t off, const void *p, uint32_t n)
 {
     memcpy(host_flash_ptr(off), p, n); host_writes++; return 0;
