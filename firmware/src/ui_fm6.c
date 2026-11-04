@@ -58,7 +58,8 @@ static const char *const FM_OUT[FM6_NOUT] = {"ON", "INV", "OFF"};
 /* OUT on its knob: OFF, ON (the default, in the middle), INV; stored as fm6_op_out (ON 0: every older sound) */
 static const uint8_t FM_OUT_POS[FM6_NOUT] = {1, 2, 0}, FM_OUT_AT[FM6_NOUT] = {FM6_OUT_OFF, FM6_OUT_ON, FM6_OUT_INV};
 
-enum { FM_VIEW_ENVELOPES, FM_VIEW_WAVE, FM_VIEW_SPECTRUM };   /* (#20w, #71b) the panel, SHIFT + SELECT steps it */
+enum { FM_VIEW_ENVELOPES, FM_VIEW_WAVE, FM_VIEW_OP_WAVE, FM_VIEW_SPECTRUM };   /* (#20w, #71b) the panel, SHIFT + SELECT
+                                                                                * steps it */
 static uint8_t fm_view __attribute__((section(".pool")));       /* FM_VIEW_*; not saved */
 static uint32_t fm_wave_t0 __attribute__((section(".pool")));   /* (fm1_ms) WAVE's operator bars' clock from 0 */
 #define FM_WF_BUF 4608                                  /* WAVE's slices' points, all of them */
@@ -123,6 +124,8 @@ typedef struct {
 static fm_wf_t fm_wf __attribute__((section(".pool")));
 
 static uint32_t fm_tr(void) { return trk_index(TSEL) % NTRK; }
+/* the waterfall: the voice (WAVE) or the operator picked with what feeds it (OP WAVE) */
+static int fm_is_wave(uint32_t view) { return view == FM_VIEW_WAVE || view == FM_VIEW_OP_WAVE; }
 static uint32_t fm_nwin(uint32_t pg) { return pg ? FM_ALL_NWIN : FM_OP_NWIN; }
 static uint32_t fm_win(uint32_t pg)
 {
@@ -133,7 +136,7 @@ static uint32_t fm_win(uint32_t pg)
  * the keyboard) and LFO and DEPTH (the vibrato) keep their own charts: WAVE's slices are one note, the LFO at rest */
 static uint32_t fm_panel_view(uint32_t pg, uint32_t w)
 {
-    if (fm_view == FM_VIEW_WAVE && (pg ? w == FMW_LFO || w == FMW_DEPTH : w == FMW_KEYS || w == FMW_MORE))
+    if (fm_is_wave(fm_view) && (pg ? w == FMW_LFO || w == FMW_DEPTH : w == FMW_KEYS || w == FMW_MORE))
         return FM_VIEW_ENVELOPES;
     return fm_view;
 }
@@ -458,8 +461,8 @@ static uint32_t fm_sig(void)
     uint32_t pg = cur_page()->graph == GR_FMALL, view = fm_panel_view(pg, fm_win(pg));
     return (fm6_pgen[fm_tr()] + 1u) * 2246822519u ^ (fm_ui[0] + fm_ui[1] * 7u + fm_ui[2] * 49u) * 40503u ^
            (ui.hot_t ? ui.hot_col + 1u : 0u) * 65537u ^ shift_channel * 3266489917u ^
-           (view == FM_VIEW_WAVE ? (fm_wf_note_sig() + fm_wf.done + fm1_ms / FM_WF_BAR_MS + 1u) * 2654435761u : 0u) ^
-           (view == FM_VIEW_WAVE ? fm_wf_tune_sig() * 2246822519u : 0u) ^
+           (fm_is_wave(view) ? (fm_wf_note_sig() + fm_wf.done + fm1_ms / FM_WF_BAR_MS + 1u) * 2654435761u : 0u) ^
+           (fm_is_wave(view) ? fm_wf_tune_sig() * 2246822519u : 0u) ^
            (view == FM_VIEW_SPECTRUM ? (fm1_ms / SPEC_SLICE_MS + 1u) * 3266489917u : 0u) ^
            fm_osc_sig() * 3266489917u;
 }
@@ -483,7 +486,8 @@ static int fm_view_step(int32_t s)
     fm_view_turn(s);
     return 1;
 }
-static const char *const FM_PANEL_N[3] = {"ENV", "WAVE", "SPECTRUM"};
+/* the voice's without a prefix: "VOICE WAVE" is too wide for a card */
+static const char *const FM_PANEL_N[4] = {"ENV", "WAVE", "OP WAVE", "SPECTRUM"};
 /* PERIODS x ZOOM Y on one knob: ZOOM Y's five steps inside each PERIODS */
 static int32_t fm_wf_zone(const fm_wf_tune_t *u)
 {
@@ -499,7 +503,7 @@ static void fm_view_knob(uint32_t k, int32_t s)
         fm_view_turn(s);
         return;
     }
-    if (fm_view != FM_VIEW_WAVE)
+    if (!fm_is_wave(fm_view))
         return;
     if (k == 1u) {
         zone = clamp(fm_wf_zone(u) + s, 0, FM_WF_PERIODS_MAX * FM_WF_ZOOMS - 1);
@@ -543,8 +547,8 @@ static void fm_view_cards(void)
     const fm_wf_tune_t *u = fm_wf_cfg();
     char val[12], zoom[8];
     uint32_t c;
-    draw_column(0, "PANEL", FM_PANEL_N[fm_view % 3u], "", VR_LIVE, fm_view * 500, ICON_AUTO);
-    if (fm_view != FM_VIEW_WAVE) {
+    draw_column(0, "PANEL", FM_PANEL_N[fm_view % 4u], "", VR_LIVE, fm_view * 1000 / FM_VIEW_SPECTRUM, ICON_AUTO);
+    if (!fm_is_wave(fm_view)) {
         for (c = 1; c < 4u; c++)
             draw_column(c, "", "", "", VR_THEME, -1, ICON_NONE);
         return;
@@ -1314,6 +1318,7 @@ static uint32_t fm_wf_key(const fm_sim_t *s, const track_t *t)
     h = (h ^ fm_wf_note_sig() ^ fm_tr() << 28) * 16777619u;
     h = (h ^ fm_wf_tune_sig()) * 16777619u;
     h = (h ^ fm_osc_sig()) * 16777619u;
+    h = (h ^ (fm_view == FM_VIEW_OP_WAVE ? fm_ui[0] % 6u + 1u : 0u)) * 16777619u;
     return h ? h : 1u;
 }
 /* the block at i / n of span blocks: on the log time axis (fm_warp's), fm_wf_tune.warp of the way from an even one */
@@ -1356,6 +1361,8 @@ static void fm_wf_begin(const fm_sim_t *s, uint32_t key)
         if ((car >> i & 1u) && op[FP_OL])
             fm_wf.peak += fm6_exp2((top << 16) - (14 << 24));
     }
+    if (fm_view == FM_VIEW_OP_WAVE)                     /* (the operator's own loudest: full height) */
+        fm_wf.peak = fm6_exp2(clamp(fm_wf.top[5u - fm_ui[0] % 6u] << 8, 0, 17 << 24) - (14 << 24));
     fm6_penv_init(&fm_wf.penv, s->q);
 }
 /* the release drawn, from the key up: until every sounding carrier is 60 dB down, 0.1 .. 2 s */
@@ -1414,6 +1421,31 @@ static void fm_wf_voice(fm6_note_t *n, const fm_sim_t *s, int32_t lf, const int3
         n->op[i].gain_out = fm6_exp2(clamp(lv, 0, 17 << 24) - (14 << 24));
     }
 }
+/* (OP WAVE) a block of the operator picked alone: the voice's block run on a copy for the levels and envelopes it
+ * reaches (fm6_note_compute as the voice runs it, untouched), then the operators with the picked one's row of the
+ * algorithm onto the output and every operator outside its chain OFF; (WAVE) the voice's */
+static __attribute__((noinline)) int fm_wf_compute(fm6_note_t *n, const fm_sim_t *s, int32_t *out, int32_t lf,
+                                                   const int32_t *dt)
+{
+    fm6_note_t voice;
+    uint8_t row[6];
+    uint32_t sel = fm_ui[0] % 6u, chain = (1u << sel) | fm_feeders(s->alg, sel), waves = n->waves, j;
+    if (fm_view != FM_VIEW_OP_WAVE)
+        return fm6_note_compute(n, s->q, out, 1 << 23, 0, lf, s->alg, (int32_t)s->fb, dt, s->modlvl << 8);
+    voice = *n;
+    (void)fm6_note_compute(&voice, s->q, out, 1 << 23, 0, lf, s->alg, (int32_t)s->fb, dt, s->modlvl << 8);
+    memcpy(n->env, voice.env, sizeof n->env);
+    n->penv = voice.penv;
+    for (j = 0; j < 6u; j++) {
+        n->op[j].freq = voice.op[j].freq;
+        n->op[j].level_in = voice.op[j].level_in;
+        if (!(chain >> (5u - j) & 1u))
+            waves = (waves & ~(15u << 4u * j)) | FM6_W_OFF << 4u * j;
+    }
+    memcpy(row, FM6_ALG[s->alg & 31u], sizeof row);
+    row[5u - sel] &= (uint8_t)~(3u | FM6_OADD);
+    return fm6_core_render_row(out, n->op, s->alg, row, n->fb, s->fb ? 8 - (int32_t)s->fb : 16, waves);
+}
 /* fm_wf_tune.periods periods of the output from fm_wf_tune.phase past the first zero phase of the note's pitch past
  * block b, as fm6_render's fm6_note_compute renders it (the LFO at rest), fm_wf_points() points over them, full height
  * at peak; each point the mean of fm_wf_tune.smooth periods in a row. Returns the samples rendered */
@@ -1434,7 +1466,7 @@ static int32_t fm_wf_slice(const fm_sim_t *s, const track_t *t, int8_t *pts)
     fm6_spread(s->alg, t->p[P_E6], dt);
     fm_wf_voice(&n, s, lf, dt, s0);
     for (i = 0; i < len; i += FM6_N) {
-        if (!fm6_note_compute(&n, s->q, out, 1 << 23, 0, lf, s->alg, (int32_t)s->fb, dt, s->modlvl << 8))
+        if (!fm_wf_compute(&n, s, out, lf, dt))
             memset(out, 0, sizeof out);
         for (k = 0; k < FM6_N; prev = out[k++])
             for (r = 0; r < u->smooth; r++)
@@ -1637,7 +1669,7 @@ static void fm_draw(uint32_t pg, const track_t *t, uint16_t c)
         fm_ops(s, t);
         fm_tabs(s, sh, fm_tab_beside(pg, w));
         fm_spectrum_panel(c);
-    } else if (view == FM_VIEW_WAVE) {
+    } else if (fm_is_wave(view)) {
         fm_ops(s, t);
         fm_tabs(s, sh, fm_tab_beside(pg, w));
         fm_wave_panel(s, t, c);

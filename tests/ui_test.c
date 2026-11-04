@@ -11934,6 +11934,8 @@ static int test_fm6_spectrum_view(void)
         scope_trk_buf[i] = (int16_t)(16384.0 * sin(6.2831853 * 23.0 * i / SCOPE_TRK_N));
     scope_trk_w = 0;
     shift_select(1);
+    ok &= fm_view == FM_VIEW_OP_WAVE;
+    shift_select(1);
     ok &= fm_view == FM_VIEW_SPECTRUM;
     room = fm_room_lend(&kept);
     for (j = 0; j < SPEC_SLICES; j++) {                 /* (a slice a tick: the tone's, or none yet) */
@@ -11949,17 +11951,20 @@ static int test_fm6_spectrum_view(void)
     turn(EN_K2, 1); turn(EN_K3, 1); turn(EN_K4, -1);
     ok &= card_is(1, "") && card_is(2, "") && card_is(3, "") && fm_nwin(1) == FM_ALL_NWIN;
     ok &= spec_tune.range == 1u && !spec_tune.top_full_scale && spec_tune.zoom_q == 4u && TSEL->p[P_PAN] == pan;
-    turn(EN_K1, -1);                                   /* (PANEL: SPECTRUM to WAVE, back) */
-    ok &= fm_view == FM_VIEW_WAVE && fm_nwin(1) == FM_ALL_NWIN;
+    turn(EN_K1, -1);                                   /* (PANEL: SPECTRUM to OP WAVE, back) */
+    ok &= fm_view == FM_VIEW_OP_WAVE && card_is(1, "PERIODS") && fm_nwin(1) == FM_ALL_NWIN;
     turn(EN_K1, 1);
     go_title("OPERATOR"); fm_ui[1] = FMW_TONE; frame();
     shift_select(-1);
-    ok &= fm_view == FM_VIEW_WAVE && !fm_room_lent && fm_wf.done > 0u && (!fm_wf.whole || fm_wf.whole == fm_wf.done);
+    ok &= fm_view == FM_VIEW_OP_WAVE && !fm_room_lent && fm_wf.done > 0u && (!fm_wf.whole || fm_wf.whole == fm_wf.done);
+    shift_select(-1);
+    ok &= fm_view == FM_VIEW_WAVE;
     shift_select(-1);
     ok &= fm_view == FM_VIEW_ENVELOPES;
     shift_select(-1);
     ok &= fm_view == FM_VIEW_ENVELOPES && str_eq(cur_page()->title, "OPERATOR") && !ui.home && !ui.menu;
-    return check("(#71b) FM6: SHIFT + SELECT steps envelopes, WAVE, SPECTRUM (the track's, no WAVE slice in it) and back; "
+    return check("(#71b) FM6: SHIFT + SELECT steps envelopes, WAVE, OP WAVE, SPECTRUM (the track's, no WAVE slice "
+                 "in it) and back; "
                  "ALL OPS' VIEW: K1 PANEL; on WAVE K2 PERIODS 1 .. 3 with ZOOM Y 100 .. 300 % inside each, K3 HELD (as "
                  "played, 0.02 .. 10 s on a log scale), K4 RELEASE; on SPECTRUM nothing beside PANEL; "
                  "SHIFT on TONE: the channel strip", ok);
@@ -11999,6 +12004,52 @@ static int test_fm6_out_preview(void)
     fm6_set_out(tr, 5, FM6_OUT_ON);
     fm_view = FM_VIEW_ENVELOPES;
     return check("OUT in WAVE: INIT's OP1 at HALF, its only carrier: INV turns every slice upside down", ok && lit);
+}
+/* OP WAVE: INIT's OP1 alone is the voice; OP2 (into OP1, LEVEL 99) on its own: a sine at x2, not the voice's FM */
+static int test_fm6_op_wave(void)
+{
+    static int8_t voice[FM_WF_NP * 4], op1[FM_WF_NP * 4], op2[FM_WF_NP * 4];
+    uint8_t v[FP_SIZE + 1u];
+    uint32_t tr, j, n, cross = 0, differ = 0;
+    int ok = 1;
+    ui_power_on();
+    set_engine_of(TSEL, ENGI_FM6);
+    memset(&fm_wf_tune, 0, sizeof fm_wf_tune);          /* (the defaults: PERIODS 2) */
+    tr = fm_tr();
+    fm6_unpack(FM6_INIT, v);
+    fm6_set_patch(tr, v);
+    go_title("OPERATOR"); fm_ui[1] = FMW_OSC; fm_ui[0] = 0; frame();
+    fm_preview(voice);
+    fm_view = FM_VIEW_OP_WAVE;
+    fm_ops(&fm_panel_sim, TSEL);
+    fm_wf_begin(&fm_panel_sim, fm_wf_key(&fm_panel_sim, TSEL));
+    while (fm_wf.done < fm_wf_slices())
+        fm_wf_render(&fm_panel_sim, TSEL);
+    memcpy(op1, fm_panel_sim.wave, fm_wf_points() * 4u);
+    n = fm_wf_points() * 4u;
+    ok &= !memcmp(voice, op1, n);
+    v[4u * FP_OP + FP_OL] = 99;                         /* (OP2: algorithm 1 has it into OP1) */
+    v[4u * FP_OP + FP_FC] = 2;
+    fm6_set_patch(tr, v);
+    fm_ui[0] = 1;
+    fm_ops(&fm_panel_sim, TSEL);
+    fm_wf_begin(&fm_panel_sim, fm_wf_key(&fm_panel_sim, TSEL));
+    while (fm_wf.done < fm_wf_slices())
+        fm_wf_render(&fm_panel_sim, TSEL);
+    memcpy(op2, fm_panel_sim.wave, fm_wf_points() * 4u);
+    for (j = 1; j < fm_wf_points(); j++)               /* (slice 0, 2 periods of the note: 4 of OP2's sine) */
+        cross += (op2[j - 1] < 0) != (op2[j] < 0);
+    fm_view = FM_VIEW_WAVE;
+    fm_ops(&fm_panel_sim, TSEL);
+    fm_wf_begin(&fm_panel_sim, fm_wf_key(&fm_panel_sim, TSEL));
+    while (fm_wf.done < fm_wf_slices())
+        fm_wf_render(&fm_panel_sim, TSEL);
+    for (j = 0; j < n; j++)
+        differ += op2[j] != fm_panel_sim.wave[j];
+    ok &= cross >= 7u && cross <= 9u && differ > n / 4u;
+    fm_view = FM_VIEW_ENVELOPES;
+    return check("OP WAVE: INIT's OP1 alone, the voice's slices; OP2 (x2 into OP1) alone, a sine twice the note's, not "
+                 "the voice", ok);
 }
 static int test_fm6_wave_windows(void)
 {
@@ -12408,6 +12459,7 @@ int main(void)
     bad += test_fm6_spectrum_view();
     bad += test_fm6_wave_windows();
     bad += test_fm6_out_preview();
+    bad += test_fm6_op_wave();
     bad += test_spectrum_height();
     bad += test_spectrum_hd();
     bad += test_popup_time();
