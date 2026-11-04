@@ -752,19 +752,10 @@ static int test_faders(void)
     press_with(SMK_BTN_KNOB_BANK, SMK_BTN_FADER_BANK);
     bad += check("SMK KNOB BANK (SHIFT) + FADER BANK: the bank too", smk_fbank == 2u);
     press_with(panel.btn[B_HOME], SMK_BTN_FADER_BANK);
+    bad += check("SMK FADER BANK: DELAY, said", smk_fbank == 3u && msg_is("FADERS DELAY"));
     press_with(panel.btn[B_HOME], SMK_BTN_FADER_BANK);
-    bad += check("SMK FADER BANK: WAVE after DELAY, said", smk_fbank == SMK_FBANK_WAVE && msg_is("FADERS WAVE"));
-    {
-        int16_t level = trk[0].p[P_LEVEL];
-        fm1_in.fader[0] = 100;
-        frame();
-        bad += check("SMK FADERS WAVE: F1 is WAVE's FILL, said, no track's level touched",
-                     fm_wf_tune.fill == 100u * 100u / 127u && trk[0].p[P_LEVEL] == level && msg_is("FILL 78%"));
-    }
-    fm1_in.fader[0] = 0;
-    frame();
-    press_with(panel.btn[B_HOME], SMK_BTN_FADER_BANK);
-    bad += check("SMK FADER BANK: round to LEVEL, its LED off", smk_fbank == 0u && !host_led[SMK_BTN_FADER_BANK]);
+    bad += check("SMK FADER BANK: after DELAY round to LEVEL (no WAVE bank), its LED off",
+                 smk_fbank == 0u && !host_led[SMK_BTN_FADER_BANK]);
     sel_set(5);                                 /* T6: the window T3..T6 */
     fm1_in.fader[0] = 0;
     frame();

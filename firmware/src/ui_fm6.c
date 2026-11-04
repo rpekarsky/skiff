@@ -72,16 +72,16 @@ static uint32_t fm_wave_t0 __attribute__((section(".pool")));   /* (fm1_ms) WAVE
 #define FM_WF_SLICES 24u                                /* as many as the buffer holds at 3 PERIODS */
 #define FM_WF_ZOOMS 5                                   /* ZOOM Y 100 .. 300 % in 50 % steps, inside each PERIODS */
 #define FM_WF_HELD_MAX 55u                      /* HELD: 0 as played, 1 .. 55: 0.02 .. 10 s, 20 a decade */
-typedef struct {                                        /* VIEW's knobs and (SMK FADERS WAVE) the debug faders; not saved */
+#define FM_WF_STEP_X 2                                  /* px a slice further back moves right */
+#define FM_WF_FILL 30                                   /* % a slice veils the lines behind it */
+#define FM_WF_WARP 50                                   /* the time axis: 0 even, 100 log (the attack drawn large) */
+typedef struct {                                        /* VIEW's knobs; not saved */
     uint8_t periods;                                    /* 1 .. FM_WF_PERIODS_MAX across, each rendered (fm_wf_points) */
     uint8_t phase;                                      /* where a slice starts past the note's zero phase, % of a period */
     uint8_t smooth;                                     /* periods averaged a point, one after another ((#71b) 2, no
                                                          * knob) */
-    uint8_t step_x;                                     /* px a slice further back moves right: 0 .. 3 */
     uint8_t zoom_y;                                     /* a slice's height, 25 % steps of the carriers' loudest: 4 .. 12,
                                                          * even */
-    uint8_t fill;                                       /* (SMK FADERS WAVE) % a slice veils the lines behind it */
-    uint8_t warp;                                       /* the time axis: 0 even, 100 log (the attack drawn large) */
     uint8_t release;                                    /* % of the slices on the release: 0 .. 70 */
     uint8_t held;                                       /* the note's length: 0 as played, else fm_wf_held_ms */
 } fm_wf_tune_t;
@@ -89,7 +89,7 @@ static fm_wf_tune_t fm_wf_tune __attribute__((section(".pool")));
 static const fm_wf_tune_t *fm_wf_cfg(void)
 {
     if (!fm_wf_tune.periods)
-        fm_wf_tune = (fm_wf_tune_t){2, 0, 2, 2, 8, 30, 50, 25, 0};
+        fm_wf_tune = (fm_wf_tune_t){2, 0, 2, 8, 25, 0};
     return &fm_wf_tune;
 }
 /* a slice's points: PERIODS 1 128, 2 88 a period, 3 64, so the buffer holds 36, 26, 24 slices */
@@ -523,33 +523,6 @@ static void fm_view_knob(uint32_t k, int32_t s)
         u->release = (uint8_t)clamp(u->release + accel(EN_K1 + k, s, 70), 0, 70);
     }
 }
-#if BOARD_SMK37
-/* (SMK FADERS WAVE, SHIFT + FADER BANK: debug, to find the defaults) fader j at v of 127: FILL, TIME WARP, STEP X,
- * SPECTRUM's RANGE */
-static void fm_wf_fader(uint32_t j, uint32_t v)
-{
-    static const char *const NAME[4] = {"FILL ", "TIME WARP ", "STEP X ", "RANGE "};
-    static const char *const UNIT[4] = {"%", "%", " PX", " DB"};
-    fm_wf_tune_t *u = &fm_wf_tune;
-    char b[12];
-    int32_t shown;
-    (void)fm_wf_cfg();
-    (void)spec_cfg();
-    if (j == 0u) {
-        shown = u->fill = (uint8_t)(v * 100u / 127u);
-    } else if (j == 1u) {
-        shown = u->warp = (uint8_t)(v * 100u / 127u);
-    } else if (j == 2u) {
-        shown = u->step_x = (uint8_t)(v * 4u / 128u);
-    } else {
-        spec_tune.range = (uint8_t)(v * 3u / 128u);
-        shown = SPEC_RANGE_DB[spec_tune.range];
-    }
-    fmt_int(b, shown);
-    str_cpy(b + str_len(b), UNIT[j & 3u], sizeof b - str_len(b));
-    ui_say(NAME[j & 3u], b);
-}
-#endif
 static void fm_view_cards(void)
 {
     const fm_wf_tune_t *u = fm_wf_cfg();
@@ -1334,12 +1307,12 @@ static uint32_t fm_wf_key(const fm_sim_t *s, const track_t *t)
     h = (h ^ (fm_view == FM_VIEW_OP_WAVE ? fm_ui[0] % 6u + 1u : 0u)) * 16777619u;
     return h ? h : 1u;
 }
-/* the block at i / n of span blocks: on the log time axis (fm_warp's), fm_wf_tune.warp of the way from an even one */
+/* the block at i / n of span blocks: on the log time axis (fm_warp's), FM_WF_WARP % of the way from an even one */
 static int32_t fm_wf_unwarp(int32_t span, int32_t i, int32_t n)
 {
     int32_t l0 = log2_q16(FM_TAU), l = l0 + (log2_q16((uint32_t)span * 256u + FM_TAU) - l0) * i / n;
     int32_t on_log = clamp((int32_t)((fm6_mant(l << 8) >> (30 - (l >> 16))) - FM_TAU) / 256, 0, span), even = span * i / n;
-    return even + (on_log - even) * fm_wf_cfg()->warp / 100;
+    return even + (on_log - even) * FM_WF_WARP / 100;
 }
 static int32_t fm_wf_at(uint32_t j)                     /* slice j's block */
 {
@@ -1441,12 +1414,15 @@ static __attribute__((noinline)) int fm_wf_compute(fm6_note_t *n, const fm_sim_t
                                                    const int32_t *dt, int alone)
 {
     fm6_note_t voice;
+    fm6_note_t *run = alone ? &voice : n;               /* (one fm6_note_compute inlined here, not two: 1 KB) */
     uint8_t row[6];
     uint32_t sel = fm_ui[0] % 6u, chain = (1u << sel) | fm_feeders(s->alg, sel), waves = n->waves, j;
+    int sounded;
+    if (alone)
+        voice = *n;
+    sounded = fm6_note_compute(run, s->q, out, 1 << 23, 0, lf, s->alg, (int32_t)s->fb, dt, s->modlvl << 8);
     if (!alone)
-        return fm6_note_compute(n, s->q, out, 1 << 23, 0, lf, s->alg, (int32_t)s->fb, dt, s->modlvl << 8);
-    voice = *n;
-    (void)fm6_note_compute(&voice, s->q, out, 1 << 23, 0, lf, s->alg, (int32_t)s->fb, dt, s->modlvl << 8);
+        return sounded;
     memcpy(n->env, voice.env, sizeof n->env);
     n->penv = voice.penv;
     for (j = 0; j < 6u; j++) {
@@ -1507,15 +1483,15 @@ static void fm_wf_render(fm_sim_t *s, const track_t *t)
     if (fm_wf.done == fm_wf_slices())
         fm_wf.whole = fm_wf.done;
 }
-/* a slice further back: a whole pixel step up (a fractional one draws a staircase), at least 1; fm_wf_tune.step_x right.
+/* a slice further back: a whole pixel step up (a fractional one draws a staircase), at least 1; FM_WF_STEP_X right.
  * The slices are as wide as the back one's room leaves, so the waterfall fills the panel */
 static int32_t fm_wf_step_y(void)
 {
     int32_t step = FM_WF_DEPTH_Y / ((int32_t)fm_wf_slices() - 1);
     return step > 1 ? step : 1;
 }
-static int32_t fm_wf_width(void) { return FM_WF_X1 - FM_WF_X0 - ((int32_t)fm_wf_slices() - 1) * fm_wf_cfg()->step_x; }
-static int32_t fm_wf_left(uint32_t j) { return FM_WF_X0 + (int32_t)j * fm_wf_cfg()->step_x; }
+static int32_t fm_wf_width(void) { return FM_WF_X1 - FM_WF_X0 - ((int32_t)fm_wf_slices() - 1) * FM_WF_STEP_X; }
+static int32_t fm_wf_left(uint32_t j) { return FM_WF_X0 + (int32_t)j * FM_WF_STEP_X; }
 /* slice j's line at height v (1/256 of a point), in 1/256 px; inside the graph: a tall zoom stops at its edges */
 static int32_t fm_wf_y256(uint32_t j, int32_t v)
 {
@@ -1536,7 +1512,7 @@ static int32_t fm_wf_col_y256(const void *v, uint32_t j, int32_t col, int32_t w)
 }
 static void fm_wf_draw_slice(const int8_t *v, uint32_t j, uint16_t c)
 {
-    const wf_slice_t s = {v, j, fm_wf_left(j), fm_wf_width(), fm_wf_y(j, -127) + 2, fm_wf_cfg()->fill, fm_wf_col_y256};
+    const wf_slice_t s = {v, j, fm_wf_left(j), fm_wf_width(), fm_wf_y(j, -127) + 2, FM_WF_FILL, fm_wf_col_y256};
     wf_draw_slice(&s, c);
 }
 /* slice j's ink: the track's colour fading into the panel with depth, the release dimmer (the key up reads from it);
