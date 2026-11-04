@@ -1193,6 +1193,9 @@ static void seq_start(void)
  * the pool: a new .bss global moves the others and their code with them */
 static uint8_t seq_k[NTRK] __attribute__((section(".pool"))), seq_tm[NTRK] __attribute__((section(".pool")));
 static uint32_t seq_h2[NTRK] __attribute__((section(".pool")));
+/* notes held to the next step by GATE 100 % (a step's x1, a TIE chain's end): a MONO / LEGATO / UNISON next note starts
+ * before they end (seq_step), so LEGATO plays it without a new attack; notes ending there by rounding never do */
+static uint8_t seq_full[NTRK] __attribute__((section(".pool")));
 
 static void seq_release(track_t *t)
 {
@@ -1204,6 +1207,7 @@ static void seq_release(track_t *t)
     t->slide_glide = 0;                             /* live MONO / LEG keys must not glide after it */
     seq_k[k] = seq_tm[k] = 0;
     seq_h2[k] = 0;
+    seq_full[k] = 0;
 }
 /* (#25) seq_notes not in keep (bit i) end; the rest stay, in order, their bits along */
 static __attribute__((noinline)) void seq_keep_only(track_t *t, uint32_t keep)
@@ -1300,7 +1304,7 @@ static uint32_t flam_at(const track_t *t, uint32_t period)
 }
 static __attribute__((noinline)) void seq_step(track_t *t, const step_t *s, uint32_t period, uint32_t skip)
 {
-    uint32_t i, j, gate = period * (uint32_t)t->p[P_SGATE] / 128u;
+    uint32_t i, j, gate = period * (uint32_t)t->p[P_SGATE] / 128u, full = t->p[P_SGATE] >= TP[P_SGATE].max;
     uint32_t vel = (s->flags & SF_ACCENT) ? 127u : (s->vel ? s->vel : 96u);
     uint32_t slide_in = t->seq_hold == 1u && t->seq_n && !(skip & SEQ_REP);   /* ((2.0) 2: held for ties, no slide) */
     uint32_t len = t->p[P_SLEN] ? (uint32_t)t->p[P_SLEN] : 1u, f = t->fire_idx, k = trk_index(t);
@@ -1339,6 +1343,7 @@ static __attribute__((noinline)) void seq_step(track_t *t, const step_t *s, uint
             t->seq_hold = (s->flags & SF_SLIDE) != 0 || next_tie;   /* chains hold at any GATE / swing */
             seq_tm[k] = 0;                          /* ((#25) its notes end with it, unless the next step ties them */
             seq_h2[k] = 0;                          /* (not in RAND: the next one isn't known)) */
+            seq_full[k] = (uint8_t)full;
             seq_k[k] = (uint8_t)(t->seq_hold || t->p[P_DIR] == DIR_RAND ? 0u : seq_ties_of(t, ns, qseq, qtrn));
         }
         return;
@@ -1361,7 +1366,11 @@ static __attribute__((noinline)) void seq_step(track_t *t, const step_t *s, uint
     } else if (grace) {                           /* (Skiff) FLAM: this hit the grace, short; seq_ratchet the full one */
         gate = flam_at(t, period);
         t->rat_left = 1;
+    } else if (full && !(s->flags & SF_FLAM)) {
+        /* GATE 100 %: the whole swung step; the next step, up to half a step late by its NUDGE, ends the notes */
+        gate = step_samples(t, period, f) + period / 2u;
     }
+    full = full && hits == 1u && !(s->flags & SF_FLAM);
     for (i = 0; i < s->n && i < 4u; i++) {
         uint32_t x = s->note[i];
         if (qseq) {                                 /* QNT SEQ: onto the scale now; two notes snapping */
@@ -1399,7 +1408,7 @@ static __attribute__((noinline)) void seq_step(track_t *t, const step_t *s, uint
         seq_keep_only(t, seq_tm[k]);
     held = (t->seq_hold || seq_k[k] || (skip & SEQ_REP)) && t->seq_n;
     {
-        uint32_t on = 0, xs = 0, tm = 0, keep;
+        uint32_t on = 0, xs = 0, tm = 0, keep, legato;
         for (i = 0; i < m; i++) {
             if (!((tn >> i) & 1u)) {
                 xs |= miss << i;
@@ -1412,8 +1421,15 @@ static __attribute__((noinline)) void seq_step(track_t *t, const step_t *s, uint
             else
                 xs |= 1u << i;
         }
+        /* MONO / LEGATO / UNISON end the notes GATE 100 % held (seq_full) after the new ones start; POLY ends them first,
+         * so the new ones take their voices; the same note again retriggers */
+        legato = !held && seq_full[k] && t->seq_n && hits == 1u && !grace && trk_vmode(t) != V_POLY;
+        for (i = 0; legato && i < m; i++)
+            for (j = 0; j < t->seq_n; j++)
+                if (nn[i] == t->seq_notes[j])
+                    legato = 0;
         t->slide_glide = (uint8_t)slide_in;
-        if (!held)
+        if (!held && !legato)
             seq_release(t);
         for (i = 0; i < m; i++)
             if (!(((sk | on | xs) >> i) & 1u))
@@ -1442,6 +1458,7 @@ static __attribute__((noinline)) void seq_step(track_t *t, const step_t *s, uint
         seq_k[k] = (uint8_t)keep;
         seq_tm[k] = (uint8_t)tm;
         seq_h2[k] = tm ? period / 2u : 0u;          /* (the tied ones end half a step after the GATE) */
+        seq_full[k] = (uint8_t)full;
     }
 }
 

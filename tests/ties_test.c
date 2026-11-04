@@ -18,6 +18,7 @@
 
 #define C4 60u
 #define E4 64u
+#define G4 67u
 
 /* track 1: LEN 8, GATE 64, no swing, voice mode vm; C4 on step 1 going on over steps 2..4 (each lists it tied: acc bit
  * 0), E4 starting on step 3 beside it; the transport started */
@@ -329,6 +330,84 @@ static int chain_notes(void)
     return bad;
 }
 
+/* ---- GATE 100 % holds a note to the next step: on LEGATO / UNISON touching notes play legato (the new one starts before
+ * the old one ends), the same note again starts anew; MONO retriggers each; POLY ends the old notes first ---- */
+static track_t *touching(uint32_t vm, uint32_t swing)   /* C4, E4, E4 a step each at GATE 100 %, then a REST */
+{
+    track_t *t = overlap(vm);
+    t->p[P_SGATE] = TP[P_SGATE].max;
+    t->p[P_SSWING] = (int16_t)swing;
+    t->step[0] = (step_t){{C4}, 1, ST_NOTE, 0, 100};
+    t->step[1] = (step_t){{E4}, 1, ST_NOTE, 0, 100};
+    t->step[2] = (step_t){{E4}, 1, ST_NOTE, 0, 100};
+    t->step[3] = (step_t){{0}, 0, ST_REST, 0, 0};
+    seq_start();
+    return t;
+}
+static uint32_t voice_starts(track_t *t, uint32_t steps)
+{
+    uint32_t b, a0 = vage;
+    for (b = 0; b < steps * slen(t) / CTL; b++)
+        seq_tick(t, CTL);
+    return vage - a0;
+}
+static uint32_t gate_gaps(track_t *t, uint32_t steps)   /* blocks without a gated voice while the notes play */
+{
+    uint32_t b, i, gaps = 0, any, swung = 0;
+    for (i = 0; i < steps; i++)
+        swung += step_samples(t, div_samples((uint32_t)t->p[P_SDIV]), i);
+    for (b = 0; b < swung / CTL; b++) {
+        seq_tick(t, CTL);
+        for (i = any = 0; i < NVOICE; i++)
+            any |= t->v[i].gate;
+        gaps += !any;
+    }
+    return gaps;
+}
+static int legato(void)
+{
+    int bad = 0, ok;
+    uint32_t one, a0;
+    track_t *t;
+    bad += check("LEGATO: C4 E4 E4 at GATE 100 % sound C4, E4 legato (no new start), E4 again anew",
+                 voice_starts(touching(V_LEGATO, 0), 3) == 2u);
+    one = voice_starts(touching(V_UNISON, 0), 1);
+    bad += check("  UNISON legato as well; MONO retriggers each",
+                 voice_starts(touching(V_UNISON, 0), 3) == 2u * one && voice_starts(touching(V_MONO, 0), 3) == 3u);
+    bad += check("  no gap between the touching notes (GATE 100 % is the whole step), also with SWING",
+                 gate_gaps(touching(V_LEGATO, 0), 3) == 0u && gate_gaps(touching(V_LEGATO, 50), 3) == 0u);
+    t = touching(V_POLY, 0);
+    ok = voice_starts(t, 2) == 2u && !gated(t, C4) && gated(t, E4) && voice_starts(t, 1) == 1u;
+    bad += check("POLY: each note starts, the old ones end first (their voices for the new)", ok);
+    t = touching(V_LEGATO, 0);
+    (void)voice_starts(t, 3);
+    ok = t->v[0].gate;
+    (void)voice_starts(t, 1);
+    ok &= !t->v[0].gate && !t->seq_n;
+    bad += check("  the last note ends at the REST", ok);
+    t = touching(V_LEGATO, 0);
+    t->step[1] = (step_t){{0}, 0, ST_TIE, 0, 0};
+    t->step[2] = (step_t){{E4}, 1, ST_NOTE, 0, 100};
+    bad += check("  a TIE chain into the next note at GATE 100 %: legato", voice_starts(t, 3) == 1u);
+    t = touching(V_LEGATO, 0);
+    t->p[P_SGATE] = 64;
+    t->step[1] = (step_t){{0}, 0, ST_TIE, 0, 0};
+    bad += check("  below 100 % (a TIE chain's end at GATE 64 reaching the step): the next note starts anew",
+                 voice_starts(t, 3) == 2u);
+    t = overlap(V_LEGATO);
+    seq_stop();
+    trk_note_on(t, C4, 100);
+    a0 = vage;
+    trk_note_off(t, C4);
+    trk_note_on(t, E4, 100);
+    ok = vage == a0 + 1u;
+    a0 = vage;
+    trk_note_on(t, G4, 100);
+    ok &= vage == a0 && t->v[0].note == G4;
+    bad += check("MIDI: a note-off before the next note-on starts anew; overlapping notes play legato", ok);
+    return bad;
+}
+
 int main(void)
 {
     int bad = 0;
@@ -336,6 +415,7 @@ int main(void)
     bad += sequencer();
     bad += record();
     bad += chain_notes();
+    bad += legato();
     if (bad)
         printf("ties: %d FAILED\n", bad);
     else
