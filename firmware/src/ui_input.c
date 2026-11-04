@@ -2007,7 +2007,7 @@ static void select_turn(int32_t s)
             break;
         }
         if ((sh = sheet_of(cur_page()->graph)) != 0)
-            *sh->win = (uint8_t)(d > 0 ? 0u : sh->nwin - 1u);
+            *sh->win = (uint8_t)(d > 0 ? 0u : sheet_nwin(sh) - 1u);
     }
 }
 
@@ -3074,7 +3074,7 @@ static uint8_t *shift_pair_of(uint8_t *pair)
         return other == 0xFFu ? 0 : &ui.page;
     }
     for (i = 0; i < sizeof WINDOW_PAIRS / sizeof WINDOW_PAIRS[0]; i++) {
-        other = pair_of(WINDOW_PAIRS[i] + 1, *sh->win % sh->nwin);
+        other = pair_of(WINDOW_PAIRS[i] + 1, *sh->win % sheet_nwin(sh));
         if (WINDOW_PAIRS[i][0] == sh->graph && other != 0xFFu) {
             *pair = (uint8_t)other;
             return sh->win;

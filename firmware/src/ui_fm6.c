@@ -9,9 +9,10 @@
  *             MORE   BREAK KEY RATE VELOCITY LFO AMP            DEPTH    VIBRATO VIB SENS TREMOLO
  *             OSC    PHASE WAVE OUT (#72, #73: eng_fm6.c fm6_op_phase, fm6_op_wave, fm6_op_out; (#76) part of the
  *                    sound, fm6x_t)
- *                                                           VIEW 1   SLICES PERIODS STEP X ZOOM Y     (the panel's look,
- *                                                           VIEW 2   FILL TIME WARP RELEASE HELD      WAVE and SPECTRUM
- *                                                           VIEW 3   RANGE TOP - ZOOM Y               shown; not saved)
+ *                                                           VIEW 1   PANEL, then WAVE's SLICES PERIODS ZOOM Y or
+ *                                                                    SPECTRUM's RANGE TOP ZOOM Y (the panel's look,
+ *                                                           VIEW 2   (WAVE) FILL TIME WARP RELEASE HELD   not saved)
+ *                                                           VIEW 3   (WAVE) STEP X
  *   A knob edits a copy of the patch: fm6_set_patch (the audio ISR's copy follows), fm6_edited (SLOT: OWN, or the
  *   factory patch it now is; F n*, still F n, while an own patch is kept aside: "F3* DROPPED" when that was another's
  *   F n*). ALGO and FEEDBACK show what plays (EDIT 1's ALGO and FEEDBACK on the patch) and turning them puts that in
@@ -125,14 +126,17 @@ typedef struct {
 static fm_wf_t fm_wf __attribute__((section(".pool")));
 
 static uint32_t fm_tr(void) { return trk_index(TSEL) % NTRK; }
-static uint32_t fm_nwin(uint32_t pg) { return pg ? FM_ALL_NWIN : FM_OP_NWIN; }
-static uint32_t fm_win(uint32_t pg) { return fm_ui[1 + pg] % fm_nwin(pg); }
-/* the panel window w of sheet pg shows: VIEW 1, 2 WAVE and VIEW 3 SPECTRUM, as they set; on WAVE, KEYS and MORE (across
+/* ALL OPS: VIEW 2 and 3 (WAVE's) only while the panel is WAVE */
+static uint32_t fm_nwin(uint32_t pg) { return !pg ? FM_OP_NWIN : fm_view == FM_VIEW_WAVE ? FM_ALL_NWIN : FMW_VIEW2; }
+static uint32_t fm_win(uint32_t pg)
+{
+    uint32_t w = fm_ui[1 + pg];
+    return w < fm_nwin(pg) ? w : fm_nwin(pg) - 1u;     /* (the panel changed under VIEW 2 or 3: VIEW 1) */
+}
+/* the panel window w of sheet pg shows: the one picked (VIEW 1's PANEL, SHIFT + SELECT); on WAVE, KEYS and MORE (across
  * the keyboard) and LFO and DEPTH (the vibrato) keep their own charts: WAVE's slices are one note, the LFO at rest */
 static uint32_t fm_panel_view(uint32_t pg, uint32_t w)
 {
-    if (pg && w >= FMW_VIEW1)
-        return w == FMW_VIEW3 ? FM_VIEW_SPECTRUM : FM_VIEW_WAVE;
     if (fm_view == FM_VIEW_WAVE && (pg ? w == FMW_LFO || w == FMW_DEPTH : w == FMW_KEYS || w == FMW_MORE))
         return FM_VIEW_ENVELOPES;
     return fm_view;
@@ -478,30 +482,37 @@ static int fm_view_step(int32_t s)
     fm_view = (uint8_t)clamp((int32_t)fm_view + (s > 0 ? 1 : -1), FM_VIEW_ENVELOPES, FM_VIEW_SPECTRUM);
     return 1;
 }
-/* ALL OPS' VIEW windows, KNOB k turned s: VIEW 1 WAVE's slices, periods, step right and height; VIEW 2 how it is
- * drawn; VIEW 3 SPECTRUM's (ui_spectrum.c spec_tune) */
+static const char *const FM_PANEL_N[3] = {"ENV", "WAVE", "SPECTRUM"};
+/* ALL OPS' VIEW windows, KNOB k turned s: VIEW 1 the panel, then WAVE's slices, periods and height (SPECTRUM's
+ * RANGE, TOP and height: ui_spectrum.c spec_tune); VIEW 2 how WAVE is drawn; VIEW 3 its step right */
 static void fm_view_knob(uint32_t w, uint32_t k, int32_t s)
 {
     fm_wf_tune_t *u = &fm_wf_tune;
     (void)fm_wf_cfg();
-    if (w == FMW_VIEW3)
-        spec_tune_turn(k, s);
-    else if (w == FMW_VIEW1 && k == 0u)
-        u->slices = (uint8_t)clamp((int32_t)fm_wf_slices() + s, 8, (int32_t)(FM_WF_BUF / fm_wf_points()));
-    else if (w == FMW_VIEW1 && k == 1u)
-        u->periods = (uint8_t)clamp(u->periods + s, 1, FM_WF_PERIODS_MAX);
-    else if (w == FMW_VIEW1 && k == 2u)
+    if (w == FMW_VIEW1 && k == 0u) {
+        if (fm_view == FM_VIEW_ENVELOPES && s > 0)
+            fm_wave_t0 = fm1_ms;
+        fm_view = (uint8_t)clamp((int32_t)fm_view + (s > 0 ? 1 : -1), FM_VIEW_ENVELOPES, FM_VIEW_SPECTRUM);
+    } else if (w == FMW_VIEW1 && fm_view == FM_VIEW_SPECTRUM) {
+        spec_tune_turn(k == 3u ? 3u : k - 1u, s);       /* (RANGE, TOP, ZOOM Y: spec_tune's K1 K2 K4) */
+    } else if (w == FMW_VIEW1 && fm_view == FM_VIEW_WAVE) {
+        if (k == 1u)
+            u->slices = (uint8_t)clamp((int32_t)fm_wf_slices() + s, 8, (int32_t)(FM_WF_BUF / fm_wf_points()));
+        else if (k == 2u)
+            u->periods = (uint8_t)clamp(u->periods + s, 1, FM_WF_PERIODS_MAX);
+        else
+            u->zoom_y = (uint8_t)clamp(u->zoom_y + s, 4, 12);
+    } else if (w == FMW_VIEW3 && k == 0u) {
         u->step_x = (uint8_t)clamp(u->step_x + s, 0, 3);
-    else if (w == FMW_VIEW1)
-        u->zoom_y = (uint8_t)clamp(u->zoom_y + s, 4, 12);
-    else if (k == 0u)
+    } else if (w == FMW_VIEW2 && k == 0u) {
         u->fill = (uint8_t)clamp(u->fill + accel(EN_K1 + k, s, 100), 0, 100);
-    else if (k == 1u)
+    } else if (w == FMW_VIEW2 && k == 1u) {
         u->warp = (uint8_t)clamp(u->warp + accel(EN_K1 + k, s, 100), 0, 100);
-    else if (k == 2u)
+    } else if (w == FMW_VIEW2 && k == 2u) {
         u->release = (uint8_t)clamp(u->release + accel(EN_K1 + k, s, 70), 0, 70);
-    else
+    } else if (w == FMW_VIEW2) {
         u->held = (uint8_t)clamp(u->held + accel(EN_K1 + k, s, FM_WF_HELD_MAX), 0, FM_WF_HELD_MAX);
+    }
 }
 #if BOARD_SMK37
 /* (SMK FADERS WAVE, SHIFT + FADER BANK) fader j at v of 127: FILL, TIME WARP, RELEASE, HELD */
@@ -528,40 +539,48 @@ static void fm_wf_fader(uint32_t j, uint32_t v)
     ui_say(NAME[j], b);
 }
 #endif
-static void fm_spec_tune_cards(void)
-{
-    const spec_tune_t *u = spec_cfg();
-    char val[8];
-    fmt_int(val, SPEC_RANGE_DB[u->range]);
-    draw_column(0, "RANGE", val, "DB", VR_LIVE, u->range * 500, ICON_AUTO);
-    draw_column(1, "TOP", u->top_full_scale ? "0 DB" : "AUTO", "", VR_LIVE, u->top_full_scale ? 1000 : 0, ICON_AUTO);
-    draw_column(2, "", "", "", VR_THEME, -1, ICON_NONE);
-    fmt_int(val, u->zoom_q * 25);
-    draw_column(3, "ZOOM Y", val, "%", VR_LIVE, (u->zoom_q - 2) * 1000 / 6, ICON_AUTO);
-}
 static void fm_view_cards(uint32_t w)
 {
-    static const char *const NAME[2][4] = {{"SLICES", "PERIODS", "STEP X", "ZOOM Y"},
-                                           {"FILL", "TIME WARP", "RELEASE", "HELD"}};
-    static const char *const UNIT[2][4] = {{"", "", "PX", "%"}, {"%", "%", "%", "S"}};
+    static const char *const NAME[3][4] = {{"PANEL", "SLICES", "PERIODS", "ZOOM Y"},
+                                           {"FILL", "TIME WARP", "RELEASE", "HELD"}, {"STEP X", 0, 0, 0}};
+    static const char *const UNIT[3][4] = {{"", "", "", "%"}, {"%", "%", "%", "S"}, {"PX", 0, 0, 0}};
     const fm_wf_tune_t *u = fm_wf_cfg();
-    const int32_t v[2][4] = {{(int32_t)fm_wf_slices(), u->periods, u->step_x, u->zoom_y * 25},
-                             {u->fill, u->warp, u->release, u->held}};
-    const int32_t lo[2][4] = {{8, 1, 0, 100}, {0, 0, 0, 0}};
-    const int32_t hi[2][4] = {{(int32_t)(FM_WF_BUF / fm_wf_points()), FM_WF_PERIODS_MAX, 3, 300},
-                              {100, 100, 70, FM_WF_HELD_MAX}};
-    uint32_t r = w == FMW_VIEW2, c;
-    if (w == FMW_VIEW3) {
-        fm_spec_tune_cards();
-        return;
-    }
+    const spec_tune_t *sp = spec_cfg();
+    const int32_t v[3][4] = {{fm_view, (int32_t)fm_wf_slices(), u->periods, u->zoom_y * 25},
+                             {u->fill, u->warp, u->release, u->held}, {u->step_x, 0, 0, 0}};
+    const int32_t lo[3][4] = {{0, 8, 1, 100}, {0, 0, 0, 0}, {0, 0, 0, 0}};
+    const int32_t hi[3][4] = {{2, (int32_t)(FM_WF_BUF / fm_wf_points()), FM_WF_PERIODS_MAX, 300},
+                              {100, 100, 70, FM_WF_HELD_MAX}, {3, 1, 1, 1}};
+    uint32_t r = w - FMW_VIEW1, c;
     for (c = 0; c < 4u; c++) {
         char val[12];
-        if (r && c == 3u)
+        const char *unit = UNIT[r][c];
+        if (!NAME[r][c] || (r == 0u && c && fm_view == FM_VIEW_ENVELOPES)) {
+            draw_column(c, "", "", "", VR_THEME, -1, ICON_NONE);
+            continue;
+        }
+        if (r == 0u && c && fm_view == FM_VIEW_SPECTRUM) {   /* (SPECTRUM's own: ui_spectrum.c spec_tune) */
+            if (c == 1u) {
+                fmt_int(val, SPEC_RANGE_DB[sp->range]);
+                draw_column(c, "RANGE", val, "DB", VR_LIVE, sp->range * 500, ICON_AUTO);
+            } else if (c == 2u) {
+                draw_column(c, "TOP", sp->top_full_scale ? "0 DB" : "AUTO", "", VR_LIVE, sp->top_full_scale ? 1000 : 0,
+                            ICON_AUTO);
+            } else {
+                fmt_int(val, sp->zoom_q * 25);
+                draw_column(c, "ZOOM Y", val, "%", VR_LIVE, (sp->zoom_q - 2) * 1000 / 6, ICON_AUTO);
+            }
+            continue;
+        }
+        if (r == 0u && c == 0u)
+            str_cpy(val, FM_PANEL_N[fm_view % 3u], sizeof val);
+        else if (r == 1u && c == 3u)
             (void)fm_wf_held_text(val);
         else
             fmt_int(val, v[r][c]);
-        draw_column(c, NAME[r][c], val, r && c == 3u && !u->held ? "" : UNIT[r][c], VR_LIVE, (v[r][c] - lo[r][c]) * 1000 / (hi[r][c] - lo[r][c]), ICON_AUTO);
+        if (r == 1u && c == 3u && !u->held)
+            unit = "";
+        draw_column(c, NAME[r][c], val, unit, VR_LIVE, (v[r][c] - lo[r][c]) * 1000 / (hi[r][c] - lo[r][c]), ICON_AUTO);
     }
 }
 
