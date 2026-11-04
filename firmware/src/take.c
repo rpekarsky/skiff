@@ -47,7 +47,8 @@ static void ft_note(track_t *t, uint32_t note, uint32_t vel)
 static void take_clear(void)
 {
     uint32_t k;
-    take_ev_n = 0;
+    if (!ft.state)                                    /* (FIRST TAKE's notes: started by the editor or MIDI, it closes) */
+        take_ev_n = 0;
     take_kv_n = 0;
     for (k = 0; k < NTRK; k++)
         take_pass[k] = take_lost[k] = take_p0[k] = 0;
@@ -75,10 +76,10 @@ static __attribute__((noinline)) void take_note(track_t *t, uint32_t note, uint3
 {
     uint32_t pass, step, i;
     int32_t feel;
-    if (!song.playing) {
-        if (ft.state)
+    if (!song.playing || ft.state) {
+        if (ft.state && !song.playing)
             ft_note(t, note, vel);
-        return;
+        return;                                       /* (FIRST TAKE playing: closed at the next frame, ft_poll) */
     }
     if (rec_on(t))
         return;                                       /* (REC records it itself) */

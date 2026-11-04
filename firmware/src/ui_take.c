@@ -447,7 +447,8 @@ static void ft_close(void)
     load_end(t);
     ft.state = FT_OFF;
     take_ev_n = 0;
-    transport_req = 1;
+    if (!song.playing)
+        transport_req = 1;
     str_cpy(b, "LOOP ", sizeof b);
     fmt_int(b + 5, (int32_t)bars);
     str_cpy(b + str_len(b), bars > 1u ? " BARS " : " BAR ", sizeof b - str_len(b));
@@ -465,15 +466,19 @@ static void ft_close(void)
     say_count(take_box.line, sizeof take_box.line, notes, " NOTE");
     ui.take_t = popup_frames(TB_FRAMES);
 }
-/* each frame: what it shows; 24 s: closed */
+/* each frame: what it shows; 24 s: closed; started some other way (the editor's PLAY, MIDI): closed there, as by REC
+ * (armed, nothing played: off) */
 static void ft_poll(void)
 {
     char title[24], line[40];
     uint32_t ms, bpm = 0, bars;
     if (!ft.state)
         return;
-    if (song.playing || seq_counting()) {             /* (started some other way: MIDI, the editor) */
-        ft_drop(0);
+    if (song.playing || seq_counting()) {
+        if (ft.state == FT_RUNNING)
+            ft_close();
+        else
+            ft_drop(0);
         return;
     }
     if (ft.state == FT_ARMED) {

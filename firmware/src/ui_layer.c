@@ -1295,8 +1295,8 @@ static void layer_seq(void)
  * ON and OFF */
 #define LR_KW 78                                         /* the key's cell; the values 46 px each: x 6 .. 234 */
 #define LR_VW 46
-#define LR_H 21
-#define LR_GAP 3
+#define LR_H 19                                         /* (six rows: CLEAR .. FIRST TAKE in the panel) */
+#define LR_GAP 2
 static void layer_rec(void)
 {
     uint32_t r, v;

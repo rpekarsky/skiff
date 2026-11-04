@@ -11867,15 +11867,49 @@ static void ft_play(uint32_t note, uint32_t at_ms, uint32_t for_ms)
     fm1_ms += for_ms;
     input_off(TSEL, note);
 }
+/* (Sloop's studio_drums_test, its FREE TAKE) a note on every beat of `bars` bars at `bpm`, the odd ones 4 ms late,
+ * the second held half a beat, the rest a sixteenth of one; REC on the downbeat after. An old TIE on step 41: past
+ * LEN, untouched */
+static int ft_beats(double bpm, uint32_t bars, int32_t want_bpm, uint32_t want_bars)
+{
+    static const uint8_t KN[4] = {60, 62, 64, 65};
+    double beat = 60000.0 / bpm;
+    uint32_t nb = bars * 4u, bi, j, k, len = 16u * want_bars;
+    int ok;
+    ui_power_on();
+    ft_mode_put(FT_AUTO);
+    song.g[G_BPM] = 120;
+    TSEL->step[40].time = ST_TIE;
+    rec_tap();
+    for (bi = 0; bi < nb; bi++)
+        ft_play(KN[bi & 3u], (uint32_t)(bi * beat + 0.5) + (bi & 1u ? 4u : 0u), (uint32_t)(bi == 1u ? beat / 2.0 : beat / 16.0));
+    fm1_ms = ft.t0 + (uint32_t)(nb * beat + 0.5);
+    rec_tap();
+    ok = ft.state == FT_OFF && transport_req == 1u && !song.rec && song.g[G_BPM] == want_bpm;
+    for (k = 0; k < NTRK; k++)
+        ok &= trk[k].p[P_SLEN] == (int16_t)len && trk[k].p[P_SDIV] == 2;
+    for (j = 0; j < len; j++) {
+        const step_t *st = &TSEL->step[j];
+        if (j % 4u == 0u)
+            ok &= st->time == ST_NOTE && st->n == 1u && st->note[0] == KN[j / 4u & 3u];
+        else if (j == 5u)
+            ok &= st->time == ST_TIE;                   /* (the held note: two steps) */
+        else
+            ok &= !st->n && st->time != ST_NOTE && st->time != ST_TIE;
+    }
+    ok &= len <= 40u ? TSEL->step[40].time == ST_TIE && !TSEL->step[40].n : 1;   /* (past LEN: as it was) */
+    transport_req = 0;
+    return ok;
+}
 static int test_first_take(void)
 {
     uint32_t bpm = 0, k;
-    int ok, all;
+    int ok, all, bad = 0;
     song.g[G_BPM] = 120;
     ok = ft_fit(2000u, &bpm) == 1u && bpm == 120u && ft_fit(4000u, &bpm) == 2u && bpm == 120u;
     ok &= ft_fit(3000u, &bpm) == 2u && bpm == 160u && ft_fit(2050u, &bpm) == 1u && bpm == 120u;
     ok &= ft_fit(1300u, &bpm) == 1u && bpm == 185u && !ft_fit(400u, &bpm) && ft_fit(23000u, &bpm) == 4u && bpm == 42u;
-    check("FIRST TAKE's fit: 1, 2 or 4 bars nearest the song's tempo, within 3 % it stays, 40..240, not under 0.5 s", ok);
+    bad += check("FIRST TAKE's fit: 1, 2 or 4 bars nearest the song's tempo, within 3 % it stays, 40..240, not under 0.5 s", ok);
     ui_power_on();
     ft_mode_put(FT_AUTO);
     song.g[G_BPM] = 120;
@@ -11900,8 +11934,49 @@ static int test_first_take(void)
           TSEL->step[12].note[0] == 65 && TSEL->step[1].time == ST_TIE;   /* (C4 held 200 ms: into step 2) */
     ok &= str_eq(take_box.title, "LOOP 1 BAR 120 BPM");
     transport_req = 0;
-    check("FIRST TAKE: REC arms it on an empty project, the first note starts it, REC on the 1: 1 bar at 120, the four "
+    bad += check("FIRST TAKE: REC arms it on an empty project, the first note starts it, REC on the 1: 1 bar at 120, the four "
           "notes on steps 1 5 9 13, every track LEN 16 at 1/16, then it plays", ok);
+    ok = ft_beats(100.0, 1, 100, 1) && ft_beats(118.0, 1, 120, 1) && ft_beats(90.0, 2, 90, 2) && ft_beats(140.0, 4, 140, 4);
+    bad += check("  played on the beat (odd beats 4 ms late): 1 bar at 100; 118 within 3 %: 120 kept; 2 bars at 90; 4 bars at "
+          "140; the notes on the beats, the held one tied, nothing else, past LEN untouched", ok);
+    ui_power_on();                                     /* FEEL: where it was played, as NUDGE (Sloop: QUANT OFF) */
+    ft_mode_put(FT_AUTO);
+    song.g[G_BPM] = 120;
+    rec_feel = 1;
+    rec_tap();
+    ft_play(60, 0, 20);
+    ft_play(62, 281, 20);                              /* (2.25 steps of 125 ms: a quarter step late on step 3) */
+    ft_play(64, 719, 20);                              /* (5.75: a quarter early on step 7) */
+    fm1_ms = ft.t0 + 2000u;
+    rec_tap();
+    ok = TSEL->step[0].nudge == 0 && TSEL->step[2].note[0] == 62 && TSEL->step[2].nudge >= 15 && TSEL->step[2].nudge <= 17 &&
+         TSEL->step[6].note[0] == 64 && TSEL->step[6].nudge >= -17 && TSEL->step[6].nudge <= -15;
+    rec_feel = 0;
+    transport_req = 0;
+    bad += check("  FEEL ON: played a quarter step late and early: NUDGE +16, -16", ok);
+    ui_power_on();                                     /* 24 s: closed by itself, 4 bars at 40 */
+    ft_mode_put(FT_AUTO);
+    song.g[G_BPM] = 120;
+    rec_tap();
+    ft_play(60, 0, 100);
+    fm1_ms = ft.t0 + FT_MS;
+    frame();
+    ok = ft.state == FT_OFF && song.g[G_BPM] == 40 && TSEL->p[P_SLEN] == 64 && transport_req == 1u;
+    transport_req = 0;
+    bad += check("  24 s: closed by itself, 4 bars at 40", ok);
+    ui_power_on();                                     /* the editor's PLAY (or MIDI's): closed there, as by REC */
+    ft_mode_put(FT_AUTO);
+    song.g[G_BPM] = 120;
+    rec_tap();
+    ft_play(60, 0, 100);
+    fm1_ms = ft.t0 + 2000u;
+    song.playing = 1;
+    take_clear();                                      /* (seq_start's) */
+    frame();
+    ok = ft.state == FT_OFF && TSEL->step[0].note[0] == 60 && TSEL->p[P_SLEN] == 16 && song.g[G_BPM] == 120 &&
+         transport_req != 1u;
+    song.playing = 0;
+    bad += check("  started by the editor (or MIDI): closed there, as by REC; the PLAY button drops it (below)", ok);
     ui_power_on();
     ft_mode_put(FT_AUTO);
     rec_tap();
@@ -11911,7 +11986,7 @@ static int test_first_take(void)
     rec_tap();
     rec_tap();
     ok &= ft.state == FT_OFF && !song.rec;
-    check("  PLAY drops it, nothing changed; REC twice with nothing played: armed, then off", ok);
+    bad += check("  PLAY drops it, nothing changed; REC twice with nothing played: armed, then off", ok);
     ui_power_on();
     ft_mode_put(FT_AUTO);
     TSEL->step[3] = (step_t){{60}, 1, ST_NOTE, 0, 100};
@@ -11919,7 +11994,7 @@ static int test_first_take(void)
     ok = ft.state == FT_OFF && song.rec && transport_req == 1u;
     transport_req = 0;
     rec_tap();
-    check("  AUTO, a project with notes: REC arms and plays as before", ok);
+    bad += check("  AUTO, a project with notes: REC arms and plays as before", ok);
     sel_set(1);                                        /* ON: on any project; the track's own LEN, the song's tempo */
     trk[0].p[P_SLEN] = 24;
     ft_mode_put(FT_ALWAYS);
@@ -11937,8 +12012,9 @@ static int test_first_take(void)
     rec_tap();
     ok &= ft.state == FT_OFF && song.rec && transport_req == 1u;
     transport_req = 0;
-    return check("  ON, a project with notes: 2 bars at 160 into track 2 (its LEN 32), track 1 as it was; OFF: REC as "
+    bad += check("  ON, a project with notes: 2 bars at 160 into track 2 (its LEN 32), track 1 as it was; OFF: REC as "
                  "before", ok);
+    return bad;
 }
 static int test_fm6_spectrum_view(void)
 {
