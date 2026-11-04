@@ -107,6 +107,7 @@ static void smp_user_scan(uint32_t k)
     uint32_t i, base, nz = 0;
     smp_user_gen++;
     usr_nz[k] = 0;
+    RING_PUBLISH();                                 /* (the slot empty before its zones change) */
     slc_user_scan(k, 0);
     if (SMP_USER_HAS(k) && h->magic == SMP_USER_MAGIC && h->version == 1 && h->nz && h->nz <= 16u &&
         h->data_len <= SMP_USER_SIZE - SMP_USER_DATA) {
@@ -129,6 +130,7 @@ static void smp_user_scan(uint32_t k)
     }
     if (!nz)
         return;
+    RING_PUBLISH();                                 /* (the zones before the count a note-on reads) */
     usr_nz[k] = (uint8_t)nz;
     if (smx_load)
         smx_load(k);
