@@ -982,7 +982,9 @@ static int32_t fm_loud(const fm_sim_t *s, int32_t x)
     return lv;
 }
 /* D: the envelopes, the carriers shaded by their heat, the picked operator's handles */
-static void fm_lines(const fm_sim_t *s, const uint16_t *sh, uint32_t w)
+/* (out of line, as fm_lfo and fm_op_live_panel: inlined, their buffers stacked up in fm_draw's frame, 4 KB of the
+ * main loop's 12) */
+static __attribute__((noinline)) void fm_lines(const fm_sim_t *s, const uint16_t *sh, uint32_t w)
 {
     uint8_t shade[FM_XW];
     uint16_t glow[12];
@@ -1208,7 +1210,7 @@ static void fm_pitch(const fm_sim_t *s, uint16_t c, uint32_t w)
     cv_text_on(10, FM_CY + CAP_IN(S, 12), &AF_S, flat ? "NO PITCH MOVEMENT" : "PITCH OVER THE NOTE", T_MID, T_SURF);
     fm_caption(s, 0);
 }
-static void fm_lfo(const fm_sim_t *s, uint16_t c)
+static __attribute__((noinline)) void fm_lfo(const fm_sim_t *s, uint16_t c)
 {
     const uint8_t *q = s->q;
     fm6_lfo_t lf;
@@ -1752,7 +1754,7 @@ static void fm_op_voice(const fm_sim_t *s, const track_t *t, int16_t *buf, uint3
     }
 }
 #define FM_OP_LIVE_N 512u
-static void fm_op_live_panel(const fm_sim_t *s, const track_t *t, uint16_t c)
+static __attribute__((noinline)) void fm_op_live_panel(const fm_sim_t *s, const track_t *t, uint16_t c)
 {
     int16_t buf[FM_OP_LIVE_N];
     const fm_live_src_t src = {buf, FM_OP_LIVE_N - 1u, FM_LIVE_FRESH};
