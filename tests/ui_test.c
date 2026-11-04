@@ -9710,12 +9710,24 @@ static int test_playhead_line(void)
     return bad;
 }
 
+/* the TAKES log full: an entry the audio ISR has written over (before or while it was read) is not read as the old one */
+static int test_take_log_overwritten(void)
+{
+    take_ev_t e;
+    uint32_t n = take_ev_n;
+    int ok;
+    take_ev_n = TAKE_EV + 5u;                           /* (slots 0..4 hold entries TAKE_EV .. TAKE_EV + 4 now) */
+    ok = !take_ev_at(4, &e) && !take_ev_at(0, &e) && take_ev_at(5, &e) && take_ev_at(TAKE_EV + 4u, &e);
+    take_ev_n = n;
+    return check("TAKES: the log full, an entry written over by the ISR is skipped, the newer ones read", ok);
+}
 int main(void)
 {
     setvbuf(stdout, NULL, _IONBF, 0);
     int bad = 0;
     bad += test_large_face();
     bad += test_sound_loads();
+    bad += test_take_log_overwritten();
     bad += test_rec();
     bad += test_step_rec();
     bad += test_step_rec();
