@@ -160,6 +160,9 @@ static void ui_power_on(void)
     proj_name[0] = 0;
     proj_cur = PROJ_NO_SLOT;
     memset(&favorites, 0, sizeof favorites);
+    ft_mode_put(FT_NEVER);                        /* (FIRST TAKE off: an empty project's REC arms and plays, as the tests of
+                                                   * REC expect; test_first_take turns it on) */
+    memset(&ft, 0, sizeof ft);
     memset(undo_ring, 0, sizeof undo_ring);   /* (Skiff: the undo ring, ui.c) */
     memcpy(dx_kit, DX_KIT_DEF, sizeof dx_kit);   /* ((Skiff phase 9) the factory kit: a DRUM-X preset loads others) */
     memset(bk_ram, 0xFF, sizeof bk_ram);         /* (Skiff: the pattern bank erased, as from a new unit) */
@@ -7369,12 +7372,16 @@ static int test_rec_layer(void)
     rec_open(); frames(100);
     {
         uint32_t a = leds_at(0), b = leds_at(250), w0 = 1u << white(0), w1 = 1u << white(1), w2 = 1u << white(2),
-                 w3 = 1u << white(3), w4 = 1u << white(4);
-        ok = ((a ^ b) & (w0 | w1 | w2 | w3)) == (w0 | w1 | w2 | w3) && (a & b) == w4 &&
-             !((a | b) & ~(w0 | w1 | w2 | w3 | w4));
+                 w3 = 1u << white(3), w4 = 1u << white(4), w5 = 1u << white(5);
+        ok = ((a ^ b) & (w0 | w1 | w2 | w3 | w5)) == (w0 | w1 | w2 | w3 | w5) && (a & b) == w4 &&
+             !((a | b) & ~(w0 | w1 | w2 | w3 | w4 | w5));
         rp_put(RP_CLICK, 2); rp_put(RP_COUNTIN, 2);
         a = leds_at(0); b = leds_at(250);
-        ok &= (a & b) == (w1 | w2 | w3 | w4) && (a ^ b) == w0;
+        ok &= (a & b) == (w1 | w2 | w3 | w4) && (a ^ b) == (w0 | w5);
+        ft_mode_put(FT_AUTO);                          /* (FIRST TAKE: lit when not OFF) */
+        a = leds_at(0); b = leds_at(250);
+        ok &= (a & b) == (w1 | w2 | w3 | w4 | w5);
+        ft_mode_put(FT_NEVER);
         track_defaults_steps(TSEL);
         a = leds_at(0); b = leds_at(250);
         ok &= !((a | b) & w0);
@@ -7385,7 +7392,7 @@ static int test_rec_layer(void)
     SHARED_BYTE = 0; rp_apply();
     rec_close();
     bad += check("  LEDs: CLEAR breathes (dark when empty), CLICK / COUNT-IN lit when on, LEVEL with the click, "
-                 "KNOBS when on", ok);
+                 "KNOBS and FIRST TAKE when on", ok);
 
     /* (Skiff #23) C4 turns KNOBS OFF and ON; OCT- puts it back as the layer opened */
     ui_power_on();
@@ -11848,6 +11855,91 @@ static void shift_select(int32_t s)
     turn(EN_SELECT, s);
     btn_up(B_HOME); frame();
 }
+/* FIRST TAKE (ui_take.c ft_*): REC stopped on an empty project arms it, the first note starts its clock, REC on the 1
+ * closes the loop: 1, 2 or 4 bars of 4/4 by the tempo nearest the song's, the notes into their steps, every track's LEN
+ * and DIV, then it plays; PLAY drops it; a project with notes records as before */
+static void ft_play(uint32_t note, uint32_t at_ms, uint32_t for_ms)
+{
+    fm1_ms = ft.t0 + at_ms;
+    if (ft.state == FT_ARMED)
+        fm1_ms = 100000u;
+    input_on(TSEL, note, 100);
+    fm1_ms += for_ms;
+    input_off(TSEL, note);
+}
+static int test_first_take(void)
+{
+    uint32_t bpm = 0, k;
+    int ok, all;
+    song.g[G_BPM] = 120;
+    ok = ft_fit(2000u, &bpm) == 1u && bpm == 120u && ft_fit(4000u, &bpm) == 2u && bpm == 120u;
+    ok &= ft_fit(3000u, &bpm) == 2u && bpm == 160u && ft_fit(2050u, &bpm) == 1u && bpm == 120u;
+    ok &= ft_fit(1300u, &bpm) == 1u && bpm == 185u && !ft_fit(400u, &bpm) && ft_fit(23000u, &bpm) == 4u && bpm == 42u;
+    check("FIRST TAKE's fit: 1, 2 or 4 bars nearest the song's tempo, within 3 % it stays, 40..240, not under 0.5 s", ok);
+    ui_power_on();
+    ft_mode_put(FT_AUTO);
+    song.g[G_BPM] = 120;
+    rec_tap();
+    ok = ft.state == FT_ARMED && !song.playing && !song.rec && ft.trk == song.sel;
+    frame();
+    ok &= take_box.kind == 2u && str_eq(take_box.title, "FIRST TAKE");
+    ft_play(60, 0, 200);
+    ok &= ft.state == FT_RUNNING;
+    ft_play(62, 500, 200);
+    ft_play(64, 1000, 200);
+    ft_play(65, 1500, 200);
+    fm1_ms = ft.t0 + 2010u;
+    frame();
+    ok &= str_eq(take_box.title, "FIRST TAKE 2 S");
+    rec_tap();
+    all = 1;
+    for (k = 0; k < NTRK; k++)
+        all &= trk[k].p[P_SLEN] == 16 && trk[k].p[P_SDIV] == 2;
+    ok &= ft.state == FT_OFF && transport_req == 1u && all && song.g[G_BPM] == 120;
+    ok &= TSEL->step[0].note[0] == 60 && TSEL->step[4].note[0] == 62 && TSEL->step[8].note[0] == 64 &&
+          TSEL->step[12].note[0] == 65 && TSEL->step[1].time == ST_TIE;   /* (C4 held 200 ms: into step 2) */
+    ok &= str_eq(take_box.title, "LOOP 1 BAR 120 BPM");
+    transport_req = 0;
+    check("FIRST TAKE: REC arms it on an empty project, the first note starts it, REC on the 1: 1 bar at 120, the four "
+          "notes on steps 1 5 9 13, every track LEN 16 at 1/16, then it plays", ok);
+    ui_power_on();
+    ft_mode_put(FT_AUTO);
+    rec_tap();
+    ft_play(60, 0, 100);
+    press(B_PLAY);
+    ok = ft.state == FT_OFF && !take_ev_n && !song.playing && transport_req != 1u && seq_is_empty(TSEL);
+    rec_tap();
+    rec_tap();
+    ok &= ft.state == FT_OFF && !song.rec;
+    check("  PLAY drops it, nothing changed; REC twice with nothing played: armed, then off", ok);
+    ui_power_on();
+    ft_mode_put(FT_AUTO);
+    TSEL->step[3] = (step_t){{60}, 1, ST_NOTE, 0, 100};
+    rec_tap();
+    ok = ft.state == FT_OFF && song.rec && transport_req == 1u;
+    transport_req = 0;
+    rec_tap();
+    check("  AUTO, a project with notes: REC arms and plays as before", ok);
+    sel_set(1);                                        /* ON: on any project; the track's own LEN, the song's tempo */
+    trk[0].p[P_SLEN] = 24;
+    ft_mode_put(FT_ALWAYS);
+    rec_tap();
+    ok = ft.state == FT_ARMED && ft.trk == 1u;
+    ft_play(67, 0, 100);
+    ft_play(67, 1500, 100);
+    fm1_ms = ft.t0 + 3000u;
+    rec_tap();
+    ok &= trk[1].p[P_SLEN] == 32 && trk[0].p[P_SLEN] == 24 && song.g[G_BPM] == 160 && trk[1].step[0].note[0] == 67 &&
+          trk[1].step[16].note[0] == 67 && trk[0].step[3].note[0] == 60;
+    transport_req = 0;
+    ft_mode_put(FT_NEVER);
+    ui_power_on();
+    rec_tap();
+    ok &= ft.state == FT_OFF && song.rec && transport_req == 1u;
+    transport_req = 0;
+    return check("  ON, a project with notes: 2 bars at 160 into track 2 (its LEN 32), track 1 as it was; OFF: REC as "
+                 "before", ok);
+}
 static int test_fm6_spectrum_view(void)
 {
     const uint8_t *room;
@@ -12279,6 +12371,7 @@ int main(void)
     bad += test_spectrum_levels();
     bad += test_spectrum_history();
     bad += test_fm6_spectrum_view();
+    bad += test_first_take();
     bad += test_spectrum_height();
     bad += test_spectrum_hd();
     bad += test_popup_time();

@@ -105,8 +105,9 @@ static int settings_import_per(persist_t *p, int n)
 #if BOARD_SMK37
     if (p->favorites.factory[15][12] >= SMK_KV_N)  /* (SMK-37) KEY VELOCITY (ui.c SMK_KV_BYTE): unknown = DYNAMIC */
         p->favorites.factory[15][12] = 0;
-    if (p->favorites.factory[15][29] & 0xCCu)      /* ((wishlist #42) bits besides STYLE's 0..1 and PAD FOLLOW's 4..5:
-                                                    * not a byte of ours, PAD FOLLOW PAGE) */
+    if (p->favorites.factory[15][29] & 0x0Cu)      /* ((wishlist #42) bits besides STYLE's 0..1, PAD FOLLOW's 4..5 and
+                                                    * FIRST TAKE's 6..7 (ui_take.c FT_BYTE): not a byte of ours, PAD
+                                                    * FOLLOW PAGE, FIRST TAKE AUTO) */
         p->favorites.factory[15][29] &= 0x0Fu;
 #endif
     p->magic = PERSIST_MAGIC;

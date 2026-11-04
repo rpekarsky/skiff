@@ -139,7 +139,8 @@ static void say_count(char *b, uint32_t sz, uint32_t n, const char *what)
 #define TB_Y 8
 #define TB_W 200
 #define TB_H 73
-static struct { uint8_t trk, gen, kind; char title[24], line[40]; } take_box;   /* kind 1: the undo box */
+static struct { uint8_t trk, gen, kind; char title[24], line[40]; } take_box;   /* kind 1: the undo box, 2: FIRST
+                                                                                    * TAKE's */
 static int take_box_fits(void)
 {
     return !ui.layer && large_kind() != LK_TALL && (ui.home || cur_page()->graph != GR_TRK);
@@ -174,7 +175,10 @@ static void take_box_draw(void)
         lower_words(ln);
         cv_text_fit(TB_X + 10, TB_Y + 31, &AF_S, ln, T_INK, T_TEXT, TB_W - 20);
     }
-    if (take_box.kind)                                /* the undo window (ui.c undo_step): further back, or redo */
+    if (take_box.kind == 2u)                          /* FIRST TAKE running (ft_poll) */
+        cv_text_on(TB_X + 10, TB_Y + 49, &AF_S, ft.state == FT_ARMED ? "REC: CANCEL" : "REC: CLOSE   PLAY: DROP", T_INK,
+                   T_TEXT);
+    else if (take_box.kind)                           /* the undo window (ui.c undo_step): further back, or redo */
         take_box_key(take_box_key(TB_X + 10, KC_OCTDN, "BACK", undo_back < undo_n) + 14, KC_OCTUP, "REDO", undo_back);
     else                                              /* the take's undo: SAVE held (the mockup's words) */
         cv_text_on(TB_X + 10, TB_Y + 49, &AF_S, "HOLD SAVE: UNDO", T_INK, T_TEXT);
@@ -316,4 +320,182 @@ static void take_commit(uint32_t k)
     b[7] = 0;
     ui_say(b, take_lost[k % NTRK] > from ? " PARTIAL" : full ? " AUTO FULL" : "");
     str_cpy(ui.msg2, "HOLD [SAVE]: UNDO", sizeof ui.msg2);
+}
+
+/* ------------------------------------------------------------------ FIRST TAKE (take.c ft) --- */
+#define FT_MS 24000u                                  /* the longest: 4 bars at 40 BPM; closed there by itself */
+/* SHIFT + REC's FIRST TAKE (ui_layer.c rec_key): AUTO on an empty project, ON on any, OFF; bits 6..7 of the retired
+ * STYLE's byte (ui.c SMK_PF_BYTE: PAD FOLLOW's 4..5 below them), 0 in every older setting: AUTO */
+#define FT_BYTE (favorites.factory[15][29])
+enum { FT_AUTO, FT_ALWAYS, FT_NEVER, FT_MODES };
+static uint32_t ft_mode(void)
+{
+    uint32_t m = FT_BYTE >> 6;
+    return m < FT_MODES ? m : FT_AUTO;
+}
+static void ft_mode_put(uint32_t m) { FT_BYTE = (uint8_t)((FT_BYTE & 0x3Fu) | (m % FT_MODES) << 6); }
+static const char *const FT_MODE_N[FT_MODES] = {"AUTO", "ON", "OFF"};
+/* the loop T ms long: 1, 2 or 4 bars of 4/4 between 40 and 240 BPM, the one whose tempo is nearest the song's (its
+ * ratio), the fewer bars on a tie; within 3 % the song's tempo stays, else *bpm rounded. 0: none (under 0.5 s) */
+static uint32_t ft_fit(uint32_t ms, uint32_t *bpm)
+{
+    static const uint8_t BARS[3] = {1, 2, 4};
+    uint32_t cur = (uint32_t)song.g[G_BPM] * 10u, best = 0, near = ~0u, i;
+    if (ms < 500u)
+        return 0;
+    for (i = 0; i < 3u; i++) {
+        uint32_t b10 = (BARS[i] * 2400000u + ms / 2u) / ms, e = b10 > cur ? b10 * 1000u / cur : cur * 1000u / b10;
+        if (b10 < 400u || b10 > 2400u || e >= near)
+            continue;
+        near = e;
+        best = BARS[i];
+        *bpm = e <= 1030u ? cur / 10u : (b10 + 5u) / 10u;
+    }
+    return best;
+}
+/* the box over the panel while it runs (the TAKE box's place), or the header */
+static void ft_say(const char *title, const char *line)
+{
+    if (!take_box_fits()) {
+        ui_say(title, "");
+        return;
+    }
+    if (!str_eq(take_box.title, title) || !str_eq(take_box.line, line) || take_box.kind != 2u)
+        take_box.gen++;
+    take_box.trk = ft.trk;
+    take_box.kind = 2;
+    str_cpy(take_box.title, title, sizeof take_box.title);
+    str_cpy(take_box.line, line, sizeof take_box.line);
+    ui.take_t = 2;                                    /* (kept up a frame at a time: ft_poll) */
+}
+static void ft_drop(const char *why)
+{
+    ft.state = FT_OFF;
+    take_ev_n = 0;
+    ui.take_t = 0;
+    ui.force = 1;
+    if (why)
+        ui_message(why);
+}
+static int roll_on(void);                             /* (ui_input.c) */
+static int ft_project_empty(void)
+{
+    uint32_t k;
+    for (k = 0; k < NTRK; k++)
+        if (!seq_is_empty(&trk[k]))
+            return 0;
+    return 1;
+}
+/* REC stopped: FIRST TAKE instead of the transport? Its mode lets it (AUTO: an empty project), no external clock, no
+ * count-in, the selected track's arpeggiator off, not the piano roll's step entry */
+static int ft_can_arm(void)
+{
+    if (ft_mode() == FT_NEVER || song.rec || song.g[G_CLOCK] || cin_bars || TSEL->p[P_AMODE] || roll_on())
+        return 0;
+    return ft_mode() == FT_ALWAYS || ft_project_empty();
+}
+static void ft_arm(void)
+{
+    take_ev_n = 0;                                    /* (what was played over the empty project: gone) */
+    ft.trk = (uint8_t)song.sel;
+    ft.state = FT_ARMED;
+    ui.force = 1;
+}
+/* REC on the 1: the loop. Each note into the step its time falls in (u: 1/64 steps; the last half step before the
+ * close wraps onto step 0), its feel the rest, LEN 16 x bars at 1/16 (an empty project: every track's, else the
+ * track's own), the tempo (the song's); the notes as TAKES puts them in (take_notes: chords, ties to the note's end,
+ * FEEL as REC's; over what the track has: nothing wiped), one undo (SAVE held); then it plays */
+static void ft_close(void)
+{
+    track_t *t = &trk[ft.trk % NTRK];
+    uint32_t ms = fm1_ms - ft.t0, bpm = 0, bars = ft_fit(ms, &bpm), len = 16u * bars, i, tied = 0, notes;
+    int own = rec_poly(t);
+    step_t tmp[NSTEP];
+    char b[24];
+    if (!bars || !take_ev_n) {
+        ft_drop(take_ev_n ? "TAKE TOO SHORT" : "NOTHING PLAYED");
+        return;
+    }
+    for (i = 0; i < take_ev_n; i++) {
+        take_ev_t *e = &take_ev[i];
+        uint32_t u = (e->pass * len * 64u + ms / 2u) / ms, step = (u + 32u) / 64u;
+        e->feel = (int8_t)clamp((int32_t)u - (int32_t)step * 64, -32, 31);
+        e->step = (uint8_t)(step % len);
+        e->pass = 1;
+    }
+    for (i = 0; i < NTRK; i++)
+        if (i == ft.trk || ft_project_empty()) {
+            trk[i].p[P_SLEN] = (int16_t)len;
+            trk[i].p[P_SDIV] = 2;                     /* (1/16) */
+        }
+    song.g[G_BPM] = (int16_t)bpm;
+    memcpy(tmp, t->step, sizeof tmp);
+    if (own)
+        ed_open(tmp, t, len);
+    notes = take_notes(ft.trk, tmp, len, 1, own, 0, &tied);
+    undo.keep = 0;
+    undo_label = "FIRST TAKE";
+    load_begin(t, UNDO_PAT);
+    if (own) {
+        ed_close(t, tmp, len, 0);
+    } else {
+        fm1_irq_off();
+        memcpy(t->step, tmp, sizeof tmp);
+        fm1_irq_on();
+    }
+    t->seq_active = 1;
+    load_end(t);
+    ft.state = FT_OFF;
+    take_ev_n = 0;
+    transport_req = 1;
+    str_cpy(b, "LOOP ", sizeof b);
+    fmt_int(b + 5, (int32_t)bars);
+    str_cpy(b + str_len(b), bars > 1u ? " BARS " : " BAR ", sizeof b - str_len(b));
+    fmt_int(b + str_len(b), (int32_t)bpm);
+    str_cpy(b + str_len(b), " BPM", sizeof b - str_len(b));
+    if (!take_box_fits()) {
+        ui.take_t = 0;
+        ui_say(b, "");
+        return;
+    }
+    take_box.gen++;
+    take_box.kind = 0;                                /* (its undo: SAVE held) */
+    str_cpy(take_box.title, b, sizeof take_box.title);
+    take_box.line[0] = 0;
+    say_count(take_box.line, sizeof take_box.line, notes, " NOTE");
+    ui.take_t = popup_frames(TB_FRAMES);
+}
+/* each frame: what it shows; 24 s: closed */
+static void ft_poll(void)
+{
+    char title[24], line[40];
+    uint32_t ms, bpm = 0, bars;
+    if (!ft.state)
+        return;
+    if (song.playing || seq_counting()) {             /* (started some other way: MIDI, the editor) */
+        ft_drop(0);
+        return;
+    }
+    if (ft.state == FT_ARMED) {
+        ft_say("FIRST TAKE", "PLAY FREELY: THE FIRST NOTE STARTS IT");
+        return;
+    }
+    ms = fm1_ms - ft.t0;
+    if (ms >= FT_MS) {
+        ft_close();
+        return;
+    }
+    str_cpy(title, "FIRST TAKE ", sizeof title);
+    fmt_int(title + str_len(title), (int32_t)(ms / 1000u));
+    str_cpy(title + str_len(title), " S", sizeof title - str_len(title));
+    line[0] = 0;
+    if ((bars = ft_fit(ms, &bpm)) != 0u) {
+        fmt_int(line, (int32_t)bars);
+        str_cpy(line + str_len(line), bars > 1u ? " BARS, " : " BAR, ", sizeof line - str_len(line));
+        fmt_int(line + str_len(line), (int32_t)bpm);
+        str_cpy(line + str_len(line), " BPM. REC ON THE 1", sizeof line - str_len(line));
+    } else {
+        str_cpy(line, "REC ON THE 1 CLOSES THE LOOP", sizeof line);
+    }
+    ft_say(title, line);
 }
