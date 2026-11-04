@@ -64,6 +64,8 @@ static int32_t fm6_lfo_v[NTRK], fm6_lfo_d[NTRK]; /* this block's LFO value and d
 /* (#72) each operator's phase, % of a cycle (FM6_ALG's order: the sixth first; shown as -50 .. +49): a fresh note
  * starts there, the sounding ones glide there ((#72b) fm6_phase_glide). (#76) Part of the sound, as WAVE: see fm6x_t */
 static uint8_t fm6_op_phase[NTRK][6] __attribute__((section(".pool")));
+/* each FM6 track's samples since power-on: PHASE FREE's clock (fm6_note_init), counted as the LFO runs (fm6_block) */
+static uint32_t fm6_clk[NTRK] __attribute__((section(".pool")));
 /* (#72b) bumped by the main loop at a PHASE change; the ISR's copy once every sounding note has reached it */
 static uint8_t fm6_phase_gen[NTRK] __attribute__((section(".pool")));
 static uint8_t fm6_phase_seen[NTRK] __attribute__((section(".pool")));
@@ -208,7 +210,7 @@ static uint32_t fm6_waves_of(uint32_t tr)
 static void fm6_set_phase(uint32_t tr, uint32_t k, uint32_t pct)
 {
     tr %= NTRK;
-    fm6_op_phase[tr][k % 6u] = (uint8_t)(pct % 100u);
+    fm6_op_phase[tr][k % 6u] = (uint8_t)(pct > FM6_PHASE_FREE ? 0u : pct);
     RING_PUBLISH();
     fm6_phase_gen[tr]++;
 }
@@ -244,7 +246,7 @@ static void fm6x_take(uint8_t *p, fm6x_t *x)
             bits |= (uint32_t)(*p >> 7) << j;
             *p &= 127u;
         }
-        x->phase[k] = (uint8_t)((bits & 127u) % 100u);
+        x->phase[k] = (uint8_t)((bits & 127u) > FM6_PHASE_FREE ? 0u : bits & 127u);
         x->wave[k] = (uint8_t)((bits >> 7 & 15u) % FM6_NWAVE);
         x->out[k] = (uint8_t)((bits >> 11) % FM6_NOUT);
     }
@@ -324,7 +326,7 @@ static uint32_t fm6x_get(const uint8_t *b, uint32_t room, fm6x_t *x)
     if (!room || (n = b[0]) >= room)
         return 0;
     for (i = FM6X_PHASE; i < n && i < FM6X_OSC; i++)
-        x->phase[i - FM6X_PHASE] = (uint8_t)(b[1u + i] > 99u ? 99u : b[1u + i]);
+        x->phase[i - FM6X_PHASE] = (uint8_t)(b[1u + i] > FM6_PHASE_FREE ? 99u : b[1u + i]);
     for (i = FM6X_OSC; i < n && i < FM6X_OSC + 6u; i++) {
         x->wave[i - FM6X_OSC] = (uint8_t)((b[1u + i] & 15u) < FM6_NWAVE ? b[1u + i] & 15u : FM6_W_SINE);
         x->out[i - FM6X_OSC] = (uint8_t)((b[1u + i] >> 4 & 3u) < FM6_NOUT ? b[1u + i] >> 4 & 3u : FM6_OUT_ON);
@@ -601,7 +603,7 @@ static void fm6_note_on(track_t *t, voice_t *v)
     (void)fm6_sync(t);
     p = fm6_eff[tr].p;
     fm6_note_init(n, p, (int32_t)v->note + p[FP_TRNSP] - 24, v->mvel ? v->mvel : v->vel,
-                  (!v->env && !v->env_out) || !n->live, fm6_op_phase[tr]);   /* from silence */
+                  (!v->env && !v->env_out) || !n->live, fm6_op_phase[tr], fm6_clk[tr % NTRK]);   /* from silence */
     n->waves = fm6_waves_of(tr);
     fm6_lfo_key(&fm6_lfo[tr]);
     if (tr < NTRK)
@@ -640,6 +642,8 @@ static __attribute__((noinline)) int fm6_phase_glide(track_t *t, const uint8_t *
             continue;
         for (k = 0; k < 6u; k++) {
             int32_t step = clamp((int16_t)(uint16_t)(target[k] - n->phase_at[k]), -FM6_GLIDE_STEP, FM6_GLIDE_STEP);
+            if (pct[k] == FM6_PHASE_FREE)               /* (FREE: a sounding note goes on as it is) */
+                step = 0;
             n->phase_at[k] = (uint16_t)(n->phase_at[k] + step);
             n->slide[k] = step << (8 - FM6_LG_N);
             gliding |= step != 0;
@@ -654,6 +658,7 @@ static void fm6_block(track_t *t)       /* once a block and part: the macros, th
     uint8_t phase_gen;
     if (tr >= NTRK)
         return;
+    fm6_clk[tr] += FM6_N;
     phase_gen = fm6_phase_gen[tr];
     if (phase_gen != fm6_phase_seen[tr] && !fm6_phase_glide(t, fm6_op_phase[tr]))
         fm6_phase_seen[tr] = phase_gen;

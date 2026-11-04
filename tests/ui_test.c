@@ -3129,7 +3129,7 @@ static int phase_card_is(const char *val, int32_t gauge)
     char b[16] = {0};
     const char *unit = "";
     int32_t g = fm_val(f, fm_at(0, f), fm6_patch[fm_tr()], TSEL, b, &unit);
-    return str_eq(b, val) && str_eq(unit, "%") && g == gauge;
+    return str_eq(b, val) && str_eq(unit, str_eq(val, "FREE") ? "" : "%") && g == gauge;
 }
 /* (#72b) operator tab k (OP1 = 0) beside its number on OSC */
 static int phase_tab_is(uint32_t k, const char *val)
@@ -3203,12 +3203,15 @@ static int test_fm6_lab(void)
         fm6_set_phase(tr, 5u - 2u, 49);
         ok = phase_card_is("+49", 1000) && phase_tab_is(2, "49");
         turn(EN_K1, 1);
+        ok &= fm6_op_phase[tr][5u - 2u] == FM6_PHASE_FREE && phase_card_is("FREE", 1000) && phase_tab_is(2, "FR");
+        turn(EN_K1, 1);
         ok &= fm6_op_phase[tr][5u - 2u] == 50u && phase_card_is("-50", 0) && phase_tab_is(2, "-50");
-        turn(EN_K1, -1);
+        turn(EN_K1, -2);
         ok &= phase_card_is("+49", 1000);
         fm6_set_phase(tr, 5u - 2u, 75);
         ok &= phase_card_is("-25", 25 * 1000 / 99) && phase_tab_is(2, "-25") && phase_tab_is(1, "0");
-        bad += check("(#72b) PHASE on the card and tab: -50 .. +49 %, +49 on to -50 and back, 75 % of a cycle -25", ok);
+        bad += check("(#72b) PHASE on the card and tab: -50 .. +49 %, +49 on to FREE, -50 and back, 75 % of a cycle -25",
+                     ok);
         turn(EN_K2, 1);                                 /* (#73) WAVE: OP3's, SINE .. SQUARE, at once (fm6_pgen) */
         ok = fm6_op_wave[tr][5u - 2u] == FM6_W_SIN2 && fm6_pgen[tr] != gen;
         turn(EN_K2, -1);

@@ -703,6 +703,39 @@ static void outs(void)
     check("  OFF, then ON in the note: back where it would be, its envelope ran on (1 %)", diff < peak / 100);
 }
 
+/* PHASE FREE: OP1 at a fixed 100 Hz runs free, as the LFO's TRIG FREE: a note started later (another key, after a
+ * while) starts it where the one held all along has it; a fresh note at PHASE 0 does not */
+static void free_phase(void)
+{
+    static int32_t b[FM6_N];
+    fm6_note_t *a, *n;
+    uint32_t i, j;
+    int ok = 1;
+    init_patch(base);
+    base[5u * FP_OP + FP_MODE] = 1;
+    base[5u * FP_OP + FP_FC] = 2;
+    setup(base, 0);
+    fm6_set_phase(0, 5, FM6_PHASE_FREE);
+    for (i = 0; i < 29u; i++)
+        track_render(&trk[0], b, FM6_N);
+    trk_note_on(&trk[0], 60, 100);
+    a = fm6_note_of(&trk[0], &trk[0].v[0]);
+    for (j = 1; j <= 3u; j++) {
+        for (i = 0; i < 37u * j; i++)
+            track_render(&trk[0], b, FM6_N);
+        trk_note_on(&trk[0], 60 + 7 * j, 100);
+        n = fm6_note_of(&trk[0], &trk[0].v[j]);
+        ok &= a && n && trk[0].v[j].note == 60 + 7 * j && n->op[5].phase == a->op[5].phase;
+    }
+    check("PHASE FREE: a fixed 100 Hz OP1 starts where the note held all along has it, keys and waits apart", ok);
+    setup(base, 0);
+    for (i = 0; i < 29u; i++)
+        track_render(&trk[0], b, FM6_N);
+    trk_note_on(&trk[0], 60, 100);
+    n = fm6_note_of(&trk[0], &trk[0].v[0]);
+    check("  PHASE 0: a fresh note starts at 0, the clock aside", n && n->op[5].phase == 0);
+}
+
 static void waves(void)
 {
     static double y[FS / 10];
@@ -877,6 +910,7 @@ int main(int argc, char **argv)
     voices();
     waves();
     outs();
+    free_phase();
     if (!getenv("NOCOST"))
         cost();
     if (argc > 1) {
