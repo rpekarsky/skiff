@@ -212,6 +212,9 @@ static int32_t lim_env = LIM_T;
  * (usb_fixed_dac). MASTER (0, the default): MASTER before master_out, as always (USB follows the knob) */
 static volatile uint8_t fx_usb_fixed;
 #define MASTER_FULL 4096                /* main.c: the MASTER knob's top, Q12 */
+/* the mix into the master times MASTER (Q12, >> 10: x4 back): 64 bits, 3+ tracks near their top wrapped round in 32
+ * (the same result below it) */
+#define MASTER_MUL(x, g) ((int32_t)(((int64_t)(x) * (g)) >> 10))
 /* the MASTER pot (ADC 0..1023, smoothed in main.c) to its level, square law: 0 .. 4088 (Q12) */
 static inline uint32_t master_of_pot(uint32_t k10) { return (k10 * k10) >> 8; }
 static __attribute__((noinline)) void usb_fixed_dac(int32_t *out, uint32_t n)   /* audio ISR, after uac_tap */
@@ -255,6 +258,7 @@ static int32_t sb_lp1, sb_lp2, sb_lp3, sb_lp4, sb_env, sb_h1, sb_h2, sb_hl;
 static inline int32_t spk_bass(int32_t m)
 {
     int32_t a, t, u;
+    m = clamp(m, -(1 << 20), 1 << 20);  /* (32 x full scale: the low-pass's x 692 stays in int32) */
     sb_lp1 += ((m - sb_lp1) * 692) >> 15;
     sb_lp2 += ((sb_lp1 - sb_lp2) * 692) >> 15;
     sb_lp3 += ((sb_lp2 - sb_lp3) * 692) >> 15;
@@ -1224,8 +1228,8 @@ static __attribute__((noinline)) AUDIO_RAM void perf_master(int32_t *out, uint32
     int32_t mg = fx_usb_fixed ? MASTER_FULL : (int32_t)song.master_q12;   /* (USB LEVEL FIXED: MASTER after) */
     void (*mo)(int32_t *, int32_t *) = AUDIO_FAR(master_out);   /* (Skiff: XIP, from RAM) */
     for (i = 0; i < n; i++) {
-        mix_l[i] = (((mix_l[i] + wet[i]) >> 2) * mg) >> 10;
-        mix_r[i] = (((mix_r[i] + wet[i]) >> 2) * mg) >> 10;
+        mix_l[i] = MASTER_MUL((mix_l[i] + wet[i]) >> 2, mg);
+        mix_r[i] = MASTER_MUL((mix_r[i] + wet[i]) >> 2, mg);
     }
     perf_block(mix_l, mix_r, n);
     for (i = 0; i < n; i++) {
@@ -1288,8 +1292,8 @@ static void mix_block(int32_t *out, uint32_t n)
         return;
     }
     for (i = 0; i < n; i++) {
-        int32_t l = (((mix_l[i] + wet[i]) >> 2) * mg) >> 10;
-        int32_t r = (((mix_r[i] + wet[i]) >> 2) * mg) >> 10;
+        int32_t l = MASTER_MUL((mix_l[i] + wet[i]) >> 2, mg);
+        int32_t r = MASTER_MUL((mix_r[i] + wet[i]) >> 2, mg);
         master_out(&l, &r);
         out[2u * i] = l;
         out[2u * i + 1u] = r;
