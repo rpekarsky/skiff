@@ -654,14 +654,15 @@ static int chain_tails(uint32_t k, const step_t *last, uint32_t cnt, const uint8
     bk_rec[0] = BK_VER3;                           /* (ties in it) */
     if (pat_keep_rec(id, bk_rec))
         return 2;
+    fm1_irq_off();                                 /* (before the check: the ISR's swap between them would land
+                                                    * these steps in the part going out) */
     if (q->armed && q->slot == e2 && !q->done) {   /* (playing: the copy coming in next, the same) */
-        fm1_irq_off();
         for (i = 0; i < un; i++) {
             u[i].nudge = q->step[i].nudge;
             q->step[i] = u[i];
         }
-        fm1_irq_on();
     }
+    fm1_irq_on();
     bk.gen++;
     return rc;
 }
@@ -706,7 +707,7 @@ static __attribute__((noinline)) void take_part(uint32_t k, uint32_t j, uint32_t
     launch_t *q = &launch_q[k % NTRK];
     uint32_t id = ent_pat(k, j), len, i, nn, mm = 0, tied = 0;
     int16_t v[5];
-    int own;
+    int own, coming;
     motion_store_t ms;
     k %= NTRK;
     if (id == PAT_NONE || pat_decode(t, id, tmp, v, &ms))
@@ -737,13 +738,15 @@ static __attribute__((noinline)) void take_part(uint32_t k, uint32_t j, uint32_t
     }
     for (i = 0; i < 5u; i++)
         undo.p[BK_TIME[i]] = v[i];
-    if (q->armed && q->slot == j && !q->done) {    /* (playing: the copy coming in next, the same) */
-        fm1_irq_off();
+    fm1_irq_off();                                 /* (before the check, as above) */
+    coming = q->armed && q->slot == j && !q->done; /* (playing: the copy coming in next, the same) */
+    if (coming) {
         memcpy(q->step, tmp, sizeof q->step);
         q->motion = ms;
-        fm1_irq_on();
-        q_sig[k] = proj_hash(bk_rec, BK_REC);
     }
+    fm1_irq_on();
+    if (coming)
+        q_sig[k] = proj_hash(bk_rec, BK_REC);
     *notes += nn;
     *moves += mm;
     bk.gen++;
