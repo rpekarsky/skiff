@@ -386,11 +386,11 @@ static int ft_project_empty(void)
             return 0;
     return 1;
 }
-/* REC stopped: FIRST TAKE instead of the transport? Its mode lets it (AUTO: an empty project), no external clock, no
- * count-in, the selected track's arpeggiator off, not the piano roll's step entry */
+/* REC stopped: FIRST TAKE instead of the transport? Its mode lets it (AUTO: an empty project), no external clock, the
+ * selected track's arpeggiator off, not the piano roll's step entry. A count-in set is skipped: no tempo to count yet */
 static int ft_can_arm(void)
 {
-    if (ft_mode() == FT_NEVER || song.rec || song.g[G_CLOCK] || cin_bars || TSEL->p[P_AMODE] || roll_on())
+    if (ft_mode() == FT_NEVER || song.rec || song.g[G_CLOCK] || TSEL->p[P_AMODE] || roll_on())
         return 0;
     return ft_mode() == FT_ALWAYS || ft_project_empty();
 }
