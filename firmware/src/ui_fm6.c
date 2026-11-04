@@ -295,9 +295,9 @@ static int32_t fm_val(const fm_field_t *f, uint32_t i, const uint8_t *p, const t
         v = fm6_op_out[fm_tr()][i / FP_OP] % FM6_NOUT;
         str_cpy(val, FM_OUT[v], 8);
         return (int32_t)FM_OUT_POS[v] * 500;
-    case FMF_OL:                                    /* (its OUT: INV a minus, OFF said, the level kept) */
-        fmt_int(val, fm6_op_out[fm_tr()][i / FP_OP] == FM6_OUT_INV ? -(int32_t)v : (int32_t)v);
-        *unit = fm6_op_out[fm_tr()][i / FP_OP] == FM6_OUT_OFF ? "OFF" : "";
+    case FMF_OL:                                    /* (its OUT said beside the level: INV, OFF) */
+        fmt_int(val, (int32_t)v);
+        *unit = fm6_op_out[fm_tr()][i / FP_OP] == FM6_OUT_ON ? "" : FM_OUT[fm6_op_out[fm_tr()][i / FP_OP] % FM6_NOUT];
         break;
     default:
         fmt_int(val, (int32_t)v);
