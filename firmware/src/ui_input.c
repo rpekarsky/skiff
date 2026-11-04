@@ -403,7 +403,7 @@ static void ui_leds(void)
         led_put(nl, panel.btn[B_FX], 1);                /* FX LATCH: lit while an effect or a macro is on */
     if (ui.layer)                                       /* the layer's button breathes while its map is up */
         led_put(nb, panel.btn[layer_btn()], 1);
-    led_put(nl, panel.btn[B_REC], song.rec != 0u && ui.layer != LAYER_REC);   /* (its layer: it breathes) */
+    led_put(nl, panel.btn[B_REC], (song.rec != 0u || ft.state) && ui.layer != LAYER_REC);   /* (its layer: it breathes) */
     k = oct_leds();
     led_put(nl, panel.btn[B_OCTDN], (int)(k & 1u));
     led_put(nl, panel.btn[B_OCTUP], (int)((k >> 1) & 1u));
@@ -597,6 +597,17 @@ static void rec_pass_undo(uint32_t was);
 static int rec_tap(void)                                /* 1: the arming changed */
 {
     uint8_t bit = (uint8_t)(1u << song.sel), was = song.rec;
+    if (ft.state) {                                   /* FIRST TAKE (ui_take.c): REC on the 1 closes the loop; armed, */
+        if (ft.state == FT_RUNNING)                   /* nothing played yet: off */
+            ft_close();
+        else
+            ft_drop(0);
+        return 1;
+    }
+    if (!song.playing && !seq_counting() && ft_can_arm()) {
+        ft_arm();
+        return 1;
+    }
     song.rec = (uint8_t)(song.rec & bit ? 0u : song.rec | bit);
     ui.force = 1;                                     /* also refresh the status on MENU / ABOUT */
     rec_pass_undo(was);                               /* ((Skiff U2) what this arming records: its undo) */
@@ -619,6 +630,10 @@ static int rec_tap(void)                                /* 1: the arming changed
 static int layer_play(void);
 static void play_press(void)
 {
+    if (ft.state) {                                   /* (FIRST TAKE: PLAY cancels it, nothing changed) */
+        ft_drop("TAKE CANCELLED");
+        return;
+    }
     if (layer_play())
         return;
     if (lists.song == SONG_ONCE && !song.playing && !seq_counting()) {
@@ -2439,6 +2454,7 @@ static void ui_input(void)
     perf_latch_on = ui.lock == LAYER_FX;                /* ((Skiff U2) a locked FX layer latches: MENU > FX LATCH retired) */
     fx_usb_fixed = (ui_prefs & PREF_USB_FIXED) != 0u;   /* (MENU > USB LEVEL: fx.c, audio.c) */
     rp_apply();                                         /* (MENU > CLICK, CLICK LEVEL, COUNT-IN: click.c, seq.c) */
+    ft_poll();                                          /* (FIRST TAKE: its box, its 24 s) */
     if (!ui.menu)
         usb_serial_apply();                             /* (MENU > USB SERIAL: when the menu has closed) */
     settings_later_poll();                              /* (Felucca #197: LIST / FAV written once the view is left) */

@@ -23,11 +23,32 @@ static volatile uint16_t take_lost[NTRK];             /* 1 + the latest pass of 
 static uint16_t take_p0[NTRK] __attribute__((section(".pool")));   /* (Skiff phase 5) the pass each track's pattern came
                                                        * in after (launch.c launch_step: a song's repeats count from it) */
 
+/* FIRST TAKE (as Sloop's FREE TAKE): REC stopped on an empty project arms it instead of starting the transport; the
+ * first note on the armed track starts its clock, REC on the 1 closes the loop (ui_take.c ft_close): its length in
+ * 1, 2 or 4 bars of 4/4 and the tempo from how long it took; PLAY cancels it. Its notes wait in the log as they were
+ * played, each entry's pass the ms since the first note (step and feel set at the close) */
+enum { FT_OFF, FT_ARMED, FT_RUNNING };
+static struct { uint8_t state, trk; uint32_t t0; } ft __attribute__((section(".ramx")));
+static void ft_note(track_t *t, uint32_t note, uint32_t vel)
+{
+    uint32_t k = trk_index(t), i = take_ev_n;
+    if (k != ft.trk || i >= TAKE_EV || (ft.state == FT_ARMED && !vel))
+        return;                                       /* (the log full: the loop closes on what it has) */
+    if (ft.state == FT_ARMED) {
+        ft.t0 = fm1_ms;
+        ft.state = FT_RUNNING;
+    }
+    take_ev[i] = (take_ev_t){(uint16_t)(fm1_ms - ft.t0), (uint8_t)k, 0, (uint8_t)note, (uint8_t)vel, 0};
+    RING_PUBLISH();
+    take_ev_n++;
+}
+
 /* PLAY (seq_start): a new log */
 static void take_clear(void)
 {
     uint32_t k;
-    take_ev_n = 0;
+    if (!ft.state)                                    /* (FIRST TAKE's notes: started by the editor or MIDI, it closes) */
+        take_ev_n = 0;
     take_kv_n = 0;
     for (k = 0; k < NTRK; k++)
         take_pass[k] = take_lost[k] = take_p0[k] = 0;
@@ -55,8 +76,13 @@ static __attribute__((noinline)) void take_note(track_t *t, uint32_t note, uint3
 {
     uint32_t pass, step, i;
     int32_t feel;
-    if (!song.playing || rec_on(t))
-        return;                                       /* (stopped, or REC records it itself) */
+    if (!song.playing || ft.state) {
+        if (ft.state && !song.playing)
+            ft_note(t, note, vel);
+        return;                                       /* (FIRST TAKE playing: closed at the next frame, ft_poll) */
+    }
+    if (rec_on(t))
+        return;                                       /* (REC records it itself) */
     step = take_stamp(t, &pass, &feel);
     i = take_ev_n % TAKE_EV;
     if (take_ev_n >= TAKE_EV && take_ev[i].pass + 1u > take_lost[take_ev[i].trk % NTRK])

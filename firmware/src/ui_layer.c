@@ -511,7 +511,8 @@ static void clear_confirmed(void)
         tools_key(TL_CLEAR);
 }
 #define RL_KNOBS 4u                                     /* (Skiff #23) C4: KNOBS ON / OFF */
-#define RL_ROWS 5u
+#define RL_FT 5u                                        /* D4: FIRST TAKE AUTO / ON / OFF (ui_take.c ft_mode) */
+#define RL_ROWS 6u
 /* REC's settings, row r (G3 A3 B3, KNOB 1..3): CLICK, COUNT-IN, CLICK LEVEL as MENU > AUDIO steps them (ui.c rp_*) */
 static const uint8_t RL_F[3] = {RP_CLICK, RP_COUNTIN, RP_LEVEL};
 static const char *const RL_LABEL[3] = {"CLICK", "COUNT-IN", "CLICK LVL"};   /* ((Skiff U4, R9) MENU > AUDIO's names, as
@@ -534,6 +535,12 @@ static void rec_key(uint32_t p)
     if (p == 0u) {                                      /* ((Skiff U2) CLEAR: held for the hold time, rec_clear_poll) */
         lys.clr_t = fm1_ms | 1u;
         ui_message("HOLD: CLEAR");
+        return;
+    }
+    if (p == RL_FT) {
+        ft_mode_put(ft_mode() + 1u);
+        lys.rp_dirty = 1;
+        ui_say("FIRST TAKE ", FT_MODE_N[ft_mode()]);
         return;
     }
     if (p == RL_KNOBS) {
@@ -896,7 +903,8 @@ static uint32_t layer_leds(uint32_t *br)
             can = ent_on(song.sel, p);                   /* ((#28) a REST too: the track drops out) */
         } else if (l == LAYER_REC && !b && p < RL_ROWS) {   /* a setting on (LEVEL: the click on) lit, the rest breathe; */
             on = p == 1u ? rp_get(RP_CLICK) != 0u : p == 2u ? rp_get(RP_COUNTIN) != 0u :   /* CLEAR: something to */
-                 p == RL_KNOBS ? !rec_knobs_off : p == 3u && rp_get(RP_CLICK) != 0u;   /* clear */
+                 p == RL_KNOBS ? !rec_knobs_off : p == RL_FT ? ft_mode() != FT_NEVER :   /* clear */
+                 p == 3u && rp_get(RP_CLICK) != 0u;
             can = p ? 1u : rec_clearable();
         }
         m |= on << k;
@@ -1287,8 +1295,8 @@ static void layer_seq(void)
  * ON and OFF */
 #define LR_KW 78                                         /* the key's cell; the values 46 px each: x 6 .. 234 */
 #define LR_VW 46
-#define LR_H 21
-#define LR_GAP 3
+#define LR_H 19                                         /* (six rows: CLEAR .. FIRST TAKE in the panel) */
+#define LR_GAP 2
 static void layer_rec(void)
 {
     uint32_t r, v;
@@ -1296,8 +1304,8 @@ static void layer_rec(void)
     for (r = 0; r < RL_ROWS; r++) {
         int32_t y = 4 + (LR_H + LR_GAP) * (int32_t)r, x = 6, vx = 6 + LR_KW + 4;
         uint32_t dim = r == 0u && !rec_clearable();
-        const char *name = r == 0u ? "CLEAR" : r == RL_KNOBS ? "KNOBS" : RL_LABEL[r - 1u];
-        uint32_t icon = r == 0u ? ICON_CLEAR : r == RL_KNOBS ? ICON_AUTO : RL_ICON[r - 1u];
+        const char *name = r == 0u ? "CLEAR" : r == RL_KNOBS ? "KNOBS" : r == RL_FT ? "FIRST TAKE" : RL_LABEL[r - 1u];
+        uint32_t icon = r == 0u ? ICON_CLEAR : r == RL_KNOBS ? ICON_AUTO : r == RL_FT ? ICON_TEMPO : RL_ICON[r - 1u];
         uint16_t ink, fill = lc_box(x, y, LR_KW, LR_H, lc_fill(dim ? LS_DIM : LS_OFF, &ink));
         n[0] = W_NOTE[r];
         GFX_HOOK_ALIGN(0, y, 0, y + LR_H, AL_V, "rec layer key cell on its middle");
@@ -1315,6 +1323,14 @@ static void layer_rec(void)
             fill = lc_box(vx, y, w, LR_H, lc_fill(dim ? LS_DIM : LS_OFF, &ink));
             GFX_HOOK_ALIGN(vx, y, vx + w, y + LR_H, AL_HV, "rec layer clear cell centred");
             cv_text_in(vx, y + CAP_IN(S, LR_H), w, &AF_S, b, ink, fill);
+            continue;
+        }
+        if (r == RL_FT) {
+            for (v = 0; v < FT_MODES; v++, vx += LR_VW + 4) {
+                fill = lc_box(vx, y, LR_VW, LR_H, lc_fill(v == ft_mode() ? LS_SEL : LS_OFF, &ink));
+                GFX_HOOK_ALIGN(vx, y, vx + LR_VW, y + LR_H, AL_HV, "rec layer value cell centred");
+                cv_text_in(vx, y + CAP_IN(S, LR_H), LR_VW, &AF_S, FT_MODE_N[v], ink, fill);
+            }
             continue;
         }
         if (r == RL_KNOBS) {
@@ -1422,7 +1438,8 @@ static void draw_layer(void)
     else if (l == LAYER_SCL)
         sig += (uint32_t)TSEL->p[P_SCALE] * 31u;
     else if (l == LAYER_REC)
-        sig += (uint32_t)ui_rec_prefs * 31u + (uint32_t)rec_clearable() * 5u + song.sel * 977u + rec_knobs_off * 104729u;
+        sig += (uint32_t)ui_rec_prefs * 31u + (uint32_t)rec_clearable() * 5u + song.sel * 977u + rec_knobs_off * 104729u +
+               ft_mode() * 15485863u;
     else if (l == LAYER_PERF)                           /* (Skiff) */
         sig += bank_gen() * 31u + launch_mode() * 5u + song.sel * 977u + perf_sig() * 131u +
                perf_scenes() * 1299709u + (scene_now() + 1u) * 15485863u + (uint32_t)stage_pending() * 32452843u;
