@@ -457,14 +457,14 @@ static int up_load(uint32_t k)
     } else
 #endif
     {
-        fm1_irq_off();                                  /* the audio ISR must not see half a sound */
-        t->eng_req = r->engine;
-        for (i = 0; i < P_COUNT; i++)
+        uint32_t f = motion_guard();                    /* the audio ISR must not see half a sound: its FM6 patch in */
+        t->eng_req = r->engine;                         /* the same window (after it, a note-on between held the old */
+        for (i = 0; i < P_COUNT; i++)                   /* patch for its whole length) */
             if (!param_kept(i))
                 t->p[i] = v[i];
         t->preset = 0;
-        fm1_irq_on();
         upf_track_load(t, k);                           /* FM6: the preset's own patch (up_fm6.c) */
+        motion_unguard(f);
     }
     t->user = (uint8_t)(k + 1u);
     load_end(t);

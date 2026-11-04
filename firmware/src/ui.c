@@ -2141,7 +2141,8 @@ static void preset_fill(int16_t *p, const engine_t *e, uint32_t pi)
 static void apply_preset_to(track_t *t, uint32_t pi)
 {
     const engine_t *e = ENGINES[t->eng_req % NENGINES];
-    uint32_t kit;
+    uint32_t kit, f;
+    int16_t p[P_COUNT];
 #if !FELUCCA_FM4 && FELUCCA_LEGACY
     if (t->eng_req % NENGINES == ENGI_DIGITAL) {
         fm4_load_preset(t, pi);
@@ -2165,11 +2166,16 @@ static void apply_preset_to(track_t *t, uint32_t pi)
         return;
     }
     pi = preset_orig(e, pi % e->npresets);
+    memcpy(p, t->p, sizeof p);
+    preset_fill(p, e, pi);
+    f = motion_guard();                               /* the audio ISR sees the sound before or after, never part of
+                                                       * it (a note-on in between held a mix for its whole length) */
+    memcpy(t->p, p, sizeof p);
     t->preset = (uint8_t)pi;
-    preset_fill(t->p, e, pi);
     if (kit)                                          /* ((Skiff phase 9) DRUM-X: the preset's kit, the project's: */
         memcpy(dx_kit, DX_KITS[kit - 1u], sizeof dx_kit);   /* one undo copy holds it, as INIT's: sound_init) */
     fm6_track_loaded(t);                              /* FM6: the preset's patch (its SLOT) */
+    motion_unguard(f);
     load_end(t);
 }
 
