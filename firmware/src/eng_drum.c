@@ -429,8 +429,7 @@ static void drum_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const 
     k.extra = (uint8_t)clamp(k.extra + p[P_E4] - 64, 0, 127);
     k.accent = (uint8_t)clamp(acc >> 9, 0, 127);         /* (Q16 -> 0..127) */
     k.tune = (int16_t)(L->st * 16 + (p[P_E1] - 64) * 3 + (p[P_LTUNE0 + ln] - 64) * 3);   /* +-12 semitones, each */
-    if (((const uint32_t *)&k)[0] != ((const uint32_t *)&L->key)[0] ||
-        ((const uint32_t *)&k)[1] != ((const uint32_t *)&L->key)[1]) {
+    if (memcmp(&k, &L->key, sizeof k)) {                 /* (bytes, not a uint32_t pun: aliasing, alignment 2) */
         dv_setup(&L->c, &k);                             /* (a parameter moved) */
         L->key = k;
         if (dv_uses_metal(L->c.type))
