@@ -7,16 +7,26 @@ static void ed_open(step_t *w, const track_t *t, uint32_t len);
 static int ed_add(step_t *s, uint32_t p, uint32_t tie);
 static void ed_close(track_t *t, step_t *w, uint32_t len, uint64_t keep);
 
+/* log entry i as it stands into *e; 0 when the audio ISR wrote over it before or while it was read (the log full:
+ * the ISR writes the oldest slots; it runs whole between two of our reads, so take_ev_n has moved on past it) */
+static int take_ev_at(uint32_t i, take_ev_t *e)
+{
+    *e = take_ev[i % TAKE_EV];
+    RING_PUBLISH();                                   /* (the copy before the count is read) */
+    return take_ev_n - i <= TAKE_EV;
+}
+
 /* the hold of the note on in log entry i (pass want, step a): the steps it ties into, a + 1 .. *end - 1 (the
  * note's end, or the next note on the track: a new note ends the hold, as REC; (2.0) not when own: notes overlap);
  * held past the pass: to its end */
 static uint32_t take_hold_end(uint32_t k, uint32_t i, uint32_t n, uint32_t want, uint32_t len, int own)
 {
-    const take_ev_t *e = &take_ev[i % TAKE_EV];
+    take_ev_t e[1], f[1];
     uint32_t j;
+    if (!take_ev_at(i, e))
+        return len;
     for (j = i + 1u; j < n; j++) {
-        const take_ev_t *f = &take_ev[j % TAKE_EV];
-        if (f->trk != k)
+        if (!take_ev_at(j, f) || f->trk != k)
             continue;
         if (f->pass != want)
             return len;                               /* held into the next pass: to the end (no ties wrap) */
@@ -33,11 +43,12 @@ static uint32_t take_hold_end(uint32_t k, uint32_t i, uint32_t n, uint32_t want,
  * ends there (let go there, or (not own) the track's next note there; held on: the part's end); 0 not held into it */
 static uint32_t take_carry_end(uint32_t k, uint32_t i, uint32_t n, uint32_t want, uint32_t len, int own)
 {
-    const take_ev_t *e = &take_ev[i % TAKE_EV];
+    take_ev_t e[1], f[1];
     uint32_t j;
+    if (!take_ev_at(i, e))
+        return 0;
     for (j = i + 1u; j < n; j++) {
-        const take_ev_t *f = &take_ev[j % TAKE_EV];
-        if (f->trk != k)
+        if (!take_ev_at(j, f) || f->trk != k)
             continue;
         if (f->pass > want)
             return len;
@@ -65,9 +76,9 @@ static uint32_t take_notes(uint32_t k, step_t *tmp, uint32_t len, uint32_t want,
     track_t *t = &trk[k % NTRK];
     uint32_t n = take_ev_n, first = n > TAKE_EV ? n - TAKE_EV : 0u, i, s, end, notes = 0;
     for (i = first; i < n; i++) {
-        const take_ev_t *e = &take_ev[i % TAKE_EV];
+        take_ev_t e[1];
         step_t *d;
-        if (e->trk != k || !e->vel)
+        if (!take_ev_at(i, e) || e->trk != k || !e->vel)
             continue;
         if (carry && e->pass < want && !drum_track(t)) {
             for (end = take_carry_end(k, i, n, want, len, own), s = 0; s < end && s < len && take_tie(&tmp[s], e->note, own); s++)
