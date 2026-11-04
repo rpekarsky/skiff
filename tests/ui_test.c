@@ -3149,7 +3149,7 @@ static int test_fm6_lab(void)
     set_engine_of(TSEL, ENGI_FM6);                      /* TINE EP: SLOT F1 */
     ok = TSEL->p[P_E7] == 0;
     go_title("OPERATOR"); frame();
-    fm_ui[0] = 0; fm_ui[1] = 0;
+    fm_ui[0] = 0; fm_ui[1] = FMW_TONE;
     turn(EN_PRESET, 2);                                 /* OP3 (no sound load) */
     ok &= fm_ui[0] == 2u && TSEL->preset == 0u && TSEL->eng_req == ENGI_FM6 && str_eq(page_head(), "OPERATOR 3");
     memcpy(was, fm6_patch[tr], sizeof was);
@@ -3179,18 +3179,19 @@ static int test_fm6_lab(void)
     turn(EN_SELECT, 1);                                 /* ENV 1: RATE 1 LEVEL 1 RATE 2 LEVEL 2 */
     memcpy(was, fm6_patch[tr], sizeof was);
     turn(EN_K3, -2);
-    ok = fm_ui[1] == 1u && str_eq(cur_page()->title, "OPERATOR") && fm6_patch[tr][(5u - 2u) * FP_OP + FP_R1 + 1] < was[(5u - 2u) * FP_OP + FP_R1 + 1];
+    ok = fm_ui[1] == FMW_ENV1 && str_eq(cur_page()->title, "OPERATOR") &&
+         fm6_patch[tr][(5u - 2u) * FP_OP + FP_R1 + 1] < was[(5u - 2u) * FP_OP + FP_R1 + 1];
     turn(EN_SELECT, 3);                                 /* MORE: BREAK KEY RATE VELOCITY LFO AMP */
     turn(EN_K1, 1);
-    ok &= fm_ui[1] == 4u && fm6_patch[tr][(5u - 2u) * FP_OP + FP_BP] == was[(5u - 2u) * FP_OP + FP_BP] + 1u;
-    turn(EN_SELECT, 1);                                 /* (#72) PHASE: PHASE */
-    ok &= fm_ui[1] == 5u;
-    turn(EN_SELECT, 1);                                 /* past PHASE: ALL OPS, its top */
+    ok &= fm_ui[1] == FMW_MORE && fm6_patch[tr][(5u - 2u) * FP_OP + FP_BP] == was[(5u - 2u) * FP_OP + FP_BP] + 1u;
+    turn(EN_SELECT, 1);                                 /* past MORE: ALL OPS, its top */
     ok &= str_eq(cur_page()->title, "ALL OPS") && fm_ui[2] == 0u && str_eq(page_head(), "ALL OPS");
     turn(EN_SELECT, -1);                                /* back: OPERATOR's foot */
-    ok &= str_eq(cur_page()->title, "OPERATOR") && fm_ui[1] == 5u;
-    bad += check("SELECT: OPERATOR's windows (ENV 1 RATE 2, MORE BREAK, PHASE), past its foot ALL OPS's top, back its foot",
-                 ok);
+    ok &= str_eq(cur_page()->title, "OPERATOR") && fm_ui[1] == FMW_MORE;
+    turn(EN_SELECT, -5);                                /* (#72) OSC: PHASE WAVE - OUT, the first */
+    ok &= str_eq(cur_page()->title, "OPERATOR") && fm_ui[1] == FMW_OSC && FMW_OSC == 0u;
+    bad += check("SELECT: OPERATOR's windows (ENV 1 RATE 2, MORE BREAK), past its foot ALL OPS's top, back its foot, OSC "
+                 "its top", ok);
     {   /* (#72) PHASE: OP3's, round the cycle, not the patch; a sound load puts it back to 0 */
         uint8_t gen = fm6_pgen[tr];
         memcpy(was, fm6_patch[tr], sizeof was);
@@ -3222,19 +3223,20 @@ static int test_fm6_lab(void)
         ok &= fm6_op_wave[tr][5u - 2u] == FM6_W_SQUARE && fm6_op_wave[tr][5u - 1u] == FM6_W_SINE;
         ok &= !memcmp(fm6_patch[tr], was, FP_SIZE);
         bad += check("(#73) WAVE: K2 turns OP3's waveform, SINE to SQUARE and no further, the patch untouched", ok);
-        ok = fm6_op_out[tr][5u - 2u] == FM6_OUT_ON;      /* OUT: K3, OFF ON INV on the knob, ON in the middle */
-        turn(EN_K3, -1);
+        turn(EN_K3, 1);                                 /* (K3: nothing yet) */
+        ok = fm6_op_out[tr][5u - 2u] == FM6_OUT_ON;      /* OUT: K4, OFF ON INV on the knob, ON in the middle */
+        turn(EN_K4, -1);
         ok &= fm6_op_out[tr][5u - 2u] == FM6_OUT_OFF;
-        turn(EN_K3, -1);
+        turn(EN_K4, -1);
         ok &= fm6_op_out[tr][5u - 2u] == FM6_OUT_OFF;
-        turn(EN_K3, 1);
-        turn(EN_K3, 1);
+        turn(EN_K4, 1);
+        turn(EN_K4, 1);
         ok &= fm6_op_out[tr][5u - 2u] == FM6_OUT_INV;
-        turn(EN_K3, 1);
+        turn(EN_K4, 1);
         ok &= fm6_op_out[tr][5u - 2u] == FM6_OUT_INV && !memcmp(fm6_patch[tr], was, FP_SIZE);
-        turn(EN_K3, -1);
+        turn(EN_K4, -1);
         ok &= fm6_op_out[tr][5u - 2u] == FM6_OUT_ON;
-        bad += check("OUT: K3 on OP3, OFF ON INV with ON (the default) in the middle, no further either way", ok);
+        bad += check("OUT: K4 on OP3, OFF ON INV with ON (the default) in the middle, no further either way; K3 nothing", ok);
         apply_preset_to(TSEL, 0); frame();
         bad += check("(#72, #73) PHASE and WAVE: 0 and SINE again at a sound load",
                      fm6_op_phase[tr][5u - 2u] == 0u && fm6_op_wave[tr][5u - 2u] == FM6_W_SINE);
@@ -3242,11 +3244,12 @@ static int test_fm6_lab(void)
     btn_down(B_HOME); frame();                          /* (#20w) SHIFT + SELECT: the panel WAVE, the window kept */
     turn(EN_SELECT, 1);
     btn_up(B_HOME); frame();
-    ok = fm_view == FM_VIEW_WAVE && fm_ui[1] == 5u && str_eq(cur_page()->title, "OPERATOR") && !ui.home && !ui.menu;
+    ok = fm_view == FM_VIEW_WAVE && fm_ui[1] == FMW_OSC && str_eq(cur_page()->title, "OPERATOR") && !ui.home && !ui.menu;
     btn_down(B_HOME); frame();
     turn(EN_SELECT, -1);
     btn_up(B_HOME); frame();
-    ok &= fm_view == FM_VIEW_ENVELOPES && fm_ui[1] == 5u && str_eq(cur_page()->title, "OPERATOR") && !ui.home && !ui.menu;
+    ok &= fm_view == FM_VIEW_ENVELOPES && fm_ui[1] == FMW_OSC && str_eq(cur_page()->title, "OPERATOR") && !ui.home &&
+          !ui.menu;
     bad += check("(#20w) HOME + SELECT on OPERATOR: right WAVE, left the envelopes; the window stays, no HOME, no MENU", ok);
     go_title("ALL OPS"); fm_ui[2] = 0; frame();
     TSEL->p[P_E0] = 5; TSEL->p[P_E1] = 2;               /* EDIT 1's ALGO and FEEDBACK over the patch's 5 and 3 */
@@ -3569,7 +3572,7 @@ static int test_fm6_patch_ext(void)
 
     set_engine_of(TSEL, ENGI_FM6);                      /* TINE EP: SLOT F1 */
     go_title("OPERATOR"); frame();
-    fm_ui[0] = 0; fm_ui[1] = 5;                         /* OSC, OP1 */
+    fm_ui[0] = 0; fm_ui[1] = FMW_OSC;                   /* OSC, OP1 */
     turn(EN_K1, 1);
     frame();
     ok = fm6_op_phase[tr][5] == 1u && TSEL->p[P_E7] == FM6_OWN;
@@ -3860,7 +3863,7 @@ static int test_fm6_wave(void)
         for (i = 0; i < 64 && (i < 2 || fm_wf.done < fm_wf_slices()); i++)
             frame();
         ok &= fm_wf.note == 50u && fm_wf.vel == 80u && fm_wf.held == 300 * 1378 / 1000 && fm_wf.done == fm_wf_slices();
-        fm_wf_tune.held = 21;                          /* HELD 1.0 S: drawn held 1 s, as long as it was played or not */
+        fm_wf_tune.held = 35;                          /* HELD 1.0 S: drawn held 1 s, as long as it was played or not */
         for (i = 0; i < 64 && (i < 2 || fm_wf.done < fm_wf_slices()); i++)
             frame();
         ok &= fm_wf.held == 1378;
@@ -11442,7 +11445,7 @@ static int test_sound_undo(void)
     tr = trk_index(TSEL);
     set_engine_of(TSEL, ENGI_FM6);
     undo_clear();
-    go_title("OPERATOR"); frame();
+    go_title("OPERATOR"); fm_ui[1] = FMW_TONE; frame();
     memcpy(was, fm6_patch[tr], sizeof was);
     turn(EN_K1, -40);                                  /* (OUTPUT to 0) */
     turn(EN_K1, -1);
@@ -11902,23 +11905,29 @@ static int test_fm6_spectrum_view(void)
     btn_up(B_HOME); frame();
     ok &= fm_wf_cfg()->periods == 2u && TSEL->p[P_PAN] != pan;   /* (SHIFT on TONE: the channel strip, not WAVE's) */
     TSEL->p[P_PAN] = pan;
-    go_title("ALL OPS"); fm_ui[2] = FMW_VIEW1; frame();
-    turn(EN_K3, 1);
-    ok &= fm_wf_cfg()->periods == 3u && card_is(0, "PANEL") && card_is(2, "PERIODS") &&
-          fm_panel_view(1, FMW_VIEW1) == FM_VIEW_WAVE;
-    turn(EN_K3, -5);
-    ok &= fm_wf_cfg()->periods == 1u && fm_wf_cfg()->smooth == 2u && !ui.home && !ui.menu;
-    fm_ui[2] = FMW_VIEW2; frame();
-    turn(EN_K1, -200); turn(EN_K4, 5);
-    ok &= fm_wf_cfg()->fill == 0u && fm_wf_cfg()->held > 0u && card_is(0, "FILL") && card_is(3, "HELD");
+    go_title("ALL OPS"); fm_ui[2] = FMW_VIEW; frame();   /* PERIODS 2 at ZOOM Y 200 %: ZOOM's five steps inside it */
+    ok &= fm_wf_cfg()->zoom_y == 8u && card_is(0, "PANEL") && card_is(1, "PERIODS") && card_is(2, "HELD") &&
+          card_is(3, "RELEASE") && fm_panel_view(1, FMW_VIEW) == FM_VIEW_WAVE;
+    turn(EN_K2, 2);
+    ok &= fm_wf_cfg()->periods == 2u && fm_wf_cfg()->zoom_y == 12u;
+    turn(EN_K2, 1);
+    ok &= fm_wf_cfg()->periods == 3u && fm_wf_cfg()->zoom_y == 4u;
+    turn(EN_K2, 9);
+    ok &= fm_wf_cfg()->periods == 3u && fm_wf_cfg()->zoom_y == 12u;
+    turn(EN_K2, -20);
+    ok &= fm_wf_cfg()->periods == 1u && fm_wf_cfg()->zoom_y == 4u && fm_wf_cfg()->smooth == 2u && !ui.home && !ui.menu;
+    turn(EN_K3, 5); turn(EN_K4, -200);
+    ok &= fm_wf_cfg()->held > 0u && fm_wf_cfg()->release == 0u && fm_wf_slices() == FM_WF_SLICES;
     fm_wf_tune.held = 1;
+    ok &= fm_wf_held_ms() == 20u;
+    fm_wf_tune.held = 15;
     ok &= fm_wf_held_ms() == 100u;
-    fm_wf_tune.held = 21;
+    fm_wf_tune.held = 35;
     ok &= fm_wf_held_ms() == 1000u;
     fm_wf_tune.held = FM_WF_HELD_MAX;
     ok &= fm_wf_held_ms() == 10000u;
-    fm_wf_tune.fill = 30;
     fm_wf_tune.held = 0;
+    fm_wf_tune.release = 25;
     ok &= !fm_wf_held_ms();
     go_title("OPERATOR"); fm_ui[1] = FMW_TONE; frame();
     for (i = 0; i < SCOPE_TRK_N; i++)
@@ -11936,11 +11945,10 @@ static int test_fm6_spectrum_view(void)
     shift_select(1);
     ok &= fm_view == FM_VIEW_SPECTRUM && !ui.home && !ui.menu;
     spec_tune = (spec_tune_t){1, 0, 4};
-    go_title("ALL OPS"); fm_ui[2] = FMW_VIEW1; frame();    /* (SPECTRUM: VIEW 1's K2 K3 K4 its RANGE TOP ZOOM Y; no VIEW 2) */
+    go_title("ALL OPS"); fm_ui[2] = FMW_VIEW; frame();    /* (SPECTRUM: K2 K3 K4 nothing, RANGE and TOP their defaults) */
     turn(EN_K2, 1); turn(EN_K3, 1); turn(EN_K4, -1);
-    ok &= card_is(1, "RANGE") && card_is(2, "TOP") && card_is(3, "ZOOM Y") && fm_nwin(1) == FMW_VIEW2;
-    ok &= spec_tune.range == 2u && spec_tune.top_full_scale && spec_tune.zoom_q == 3u && TSEL->p[P_PAN] == pan;
-    spec_tune = (spec_tune_t){1, 0, 4};
+    ok &= card_is(1, "") && card_is(2, "") && card_is(3, "") && fm_nwin(1) == FM_ALL_NWIN;
+    ok &= spec_tune.range == 1u && !spec_tune.top_full_scale && spec_tune.zoom_q == 4u && TSEL->p[P_PAN] == pan;
     turn(EN_K1, -1);                                   /* (PANEL: SPECTRUM to WAVE, back) */
     ok &= fm_view == FM_VIEW_WAVE && fm_nwin(1) == FM_ALL_NWIN;
     turn(EN_K1, 1);
@@ -11952,8 +11960,8 @@ static int test_fm6_spectrum_view(void)
     shift_select(-1);
     ok &= fm_view == FM_VIEW_ENVELOPES && str_eq(cur_page()->title, "OPERATOR") && !ui.home && !ui.menu;
     return check("(#71b) FM6: SHIFT + SELECT steps envelopes, WAVE, SPECTRUM (the track's, no WAVE slice in it) and back; "
-                 "ALL OPS' VIEW 1: K1 PANEL, on WAVE K3 PERIODS 1 .. 3, on SPECTRUM K2 K3 K4 RANGE TOP ZOOM Y; VIEW 2 "
-                 "(WAVE): FILL .. HELD (as played, 0.1 .. 10 s on a log scale); "
+                 "ALL OPS' VIEW: K1 PANEL; on WAVE K2 PERIODS 1 .. 3 with ZOOM Y 100 .. 300 % inside each, K3 HELD (as "
+                 "played, 0.02 .. 10 s on a log scale), K4 RELEASE; on SPECTRUM nothing beside PANEL; "
                  "SHIFT on TONE: the channel strip", ok);
 }
 /* OUT in WAVE's waterfall: INIT's OP1 (its only carrier) at HALF; INV: every slice upside down */
@@ -12005,15 +12013,11 @@ static int test_fm6_wave_windows(void)
     fm_view = FM_VIEW_SPECTRUM;
     ok &= fm_panel_view(0, FMW_KEYS) == FM_VIEW_SPECTRUM && fm_panel_view(1, FMW_LFO) == FM_VIEW_SPECTRUM;
     fm_view = FM_VIEW_ENVELOPES;
-    ok &= fm_panel_view(1, FMW_VIEW1) == FM_VIEW_ENVELOPES && fm_nwin(1) == FMW_VIEW2;   /* (VIEW 1: the panel picked) */
-    go_title("ALL OPS"); fm_ui[2] = FMW_VIEW1; frame();
+    ok &= fm_panel_view(1, FMW_VIEW) == FM_VIEW_ENVELOPES;   /* (VIEW: the panel picked) */
+    go_title("ALL OPS"); fm_ui[2] = FMW_VIEW; frame();
+    ok &= card_is(0, "PANEL") && card_is(1, "");
     turn(EN_K1, 1);
-    ok &= fm_view == FM_VIEW_WAVE && fm_nwin(1) == FM_ALL_NWIN && card_is(1, "SLICES");
-    fm_ui[2] = FMW_VIEW3; frame();
-    ok &= card_is(0, "STEP X");
-    fm_view = FM_VIEW_ENVELOPES;
-    frame();
-    ok &= fm_win(1) == FMW_VIEW1;                      /* (VIEW 3 gone with WAVE: VIEW 1) */
+    ok &= fm_view == FM_VIEW_WAVE && fm_nwin(1) == FM_ALL_NWIN && card_is(1, "PERIODS");
     go_title("ALL OPS"); fm_ui[2] = FMW_LFO; fm_view = FM_VIEW_WAVE; frame();
     fm_wf.key = 1;
     ui.force = 1;
@@ -12021,7 +12025,7 @@ static int test_fm6_wave_windows(void)
     ok &= fm_wf.key == 1u;                              /* (LFO's chart keeps WAVE's slices) */
     fm_view = FM_VIEW_ENVELOPES;
     return check("FM6: WAVE on every window but KEYS, MORE (across the keyboard), LFO, DEPTH (the vibrato): their own "
-                 "charts, WAVE's slices kept; SPECTRUM everywhere; VIEW 1's PANEL picks it, VIEW 2 and 3 only on WAVE", ok);
+                 "charts, WAVE's slices kept; SPECTRUM everywhere; VIEW's PANEL picks it, its other knobs WAVE's only", ok);
 }
 /* (#71) the height: a tone 32 dB under full scale stands RANGE - 32 dB of RANGE high with TOP 0 DB (48, 64, 80), at the
  * top with AUTO; ZOOM Y 200 % twice as high, stopped at the top edge; AUTO's top falls 10 dB a second in silence, to 48 dB

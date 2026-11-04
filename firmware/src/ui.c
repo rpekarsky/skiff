@@ -581,13 +581,10 @@ typedef struct {
 } sheet_t;
 static const sheet_t *sheet_of(uint32_t g);
 /* SELECT on a sheet: its window down (d > 0) or up; 0 at its ends (SELECT goes on to the page there) */
-static uint32_t fm_nwin(uint32_t pg);                 /* (ui_fm6.c) */
-/* its windows now: ALL OPS' VIEW 2 and 3 only while the panel is WAVE (the sheet's nwin: the most) */
-static uint32_t sheet_nwin(const sheet_t *sh) { return sh->graph == GR_FMALL ? fm_nwin(1) : sh->nwin; }
 static int sheet_rows(const sheet_t *sh, int32_t d)
 {
-    int32_t w = (int32_t)(*sh->win % sheet_nwin(sh)) + (d > 0 ? 1 : -1);
-    if (w < 0 || w >= (int32_t)sheet_nwin(sh))
+    int32_t w = (int32_t)(*sh->win % sh->nwin) + (d > 0 ? 1 : -1);
+    if (w < 0 || w >= (int32_t)sh->nwin)
         return 0;
     *sh->win = (uint8_t)w;
     ui.hot_t = 0;                                       /* (another knob's card: none lit) */

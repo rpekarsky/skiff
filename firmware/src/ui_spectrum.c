@@ -261,16 +261,6 @@ static void spec_draw(const spec_geo_t *g, uint16_t c)
     spec_axis();
 }
 
-/* the top and the range, as the FM6 sheet's caption says them: "TOP -12 DB  64 DB" */
-static void spec_scale_text(char *b, uint32_t n)
-{
-    str_cpy(b, "TOP ", n);
-    fmt_int(b + str_len(b), -((255 << 8) - spec_top_q8() + (SPEC_Q_DB << 7)) / (SPEC_Q_DB << 8));
-    str_cpy(b + str_len(b), " DB  ", n - str_len(b));
-    fmt_int(b + str_len(b), SPEC_RANGE_DB[spec_cfg()->range]);
-    str_cpy(b + str_len(b), " DB", n - str_len(b));
-}
-
 /* (#71) SHIFT + SELECT on HOME's SPECTRUM: RANGE. 0: not there */
 static int spec_range_step(int32_t s)
 {
@@ -284,17 +274,6 @@ static int spec_range_step(int32_t s)
     return 1;
 }
 
-/* (#71) SHIFT + KNOB 1..4 over the FM6 sheet's SPECTRUM: RANGE, TOP, (none), ZOOM Y */
-static void spec_tune_turn(uint32_t k, int32_t s)
-{
-    (void)spec_cfg();
-    if (k == 0u)
-        spec_tune.range = (uint8_t)clamp((int32_t)spec_tune.range + s, 0, 2);
-    else if (k == 1u)
-        spec_tune.top_full_scale = s > 0;
-    else if (k == 3u)
-        spec_tune.zoom_q = (uint8_t)clamp((int32_t)spec_tune.zoom_q + s, 2, 8);
-}
 /* (#71) SPECTRUM HD (HOME's fifth tap: the mix): one spectrum at 4x the waterfall's resolution, no history. The room
  * holds SPEC_HD_N consecutive samples of the scope instead, gathered every frame (spec_hd_gather: the scope's ring holds
  * 23 ms, a frame comes every 15 ms or so; a longer tap would cost the audio ISR's buffer 3 KB the pool has not got),
