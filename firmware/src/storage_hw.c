@@ -19,8 +19,8 @@ static int st_read(uint32_t off, void *dst, uint32_t n)   /* 256-byte IRQ-off wi
     }
     return 0;
 }
-static void audio_silence(void)                 /* IRQs off: the DMA would loop stale audio (buzz). Called before */
-{                                               /* every erase (here, ota_hw.c, editor.c's sample slots) */
+static void audio_silence(void)                 /* IRQs off: the DMA would loop stale audio (buzz). Every erase */
+{                                               /* calls it inside its IRQs-off window (fl_erase4k_quiet) */
     uint32_t i;
     for (i = 0; i < sizeof abuf / sizeof abuf[0]; i++)
         abuf[i] = 0;
@@ -29,14 +29,24 @@ static void audio_silence(void)                 /* IRQs off: the DMA would loop 
 #endif                                          /* would stay lit at full duty and the rest dark, a flash of the whole
                                                  * panel. Dark rows: the panel just drops out; the tick relights them */
 }
+/* a 4 KB erase with the audio silenced inside its IRQs-off window: silenced before it, the ISR could render a half
+ * buffer again in between, and the DMA looped that one through the erase (a buzz) */
+static int fl_erase4k_quiet(uint32_t off, uint32_t *took)
+{
+    uint32_t f = irq_save();
+    int rc;
+    audio_silence();
+    rc = FL_FAR(fl_erase4k_ram)(off, took);
+    irq_restore(f);
+    return rc;
+}
 #if BOARD_SMK37
 static void st_stock_release(void);             /* storage.c: the stock mapping's end marker */
 static int st_in_usrflash(uint32_t off);
 #endif
 static int st_erase(uint32_t off)
 {
-    uint32_t took, f;
-    int rc;
+    uint32_t took;
 #if BOARD_SMK37
     if (!FL_STORE_OK(off, 0x1000u) && !FL_STOCKTAG_OK(off, 0x1000u))
         return -8;
@@ -46,11 +56,7 @@ static int st_erase(uint32_t off)
     if (!FL_STORE_OK(off, 0x1000u))
         return -8;
 #endif
-    f = irq_save();
-    audio_silence();
-    rc = FL_FAR(fl_erase4k_ram)(off, &took);
-    irq_restore(f);
-    return rc;
+    return fl_erase4k_quiet(off, &took);
 }
 static int st_prog(uint32_t off, const void *src, uint32_t n)
 {

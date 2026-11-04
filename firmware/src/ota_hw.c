@@ -11,8 +11,7 @@ static int ota_erase(uint32_t off)
     uint32_t took;
     if (!ota_in_area(off, 0x1000u) || (off & 0xFFFu))
         return -8;
-    audio_silence();
-    return fl_erase4k(off, &took);
+    return fl_erase4k_quiet(off, &took);
 }
 static int ota_prog(uint32_t off, const void *p, uint32_t n)
 {
