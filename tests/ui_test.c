@@ -11863,12 +11863,23 @@ static int test_fm6_spectrum_view(void)
     ok = fm_view == FM_VIEW_WAVE && fm_wf_cfg()->periods == 2u;
     for (k = 0; k < 64u && fm_wf.done < fm_wf_slices(); k++)
         frame();
+    pan = TSEL->p[P_PAN];
     btn_down(B_HOME); frame();
     turn(EN_K2, 1);
-    ok &= fm_wf_cfg()->periods == 3u && card_is(1, "PERIODS");
-    turn(EN_K2, -5);
     btn_up(B_HOME); frame();
+    ok &= fm_wf_cfg()->periods == 2u && TSEL->p[P_PAN] != pan;   /* (SHIFT on TONE: the channel strip, not WAVE's) */
+    TSEL->p[P_PAN] = pan;
+    go_title("ALL OPS"); fm_ui[2] = FMW_VIEW1; frame();
+    turn(EN_K2, 1);
+    ok &= fm_wf_cfg()->periods == 3u && card_is(1, "PERIODS") && fm_panel_view(1, FMW_VIEW1) == FM_VIEW_WAVE;
+    turn(EN_K2, -5);
     ok &= fm_wf_cfg()->periods == 1u && fm_wf_cfg()->smooth == 2u && !ui.home && !ui.menu;
+    fm_ui[2] = FMW_VIEW2; frame();
+    turn(EN_K1, -200); turn(EN_K4, 5);
+    ok &= fm_wf_cfg()->fill == 0u && fm_wf_cfg()->held == FM_WF_HELD_1S && card_is(0, "FILL") && card_is(3, "HELD");
+    fm_wf_tune.fill = 30;
+    fm_wf_tune.held = FM_WF_HELD_PLAYED;
+    go_title("OPERATOR"); fm_ui[1] = FMW_TONE; frame();
     for (i = 0; i < SCOPE_TRK_N; i++)
         scope_trk_buf[i] = (int16_t)(16384.0 * sin(6.2831853 * 23.0 * i / SCOPE_TRK_N));
     scope_trk_w = 0;
@@ -11884,13 +11895,12 @@ static int test_fm6_spectrum_view(void)
     shift_select(1);
     ok &= fm_view == FM_VIEW_SPECTRUM && !ui.home && !ui.menu;
     spec_tune = (spec_tune_t){1, 0, 4};
-    pan = TSEL->p[P_PAN];
-    btn_down(B_HOME); frame();
+    go_title("ALL OPS"); fm_ui[2] = FMW_VIEW3; frame();
     turn(EN_K1, 1); turn(EN_K2, 1); turn(EN_K3, 3); turn(EN_K4, -1);
     ok &= card_is(0, "RANGE") && card_is(1, "TOP") && card_is(3, "ZOOM Y");
-    btn_up(B_HOME); frame();
     ok &= spec_tune.range == 2u && spec_tune.top_full_scale && spec_tune.zoom_q == 3u && TSEL->p[P_PAN] == pan;
     spec_tune = (spec_tune_t){1, 0, 4};
+    go_title("OPERATOR"); fm_ui[1] = FMW_TONE; frame();
     shift_select(-1);
     ok &= fm_view == FM_VIEW_WAVE && !fm_room_lent && fm_wf.done > 0u && (!fm_wf.whole || fm_wf.whole == fm_wf.done);
     shift_select(-1);
@@ -11898,7 +11908,32 @@ static int test_fm6_spectrum_view(void)
     shift_select(-1);
     ok &= fm_view == FM_VIEW_ENVELOPES && str_eq(cur_page()->title, "OPERATOR") && !ui.home && !ui.menu;
     return check("(#71b) FM6: SHIFT + SELECT steps envelopes, WAVE, SPECTRUM (the track's, no WAVE slice in it) and back; "
-                 "SHIFT + KNOB 2 on WAVE: PERIODS 1 .. 3; on SPECTRUM K1 K2 K4: RANGE TOP ZOOM Y, K3 nothing", ok);
+                 "ALL OPS' VIEW 1: K2 PERIODS 1 .. 3; VIEW 2: FILL .. HELD; VIEW 3 K1 K2 K4: RANGE TOP ZOOM Y, K3 nothing; "
+                 "SHIFT on TONE: the channel strip", ok);
+}
+static int test_fm6_wave_windows(void)
+{
+    int ok;
+    ui_power_on();
+    set_engine_of(TSEL, ENGI_FM6);
+    fm_view = FM_VIEW_WAVE;
+    ok = fm_panel_view(0, FMW_TONE) == FM_VIEW_WAVE && fm_panel_view(0, FMW_OSC) == FM_VIEW_WAVE &&
+         fm_panel_view(1, FMW_ALGO) == FM_VIEW_WAVE && fm_panel_view(1, FMW_PITCH1) == FM_VIEW_WAVE;
+    ok &= fm_panel_view(0, FMW_KEYS) == FM_VIEW_ENVELOPES && fm_panel_view(0, FMW_MORE) == FM_VIEW_ENVELOPES &&
+          fm_panel_view(1, FMW_LFO) == FM_VIEW_ENVELOPES && fm_panel_view(1, FMW_DEPTH) == FM_VIEW_ENVELOPES;
+    fm_view = FM_VIEW_SPECTRUM;
+    ok &= fm_panel_view(0, FMW_KEYS) == FM_VIEW_SPECTRUM && fm_panel_view(1, FMW_LFO) == FM_VIEW_SPECTRUM;
+    fm_view = FM_VIEW_ENVELOPES;
+    ok &= fm_panel_view(1, FMW_VIEW1) == FM_VIEW_WAVE && fm_panel_view(1, FMW_VIEW2) == FM_VIEW_WAVE &&
+          fm_panel_view(1, FMW_VIEW3) == FM_VIEW_SPECTRUM && fm_panel_view(0, FMW_TONE) == FM_VIEW_ENVELOPES;
+    go_title("ALL OPS"); fm_ui[2] = FMW_LFO; fm_view = FM_VIEW_WAVE; frame();
+    fm_wf.key = 1;
+    ui.force = 1;
+    frame();
+    ok &= fm_wf.key == 1u;                              /* (LFO's chart keeps WAVE's slices) */
+    fm_view = FM_VIEW_ENVELOPES;
+    return check("FM6: WAVE on every window but KEYS, MORE (across the keyboard), LFO, DEPTH (the vibrato): their own "
+                 "charts, WAVE's slices kept; SPECTRUM everywhere; VIEW 1, 2 show WAVE, VIEW 3 SPECTRUM", ok);
 }
 /* (#71) the height: a tone 32 dB under full scale stands RANGE - 32 dB of RANGE high with TOP 0 DB (48, 64, 80), at the
  * top with AUTO; ZOOM Y 200 % twice as high, stopped at the top edge; AUTO's top falls 10 dB a second in silence, to 48 dB
@@ -12279,6 +12314,7 @@ int main(void)
     bad += test_spectrum_levels();
     bad += test_spectrum_history();
     bad += test_fm6_spectrum_view();
+    bad += test_fm6_wave_windows();
     bad += test_spectrum_height();
     bad += test_spectrum_hd();
     bad += test_popup_time();

@@ -2369,7 +2369,6 @@ static uint32_t smk_bank_taps(uint32_t pressed, uint32_t notes, uint32_t knob_mo
 }
 #endif
 static int fm_view_step(int32_t s);                     /* (#20w, #71b) ui_fm6.c */
-static int fm_wf_tune_turn(uint32_t k, int32_t s);      /* (#20t) ui_fm6.c */
 static int shift_pair_turn(uint32_t k, int32_t s);      /* (wishlist #60c) after SHEETS */
 /* (Skiff 2.0) SHIFT held (HOME; the SMK's KNOB BANK too), and a combo of it taken: no HOME tap, no MENU after (the
  * caller drops ui_input's home_long) */
@@ -2889,7 +2888,7 @@ static void ui_input(void)
 #endif
             if (song_move_knob(k))
                 (void)song_drag(s);
-            else if (!fm_wf_tune_turn(k, s) && !shift_pair_turn(k, s))
+            else if (!shift_pair_turn(k, s))
                 track_value_turn(CHANNEL_P[k], EN_K1 + k, CHANNEL_N[k], s);
         } else if (ui.home) {
             int16_t *vp;
