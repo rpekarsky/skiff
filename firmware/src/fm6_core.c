@@ -79,6 +79,8 @@ static inline int32_t fm6_sin(int32_t ph)
  * from 0 at phase 0, RAMP falling, SQUARE +1 for the first half, -1 for the second */
 enum { FM6_W_SINE, FM6_W_SIN2, FM6_W_HALF, FM6_W_HALF2, FM6_W_ALT, FM6_W_ALT2, FM6_W_CAMEL, FM6_W_CAMEL2, FM6_W_SAW,
        FM6_W_RAMP, FM6_W_SQUARE, FM6_NWAVE };
+#define FM6_W_OFF 15u            /* fm6_note_t.waves: the operator OFF (silent at once, its envelope running on) */
+#define FM6_INV_SH 24u           /* .. bit 24 + k: operator k's output negated (INV) */
 typedef struct {
     uint32_t twice;              /* the phase's left shift: 1 = the sine twice a cycle */
     uint32_t mute;               /* the phase bit that silences the second half, 0 none */
@@ -505,9 +507,13 @@ static inline __attribute__((always_inline)) int fm6_core_render_waves(int32_t *
         int32_t *o = outbus ? fm6_bus[outbus - 1u] : out;
         const int32_t *in = inbus == 0u || !has[inbus] ? 0 : fm6_bus[inbus - 1u];
         int32_t g1 = op[k].gain_out, g2 = fm6_exp2(op[k].level_in - (14 << 24));
-        op[k].gain_out = g2;
-        if (g1 >= FM6_THRESH || g2 >= FM6_THRESH) {
+        op[k].gain_out = g2;                       /* (OFF too: fm6_note_done goes by it, so ON brings it back) */
+        if (wave != FM6_W_OFF && (g1 >= FM6_THRESH || g2 >= FM6_THRESH)) {
             int fed_back = !in && (f & 0xc0u) == 0xc0u && fb_shift < 16;
+            if (waves >> (FM6_INV_SH + k) & 1u) {
+                g1 = -g1;
+                g2 = -g2;
+            }
             if (!has[outbus])
                 add = 0;
             if (fed_back && wave)
@@ -547,7 +553,7 @@ typedef struct {                 /* a sounding note (msfa's note): 284 bytes */
     uint8_t fixed;               /* bit k: operator k has a fixed frequency */
     uint8_t live, down, rsv;
     int32_t dc;                  /* (eng_fm6.c) the output's DC blocker */
-    uint32_t waves;              /* (#73) operator k's waveform (FM6_W_*) at bits 4k..4k+3 */
+    uint32_t waves;              /* (#73) operator k's waveform (FM6_W_*, FM6_W_OFF) at bits 4k..4k+3, INV at 24 + k */
     uint16_t phase_at[6];        /* (#72b) the PHASE offset each operator plays (Q16 of a cycle), gliding to PHASE */
     int32_t slide[6];            /* (#72b) this block's share of that glide: a frequency offset (Q24 a sample) */
 } fm6_note_t;

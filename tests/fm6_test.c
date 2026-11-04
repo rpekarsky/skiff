@@ -70,6 +70,7 @@ static void setup(const uint8_t *v, const int16_t *e)
     memset(fm6_eff, 0, sizeof fm6_eff);
     memset(fm6_lfo, 0, sizeof fm6_lfo);
     memset(fm6_op_wave, 0, sizeof fm6_op_wave);
+    memset(fm6_op_out, 0, sizeof fm6_op_out);
     host_tracks_init();
     host_preset(&trk[0], ENGI_FM6, 0);
     for (i = 0; i < 8u; i++)
@@ -663,6 +664,45 @@ static double voice_vs_model(const double *y, uint32_t a, uint32_t n, uint32_t w
     return worst / peak;
 }
 
+/* OUT: INIT's OP1 (a sine carrier) at ON, INV and OFF; OFF then ON again in the note */
+static void outs(void)
+{
+    static double on[FS / 10], y[FS / 10];
+    static int32_t b[FM6_N];
+    double peak = 0, diff = 0, quiet = 0;
+    uint32_t i, k;
+    init_patch(base);
+    setup(base, 0);
+    voice_render(60, 100, on, FS / 10, 0);
+    setup(base, 0);
+    fm6_set_out(0, 5, FM6_OUT_INV);
+    voice_render(60, 100, y, FS / 10, 0);
+    for (i = 0; i < FS / 10; i++) {
+        peak = fabs(on[i]) > peak ? fabs(on[i]) : peak;
+        diff = fabs(on[i] + y[i]) > diff ? fabs(on[i] + y[i]) : diff;
+    }
+    check("OUT INV: INIT's OP1 sounds negated, sample for sample (0.1 % of its peak)", peak > 0 && diff < peak / 1000);
+    setup(base, 0);
+    fm6_set_out(0, 5, FM6_OUT_OFF);
+    voice_render(60, 100, y, FS / 10, 0);
+    for (i = 0; i < FS / 10; i++)
+        quiet = fabs(y[i]) > quiet ? fabs(y[i]) : quiet;
+    check("OUT OFF: silent", quiet < peak / 1000);
+    setup(base, 0);                                    /* (sample steps: the track's DC filter started later) */
+    fm6_set_out(0, 5, FM6_OUT_OFF);
+    trk_note_on(&trk[0], 60, 100);
+    for (diff = 0, i = 0; i < FS / 10; i += FM6_N) {
+        if (i == FS / 20 / FM6_N * FM6_N)
+            fm6_set_out(0, 5, FM6_OUT_ON);
+        track_render(&trk[0], b, FM6_N);
+        for (k = 1; k < FM6_N && i + k < FS / 10 && i >= FS / 20 + FM6_N; k++) {
+            double d = fabs((b[k] - b[k - 1]) - (on[i + k] - on[i + k - 1]));
+            diff = d > diff ? d : diff;
+        }
+    }
+    check("  OFF, then ON in the note: back where it would be, its envelope ran on (1 %)", diff < peak / 100);
+}
+
 static void waves(void)
 {
     static double y[FS / 10];
@@ -836,6 +876,7 @@ int main(int argc, char **argv)
     formats();
     voices();
     waves();
+    outs();
     if (!getenv("NOCOST"))
         cost();
     if (argc > 1) {

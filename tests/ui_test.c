@@ -3512,6 +3512,18 @@ static int fm6x_codec_ok(void)
     ok &= len == 1u + 1u + 14u + 8u + 1u && b[1] == 2u && !memcmp(&x, &none, sizeof x);
     fm6x_block_get(b, sizeof b, two, 2u);
     ok &= !memcmp(&two[0], &X76, sizeof x) && !memcmp(&two[1], &phase_only, sizeof x);
+    x = X76;                                           /* OUT: OSC's bits 4..5, and in a copy's hidden bits */
+    x.out[0] = FM6_OUT_INV;
+    x.out[5] = FM6_OUT_OFF;
+    len = fm6x_block_put(b, sizeof b, &x, 1u);
+    fm6x_block_get(b, sizeof b, &two[0], 1u);
+    ok &= len == 16u && b[2 + FM6X_OSC] == (FM6_W_HALF | FM6_OUT_INV << 4) && !memcmp(&two[0], &x, sizeof x);
+    {
+        uint8_t v[FP_SIZE + 1u] = {0};
+        fm6x_hide(v, &x);
+        fm6x_take(v, &two[1]);
+        ok &= !memcmp(&two[1], &x, sizeof x) && !v[FM6X_BITS - 1u];
+    }
     return ok;
 }
 /* the stock firmware harness's input (tests/stock_compat_test.c) */

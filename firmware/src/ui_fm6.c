@@ -7,7 +7,8 @@
  *             ENV 2  RATE 3 LEVEL 3 RATE 4 LEVEL 4              PITCH 2  RATE 3 PITCH 3 RATE 4 PITCH 4
  *             KEYS   L CURVE L DEPTH R DEPTH R CURVE            LFO      WAVE RATE FADE KEY SYNC
  *             MORE   BREAK KEY RATE VELOCITY LFO AMP            DEPTH    VIBRATO VIB SENS TREMOLO
- *             OSC    PHASE WAVE (#72, #73: eng_fm6.c fm6_op_phase, fm6_op_wave; (#76) part of the sound, fm6x_t)
+ *             OSC    PHASE WAVE OUT (#72, #73: eng_fm6.c fm6_op_phase, fm6_op_wave, fm6_op_out; (#76) part of the
+ *                    sound, fm6x_t)
  *                                                           VIEW 1   SLICES PERIODS STEP X ZOOM Y     (the panel's look,
  *                                                           VIEW 2   FILL TIME WARP RELEASE HELD      WAVE and SPECTRUM
  *                                                           VIEW 3   RANGE TOP - ZOOM Y               shown; not saved)
@@ -26,7 +27,7 @@
 enum { FMW_TONE, FMW_ENV1, FMW_ENV2, FMW_KEYS, FMW_MORE, FMW_OSC };     /* OPERATOR's windows */
 enum { FMW_ALGO, FMW_PITCH1, FMW_PITCH2, FMW_LFO, FMW_DEPTH, FMW_VIEW1, FMW_VIEW2, FMW_VIEW3 };   /* ALL OPS' */
 enum { FMF_NUM, FMF_RATIO, FMF_FINE, FMF_DET, FMF_CURVE, FMF_NOTE, FMF_ALG, FMF_FB, FMF_TRNSP, FMF_PITCH, FMF_WAVE,
-       FMF_HZ, FMF_ONOFF, FMF_PHASE, FMF_OPWAVE };
+       FMF_HZ, FMF_ONOFF, FMF_PHASE, FMF_OPWAVE, FMF_OUT, FMF_OL };
 #define FM_OP_NWIN 6u
 #define FM_ALL_NWIN 8u
 typedef struct {
@@ -34,13 +35,13 @@ typedef struct {
     uint8_t off, fmt;            /* OPERATOR: the byte in the operator (0..20); ALL OPS: in the patch */
 } fm_field_t;
 static const fm_field_t FM_F[2][FM_ALL_NWIN][4] = {     /* (VIEW 1 .. 3: fm_view_knob) */
-    {{{"OUTPUT", FP_OL, FMF_NUM}, {"RATIO", FP_FC, FMF_RATIO}, {"FINE", FP_FF, FMF_FINE}, {"DETUNE", FP_DET, FMF_DET}},
+    {{{"OUTPUT", FP_OL, FMF_OL}, {"RATIO", FP_FC, FMF_RATIO}, {"FINE", FP_FF, FMF_FINE}, {"DETUNE", FP_DET, FMF_DET}},
      {{"RATE 1", FP_R1, FMF_NUM}, {"LEVEL 1", FP_L1, FMF_NUM}, {"RATE 2", FP_R1 + 1, FMF_NUM}, {"LEVEL 2", FP_L1 + 1, FMF_NUM}},
      {{"RATE 3", FP_R1 + 2, FMF_NUM}, {"LEVEL 3", FP_L1 + 2, FMF_NUM}, {"RATE 4", FP_R1 + 3, FMF_NUM},
       {"LEVEL 4", FP_L1 + 3, FMF_NUM}},
      {{"L CURVE", FP_LC, FMF_CURVE}, {"L DEPTH", FP_LD, FMF_NUM}, {"R DEPTH", FP_RD, FMF_NUM}, {"R CURVE", FP_RC, FMF_CURVE}},
      {{"BREAK", FP_BP, FMF_NOTE}, {"KEY RATE", FP_RS, FMF_NUM}, {"VELOCITY", FP_KVS, FMF_NUM}, {"LFO AMP", FP_AMS, FMF_NUM}},
-     {{"PHASE", 0, FMF_PHASE}, {"WAVE", 0, FMF_OPWAVE}, {0, 0, 0}, {0, 0, 0}}},
+     {{"PHASE", 0, FMF_PHASE}, {"WAVE", 0, FMF_OPWAVE}, {"OUT", 0, FMF_OUT}, {0, 0, 0}}},
     {{{"ALGO", FP_ALG, FMF_ALG}, {"FEEDBACK", FP_FB, FMF_FB}, {"TRANSP", FP_TRNSP, FMF_TRNSP}, {0, 0, 0}},
      {{"RATE 1", FP_PR1, FMF_NUM}, {"PITCH 1", FP_PL1, FMF_PITCH}, {"RATE 2", FP_PR1 + 1, FMF_NUM},
       {"PITCH 2", FP_PL1 + 1, FMF_PITCH}},
@@ -54,6 +55,7 @@ static const char *const FM_WAVE[6] = {"TRI", "SAW DN", "SAW UP", "SQUARE", "SIN
 static const char *const FM_OPWAVE[FM6_NWAVE] = {"SINE", "SINE2", "HALF", "HALF2", "ALT", "ALT2", "CAMEL", "CAMEL2",
                                                      "SAW", "RAMP", "SQUARE"};
 static const char *const FM_HZ[4] = {"1", "10", "100", "1K"};          /* a fixed operator's range (FC & 3) */
+static const char *const FM_OUT[FM6_NOUT] = {"ON", "INV", "OFF"};
 
 enum { FM_VIEW_ENVELOPES, FM_VIEW_WAVE, FM_VIEW_SPECTRUM };   /* (#20w, #71b) the panel, SHIFT + SELECT steps it */
 static uint8_t fm_view __attribute__((section(".pool")));       /* FM_VIEW_*; not saved */
@@ -141,7 +143,7 @@ static uint32_t fm_osc_sig(void)
     uint32_t h = 2166136261u, k;
     for (k = 0; k < 6u; k++)
         h = (h ^ ph[k]) * 16777619u;
-    return (h ^ fm6_waves_of(fm6_op_wave[fm_tr()])) * 16777619u;
+    return (h ^ fm6_waves_of(fm_tr())) * 16777619u;
 }
 /* field f's byte in the patch (operator fm_ui[0] on OPERATOR) */
 static uint32_t fm_at(uint32_t pg, const fm_field_t *f)
@@ -272,6 +274,14 @@ static int32_t fm_val(const fm_field_t *f, uint32_t i, const uint8_t *p, const t
         v = fm6_op_wave[fm_tr()][i / FP_OP] % FM6_NWAVE;
         str_cpy(val, FM_OPWAVE[v], 8);
         return (int32_t)v * 1000 / (FM6_NWAVE - 1);
+    case FMF_OUT:
+        v = fm6_op_out[fm_tr()][i / FP_OP] % FM6_NOUT;
+        str_cpy(val, FM_OUT[v], 8);
+        return (int32_t)v * 500;
+    case FMF_OL:                                    /* (its OUT: INV a minus, OFF said, the level kept) */
+        fmt_int(val, fm6_op_out[fm_tr()][i / FP_OP] == FM6_OUT_INV ? -(int32_t)v : (int32_t)v);
+        *unit = fm6_op_out[fm_tr()][i / FP_OP] == FM6_OUT_OFF ? "OFF" : "";
+        break;
     default:
         fmt_int(val, (int32_t)v);
         break;
@@ -291,19 +301,22 @@ static void fm_edited(track_t *t, uint32_t tr)
     }
 }
 /* (#72) PHASE round the cycle, +49 % on to -50 %: the next fresh note starts there, (#72b) the sounding ones glide.
- * (#73) WAVE, SINE .. SQUARE: KNOB k of operator op turned s on track t */
-static void fm_osc_turn(track_t *t, uint32_t tr, uint32_t is_phase, uint32_t op, uint32_t k, int32_t s)
+ * (#73) WAVE, SINE .. SQUARE; OUT, ON INV OFF: field fmt's KNOB k of operator op turned s on track t */
+static void fm_osc_turn(track_t *t, uint32_t tr, uint32_t fmt, uint32_t op, uint32_t k, int32_t s)
 {
-    uint32_t was = is_phase ? fm6_op_phase[tr][op] : fm6_op_wave[tr][op];
-    uint32_t to = is_phase ? (uint32_t)((int32_t)was + accel(EN_K1 + k, s, 100) % 100 + 100) % 100u
-                        : (uint32_t)clamp((int32_t)was + (s > 0 ? 1 : -1), 0, FM6_NWAVE - 1);
+    uint32_t was = fmt == FMF_PHASE ? fm6_op_phase[tr][op] : fmt == FMF_OPWAVE ? fm6_op_wave[tr][op] : fm6_op_out[tr][op];
+    uint32_t last = fmt == FMF_OPWAVE ? FM6_NWAVE - 1u : FM6_NOUT - 1u;
+    uint32_t to = fmt == FMF_PHASE ? (uint32_t)((int32_t)was + accel(EN_K1 + k, s, 100) % 100 + 100) % 100u
+                                   : (uint32_t)clamp((int32_t)was + (s > 0 ? 1 : -1), 0, (int32_t)last);
     if (to == was)
         return;
     sound_undo_take(t, cur_page()->title);
-    if (is_phase)
+    if (fmt == FMF_PHASE)
         fm6_set_phase(tr, op, to);
-    else
+    else if (fmt == FMF_OPWAVE)
         fm6_set_wave(tr, op, to);
+    else
+        fm6_set_out(tr, op, to);
     fm_edited(t, tr);
 }
 
@@ -325,8 +338,8 @@ static void fm_knob(uint32_t pg, uint32_t k, int32_t s)
     if (!f->label || t->eng_req % NENGINES != ENGI_FM6)
         return;
     i = fm_at(pg, f);
-    if (f->fmt == FMF_PHASE || f->fmt == FMF_OPWAVE) {
-        fm_osc_turn(t, tr, f->fmt == FMF_PHASE, i / FP_OP, k, s);
+    if (f->fmt == FMF_PHASE || f->fmt == FMF_OPWAVE || f->fmt == FMF_OUT) {
+        fm_osc_turn(t, tr, f->fmt, i / FP_OP, k, s);
         return;
     }
     mx = fm6_max(i);
@@ -667,7 +680,7 @@ static void fm_ops(fm_sim_t *s, const track_t *t)
     s->car = fm6_car_ops(s->alg);
     s->live = 0;
     for (k = 0; k < 6u; k++)
-        s->live |= (uint32_t)(s->q[(5u - k) * FP_OP + FP_OL] != 0) << k;
+        s->live |= (uint32_t)(s->q[(5u - k) * FP_OP + FP_OL] != 0 && fm6_op_out[fm_tr()][5u - k] != FM6_OUT_OFF) << k;
     s->modlvl = clamp(t->p[P_E2], -64, 63) * 24 << 8;   /* (fm6_render: microsteps of 1/32 of an outlevel step) */
 }
 static void fm_sim(fm_sim_t *s, const track_t *t)
@@ -1366,7 +1379,7 @@ static void fm_wf_voice(fm6_note_t *n, const fm_sim_t *s, int32_t lf, const int3
 {
     uint32_t car = fm6_carriers(s->alg), i;
     memset(n, 0, sizeof *n);
-    n->waves = fm6_waves_of(fm6_op_wave[fm_tr()]);
+    n->waves = fm6_waves_of(fm_tr());
     memcpy(n->env, fm_wf.env, sizeof n->env);
     n->penv = fm_wf.penv;
     n->live = 1;
