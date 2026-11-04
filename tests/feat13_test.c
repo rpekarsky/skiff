@@ -794,6 +794,13 @@ static void sp_phrase(int32_t sprd, int32_t mode, int64_t *l1, int64_t *r1, int6
     trk_note_off(t, 48);
     trk_note_off(t, 55);
 }
+/* a POLY or DRUM peak at LEVEL 127 (x ~ 2.4 x a block's 400k): PAN's gain over it in 32 bits wrapped round */
+static int pan_peak(void)
+{
+    volatile int32_t x = 950000, g = 4096;
+    return check("PAN over a peak past 2^19 (LEVEL 127, 8 voices): full and the right sign, not wrapped round",
+                 PAN_MUL(x, g) == 950000 && PAN_MUL(-x, g / 2) == -475000);
+}
 static int spread(void)
 {
     int bad = 0, ok;
@@ -1076,6 +1083,7 @@ int main(void)
     bad += program_change();
     bad += mod_more();
     bad += spread();
+    bad += pan_peak();
     bad += lane_pans();
     bad += env_sync();
     bad += midi_learn_channels();
