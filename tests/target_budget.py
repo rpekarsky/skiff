@@ -9,7 +9,9 @@ level of nesting (an inner loop runs several times per sample) and 1 + 8 for a d
 so it is exact run to run, and it catches a render loop that grew (more work per sample, a new divide,
 something not inlined any more). Compared with tests/target_budget.txt at +10 %. The host
 CPU check (regress.c) is the primary one; this one sees the target compiler's code.
-  tests/target_budget.py [DIS [BUDGET]]      BUDGET_UPDATE=1 rewrites BUDGET"""
+An SMK-37 build (its listing has SMK_MARK) takes BUDGET_SMK's lines over BUDGET's: the ISRs' costs follow the
+code's layout, which the SMK's own files change (fm1_alnk0_irq ~2.5 x the FM-1's with the same code).
+  tests/target_budget.py [DIS [BUDGET]]      BUDGET_UPDATE=1 rewrites BUDGET (an SMK build: BUDGET_SMK's lines)"""
 import os
 import re
 import sys
@@ -55,6 +57,8 @@ MAXD = 4
 
 dis = sys.argv[1] if len(sys.argv) > 1 else "build/felucca.dis"
 budget = sys.argv[2] if len(sys.argv) > 2 else "tests/target_budget.txt"
+BUDGET_SMK = os.path.join(os.path.dirname(budget) or ".", "target_budget_smk37.txt")
+SMK_MARK = "smk_uart_tx_put"           # a function only the SMK-37's build has (its MIDI OUT, hal)
 LABEL = re.compile(r"^([A-Za-z_][A-Za-z_0-9.]*):$")
 INSN = re.compile(r"^\s*([0-9a-f]+):\s+((?:[0-9a-f]{2} )+)\s*(.*)$")
 TARGET = re.compile(r"goto -?\d+ <[^>]*: ([0-9a-f]+) >")
@@ -62,19 +66,31 @@ TARGET = re.compile(r"goto -?\d+ <[^>]*: ([0-9a-f]+) >")
 
 def functions(path):
     """{name: [(addr, text)]}: a function runs to the next label not starting with '.' (the compiler's
-    jump-table labels are inside functions); jump-table data ('< n : 0x.. >') is left out"""
-    out, cur = {}, None
+    jump-table labels are inside functions); jump-table data ('< n : 0x.. >') is left out. Also whether SMK_MARK
+    is there"""
+    out, cur, smk = {}, None, False
     with open(path) as f:
         for line in f:
             m = LABEL.match(line.strip())
             if m:
                 name = m.group(1)
+                smk = smk or name == SMK_MARK
                 if not name.startswith("."):
                     cur = out.setdefault(name, []) if name in FUNCS else None
                 continue
             m = INSN.match(line)
             if cur is not None and m and not m.group(3).lstrip().startswith("<"):
                 cur.append((int(m.group(1), 16), m.group(3).strip()))
+    return out, smk
+
+
+def read_budget(path):
+    out = {}
+    if os.path.exists(path):
+        for line in open(path):
+            p = line.split()
+            if len(p) >= 2 and not line.startswith("#"):
+                out[p[0]] = int(p[1])
     return out
 
 
@@ -108,16 +124,21 @@ def main():
     if not os.path.exists(dis):
         print(f"target: skip ({dis} missing: run ./build.sh)")
         return 0
-    fns = functions(dis)
+    fns, smk = functions(dis)
     res = {n: cost(fns[n]) for n in FUNCS if fns.get(n)}
     missing = [n for n in FUNCS if n not in res and n not in OPTIONAL]
-    base = {}
-    if os.path.exists(budget):
-        for line in open(budget):
-            p = line.split()
-            if len(p) >= 2 and not line.startswith("#"):
-                base[p[0]] = int(p[1])
-    if os.environ.get("BUDGET_UPDATE"):
+    base = read_budget(budget)
+    smk_base = read_budget(BUDGET_SMK) if smk else {}
+    base.update(smk_base)
+    if os.environ.get("BUDGET_UPDATE") and smk:
+        with open(BUDGET_SMK, "w") as f:
+            f.write("# The SMK-37's own budget lines over target_budget.txt (tests/target_budget.py): the ISRs, whose cost\n"
+                    "# follows the code's layout. Rewritten by BUDGET_UPDATE=1 on an SMK build.\n")
+            for n in smk_base or ("fm1_alnk0_irq", "fm1_timer5_irq"):
+                if n in res:
+                    f.write(f"{n} {res[n]['cost']}\n")
+        print(f"target: budget {BUDGET_SMK} rewritten (an SMK-37 build)")
+    elif os.environ.get("BUDGET_UPDATE"):
         with open(budget, "w") as f:
             f.write("# FELUCCA target cost budget (tests/target_budget.py): instructions in the loops of each\n"
                     f"# function in build/felucca.dis, x{NEST} per nesting level, divides x{1 + DIV_W}. The check allows "
